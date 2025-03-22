@@ -11,12 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {

@@ -21,7 +21,6 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.PartitionVertices
@@ -108,7 +107,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                         {
                             if (source.Value.Data is IRentable rentable)
                             {
-                                
+
                                 rentable.Rent(_sources[source.Key].LinksCount);
                             }
                             return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
@@ -125,7 +124,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                             return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
                         });
                     }
-                    
+
                 }
                 if (x is TriggerEvent triggerEvent)
                 {
@@ -138,14 +137,14 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
             _inputTargetBlock = _inputBlock;
-            
+
             for (int i = 0; i < _sources.Length; i++)
             {
                 var index = i;
                 _sources[i].Initialize();
                 _inputBlock.LinkTo(_sources[i].Target, new DataflowLinkOptions { PropagateCompletion = true }, x => x.Key == index);
             }
-            
+
         }
 
         protected virtual Task OnLockingEvent(ILockingEvent lockingEvent)

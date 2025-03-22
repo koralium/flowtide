@@ -14,12 +14,6 @@ using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {
@@ -35,7 +29,7 @@ namespace FlowtideDotNet.Core
         {
             var catalogManager = new CatalogConnectorManager(catalogName);
             options(catalogManager);
-            _catalogs.Add(catalogName,catalogManager);
+            _catalogs.Add(catalogName, catalogManager);
             _tableProviders.Add(catalogManager);
         }
 

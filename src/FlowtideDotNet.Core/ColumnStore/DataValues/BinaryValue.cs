@@ -17,7 +17,7 @@ using System.Collections.Generic;
 using System.IO.Hashing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -51,6 +51,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitBinaryValue(in this);
+        }
+
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             hashAlgorithm.Append(_bytes.Span);
@@ -79,5 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             builder.Append("]");
             return builder.ToString();
         }
+
+
     }
 }

@@ -20,7 +20,6 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.Collections.Generic;
@@ -30,7 +29,6 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -624,8 +622,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
         {
             this._memoryAllocator = memoryAllocator;
-            
-            switch(bitWidth)
+
+            switch (bitWidth)
             {
                 case 8:
                     _data = new Int8Data(new PrimitiveList<sbyte>(memory, length, memoryAllocator));

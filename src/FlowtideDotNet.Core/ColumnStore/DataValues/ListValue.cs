@@ -58,6 +58,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitListValue(in this);
+        }
+
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             for (int i = 0; i < dataValues.Count; i++)

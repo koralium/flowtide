@@ -13,19 +13,13 @@
 using Apache.Arrow.Compression;
 using Apache.Arrow.Ipc;
 using BenchmarkDotNet.Attributes;
-using FASTER.core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using ZstdSharp;
 
 namespace FlowtideDotNet.Benchmarks

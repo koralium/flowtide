@@ -10,17 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -44,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public NormalizeValueStorage CreateEmpty()
         {
-            return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);    
+            return new NormalizeValueStorage(_columnsToStore, _memoryAllocator);
         }
 
         public NormalizeValueStorage Deserialize(ref SequenceReader<byte> reader)

@@ -12,13 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Remoting;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
@@ -58,6 +52,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             throw new NotImplementedException();
         }
 
+        public SubstraitBaseType GetSubstraitType()
+        {
+            return new MapType(keyConverter.GetSubstraitType(), valueConverter.GetSubstraitType());
+        }
+
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
             if (obj == null)
@@ -67,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             if (obj is IDictionary<TKey, TValue> dictionary)
             {
                 List<KeyValuePair<IDataValue, IDataValue>> values = new List<KeyValuePair<IDataValue, IDataValue>>();
-                foreach(var kv in dictionary)
+                foreach (var kv in dictionary)
                 {
                     var keyFunc = new AddToColumnFunc();
                     var valueFunc = new AddToColumnFunc();

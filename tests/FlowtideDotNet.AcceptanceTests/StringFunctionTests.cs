@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -75,7 +77,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.Trim() }));
         }
-        
+
         [Fact]
         public async Task SelectWithLTrim()
         {
@@ -196,6 +198,47 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream($"INSERT INTO output SELECT strpos(firstName, '{start}') as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
+        }
+
+        [Fact]
+        public async Task StringSplit()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ', lastName), ' ') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = ($"{x.FirstName} {x.LastName}").Split(' ') }));
+        }
+
+        [Fact]
+        public async Task RegexStringSplit()
+        {
+            var pattern = @"\s";
+            GenerateData();
+            await StartStream($"INSERT INTO output SELECT regexp_string_split(concat(firstName, ' ', lastName), '{pattern}') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
+        }
+
+        [Fact]
+        public async Task ToJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT to_json(map('firstName', firstName, 'lastName', lastName)) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = JsonSerializer.Serialize(new {firstName = x.FirstName, lastName = x.LastName}) }));
+        }
+
+        [Fact]
+        public async Task FromJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT from_json(to_json(map('firstName', firstName, 'lastName', lastName))) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = new { firstName = x.FirstName, lastName = x.LastName } }));
         }
     }
 }

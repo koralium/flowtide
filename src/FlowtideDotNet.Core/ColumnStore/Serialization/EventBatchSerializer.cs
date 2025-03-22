@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
-using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
 
@@ -75,9 +74,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         /// <param name="count"></param>
         /// <returns>The amount of bytes written to the destination</returns>
         public int SerializeEventBatch(
-            Span<byte> destination, 
-            SerializationEstimation serializationEstimation, 
-            EventBatchData eventBatchData, 
+            Span<byte> destination,
+            SerializationEstimation serializationEstimation,
+            EventBatchData eventBatchData,
             int count,
             IBatchCompressor? compressor = default)
         {
@@ -104,7 +103,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 BinaryPrimitives.WriteInt64LittleEndian(recordBatchHeader.Slice((int)message.BodyLengthIndex), writtenDataLength);
             }
-                
+
             return writtenDataLength;
         }
 
@@ -132,9 +131,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
         public Span<byte> SerializeRecordBatchHeader(
-            Span<byte> destination, 
-            EventBatchData eventBatchData, 
-            int count, 
+            Span<byte> destination,
+            EventBatchData eventBatchData,
+            int count,
             SerializationEstimation serializationEstimation,
             bool compressed)
         {

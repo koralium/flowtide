@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 tableMetadata = new TableMetadata(fullName, CopyNamedStruct(tableMetadataInfo.Schema));
                 return true;
             }
-            foreach(var tableProvider in _tableProviders)
+            foreach (var tableProvider in _tableProviders)
             {
                 if (tableProvider.TryGetTableInformation(tableName, out var tableMetadataFromProvider))
                 {

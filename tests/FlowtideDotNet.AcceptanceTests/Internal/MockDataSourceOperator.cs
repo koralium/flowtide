@@ -89,7 +89,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     sentData = true;
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-                    
+
                     columns = new Column[readRelation.OutputLength];
                     for (int i = 0; i < readRelation.OutputLength; i++)
                     {
@@ -121,7 +121,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
-            
+
             output.ExitCheckpointLock();
         }
 
@@ -174,7 +174,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 columns[i] = new Column(MemoryAllocator);
             }
 
-            foreach(var operation in operations)
+            foreach (var operation in operations)
             {
                 _batchConverter.AppendToColumns(operation.Object, columns);
 
@@ -187,7 +187,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 {
                     weights.Add(1);
                 }
-                
+
                 if (weights.Count > 100)
                 {
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));

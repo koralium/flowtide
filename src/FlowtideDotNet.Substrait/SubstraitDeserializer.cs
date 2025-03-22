@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Substrait
 #pragma warning disable CS0612 // Type or member is obsolete
                 if (aggregateFunction.Args.Count > 0)
                 {
-                    foreach(var arg in aggregateFunction.Args)
+                    foreach (var arg in aggregateFunction.Args)
                     {
                         result.Arguments.Add(VisitExpression(arg));
                     }
@@ -220,7 +220,7 @@ namespace FlowtideDotNet.Substrait
                 };
 
 
-                
+
                 throw new NotImplementedException(functionName);
             }
         }
@@ -309,16 +309,16 @@ namespace FlowtideDotNet.Substrait
                     Groupings = new List<AggregateGrouping>(),
                     Measures = new List<AggregateMeasure>()
                 };
-                
+
                 if (aggregateRel.Groupings.Count > 0)
                 {
-                    foreach(var grouping in aggregateRel.Groupings)
+                    foreach (var grouping in aggregateRel.Groupings)
                     {
                         var aggGroup = new AggregateGrouping()
                         {
                             GroupingExpressions = new List<Expression>()
                         };
-                        foreach(var expr in grouping.GroupingExpressions)
+                        foreach (var expr in grouping.GroupingExpressions)
                         {
                             aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(expr));
                         }
@@ -326,7 +326,7 @@ namespace FlowtideDotNet.Substrait
                 }
                 if (aggregateRel.Measures.Count > 0)
                 {
-                    foreach(var measure in aggregateRel.Measures)
+                    foreach (var measure in aggregateRel.Measures)
                     {
                         Expression? filter = default;
                         if (measure.Filter != null)
@@ -367,7 +367,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     Inputs = new List<Relation>()
                 };
-                
+
                 for (int i = 0; i < setRel.Inputs.Count; i++)
                 {
                     set.Inputs.Add(VisitRel(setRel.Inputs[i]));
@@ -402,7 +402,7 @@ namespace FlowtideDotNet.Substrait
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
 
-                
+
                 List<string> namedTable = new List<string>();
                 if (readRel.NamedTable != null)
                 {
@@ -501,7 +501,7 @@ namespace FlowtideDotNet.Substrait
                     Condition = expressionDeserializer.VisitExpression(filterRel.Condition),
                     Emit = GetEmit(filterRel.Common)
                 };
-                
+
                 return filter;
             }
 

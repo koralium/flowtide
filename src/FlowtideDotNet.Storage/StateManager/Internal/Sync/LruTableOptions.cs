@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
@@ -36,9 +31,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public int MinSize { get; set; } = 1000;
 
         public string StreamName { get; }
-        
+
         public ILogger Logger { get; }
-        
+
         public Meter Meter { get; }
     }
 }

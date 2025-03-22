@@ -20,7 +20,6 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -101,7 +100,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 { new StringValue("value"), new StringValue("hello4") }
             }));
 
-            
+
             var valueData = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "value" });
             Assert.Equal("hello4", valueData.ToString());
         }
@@ -224,7 +223,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
                         dict.GetValueAt(k, dataValueContainer);
                         Assert.Equal(expectedVal[expectedKeys[k]], dataValueContainer.AsString.ToString());
-                    }                    
+                    }
                 }
             }
         }

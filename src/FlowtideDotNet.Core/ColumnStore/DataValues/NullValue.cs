@@ -12,8 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Linq;
@@ -26,7 +24,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
     public struct NullValue : IDataValue
     {
         public static readonly NullValue Instance = new NullValue();
-        public ArrowTypeId Type =>  ArrowTypeId.Null;
+        public ArrowTypeId Type => ArrowTypeId.Null;
 
         public long AsLong => throw new NotImplementedException();
 
@@ -47,6 +45,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public bool IsNull => true;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitNullValue(in this);
+        }
 
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {

@@ -10,13 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap
 {
@@ -39,7 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
             var groupbyHb = values.Distinct().OrderBy(t => t).GroupBy(HighBytes).OrderBy(t => t.Key).ToList();
 
             List<RoaringBitmap> result = new List<RoaringBitmap>();
-            foreach(var group in groupbyHb)
+            foreach (var group in groupbyHb)
             {
                 if (group.Key > result.Count)
                 {

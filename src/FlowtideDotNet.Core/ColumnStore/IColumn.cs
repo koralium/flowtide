@@ -10,19 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Types;
 using Apache.Arrow;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using FlowtideDotNet.Substrait.Expressions;
-using System.Text.Json;
-using FlowtideDotNet.Storage.Memory;
-using System.IO.Hashing;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Substrait.Expressions;
+using System.Text.Json;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {

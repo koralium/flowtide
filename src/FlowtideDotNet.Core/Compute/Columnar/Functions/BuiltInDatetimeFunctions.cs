@@ -10,16 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Internal.StrftimeImpl;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {

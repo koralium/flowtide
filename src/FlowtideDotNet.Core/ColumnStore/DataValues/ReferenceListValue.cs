@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO.Hashing;
@@ -91,6 +90,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public override string ToString()
         {
             return $"[{String.Join(',', ListValues().Select(x => x.ToString()))}]";
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitReferenceListValue(in this);
         }
 
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)

@@ -10,9 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-using static Substrait.Protobuf.Expression.Types;
-
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
     public sealed class NumericLiteral : Literal, IEquatable<NumericLiteral>

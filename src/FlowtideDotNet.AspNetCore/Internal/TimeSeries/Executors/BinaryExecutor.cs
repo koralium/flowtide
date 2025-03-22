@@ -34,7 +34,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         private string GetName()
         {
-            switch (op) 
+            switch (op)
             {
                 case Operators.Binary.Lss:
                     return $"{left.Name} < {right.Name}";
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 case Operators.Binary.Mod:
                     return $"{left.Name} % {right.Name}";
             }
-           return $"{left.Name} {op} {right.Name}";
+            return $"{left.Name} {op} {right.Name}";
         }
 
         public string Name => GetName();

@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
         public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
-            await foreach(var userChange in changes)
+            await foreach (var userChange in changes)
             {
                 if (!userChange.IsDeleted)
                 {

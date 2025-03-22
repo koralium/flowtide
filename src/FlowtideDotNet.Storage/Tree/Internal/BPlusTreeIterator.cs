@@ -15,7 +15,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
+        where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
         internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>

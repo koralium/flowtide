@@ -56,6 +56,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitBoolValue(in this);
+        }
+
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             if (value)
@@ -78,5 +83,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return value ? "true" : "false";
         }
+
+
     }
 }

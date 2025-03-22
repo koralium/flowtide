@@ -22,8 +22,8 @@ namespace FlowtideDotNet.Storage.StateManager
         /// <param name="name"></param>
         /// <returns></returns>
         ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
-            where TKeyContainer: IKeyContainer<K>
-            where TValueContainer: IValueContainer<V>;
+            where TKeyContainer : IKeyContainer<K>
+            where TValueContainer : IValueContainer<V>;
 
         ValueTask<IAppendTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateAppendTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
             where TKeyContainer : IKeyContainer<K>

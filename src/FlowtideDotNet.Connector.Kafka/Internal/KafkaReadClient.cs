@@ -12,12 +12,6 @@
 
 using Confluent.Kafka;
 using FlowtideDotNet.Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static Confluent.Kafka.ConfigPropertyNames;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
@@ -29,7 +23,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         private readonly List<TopicPartition> _topicPartitions = new List<TopicPartition>();
 
         public KafkaReadClient(
-            ConsumerConfig consumerConfig, 
+            ConsumerConfig consumerConfig,
             string topicName,
             IFlowtideKafkaDeserializer valueDeserializer,
             IFlowtideKafkaKeyDeserializer keyDeserializer)
@@ -83,7 +77,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions);
 
             // Set all the partition offsets to start at -1 incase there is no data.
-            foreach(var kv in beforeStartOffsets)
+            foreach (var kv in beforeStartOffsets)
             {
                 currentOffsets[kv.Key] = -1;
             }

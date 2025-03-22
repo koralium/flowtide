@@ -413,7 +413,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new NotImplementedException("stftime does not support the input parameter");
                 }
             });
-            
+
             sqlFunctionRegister.RegisterScalarFunction("gettimestamp", (f, visitor, emitData) =>
             {
                 return new ScalarResponse(
@@ -447,7 +447,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
                     {
                         var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
-                        
+
                         if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)
                         {
                             var valExpr = visitor.Visit(valFuncExprUnnamed.Expression, emitData);
@@ -657,6 +657,34 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
             });
 
+            sqlFunctionRegister.RegisterAggregateFunction("list_union_distinct_agg", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
+                {
+                    throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsList.Uri,
+                            ExtensionName = FunctionsList.ListUnionDistinctAgg,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
+                        },
+                        new ListType(argExpr.Type)
+                        );
+                }
+                throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
+            });
+
             sqlFunctionRegister.RegisterAggregateFunction("string_agg", (f, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
@@ -691,7 +719,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
-            
+
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt);
@@ -723,12 +751,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Uri, FunctionsString.CharLength);
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "strpos", FunctionsString.Uri, FunctionsString.StrPos);
 
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_split", FunctionsString.Uri, FunctionsString.StringSplit);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "regexp_string_split", FunctionsString.Uri, FunctionsString.RegexStringSplit);
+
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.Uri, FunctionsString.ToJson);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
+
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
         }
 
         private static void RegisterSingleVariableFunction(
-            SqlFunctionRegister sqlFunctionRegister, 
+            SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
             string extensionName,
@@ -911,7 +945,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {
                             var expr = visitor.Visit(funcExpr.Expression, state);
-                            
+
                             if (returnType == null)
                             {
                                 returnType = expr.Type;

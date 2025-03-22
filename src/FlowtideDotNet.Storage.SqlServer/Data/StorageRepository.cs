@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
             ArgumentNullException.ThrowIfNull(Stream.Metadata.StreamKey);
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand(
                 $"DELETE FROM {Settings.StreamPageTableName} WHERE StreamKey = @StreamKey; " +
                 $"UPDATE {Settings.StreamTableName} SET LastSuccessfulVersion = 0 WHERE StreamKey = @StreamKey", connection);
@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
         public static async Task<StreamInfo> UpsertStream(string name, SqlServerPersistentStorageSettings settings)
         {
-            using var connection = new SqlConnection(settings.ConnectionString);
+            using var connection = new SqlConnection(settings.ConnectionStringFunc());
             using var command = new SqlCommand($@"
                     DECLARE @StreamKey INT;
                     DECLARE @Version INT = 0;
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 #if DEBUG_WRITE
             DebugWriter!.WriteCall();
 #endif
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand($"UPDATE {Settings.StreamTableName} SET LastSuccessfulVersion = @Version WHERE StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);

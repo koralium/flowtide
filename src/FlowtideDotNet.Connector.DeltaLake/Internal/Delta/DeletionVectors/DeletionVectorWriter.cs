@@ -10,16 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Stowage;
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 {

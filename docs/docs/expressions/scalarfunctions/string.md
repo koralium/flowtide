@@ -210,3 +210,57 @@ index 1 for the first character.
 ```sql
 SELECT strpos(c1, 'abc') FROM ...
 ```
+
+## String split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#string_split)
+
+Splits a string into a collection of substrings based on the specified delimiter character. 
+
+_If the provided delimiter character is null, the original string will be returned as the only element in the resulting collection._
+
+_If the provided delimiter character is not a string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT string_split('a b', ' ') ...
+```
+
+## Regexp string split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#regexp_string_split)
+
+Splits a string into a collection of substrings based on the specified pattern.
+
+_If any of the arguments is not string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT regexp_string_split('a b', '\s') ...
+```
+
+## To Json
+
+This function does not have a substrait definition.
+
+Converts an object into json stored as a string.
+
+### SQL Usage
+
+```sql
+SELECT to_json(column1) ...
+```
+
+## From Json
+
+This function does not have a substrait definition.
+
+Converts a JSON string to flowtide data objects. It is also possible to use a binary value in utf8 encoding as the input.
+
+### SQL Usage
+
+```sql
+SELECT from_json(myjsoncolumn) ...
+```

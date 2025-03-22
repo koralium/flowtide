@@ -12,20 +12,14 @@
 
 using FlowtideDotNet.Connector.Permify;
 using FlowtideDotNet.Connector.Permify.Internal;
-using FlowtideDotNet.Core;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {
     public static class PermifyConnectorManagerExtensions
     {
         public static IConnectorManager AddPermifyRelationshipSink(
-            this IConnectorManager connectorManager, 
-            string regexPattern, 
+            this IConnectorManager connectorManager,
+            string regexPattern,
             PermifySinkOptions permifySinkOptions)
         {
             connectorManager.AddSink(new PermifyRelationSinkFactory(regexPattern, permifySinkOptions));

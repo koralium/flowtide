@@ -10,22 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Buffers.Binary;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Collections;
 using FlowtideDotNet.Storage.Memory;
+using System.Buffers;
+using System.Collections;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
-        where T: unmanaged
+        where T : unmanaged
     {
         private void* _data;
         private int _dataLength;

@@ -67,7 +67,7 @@ namespace FlowtideDotNet.AspNetCore
                 }
                 secondLastDotIndex = path.LastIndexOf('.', dotLastIndex - 1);
             }
-            
+
 
             if (secondLastDotIndex != -1)
             {

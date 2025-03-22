@@ -10,13 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     internal enum CompressionType : sbyte
@@ -53,14 +46,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndTable();
         }
 
-        void BodyCompressionAddMethod(BodyCompressionMethod method) 
-        { 
-            AddSbyte(1, (sbyte)method, 0); 
+        void BodyCompressionAddMethod(BodyCompressionMethod method)
+        {
+            AddSbyte(1, (sbyte)method, 0);
         }
 
-        void BodyCompressionAddCodec(CompressionType codec) 
-        { 
-            AddSbyte(0, (sbyte)codec, 0); 
+        void BodyCompressionAddCodec(CompressionType codec)
+        {
+            AddSbyte(0, (sbyte)codec, 0);
         }
     }
 }

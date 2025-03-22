@@ -15,27 +15,16 @@ using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Utils;
-using FlowtideDotNet.Storage.Serializers;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.ColumnStore.Utils;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Storage.Utils;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -117,7 +106,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             outgoingIndices.Add(i);
                         }
                     }
-                    
+
                 }
             }
             else
@@ -192,7 +181,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var startCacheMisses = GetCacheMisses();
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
-                rightColumns.Add(Column.Create(memoryManager)); 
+                rightColumns.Add(Column.Create(memoryManager));
             }
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
@@ -208,8 +197,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 if (!_searchRightComparer.noMatch)
                 {
                     bool firstPage = true;
-                    
-                    await foreach(var page in _rightIterator)
+
+                    await foreach (var page in _rightIterator)
                     {
                         bool pageUpdated = false;
                         var pageKeyStorage = page.Keys;
@@ -230,8 +219,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             {
                                 if (!_postCondition(columnReference.referenceBatch, columnReference.RowIndex, pageKeyStorage._data, k))
                                 {
-                                    _searchRightComparer.end = int.MinValue;
-                                    break;
+                                    continue;
                                 }
                             }
                             pageUpdated |= RecieveLeftHandleElement(
@@ -282,7 +270,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #endif
                                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
                                 yield return outputBatch;
-                                
+
                                 // Reset all lists
                                 foundOffsets = new PrimitiveList<int>(MemoryAllocator);
                                 weights = new PrimitiveList<int>(MemoryAllocator);
@@ -346,7 +334,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     foundOffsets.Dispose();
                 }
-                
+
                 for (int i = 0; i < rightColumns.Count; i++)
                 {
                     outputColumns[_rightOutputIndices[i]] = rightColumns[i];
@@ -412,9 +400,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 int joinWeight = 0;
                 if (!_searchLeftComparer.noMatch)
                 {
-                
+
                     bool firstPage = true;
-                    
+
                     await foreach (var page in _leftIterator)
                     {
                         bool pageUpdated = false;
@@ -436,21 +424,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             {
                                 if (!_postCondition(pageKeyStorage._data, k, columnReference.referenceBatch, columnReference.RowIndex))
                                 {
-                                    _searchLeftComparer.end = int.MinValue;
-                                    break;
+                                    continue;
                                 }
                             }
                             pageUpdated |= RecieveRightHandleElement(
-                                in i, 
-                                in k, 
-                                in weight, 
-                                in msg, 
-                                in foundOffsets, 
-                                in weights, 
-                                in iterations, 
-                                page.Values, 
-                                in pageKeyStorage!, 
-                                in leftColumns, 
+                                in i,
+                                in k,
+                                in weight,
+                                in msg,
+                                in foundOffsets,
+                                in weights,
+                                in iterations,
+                                page.Values,
+                                in pageKeyStorage!,
+                                in leftColumns,
                                 ref joinWeight);
 
                             var newCacheMisses = GetCacheMisses();
@@ -497,12 +484,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     leftColumns[l] = Column.Create(MemoryAllocator);
                                 }
                             }
-                            
+
                         }
                         if (pageUpdated)
                         {
                             await page.SavePage(false);
                         }
+                        // Checks if we end before the last element, if we do, we dont have to fetch the next page
                         if (_searchLeftComparer.end < (page.Keys.Count - 1))
                         {
                             break;
@@ -557,7 +545,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     // Dipsose offsets since it was not required
                     foundOffsets.Dispose();
                 }
-                
+
                 var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
 
                 _eventsCounter.Add(outputBatch.Data.Weights.Count);
@@ -587,7 +575,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         // This method exist since its not possible to get by ref in an async method.
         private bool RecieveRightHandleElement(
             in int i,
-            in int k, 
+            in int k,
             in int weight,
             in StreamEventBatch msg,
             in PrimitiveList<int> foundOffsets,

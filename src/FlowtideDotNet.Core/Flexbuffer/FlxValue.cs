@@ -35,10 +35,10 @@ namespace FlexBuffers
             _buffer = buffer;
             _offset = offset;
             _parentWidth = parentWidth;
-            _byteWidth = (byte) (1 << (packedType & 3));
-            _type = (Type) (packedType >> 2);
+            _byteWidth = (byte)(1 << (packedType & 3));
+            _type = (Type)(packedType >> 2);
         }
-        
+
         internal FlxValue(byte[] buffer, int offset, byte parentWidth, byte byteWidth, Type type)
         {
             _buffer = buffer;
@@ -206,7 +206,7 @@ namespace FlexBuffers
                 var span = _buffer;
                 if (_type == Type.Int)
                 {
-                    return ReadLong(span, _offset, _parentWidth);    
+                    return ReadLong(span, _offset, _parentWidth);
                 }
 
                 if (_type == Type.IndirectInt)
@@ -220,7 +220,7 @@ namespace FlexBuffers
                     var value = ReadULong(span, _offset, _parentWidth);
                     if (value <= long.MaxValue)
                     {
-                        return (long) value;
+                        return (long)value;
                     }
                 }
                 if (_type == Type.IndirectUInt)
@@ -229,22 +229,22 @@ namespace FlexBuffers
                     var value = ReadULong(span, indirectOffset, _byteWidth);
                     if (value <= long.MaxValue)
                     {
-                        return (long) value;
+                        return (long)value;
                     }
                 }
                 throw new InvalidOperationException($"Type {_type} is not convertible to long");
             }
         }
-        
+
         public ulong AsULong
         {
             get
             {
                 if (_type == Type.Uint)
                 {
-                    return ReadULong(_buffer, _offset, _parentWidth);    
+                    return ReadULong(_buffer, _offset, _parentWidth);
                 }
-                
+
                 if (_type == Type.IndirectUInt)
                 {
                     var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
@@ -256,23 +256,23 @@ namespace FlexBuffers
                     var value = ReadLong(_buffer, _offset, _parentWidth);
                     if (value >= 0)
                     {
-                        return (ulong) value;
+                        return (ulong)value;
                     }
                 }
-                
+
                 if (_type == Type.IndirectInt)
                 {
                     var indirectOffset = ComputeIndirectOffset(_buffer, _offset, _parentWidth);
                     var value = ReadLong(_buffer, indirectOffset, _byteWidth);
                     if (value >= 0)
                     {
-                        return (ulong) value;
+                        return (ulong)value;
                     }
                 }
                 throw new InvalidOperationException($"Type {_type} is not convertible to ulong");
             }
         }
-        
+
         public double AsDouble
         {
             get
@@ -280,15 +280,15 @@ namespace FlexBuffers
                 var span = _buffer;
                 if (_type == Type.Float)
                 {
-                    return ReadDouble(span, _offset, _parentWidth);    
+                    return ReadDouble(span, _offset, _parentWidth);
                 }
                 if (_type == Type.Int)
                 {
-                    return ReadLong(span, _offset, _parentWidth);    
+                    return ReadLong(span, _offset, _parentWidth);
                 }
                 if (_type == Type.Uint)
                 {
-                    return ReadULong(span, _offset, _parentWidth);    
+                    return ReadULong(span, _offset, _parentWidth);
                 }
                 if (_type == Type.IndirectFloat)
                 {
@@ -308,7 +308,7 @@ namespace FlexBuffers
                 throw new InvalidOperationException($"Type {_type} is not convertible to double");
             }
         }
-        
+
         public bool AsBool
         {
             get
@@ -319,11 +319,11 @@ namespace FlexBuffers
                 }
                 if (_type == Type.Int)
                 {
-                    return ReadLong(_buffer, _offset, _parentWidth) != 0;    
+                    return ReadLong(_buffer, _offset, _parentWidth) != 0;
                 }
                 if (_type == Type.Uint)
                 {
-                    return ReadULong(_buffer, _offset, _parentWidth) != 0;    
+                    return ReadULong(_buffer, _offset, _parentWidth) != 0;
                 }
                 throw new InvalidOperationException($"Type {_type} is not convertible to bool");
             }
@@ -375,7 +375,7 @@ namespace FlexBuffers
                         sizeWidth <<= 1;
                         size = (int)ReadULong(span, indirectOffset - sizeWidth, (byte)sizeWidth);
                     }
-                    
+
                     return Encoding.UTF8.GetString(span.Slice(indirectOffset, size));
                 }
 
@@ -389,7 +389,7 @@ namespace FlexBuffers
                     }
                     return Encoding.UTF8.GetString(span.Slice(indirectOffset, size));
                 }
-                
+
                 throw new InvalidOperationException($"Type {_type} is not convertible to string");
             }
         }
@@ -407,9 +407,9 @@ namespace FlexBuffers
                 throw new InvalidOperationException($"Type {_type} is not convertible to decimal");
             }
         }
-        
+
         public FlxValue this[int index] => AsVector[index];
-        
+
         public FlxValue this[string key] => AsMap[key];
 
         public FlxVector AsVector
@@ -422,8 +422,8 @@ namespace FlexBuffers
                 }
                 var span = _buffer;
                 var indirectOffset = ComputeIndirectOffset(span, _offset, _parentWidth);
-                var size = TypesUtil.IsFixedTypedVector(_type) 
-                    ? TypesUtil.FixedTypedVectorElementSize(_type) 
+                var size = TypesUtil.IsFixedTypedVector(_type)
+                    ? TypesUtil.FixedTypedVectorElementSize(_type)
                     : (int)ReadULong(span, indirectOffset - _byteWidth, _byteWidth);
                 return new FlxVector(_buffer, indirectOffset, _byteWidth, _type, size);
             }
@@ -517,7 +517,7 @@ namespace FlexBuffers
                 {
                     return AsDecimal.ToString(CultureInfo.CurrentCulture);
                 }
-                
+
                 throw new InvalidOperationException($"Unexpected type {_type}");
             }
         }
@@ -537,7 +537,7 @@ namespace FlexBuffers
             {
                 return ToJson;
             }
-            
+
             return $"{left}{ToJson}";
         }
 
@@ -565,7 +565,7 @@ namespace FlexBuffers
 
             return BitConverter.ToInt64(bytes.Slice(offset, 8));
         }
-        
+
         internal static ulong ReadULong(in Span<byte> bytes, in int offset, in byte width)
         {
             //Debug.Assert(!(offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0), "Bad offset");
@@ -591,7 +591,7 @@ namespace FlexBuffers
 
             return BitConverter.ToUInt64(bytes.Slice(offset));
         }
-        
+
         internal static double ReadDouble(Span<byte> bytes, int offset, byte width)
         {
             if (offset < 0 || bytes.Length <= (offset + width) || (offset & (width - 1)) != 0)
@@ -618,7 +618,7 @@ namespace FlexBuffers
             var step = (int)ReadULong(bytes, offset, width);
             return offset - step;
         }
-        
+
         internal Span<byte> Buffer => _buffer;
         internal int Offset => _offset;
 
@@ -626,7 +626,7 @@ namespace FlexBuffers
 
     }
 
-    public struct FlxVector: IEnumerable<FlxValue>
+    public struct FlxVector : IEnumerable<FlxValue>
     {
         internal readonly byte[] _buffer;
         internal readonly int _offset;
@@ -691,7 +691,7 @@ namespace FlexBuffers
                 return new FlxValue(_buffer, elemOffset, _byteWidth, 1, TypesUtil.FixedTypedVectorElementType(_type));
             }
 
-            
+
             throw new InvalidOperationException($"Bad index {index}, should be 0...{_length}");
         }
 
@@ -761,9 +761,9 @@ namespace FlexBuffers
             var builder = new StringBuilder();
             if (childrenOnly == false)
             {
-                builder.Append(left);    
+                builder.Append(left);
             }
-            
+
             builder.Append("[\n");
             for (var i = 0; i < _length; i++)
             {
@@ -780,7 +780,7 @@ namespace FlexBuffers
 
             return builder.ToString();
         }
-        
+
         public IEnumerator<FlxValue> GetEnumerator()
         {
             for (var i = 0; i < _length; i++)
@@ -795,7 +795,7 @@ namespace FlexBuffers
         }
     }
 
-    public struct FlxMap: IEnumerable<KeyValuePair<string, FlxValue>>
+    public struct FlxMap : IEnumerable<KeyValuePair<string, FlxValue>>
     {
         private readonly byte[] _buffer;
         private readonly int _offset;
@@ -820,7 +820,7 @@ namespace FlexBuffers
                 var keysOffset = _offset - _byteWidth * 3;
                 var indirectOffset = FlxValue.ComputeIndirectOffset(span, keysOffset, _byteWidth);
                 var bWidth = FlxValue.ReadULong(span, keysOffset + _byteWidth, _byteWidth);
-                return new FlxVector(_buffer, indirectOffset, (byte) bWidth, Type.VectorKey, _length);
+                return new FlxVector(_buffer, indirectOffset, (byte)bWidth, Type.VectorKey, _length);
             }
         }
 
@@ -875,7 +875,7 @@ namespace FlexBuffers
             var builder = new StringBuilder();
             if (childrenOnly == false)
             {
-                builder.Append(left);    
+                builder.Append(left);
             }
             builder.Append("{\n");
             var keys = Keys;
@@ -911,7 +911,8 @@ namespace FlexBuffers
                 if (dif < 0)
                 {
                     high = mid - 1;
-                } else
+                }
+                else
                 {
                     low = mid + 1;
                 }
@@ -919,14 +920,14 @@ namespace FlexBuffers
 
             return -1;
         }
-        
+
         private int Comp(int i, string key)
         {
             // TODO: keep it so we can profile it against byte comparison
             var key2 = Keys[i].AsString;
             return string.Compare(key, key2, StringComparison.Ordinal);
         }
-        
+
         private int Comp(int i, byte[] key)
         {
             var key2 = Keys[i];

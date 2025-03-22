@@ -11,13 +11,9 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using System;
 using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
@@ -142,13 +138,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             m_destination[offset] = (byte)value;
         }
 
-        public void AddSbyte(int o, sbyte x, sbyte d) 
-        { 
-            if (x != d) 
-            { 
-                AddSbyte(x); 
-                Slot(o); 
-            } 
+        public void AddSbyte(int o, sbyte x, sbyte d)
+        {
+            if (x != d)
+            {
+                AddSbyte(x);
+                Slot(o);
+            }
         }
 
 
@@ -210,7 +206,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         public void PutInt(int x)
         {
             m_space -= sizeof(int);
-            
+
             Span<byte> span = m_destination.Slice(m_space);
             BinaryPrimitives.WriteInt32LittleEndian(span, x);
         }
@@ -245,55 +241,55 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         }
 
 
-        void AddInt(int o, int x, int d) 
-        { 
-            if (x != d) 
-            { 
-                AddInt(x); 
-                Slot(o); 
-            } 
+        void AddInt(int o, int x, int d)
+        {
+            if (x != d)
+            {
+                AddInt(x);
+                Slot(o);
+            }
         }
 
-        void AddOffset(int o, int x, int d) 
-        { 
-            if (x != d) 
-            { 
-                AddOffset(x); 
-                Slot(o); 
-            } 
+        void AddOffset(int o, int x, int d)
+        {
+            if (x != d)
+            {
+                AddOffset(x);
+                Slot(o);
+            }
         }
 
-        void AddByte(int o, byte x, byte d) 
-        { 
-            if (x != d) 
-            { 
-                AddByte(x); 
-                Slot(o); 
-            } 
+        void AddByte(int o, byte x, byte d)
+        {
+            if (x != d)
+            {
+                AddByte(x);
+                Slot(o);
+            }
         }
 
-        void AddShort(int o, short x, int d) 
-        { 
-            if (x != d) 
-            { 
-                AddShort(x); 
-                Slot(o); 
-            } 
+        void AddShort(int o, short x, int d)
+        {
+            if (x != d)
+            {
+                AddShort(x);
+                Slot(o);
+            }
         }
 
-        void AddLong(int o, long x, long d) 
-        { 
-            if (x != d) 
-            { 
-                AddLong(x); 
-                Slot(o); 
-            } 
+        void AddLong(int o, long x, long d)
+        {
+            if (x != d)
+            {
+                AddLong(x);
+                Slot(o);
+            }
         }
 
-        void AddLong(long x) 
-        { 
-            Prep(sizeof(long), 0); 
-            PutLong(x); 
+        void AddLong(long x)
+        {
+            Prep(sizeof(long), 0);
+            PutLong(x);
         }
 
         void PutLong(long x)
@@ -312,19 +308,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             PutByte(m_space -= sizeof(byte), (byte)(x ? 1 : 0));
         }
 
-        void AddBool(bool x) 
-        { 
-            Prep(sizeof(byte), 0); 
-            PutBool(x); 
+        void AddBool(bool x)
+        {
+            Prep(sizeof(byte), 0);
+            PutBool(x);
         }
 
-        void AddBool(int o, bool x, bool d) 
-        { 
-            if (x != d) 
-            { 
-                AddBool(x); 
-                Slot(o); 
-            } 
+        void AddBool(int o, bool x, bool d)
+        {
+            if (x != d)
+            {
+                AddBool(x);
+                Slot(o);
+            }
         }
 
         void AddOffset(int off)
@@ -430,7 +426,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 if (m_numVtables == m_vtables.Length)
                 {
                     throw new Exception("Vtables array was too small");
-                };
+                }
+                ;
                 m_vtables[m_numVtables++] = Offset;
                 // Point table to current vtable.
                 PutInt(m_maxSize - vtableloc, Offset - vtableloc);

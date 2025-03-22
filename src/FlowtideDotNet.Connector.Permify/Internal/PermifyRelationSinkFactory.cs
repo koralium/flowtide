@@ -14,11 +14,6 @@ using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Permify.Internal
@@ -33,8 +28,8 @@ namespace FlowtideDotNet.Connector.Permify.Internal
         }
 
         public override IStreamEgressVertex CreateSink(
-            WriteRelation writeRelation, 
-            IFunctionsRegister functionsRegister, 
+            WriteRelation writeRelation,
+            IFunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             return new PermifyRelationSink(writeRelation, _permifySinkOptions, dataflowBlockOptions);

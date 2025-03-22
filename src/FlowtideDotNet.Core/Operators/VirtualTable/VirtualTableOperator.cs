@@ -11,15 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.VirtualTable
 {
@@ -68,7 +67,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            if (watermarkNames != null) 
+            if (watermarkNames != null)
             {
                 return Task.FromResult(watermarkNames);
             }
@@ -87,7 +86,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                     HasSentInitial = false
                 };
             }
-            
+
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -114,7 +113,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                 columns[i] = Column.Create(MemoryAllocator);
             }
 
-            foreach(var row in virtualTableReadRelation.Values.Expressions)
+            foreach (var row in virtualTableReadRelation.Values.Expressions)
             {
                 weights.Add(1);
                 iterations.Add(0);

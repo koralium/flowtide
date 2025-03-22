@@ -11,20 +11,18 @@
 // limitations under the License.
 
 using DataflowStream.dataflow.Internal.Extensions;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Base.dataflow;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Base.Metrics;
 using System.Text;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Storage.Memory;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
@@ -94,7 +92,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
                     // Inject data into the stream from the trigger
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => 
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
                     {
                         if (source is IRentable rentable)
                         {
@@ -114,7 +112,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
                     if (streamMessage.Data is IRentable inputRentable)
                     {
-                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -124,7 +123,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                     }
                     else
                     {
-                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -245,8 +245,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 var links = GetLinks();
 
                 List<Measurement<int>> measurements = new List<Measurement<int>>();
-                
-                foreach(var link in links)
+
+                foreach (var link in links)
                 {
                     TagList tags = new TagList
                     {

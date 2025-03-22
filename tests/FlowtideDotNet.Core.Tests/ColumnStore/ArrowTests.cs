@@ -16,11 +16,6 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -187,7 +182,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
             var firstElement = deserializedBatch.Columns[0].GetValueAt(0, default);
-            Assert.Equal("1" ,firstElement.AsList.GetAt(0).ToString());
+            Assert.Equal("1", firstElement.AsList.GetAt(0).ToString());
             Assert.Equal("2", firstElement.AsList.GetAt(1).ToString());
 
             var secondElement = deserializedBatch.Columns[0].GetValueAt(2, default);
@@ -308,7 +303,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, secondElement.AsList.Count);
             Assert.Equal("3", secondElement.AsList.GetAt(0).ToString());
 
-            
+
             for (int i = 2; i < 15; i++)
             {
                 var element = deserializedBatch.Columns[0].GetValueAt(i, default);
@@ -379,7 +374,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("2", deserializedBatch.Columns[0].GetValueAt(3, default).ToString());
             Assert.Equal(2, deserializedBatch.Columns[0].GetValueAt(4, default).AsLong);
 
-            
+
         }
 
         [Fact]
@@ -496,7 +491,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
 
-            Assert.Equal(1, deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key"}).AsLong);
+            Assert.Equal(1, deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key" }).AsLong);
             Assert.Equal("hello1", deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" }).ToString());
 
             Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);

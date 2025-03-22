@@ -18,6 +18,7 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -46,6 +47,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         TimestampTzValue AsTimestamp { get; }
 
         void CopyToContainer(DataValueContainer container);
+
+        void Accept(in DataValueVisitor visitor);
 
         void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm);
     }

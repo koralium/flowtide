@@ -22,16 +22,13 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -51,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
+            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
         }
 
         internal DecimalColumn(PrimitiveList<decimal> values)
@@ -114,7 +111,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)

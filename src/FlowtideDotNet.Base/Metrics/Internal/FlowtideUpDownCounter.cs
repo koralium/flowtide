@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         public void Add(T delta, params KeyValuePair<string, object?>[] tags)
         {
             TagList outputTags = new TagList();
-            foreach(var tag in tags)
+            foreach (var tag in tags)
             {
                 outputTags.Add(tag);
             }
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         public void Add(T delta, in TagList tagList)
         {
             TagList outputTags = new TagList();
-            foreach(var tag in tagList)
+            foreach (var tag in tagList)
             {
                 outputTags.Add(tag);
             }

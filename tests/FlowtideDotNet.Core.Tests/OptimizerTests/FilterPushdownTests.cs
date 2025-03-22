@@ -376,7 +376,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Input = new JoinRelation()
                         {
                             Type = JoinType.Inner,
-                            Emit = new List<int>(){ 2 }, 
+                            Emit = new List<int>(){ 2 },
                             Expression = new ScalarFunction()
                             {
                                 ExtensionUri = FunctionsComparison.Uri,
@@ -1251,7 +1251,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             }
                         }
                     }
-                    
+
                 }
             };
 

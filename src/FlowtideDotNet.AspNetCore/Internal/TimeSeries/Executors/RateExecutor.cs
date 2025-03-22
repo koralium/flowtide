@@ -43,12 +43,12 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
             // Multiply by 1.5 to make sure a value is available for the value.
             var newStartTime = startTimestamp - (int)((double)rate_length * 1.5);
-            var valueIterator =  serie.GetValues(newStartTime, endTimestamp, stepWidth);
+            var valueIterator = serie.GetValues(newStartTime, endTimestamp, stepWidth);
 
             double[] oldValues = new double[indexDistance + 1];
             int index = 0;
             var divisorInSeconds = ((double)rate_length) / 1000;
-            await foreach(var val in valueIterator)
+            await foreach (var val in valueIterator)
             {
                 oldValues[index % (indexDistance + 1)] = val.value;
 

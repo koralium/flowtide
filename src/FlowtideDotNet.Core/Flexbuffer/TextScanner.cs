@@ -21,7 +21,7 @@ namespace FlexBuffers
             return $"line: {line} column: {column}";
         }
     }
-	
+
     internal sealed class TextScanner
     {
         private readonly TextReader _reader;

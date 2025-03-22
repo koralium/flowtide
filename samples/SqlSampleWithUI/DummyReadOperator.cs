@@ -13,7 +13,6 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
@@ -80,7 +79,7 @@ namespace SqlSampleWithUI
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-                
+
                 for (int b = 0; b < 16; b++)
                 {
                     columns[b] = Column.Create(memoryManager);
@@ -97,7 +96,7 @@ namespace SqlSampleWithUI
                 }
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                
+
             }
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }

@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Group
                 var comparison = Compare(propertyAccessorLeft, propertyAccessorRight);
                 comparisons.Add(comparison);
             }
-            
+
             if (comparisons.Count == 1)
             {
                 var lambda = Expression.Lambda<Func<T, T, int>>(comparisons.First(), left, right);

@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             projectRelation.Input = Visit(projectRelation.Input, state);
 
             var replacer = new GetTimestampReplacer(projectRelation.Input.OutputLength);
-            
+
             for (int i = 0; i < projectRelation.Expressions.Count; i++)
             {
                 projectRelation.Expressions[i] = replacer.Visit(projectRelation.Expressions[i], state)!;

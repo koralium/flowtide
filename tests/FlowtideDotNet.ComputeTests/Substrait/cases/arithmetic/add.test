@@ -1,0 +1,15 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_arithmetic.yaml'
+
+# basic: Basic examples without any special cases
+add(120::i8, 5::i8) = 125::i8
+add(100::i16, 100::i16) = 200::i16
+add(30000::i32, 30000::i32) = 60000::i32
+add(2000000000::i64, 2000000000::i64) = 4000000000::i64
+
+# floating_exception: Examples demonstrating exceptional floating point cases
+add(1.5e+308::fp64, 1.5e+308::fp64) = inf::fp64
+add(-1.5e+308::fp64, -1.5e+308::fp64) = -inf::fp64
+
+# types: Examples demonstrating behavior of different data types
+add(4.5::fp64, 2.5000007152557373046875::fp64) = 7.0000007152557373046875::fp64

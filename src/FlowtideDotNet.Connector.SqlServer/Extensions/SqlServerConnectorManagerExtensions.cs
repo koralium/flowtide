@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core
     public static class SqlServerConnectorManagerExtensions
     {
         public static IConnectorManager AddSqlServerSource(
-            this IConnectorManager connectorManager, 
+            this IConnectorManager connectorManager,
             Func<string> connectionStringFunc,
             Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)

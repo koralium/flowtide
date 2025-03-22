@@ -84,7 +84,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 TemporaryStorageOptions = fileCacheOptions,
                 MaxProcessMemory = MaxProcessMemory ?? -1,
                 MinCachePageCount = MinPageCount,
-                
+
                 CachePageCount = MaxPageCount ?? 1000
             };
         }

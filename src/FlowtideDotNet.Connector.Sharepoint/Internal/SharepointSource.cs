@@ -18,21 +18,13 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
-using Microsoft.Graph;
-using Microsoft.Graph.Models;
-using Microsoft.Kiota.Abstractions.Serialization;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices.ObjectiveC;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
-    internal class SharepointSourceState {
+    internal class SharepointSourceState
+    {
         public long WatermarkVersion { get; set; }
 
         public string? ODataNextUrl { get; set; }
@@ -99,7 +91,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 if (e is TaskCanceledException || e is OperationCanceledException)
                 {
@@ -147,7 +139,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         {
             Debug.Assert(_decoders != null);
 
-            foreach(var decoder in _decoders)
+            foreach (var decoder in _decoders)
             {
                 await decoder.Value.OnNewBatch();
             }
@@ -220,7 +212,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.Value.WatermarkVersion));
                 _state.Value.FetchedInitial = true;
             }
-            
+
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             await RegisterTrigger("fetch_delta", TimeSpan.FromSeconds(1));
         }

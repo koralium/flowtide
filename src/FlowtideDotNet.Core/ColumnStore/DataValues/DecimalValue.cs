@@ -56,6 +56,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitDecimalValue(in this);
+        }
+
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             Span<byte> buffer = stackalloc byte[16];
@@ -74,5 +79,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return value.ToString();
         }
+
+
     }
 }

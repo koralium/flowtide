@@ -28,8 +28,8 @@ namespace FlowtideDotNet.Storage.Tree
     public delegate (V? result, GenericWriteOperation operation) GenericWriteFunction<V>(V? input, V? current, bool exists);
 
     public interface IBPlusTree<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         ValueTask Upsert(in K key, in V value);
 

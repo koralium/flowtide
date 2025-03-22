@@ -11,17 +11,10 @@
 // limitations under the License.
 
 using AspireSamples.DataMigration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Stowage;
-using Projects;
-using Azure.Identity;
 using Azure.Storage.Blobs;
-using Aspire.Hosting;
 using Microsoft.Extensions.Logging;
+using Projects;
+using Stowage;
 
 namespace AspireSamples.DeltaLakeSourceSample
 {
@@ -50,7 +43,7 @@ namespace AspireSamples.DeltaLakeSourceSample
             DataGenerator dataGenerator = new DataGenerator();
 
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-copy",
-                async (logger, statusUpdate, token) =>
+                async (logger, statusUpdate, resource, token) =>
 
                 {
                     statusUpdate("Copying data to Azure Blob Storage");
@@ -91,7 +84,7 @@ namespace AspireSamples.DeltaLakeSourceSample
                         await remoteFile.FlushAsync();
                     }
                 },
-                (logger, token) => Task.CompletedTask)
+                (logger, resource, token) => Task.CompletedTask)
                 .WaitFor(blobs);
 
             var stream = builder.AddProject<DeltaLakeSourceUsage>("stream")

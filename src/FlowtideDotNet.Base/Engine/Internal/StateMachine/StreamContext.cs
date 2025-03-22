@@ -10,21 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.Diagnostics.Metrics;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
+        private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
+
         internal readonly string streamName;
         internal readonly Dictionary<string, IStreamVertex> propagatorBlocks;
         internal readonly Dictionary<string, IStreamIngressVertex> ingressBlocks;
@@ -95,6 +97,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly ILogger<StreamContext> _logger;
 
         internal bool _initialCheckpointTaken = false;
+        
+        // Test variable
+        internal long _startCheckpointVersion = 0;
 
         public StreamStatus Status => _streamStatus;
 
@@ -193,6 +198,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _contextMeter.CreateObservableGauge<int>("flowtide_wanted_state", () =>
             {
                 return new Measurement<int>((int)_wantedState, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_checkpoint_version", () =>
+            {
+                Debug.Assert(_stateManager != null, nameof(_stateManager));
+                return new Measurement<long>(_stateManager.CurrentVersion, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            // Meter that tells which version the stream started on, useful for testing
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_start_checkpoint_version", () =>
+            {
+                return new Measurement<long>(_startCheckpointVersion, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -566,6 +581,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
+            var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
+
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Error);
+                activity.SetTag("stream", streamName);
+                if (e != null)
+                {
+                    activity.SetTag("exception", e);
+                }
+                activity.Stop();
+                activity.Dispose();
+            }
+            
             _logger.StreamError(e, streamName);
             lock (_contextLock)
             {

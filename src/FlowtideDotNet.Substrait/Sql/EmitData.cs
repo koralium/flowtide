@@ -129,7 +129,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     }
                 }
             }
-            
+
             return clone;
         }
 
@@ -201,8 +201,8 @@ namespace FlowtideDotNet.Substrait.Sql
         }
 
         public bool TryGetEmitIndex(
-            Expression expression, 
-            [NotNullWhen(true)] out Expressions.StructReferenceSegment? segment, 
+            Expression expression,
+            [NotNullWhen(true)] out Expressions.StructReferenceSegment? segment,
             [NotNullWhen(true)] out string? name,
             [NotNullWhen(true)] out SubstraitBaseType? type)
         {
@@ -278,7 +278,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             name = GetName(emitInfoPartial.Index[0]);
                         }
-                        
+
 
                         // TODO: For now we just return any type, but we should try to find the correct type
                         type = new AnyType();

@@ -12,13 +12,8 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 {
@@ -91,7 +86,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             }
 
             Dictionary<string, IStatisticsComparer> comparers = new Dictionary<string, IStatisticsComparer>(StringComparer.OrdinalIgnoreCase);
-            foreach(var kv in parsers)
+            foreach (var kv in parsers)
             {
                 comparers.Add(kv.Key, kv.Value.GetStatisticsComparer());
             }

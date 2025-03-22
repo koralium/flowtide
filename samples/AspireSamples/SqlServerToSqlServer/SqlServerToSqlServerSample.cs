@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using AspireSamples.DataMigration;
-using AspireSamples.Entities;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -19,11 +18,6 @@ using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
 using Projects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
 {
@@ -47,7 +41,7 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
             DataGenerator dataGenerator = new DataGenerator();
 
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
-                async (logger, statusUpdate, token) =>
+                async (logger, statusUpdate, resource, token) =>
                 {
                     // Create destination tables
                     var connectionStringDb2 = await sqldb2.Resource.GetConnectionStringAsync();
@@ -165,7 +159,7 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
 
                     await ctx.SaveChangesAsync();
                 },
-                async (logger, token) =>
+                async (logger, resource, token) =>
                 {
                     // Update loop
                     var connectionString = await sqldb1.Resource.GetConnectionStringAsync();

@@ -11,14 +11,12 @@
 // limitations under the License.
 
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
     public abstract class Relation
     {
-        
+
         public List<int>? Emit { get; set; }
 
         [MemberNotNullWhen(true, nameof(Emit))]

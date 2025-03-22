@@ -201,7 +201,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 .GroupBy(x => x.UserKey)
                 .Select(x => new { Userkey = x.Key, Count = x.Count(), Sum = (long)x.Sum(y => y.OrderKey) })
                 .Where(x => x.Count > 1)
-                .Select(x => new {x.Userkey, x.Sum}));
+                .Select(x => new { x.Userkey, x.Sum }));
         }
 
         [Fact]

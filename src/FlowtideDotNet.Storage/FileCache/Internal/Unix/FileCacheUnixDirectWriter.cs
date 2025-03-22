@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 

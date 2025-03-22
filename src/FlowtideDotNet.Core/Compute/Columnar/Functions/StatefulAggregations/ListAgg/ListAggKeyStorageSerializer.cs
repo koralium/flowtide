@@ -10,19 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Operators.Aggregate.Column;
-using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 {

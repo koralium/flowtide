@@ -10,11 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AspNetCore.Internal;
 using FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware;
 using FlowtideDotNet.AspNetCore.TimeSeries;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.AspNetCore.Extensions
@@ -45,6 +50,37 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             return app.UseFlowtideUI(stream, path);
         }
 
+        public static IEndpointConventionBuilder MapFlowtideTestInformation(this IEndpointRouteBuilder endpoints, string route = "/testInformation")
+        {
+            var checkpointVersionListener = new TestInformationListener();
+            return endpoints.MapGet(route, async (HttpContext context) =>
+            {
+                if (!context.Request.Query.TryGetValue("stream", out var streamId))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.ContentType = "text/plain";
+                    await context.Response.WriteAsync("Missing stream query parameter");
+                    return;
+                }
+                var captured = checkpointVersionListener;
+
+                var streamIdString = streamId.First();
+
+                if (streamIdString != null && captured.TryGetCheckpointVersion(streamIdString, out var testInformation))
+                {
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.BodyWriter.WriteAsync(JsonSerializer.SerializeToUtf8Bytes(testInformation));
+                    return;
+                }
+
+                context.Response.StatusCode = 404;
+                context.Response.ContentType = "text/plain";
+                await context.Response.WriteAsync($"Stream '{streamIdString}' not found");
+                return;
+            });
+        }
+
         public static IApplicationBuilder UseFlowtideUI(this IApplicationBuilder app, FlowtideDotNet.Base.Engine.DataflowStream dataflowStream, string path = "/ui/stream")
         {
             return app.UseMiddleware<UiMiddleware>(new UiMiddlewareState(new DiagnosticsEndpoint(dataflowStream), new ReactEndpoint(path), path));
@@ -58,7 +94,7 @@ namespace FlowtideDotNet.AspNetCore.Extensions
             }
             app.Map($"{basePath}/pause", appBuilder =>
             {
-                appBuilder.Use((HttpContext context,Func<Task> next) =>
+                appBuilder.Use((HttpContext context, Func<Task> next) =>
                 {
                     context.RequestServices.GetRequiredService<FlowtideDotNet.Base.Engine.DataflowStream>().Pause();
                     context.Response.StatusCode = 200;

@@ -11,11 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
@@ -38,6 +34,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             }
 
             throw new NotImplementedException($"Cannot convert {value.Type} to Char");
+        }
+
+        public SubstraitBaseType GetSubstraitType()
+        {
+            return new StringType();
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)

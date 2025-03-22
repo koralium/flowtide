@@ -24,7 +24,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {
-    internal class FlowtideOpenFgaSourceState 
+    internal class FlowtideOpenFgaSourceState
     {
         public string? ContinuationToken { get; set; }
         public long LastTimestamp { get; set; }

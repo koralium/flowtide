@@ -10,31 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Operators.Normalization;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.CustomProtobuf;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.DataType;
-using static SqlParser.Ast.Expression;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Core.ColumnStore.Comparers;
-using FlowtideDotNet.Storage.Serializers;
-using FlowtideDotNet.Base;
-using System.Runtime.CompilerServices;
-using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
@@ -85,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             switch (triggerName)
             {
                 case DeltaLoadTriggerName:
-                    lock(_taskLock)
+                    lock (_taskLock)
                     {
                         if (_deltaLoadTask == null)
                         {
@@ -130,7 +121,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         }
                         return Task.CompletedTask;
                     }
-                    
+
             }
             return Task.CompletedTask;
         }
@@ -193,7 +184,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 deleteTreeKeys.Add(i);
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
@@ -320,7 +311,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         var weight = e.BatchData.Weights[i];
 
                         var rowReference = new ColumnRowReference() { referenceBatch = e.BatchData.EventBatchData, RowIndex = i };
-                        if (weight < 0) 
+                        if (weight < 0)
                         {
                             // Delete operation
                             await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
@@ -676,7 +667,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 foreach (var kv in page)
                 {
-                    for(int k = 0; k < _primaryKeyColumns.Count; k++)
+                    for (int k = 0; k < _primaryKeyColumns.Count; k++)
                     {
                         _deleteTreeToPersistentColumns[_primaryKeyColumns[k]] = kv.Key.referenceBatch.Columns[k];
                     }

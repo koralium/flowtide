@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
 using FASTER.core;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Persistence.FasterStorage
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         }
 
         public async ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
-            where T: ICacheObject
+            where T : ICacheObject
         {
             var memory = await Read(key);
             return serializer.Deserialize(memory, memory.Length);

@@ -39,7 +39,7 @@ builder.Services.AddFlowtideStream("my_stream")
     .AddSqlFileAsPlan("stream.sql")
     .AddConnectors(connectors =>
     {
-        var (endpoint, accountName, accountKey)= GetUriAndSharedKeyFromBlobConnectionString(azureLakeBlobStorageConnStr!);
+        var (endpoint, accountName, accountKey) = GetUriAndSharedKeyFromBlobConnectionString(azureLakeBlobStorageConnStr!);
         connectors.AddDeltaLakeSource(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
         {
             StorageLocation = Files.Of.AzureBlobStorage(endpoint, accountName, accountKey),

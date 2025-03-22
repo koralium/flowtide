@@ -10,11 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders
 {
@@ -24,5 +20,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders
 
         object Deserialize<T>(T value)
             where T : IDataValue;
+
+        SubstraitBaseType GetSubstraitType();
     }
 }

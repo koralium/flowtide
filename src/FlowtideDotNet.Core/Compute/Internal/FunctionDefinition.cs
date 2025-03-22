@@ -37,8 +37,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
     public class FunctionDefinition
     {
         public FunctionDefinition(
-            string uri, 
-            string name, 
+            string uri,
+            string name,
             Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
             Uri = uri;

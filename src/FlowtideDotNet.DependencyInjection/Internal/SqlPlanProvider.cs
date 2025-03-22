@@ -13,11 +13,6 @@
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -35,7 +30,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         public Plan GetPlan()
         {
             var sqlPlanBuilder = new SqlPlanBuilder();
-            foreach(var tableProvider in connectorManager.GetTableProviders())
+            foreach (var tableProvider in connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
             }

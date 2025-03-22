@@ -65,7 +65,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 metricSeries.Unlock();
             }
-            
+
         }
 
         public async Task InstantQuery(Stream stream, string query, long? time)
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 metricSeries.Unlock();
             }
-            
+
         }
 
         public async Task RangeQuery(Stream stream, string query, long startTimestamp, long endTimestamp, int stepWidth)

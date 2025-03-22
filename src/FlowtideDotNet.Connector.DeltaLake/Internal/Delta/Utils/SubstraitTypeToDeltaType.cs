@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
 {

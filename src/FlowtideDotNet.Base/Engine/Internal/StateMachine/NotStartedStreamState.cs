@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void EgressCheckpointDone(string name)
         {
-            
+
         }
 
         public override void Initialize(StreamStateValue previousState)
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StopAsync()
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

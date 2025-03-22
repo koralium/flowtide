@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Substrait.Relations
             var code = new HashCode();
             code.Add(base.GetHashCode());
             code.Add(Input);
-            foreach(var name in Names)
+            foreach (var name in Names)
             {
                 code.Add(name);
             }

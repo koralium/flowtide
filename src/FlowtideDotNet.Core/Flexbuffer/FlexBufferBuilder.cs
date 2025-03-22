@@ -26,7 +26,7 @@ namespace FlexBuffers
             buffer.SortAndEndMap(start);
             return buffer.Finish();
         }
-        
+
         public static byte[] Vector(Action<IFlexBufferVectorBuilder> vector)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared);
@@ -61,7 +61,7 @@ namespace FlexBuffers
         void Map(string key, Action<IFlexBufferMapBuilder> map);
         void Vector(string key, Action<IFlexBufferVectorBuilder> vector);
     }
-    
+
     public interface IFlexBufferVectorBuilder
     {
         void AddNull();
@@ -101,7 +101,7 @@ namespace FlexBuffers
             _buffer.AddKey(key);
             _buffer.AddNull();
         }
-        
+
         public void Add(string key, long value, bool indirect = false)
         {
             _buffer.AddKey(key);

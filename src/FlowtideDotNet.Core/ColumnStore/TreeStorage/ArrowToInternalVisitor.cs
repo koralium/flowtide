@@ -17,16 +17,8 @@ using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
-using SqlParser.Ast;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
@@ -118,7 +110,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Visit(IArrowArray array)
         {
-            
+
             throw new NotImplementedException($"Type {array.GetType().Name} is not yet supported.");
         }
 
@@ -181,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _bitmapList = null;
 
             var type = (UnionType)CurrentField.DataType;
-            
+
             var typeMemory = GetMemoryOwner(array.TypeBuffer);
             var offsetMemory = GetMemoryOwner(array.ValueOffsetBuffer);
 
@@ -200,7 +192,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 {
                     throw new InvalidOperationException("Inner columns in a union should not have null values, they should be on the union level");
                 }
-                
+
                 columns.Add(_dataColumn ?? throw new InvalidOperationException("Internal column is null"));
                 // Reset null counter
                 _nullCount = 0;
@@ -254,7 +246,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
-            
+
             _dataColumn = new MapColumn(keyColumn!, valueColumn!, offsetMemoryOwner, array.ValueOffsets.Length, preAllocatedMemoryManager);
             _typeId = ArrowTypeId.Map;
         }

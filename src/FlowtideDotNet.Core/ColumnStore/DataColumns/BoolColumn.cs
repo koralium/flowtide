@@ -19,15 +19,12 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -162,13 +159,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             if (value.AsBool)
-            {                 
+            {
                 _data.InsertAt(index, true);
             }
             else
             {
                 _data.InsertAt(index, false);
-            } 
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)

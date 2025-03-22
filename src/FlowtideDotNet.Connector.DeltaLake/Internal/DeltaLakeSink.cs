@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
@@ -23,26 +22,16 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Tree.Internal;
-using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
-using Microsoft.Extensions.Options;
 using Stowage;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.Privileges;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {
@@ -223,7 +212,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
                 for (int i = 0; i < page.Values.Data.Count; i++)
                 {
@@ -428,8 +417,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         private async Task HandleDeletedRows(
-            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile, 
-            DeltaTable table, 
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile,
+            DeltaTable table,
             Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
             RecordBatch deleteBatch)
         {
@@ -488,9 +477,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         private async Task ScanDataFileForRows(
-            DeltaTable table, 
-            List<RowToDelete> toFind, 
-            DeltaAddAction file, 
+            DeltaTable table,
+            List<RowToDelete> toFind,
+            DeltaAddAction file,
             Dictionary<string, ModifiableDeleteVector> deleteVectors,
             RecordBatch deleteBatch,
             RecordBatchComparer comparer)
@@ -521,7 +510,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
-            
+
             await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)

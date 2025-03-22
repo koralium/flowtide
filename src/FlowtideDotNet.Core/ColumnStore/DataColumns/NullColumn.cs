@@ -24,7 +24,6 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -36,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public ArrowTypeId Type => ArrowTypeId.Null;
 
         public NullColumn()
-        {    
+        {
         }
 
         public NullColumn(int count)

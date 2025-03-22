@@ -10,19 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
 {
@@ -137,7 +129,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         private static void GetSum0Value(ColumnReference state, ColumnStore.Column outputColumn)
         {
             var stateVal = state.GetValue();
-            
+
             if (stateVal.Type == ArrowTypeId.Null)
             {
                 outputColumn.Add(new DoubleValue(0.0));

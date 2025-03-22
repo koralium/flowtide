@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Storage.Memory;
-using System.Buffers;
 using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
@@ -66,7 +64,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.Serializer
                 }
                 written += 8;
                 paddedLength = checked((int)BitUtility.RoundUpToMultipleOf8(written));
-                
+
             }
             else
             {

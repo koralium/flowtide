@@ -36,7 +36,7 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Orders.Where(x => x.GuidVal.Equals(order.GuidVal)).Select(x => new { x.GuidVal } ));
+            AssertCurrentDataEqual(Orders.Where(x => x.GuidVal.Equals(order.GuidVal)).Select(x => new { x.GuidVal }));
         }
 
         [Fact]

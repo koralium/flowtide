@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Base.Utils
                 {
                     return MoveNextSlow();
                 }
-                
+
                 return enumerator.MoveNextAsync();
             }
 

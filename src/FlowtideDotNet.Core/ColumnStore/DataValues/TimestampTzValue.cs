@@ -17,8 +17,6 @@ using System.Collections.Generic;
 using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
@@ -118,6 +116,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public override string ToString()
         {
             return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitTimestampTzValue(in this);
         }
     }
 }

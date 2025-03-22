@@ -20,7 +20,6 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.FixedPoint
@@ -333,7 +332,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             _feedbackTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-            
+
             // Create egress and loop source blocks
             _egressSource.Initialize();
             _loopSource.Initialize();
@@ -366,7 +365,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 await task;
             }
 
-            await foreach(var element in input)
+            await foreach (var element in input)
             {
                 yield return element;
             }
@@ -472,7 +471,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             return InitializeOrRestore(vertexHandler.StateClient);
         }
 
-        protected abstract Task InitializeOrRestore( IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
         public void Link()
         {

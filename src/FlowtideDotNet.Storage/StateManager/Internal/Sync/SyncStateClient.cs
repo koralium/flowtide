@@ -14,7 +14,6 @@ using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Utils;
-using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -93,7 +92,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             tagList = options.TagList;
             tagList.Add("state_client", name);
-            
+
             _lookupTable = new CacheValue[1009];
         }
 
@@ -308,7 +307,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         throw new InvalidOperationException("Could not rent value when fetched from storage.");
                     }
                     stateManager.AddOrUpdate(key, value, this);
-                    
+
                     if (m_temporaryReadMsHistogram != null)
                     {
                         m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
@@ -354,6 +353,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 if (disposing)
                 {
                     m_fileCache.Dispose();
+                    if (options.ValueSerializer != null)
+                    {
+                        options.ValueSerializer.Dispose();
+                    }
                 }
 
                 disposedValue = true;
@@ -470,6 +473,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             if (isCleanup)
             {
                 m_fileCache.ClearTemporaryAllocations();
+                if (options.ValueSerializer != null)
+                {
+                    options.ValueSerializer.ClearTemporaryAllocations();
+                }
             }
         }
 

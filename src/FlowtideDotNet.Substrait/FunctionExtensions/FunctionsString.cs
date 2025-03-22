@@ -30,6 +30,10 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string StringBase64Decode = "string_base64_decode";
         public const string CharLength = "char_length";
         public const string StrPos = "strpos";
+        public const string StringSplit = "string_split";
+        public const string RegexStringSplit = "regexp_string_split";
+        public const string ToJson = "to_json";
+        public const string FromJson = "from_json";
 
         public const string StringAgg = "string_agg";
     }

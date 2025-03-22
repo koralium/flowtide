@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private bool _inLock;
         private TaskCompletionSource? _stopEvents;
 
-        internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock) 
+        internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock)
         {
             _ingressState = ingressState;
             _targetBlock = targetBlock;

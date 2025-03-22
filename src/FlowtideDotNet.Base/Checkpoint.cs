@@ -10,10 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using System.Text.Json;
-
 namespace FlowtideDotNet.Base
 {
     public class Checkpoint : ICheckpointEvent

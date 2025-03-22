@@ -12,7 +12,6 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -22,7 +21,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public List<User> Users { get; private set; }
         public List<Order> Orders { get; private set; }
-        public List<Company> Companies { get; private set;}
+        public List<Company> Companies { get; private set; }
         public List<Project> Projects { get; private set; }
         public List<ProjectMember> ProjectMembers { get; private set; }
 
@@ -83,6 +82,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
             mockTable.AddOrUpdate(new List<Order>() { order });
+        }
+
+        public void AddOrUpdateProject(Project project)
+        {
+            var index = Projects.FindIndex(x => x.ProjectKey == project.ProjectKey);
+
+            if (index >= 0)
+            {
+                Projects[index] = project;
+            }
+            else
+            {
+                Projects.Add(project);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<Project>("projects");
+            mockTable.AddOrUpdate(new List<Project>() { project });
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            var index = ProjectMembers.FindIndex(x => x.ProjectMemberKey == projectMember.ProjectMemberKey);
+
+            if (index >= 0)
+            {
+                ProjectMembers[index] = projectMember;
+            }
+            else
+            {
+                ProjectMembers.Add(projectMember);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockTable.AddOrUpdate(new List<ProjectMember>() { projectMember });
         }
 
         public void AddOrUpdateCompany(Company company)
@@ -192,7 +223,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.Name, (f, u) => f.Company.CompanyName());
 
             var newCompanies = testCompanies.Generate(count);
-            
+
             // Add a null company for unit testing, useful for Kleene logic testing
             newCompanies.Add(new Company()
             {

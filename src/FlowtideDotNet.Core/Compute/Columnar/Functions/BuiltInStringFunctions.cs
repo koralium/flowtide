@@ -12,21 +12,21 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Json;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+using static SqlParser.Ast.MatchRecognizeSymbol;
+using static SqlParser.Ast.Partition;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                             throw new NotSupportedException($"Substring option {NegativeStart}={negativeStart} is not supported.");
                         }
                     }
-                    
+
 
                     MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                     Debug.Assert(toStringMethod != null);
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 {
                     bool ignoreNulls = false;
 
-                    if(func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
+                    if (func.Options != null && func.Options.TryGetValue(NullHandling, out var nullHandling) && nullHandling == IgnoreNulls)
                     {
                         ignoreNulls = true;
                     }
@@ -183,11 +183,33 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor) =>
+            {
+                if (func.Arguments.Count != 1)
+                {
+                    throw new InvalidOperationException("to_json function must have exactly 1 argument.");
+                }
+                var expr = visitor.Visit(func.Arguments[0], parameters)!;
+
+                MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(nameof(ToJsonImplementation), BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                Debug.Assert(toStringMethod != null);
+                var genericMethod = toStringMethod.MakeGenericMethod(expr.Type);
+                var jsonWriterConstant = Expression.Constant(new DataValueJsonWriter());
+                var resultContainer = Expression.Constant(new DataValueContainer());
+                return System.Linq.Expressions.Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
+            });
+
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
-            T1 value, 
-            T2 start, 
+            T1 value,
+            T2 start,
             T3 length,
             [NotNullWhen(true)] out string? stringVal,
             out int startInt,
@@ -687,7 +709,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
             result._type = ArrowTypeId.Int64;
-            
+
             result._int64Value = new Int64Value(new StringInfo(value.AsString.ToString()).LengthInTextElements);
             return result;
         }
@@ -722,5 +744,128 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        private static DataValueContainer StringSplitImplementation<T1, T2>(in T1 val, in T2 splitStr, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (val.IsNull || val.Type != ArrowTypeId.String)
+            {
+                return result;
+            }
+
+            if (splitStr.IsNull)
+            {
+                result._type = ArrowTypeId.List;
+#pragma warning disable S3220 // Method calls should not resolve ambiguously to overloads with "params"
+                result._listValue = new ListValue(val);
+#pragma warning restore S3220 // Method calls should not resolve ambiguously to overloads with "params"
+                return result;
+            }
+
+            if (splitStr.Type != ArrowTypeId.String)
+            {
+                return result;
+            }
+
+            var split = val.AsString.ToString()
+                .Split([splitStr.AsString.ToString()], StringSplitOptions.None)
+                .Select(s => (IDataValue)new StringValue(s))
+                .ToArray();
+
+            result._type = ArrowTypeId.List;
+            result._listValue = new ListValue(split);
+            return result;
+        }
+
+        private static DataValueContainer RegexStringSplitImplementation<T1, T2>(in T1 val, in T2 pattern, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (val.Type != ArrowTypeId.String || pattern.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            // Explicit capture is required to allow unnamed groups (parentheses) to be noncapturing groups (substrait test requirement)
+            var split = Regex.Split(val.AsString.ToString(), pattern.AsString.ToString(), RegexOptions.ExplicitCapture)
+                .Select(s => (IDataValue)new StringValue(s))
+                .ToArray();
+
+            result._type = ArrowTypeId.List;
+            result._listValue = new ListValue(split);
+            return result;
+        }
+
+        private static DataValueContainer ToJsonImplementation<T1>(in T1 val, DataValueContainer result, DataValueJsonWriter writer)
+            where T1 : IDataValue
+        {
+            writer.Reset();
+            writer.Visit(in val);
+            writer.Flush();
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(writer.WrittenMemory);
+            return result;
+        }
+
+        private static IDataValue FromJsonImplementation<T1>(in T1 val)
+            where T1 : IDataValue
+        {
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
+            {
+                return NullValue.Instance;
+            }
+
+            if (val.Type == ArrowTypeId.String)
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
+            }
+            else
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                try
+                {
+                    return DataValueJsonReader.Read(ref reader);
+                }
+                catch (JsonException)
+                {
+                    return NullValue.Instance;
+                }
+            }
+
+               
+        }
+
+        private static IDataValue FromJsonImplementation_error_handling__ERROR<T1>(in T1 val)
+            where T1 : IDataValue
+        {
+            if (val.Type == ArrowTypeId.Null)
+            {
+                return NullValue.Instance;
+            }
+            if (val.Type != ArrowTypeId.String && val.Type != ArrowTypeId.Binary)
+            {
+                throw new ArgumentException("FromJson function must have a string or binary argument.");
+            }
+
+            if (val.Type == ArrowTypeId.String)
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsString.Span);
+                return DataValueJsonReader.Read(ref reader);
+            }
+            else
+            {
+                Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
+                return DataValueJsonReader.Read(ref reader);
+            }
+        }
     }
 }

@@ -20,7 +20,6 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {

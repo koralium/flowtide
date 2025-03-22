@@ -12,9 +12,7 @@
 
 using Authzed.Api.V1;
 using Grpc.Core;
-using System.Buffers.Text;
 using System.Diagnostics;
-using System.Text;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
 {
@@ -358,7 +356,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     resource_id
                 FROM authdata
             ");
-            
+
             await stream.WaitForUpdate();
             var actual = stream.GetActualRowsAsVectors();
             Assert.Equal(2, actual.Count);
@@ -615,7 +613,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             });
 
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
-            
+
             await stream.StartStream(@"
                 INSERT INTO spicedb
                 SELECT

@@ -10,18 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Types;
 using Apache.Arrow;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
-using FlowtideDotNet.Core.ColumnStore.Serialization;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using System.Collections;
-using FlowtideDotNet.Storage.Memory;
-using System.Text.Json;
 using System.IO.Hashing;
-using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return 1;
             }
             var otherList = value.AsList;
-            
+
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
             var thisListCount = endOffset - startOffset;
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._type = ArrowTypeId.List;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     _offsets.Update(index + 1, currentStart + listLength, listLength - currentLength);
                 }
-                
+
             }
             else
             {
@@ -225,8 +225,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (endOffset > startOffset)
             {
                 _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
-            }   
-            
+            }
+
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (list is ReferenceListValue referenceListVal)
             {
                 _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
-                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);   
+                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);
             }
             else
             {
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
-            }   
+            }
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)

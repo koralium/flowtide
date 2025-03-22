@@ -13,7 +13,6 @@
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -62,6 +61,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitMapValue(in this);
+        }
 
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {

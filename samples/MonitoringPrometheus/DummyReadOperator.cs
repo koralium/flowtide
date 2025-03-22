@@ -12,15 +12,14 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Storage.DataStructures;
 
 namespace MonitoringPrometheus
 {

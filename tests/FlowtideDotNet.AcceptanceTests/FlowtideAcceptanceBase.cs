@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
@@ -43,9 +42,9 @@ namespace FlowtideDotNet.AcceptanceTests
         public StreamStateValue State => flowtideTestStream.State;
 
         protected Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
             PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, planOptimizerSettings);
@@ -122,6 +121,16 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AddOrUpdateOrder(order);
         }
 
+        public void AddOrUpdateProject(Project project)
+        {
+            flowtideTestStream.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            flowtideTestStream.AddOrUpdateProjectMember(projectMember);
+        }
+
         public void DeleteUser(User user)
         {
             flowtideTestStream.DeleteUser(user);
@@ -152,7 +161,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public async Task DisposeAsync()
         {
-            
+
             await flowtideTestStream.DisposeAsync();
         }
 

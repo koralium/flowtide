@@ -14,7 +14,6 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Storage.DataStructures;
@@ -23,7 +22,6 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
 using System.Diagnostics;
-using System.Resources;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
@@ -173,7 +171,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             else
             {
                 // Dispose columns, weights and iterations since they are not required.
-                for(int i = 0; i < outputColumns.Length; i++)
+                for (int i = 0; i < outputColumns.Length; i++)
                 {
                     outputColumns[i].Dispose();
                 }
@@ -317,7 +315,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                             {
                                 _convertFunctions[i](reader, outputColumns[i]);
                             }
-                            
+
                             primaryKeyValues.Clear();
                             for (int i = 0; i < primaryKeyOrdinals.Count; i++)
                             {
@@ -349,7 +347,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                             }
                         }
 
-                        foreach(var weightedBatch in weightedBatches)
+                        foreach (var weightedBatch in weightedBatches)
                         {
                             _eventsCounter.Add(weightedBatch.Count);
                             _eventsProcessed.Add(weightedBatch.Count);

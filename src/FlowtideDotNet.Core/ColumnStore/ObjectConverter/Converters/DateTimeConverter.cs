@@ -12,11 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
@@ -24,7 +20,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
     {
         public DateTimeConverter()
         {
-            
+
         }
         public object Deserialize<T>(T value) where T : IDataValue
         {
@@ -32,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return default!;
             }
-            
+
             if (value.Type == ArrowTypeId.Timestamp)
             {
                 var timestamp = value.AsTimestamp;
@@ -40,6 +36,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             }
 
             throw new NotImplementedException();
+        }
+
+        public SubstraitBaseType GetSubstraitType()
+        {
+            return new TimestampType();
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)

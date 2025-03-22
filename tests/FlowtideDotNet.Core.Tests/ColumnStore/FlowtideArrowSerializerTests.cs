@@ -18,13 +18,9 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using ZstdSharp;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
@@ -458,7 +454,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSerializeDeserializeIntegerColumn()
         {
             SerializeDeserializeTest(
-                new Int64Value(1), 
+                new Int64Value(1),
                 new Int64Value(2));
         }
 
@@ -466,8 +462,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSerializeDeserializeBoolColumn()
         {
             SerializeDeserializeTest(
-                new BoolValue(true), 
-                new BoolValue(false), 
+                new BoolValue(true),
+                new BoolValue(false),
                 new BoolValue(true));
         }
 
@@ -690,7 +686,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         class TrainingBatchCompressor : IBatchCompressor
         {
-            
+
             private List<byte[]> dictList = new List<byte[]>();
             public TrainingBatchCompressor()
             {

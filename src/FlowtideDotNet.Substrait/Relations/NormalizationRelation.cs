@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             var code = new HashCode();
             code.Add(base.GetHashCode());
-            foreach(var index in KeyIndex)
+            foreach (var index in KeyIndex)
             {
                 code.Add(index);
             }

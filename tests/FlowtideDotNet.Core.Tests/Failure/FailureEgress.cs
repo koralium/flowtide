@@ -20,7 +20,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.Failure
 {
-    internal class FailureEgressOptions 
+    internal class FailureEgressOptions
     {
         public Action? OnCheckpoint { get; set; }
 
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
         private readonly FailureEgressOptions failureEgressOptions;
         List<int> primaryKeyIds;
         public FailureEgress(
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions,
             FailureEgressOptions failureEgressOptions) : base(executionDataflowBlockOptions)
         {
             primaryKeyIds = new List<int>();
