@@ -44,8 +44,8 @@ namespace FlowtideDotNet.Storage.SqlServer
         public string StreamPageTableName { get; set; } = "[dbo].[StreamPages]";
 
         /// <summary>
-        /// If set to true, flowtide versioning will be used, if a new version is detected, a new stream will be created.
-        /// If set to false, the flowtide stream name the stream is considered the same independant of version and will not be recreated.
+        /// If set to true, flowtide versioning will be used in combination with the stream name to create a unique key, if a new version is detected, a new stream will be created.
+        /// If set to false, the flowtide stream name is used as the key, and considered the same independant of version.
         /// </summary>
         public bool UseFlowtideVersioning { get; set; } = true;
     }
