@@ -38,6 +38,8 @@ namespace FlowtideDotNet.Core.Engine
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
         private bool _useColumnStore = true;
+        private string _version = "";
+        private bool _useHashPlanAsVersion = false;
 
         public FlowtideBuilder(string streamName)
         {
@@ -185,6 +187,19 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder SetVersion(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _version = version;
+            return this;
+        }
+
+        public FlowtideBuilder SetHashPlanAsVersion()
+        {
+            _useHashPlanAsVersion = true;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -214,8 +229,15 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("No connector manager or ReadWriteFactory has been added.");
             }
+
             var hash = ComputePlanHash();
-            dataflowStreamBuilder.SetVersionInformation(1, hash);
+
+            if (_useHashPlanAsVersion)
+            {
+                SetVersion(hash);
+            }
+
+            dataflowStreamBuilder.SetVersionInformation(hash, _version);
 
             // Modify plan
             if (_connectorManager != null)

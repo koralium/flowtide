@@ -10,20 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine.Internal
+namespace FlowtideDotNet.Storage
 {
-    internal class StreamVersionInformation
+    public class StreamVersionInformation
     {
-        public StreamVersionInformation(long version, string hash)
+        public StreamVersionInformation(string hash, string version)
         {
-            Version = version;
             Hash = hash;
+            Version = version;
         }
-
-        public long Version { get; }
 
         public string Hash { get; }
 
-
+        public string Version { get; }
     }
 }

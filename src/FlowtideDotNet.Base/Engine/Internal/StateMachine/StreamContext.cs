@@ -18,6 +18,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -44,6 +45,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
 
         internal readonly string streamName;
+        internal readonly string version;
         internal readonly Dictionary<string, IStreamVertex> propagatorBlocks;
         internal readonly Dictionary<string, IStreamIngressVertex> ingressBlocks;
         internal readonly Dictionary<string, IStreamEgressVertex> egressBlocks;
@@ -138,6 +140,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public StreamContext(
             string streamName,
+            string version,
             Dictionary<string, IStreamVertex> propagatorBlocks,
             Dictionary<string, IStreamIngressVertex> ingressBlocks,
             Dictionary<string, IStreamEgressVertex> egressBlocks,
@@ -153,6 +156,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             IOptionsMonitor<FlowtidePauseOptions>? pauseMonitor)
         {
             this.streamName = streamName;
+            this.version = version;
             this.propagatorBlocks = propagatorBlocks;
             this.ingressBlocks = ingressBlocks;
             this.egressBlocks = egressBlocks;
