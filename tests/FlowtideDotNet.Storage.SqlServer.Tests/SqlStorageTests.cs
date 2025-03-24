@@ -176,6 +176,52 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         }
 
         [Theory]
+        [InlineData("v1", true)]
+        [InlineData("", true)]
+        [InlineData(" ", true)]
+        [InlineData(null, true)]
+        [InlineData("v2", false)]
+        [InlineData("", false)]
+        [InlineData(" ", false)]
+        [InlineData(null, false)]
+        public async Task StorageInitializeIncludesVersionInStreamNameIfExists(string? version, bool useFlowtideVersioning)
+        {
+            var name = $"test_{nameof(StorageInitializeIncludesVersionInStreamNameIfExists)}";
+
+            var settings = GetSettings("dbo", 1);
+            settings.UseFlowtideVersioning = useFlowtideVersioning;
+
+            StorageInitializationMetadata metadata;
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                metadata = new StorageInitializationMetadata($"{name}", new("", version));
+            }
+            else
+            {
+                metadata = new StorageInitializationMetadata(name);
+            }
+
+            var storage = new SqlServerPersistentStorage(settings);
+
+            await storage.InitializeAsync(metadata);
+
+            var exists = await _fixture.ExecuteReader($"SELECT CASE WHEN EXISTS (SELECT 1 FROM Streams WHERE UniqueStreamName = '{name}-{version}') THEN 1 ELSE 0 END", reader =>
+            {
+                reader.Read();
+                return reader.GetInt32(0) == 1;
+            });
+
+            if (settings.UseFlowtideVersioning)
+            {
+                Assert.True(exists != string.IsNullOrWhiteSpace(version));
+            }
+            else
+            {
+                Assert.False(exists);
+            }
+        }
+
+        [Theory]
         [InlineData("dbo")]
         [InlineData("test")]
         public async Task StorageInitializeRemovesUnsuccessfulPageVersions(string schema)
