@@ -170,7 +170,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             {
                 return default;
             }
-            return (T)_batchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex);
+            return (T)_lookupBatchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex);
         }
 
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
