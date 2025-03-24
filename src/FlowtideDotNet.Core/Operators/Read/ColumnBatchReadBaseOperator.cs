@@ -433,6 +433,12 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
         }
 
+        protected ValueTask<(bool found, ColumnRowReference value)> LookupRowValue(ColumnRowReference rowKeyReference)
+        {
+            Debug.Assert(_persistentTree != null);
+            return _persistentTree.GetValue(in rowKeyReference);
+        }
+
         protected async Task DoFullLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_fullLoadTempTree != null);
@@ -442,6 +448,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_initialSent != null);
 
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
@@ -470,7 +477,13 @@ namespace FlowtideDotNet.Core.Operators.Read
                         throw new NotSupportedException("Full load does not support deletions");
                     }
                     var columnRef = new ColumnRowReference() { referenceBatch = columnReadEvent.BatchData.EventBatchData, RowIndex = i };
-                    await _fullLoadTempTree.Upsert(columnRef, columnRef);
+
+                    // Full load temp tree is only used to calculate deltas between full loads
+                    // Initial time there is no requirement to save it
+                    if (_initialSent.Value)
+                    {
+                        await _fullLoadTempTree.Upsert(columnRef, columnRef);
+                    }
 
                     await _persistentTree.RMWNoResult(columnRef, columnRef, (input, current, exists) =>
                     {
@@ -574,47 +587,52 @@ namespace FlowtideDotNet.Core.Operators.Read
                 columnReadEvent.BatchData.Iterations.Dispose();
             }
 
-            using var tmpIterator = _fullLoadTempTree.CreateIterator();
-            using var persistentIterator = _persistentTree.CreateIterator();
-            await tmpIterator.SeekFirst();
-            await persistentIterator.SeekFirst();
-
-            var tmpEnumerator = IteratePerRow(tmpIterator).GetAsyncEnumerator();
-            var persistentEnumerator = IteratePerRow(persistentIterator).GetAsyncEnumerator();
-
-            var hasNew = await tmpEnumerator.MoveNextAsync();
-            var hasOld = await persistentEnumerator.MoveNextAsync();
-
-            // Go through both trees and find deletions
-            while (hasNew || hasOld)
+            // We only compute delta between full loads after the initial batch
+            // The initial batch does not have any existing data
+            if (_initialSent.Value)
             {
-                int comparison = hasNew && hasOld ? CompareKeys(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+                using var tmpIterator = _fullLoadTempTree.CreateIterator();
+                using var persistentIterator = _persistentTree.CreateIterator();
+                await tmpIterator.SeekFirst();
+                await persistentIterator.SeekFirst();
 
-                // If there is no more old data, then we are done
-                if (!hasOld)
+                var tmpEnumerator = IteratePerRow(tmpIterator).GetAsyncEnumerator();
+                var persistentEnumerator = IteratePerRow(persistentIterator).GetAsyncEnumerator();
+
+                var hasNew = await tmpEnumerator.MoveNextAsync();
+                var hasOld = await persistentEnumerator.MoveNextAsync();
+
+                // Go through both trees and find deletions
+                while (hasNew || hasOld)
                 {
-                    break;
+                    int comparison = hasNew && hasOld ? CompareKeys(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+
+                    // If there is no more old data, then we are done
+                    if (!hasOld)
+                    {
+                        break;
+                    }
+                    if (hasNew && comparison < 0)
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                    }
+                    else if (!hasNew || comparison > 0)
+                    {
+                        // Deletion
+                        await _deleteTree.Upsert(persistentEnumerator.Current, 1);
+                        hasOld = await persistentEnumerator.MoveNextAsync();
+                    }
+                    else
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                        hasOld = await persistentEnumerator.MoveNextAsync();
+                    }
                 }
-                if (hasNew && comparison < 0)
-                {
-                    hasNew = await tmpEnumerator.MoveNextAsync();
-                }
-                else if (!hasNew || comparison > 0)
-                {
-                    // Deletion
-                    await _deleteTree.Upsert(persistentEnumerator.Current, 1);
-                    hasOld = await persistentEnumerator.MoveNextAsync();
-                }
-                else
-                {
-                    hasNew = await tmpEnumerator.MoveNextAsync();
-                    hasOld = await persistentEnumerator.MoveNextAsync();
-                }
+
+                await _fullLoadTempTree.Clear();
+
+                sentData |= await OutputDeletedRowsFromFullLoad(output);
             }
-
-            await _fullLoadTempTree.Clear();
-
-            sentData |= await OutputDeletedRowsFromFullLoad(output);
 
             if (sentData && lastWatermark == -1)
             {
