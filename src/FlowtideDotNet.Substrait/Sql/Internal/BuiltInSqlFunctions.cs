@@ -755,6 +755,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "regexp_string_split", FunctionsString.Uri, FunctionsString.RegexStringSplit);
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.Uri, FunctionsString.ToJson);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);

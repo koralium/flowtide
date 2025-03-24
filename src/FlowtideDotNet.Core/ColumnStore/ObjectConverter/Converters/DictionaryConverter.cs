@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
+using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
@@ -49,6 +50,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             }
 
             throw new NotImplementedException();
+        }
+
+        public SubstraitBaseType GetSubstraitType()
+        {
+            return new MapType(keyConverter.GetSubstraitType(), valueConverter.GetSubstraitType());
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
