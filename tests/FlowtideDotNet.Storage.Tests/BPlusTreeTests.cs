@@ -65,8 +65,10 @@ namespace FlowtideDotNet.Storage.Tests
             var it = _tree.CreateIterator();
             await it.SeekFirst();
 
+            var forwardIterator = it.CreateForwardIterator();
+
             int count = 0;
-            await foreach (var page in it)
+            await foreach (var page in forwardIterator)
             {
                 foreach (var kv in page)
                 {

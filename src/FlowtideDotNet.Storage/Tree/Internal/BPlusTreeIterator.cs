@@ -97,6 +97,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> tree;
         private int index;
         private readonly Enumerator enumerator;
+        private TreeForwardIterator<K, V, TKeyContainer, TValueContainer>? _forwardIterator;
+        private TreeBackwardIterator<K, V, TKeyContainer, TValueContainer>? _backwardIterator;
 
         public BPlusTreeIterator(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
@@ -214,6 +216,35 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             enumerator.Reset(default, 0);
             leafNode = null;
+        }
+
+        public TreeForwardIterator<K, V, TKeyContainer, TValueContainer> CreateForwardIterator()
+        {
+            if (leafNode == null)
+            {
+                throw new InvalidOperationException("You must first Seek a value.");
+            }
+            if (_forwardIterator == null)
+            {
+                _forwardIterator = new TreeForwardIterator<K, V, TKeyContainer, TValueContainer>(tree);
+            }
+            _forwardIterator.Reset(leafNode, index);
+            return _forwardIterator;
+        }
+
+        public TreeBackwardIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator()
+        {
+            if (leafNode == null)
+            {
+                throw new InvalidOperationException("You must first Seek a value.");
+            }
+            if (_backwardIterator == null)
+            {
+                _backwardIterator = new TreeBackwardIterator<K, V, TKeyContainer, TValueContainer>(tree);
+            }
+            _backwardIterator.Reset(leafNode, index);
+            return _backwardIterator;
+            throw new NotImplementedException();
         }
     }
 }
