@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public long next;
 
+        public long previous;
+
         public LeafNode(long id, TKeyContainer keyContainer, TValueContainer valueContainer) : base(id, keyContainer)
         {
             values = valueContainer;
@@ -59,7 +61,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             stringBuilder.Append("<table border=\"0\" cellborder=\"1\" cellspacing=\"0\">");
             stringBuilder.Append("<tr>");
             //stringBuilder.Append("<td port=\"f0\"></td>");
-
+            if (previous != 0)
+            {
+                stringBuilder.Append("<td port=\"fb\" rowspan=\"2\"></td>");
+            }
+            
             for (int i = 0; i < keys.Count; i++)
             {
                 stringBuilder.Append("<td>");
@@ -90,6 +96,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (next > 0)
             {
                 stringBuilder.AppendLine($"\"node{Id}\":f1 -> \"node{next}\" [constraint=false];");
+            }
+            if (previous > 0)
+            {
+                stringBuilder.AppendLine($"\"node{Id}\":fb -> \"node{previous}\" [constraint=false];");
             }
             return Task.CompletedTask;
         }

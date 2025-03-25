@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int minSize;
         private bool m_isByteBased;
         private int byteMinSize;
+        private bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
@@ -37,6 +38,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_keyComparer = options.Comparer;
             m_isByteBased = options.UseByteBasedPageSizes;
             byteMinSize = (options.PageSizeBytes.Value) / 3;
+            m_usePreviousPointer = options.UsePreviousPointers;
         }
 
         public long CacheMisses => m_stateClient.CacheMisses;

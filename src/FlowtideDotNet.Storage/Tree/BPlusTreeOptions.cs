@@ -40,5 +40,10 @@ namespace FlowtideDotNet.Storage.Tree
         public int? PageSizeBytes { get; set; }
 
         public required IMemoryAllocator MemoryAllocator { get; set; }
+
+        /// <summary>
+        /// Allows backwards iteration, comes with an extra cost of one more write per split and merge
+        /// </summary>
+        public bool UsePreviousPointers { get; set; }
     }
 }
