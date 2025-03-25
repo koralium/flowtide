@@ -25,6 +25,16 @@ namespace FlowtideDotNet.Core.Sources.Generic
             return manager;
         }
 
+        public static IConnectorManager AddCustomImmutableSource<T>(
+            this IConnectorManager manager, 
+            string tableName, 
+            Func<ReadRelation, ImmutableGenericDataSourceAsync<T>> createFunc)
+            where T : class
+        {
+            manager.AddSource(new CustomImmutableSourceFactory<T>(tableName, createFunc));
+            return manager;
+        }
+
         public static IConnectorManager AddCustomSink<T>(
             this IConnectorManager manager,
             string tableName,
