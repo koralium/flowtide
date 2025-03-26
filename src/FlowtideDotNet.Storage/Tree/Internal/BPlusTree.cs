@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int minSize;
         private bool m_isByteBased;
         private int byteMinSize;
+        private bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
@@ -37,6 +38,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_keyComparer = options.Comparer;
             m_isByteBased = options.UseByteBasedPageSizes;
             byteMinSize = (options.PageSizeBytes.Value) / 3;
+            m_usePreviousPointer = options.UsePreviousPointers;
         }
 
         public long CacheMisses => m_stateClient.CacheMisses;
@@ -154,6 +156,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator()
         {
             return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
+        }
+
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator()
+        {
+            return new BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer>(this);
         }
 
         public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)
