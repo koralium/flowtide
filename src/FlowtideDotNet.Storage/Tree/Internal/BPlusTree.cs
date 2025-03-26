@@ -158,6 +158,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
         }
 
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator()
+        {
+            return new BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer>(this);
+        }
+
         public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)
         {
             return GenericWrite(in key, in value, in function);

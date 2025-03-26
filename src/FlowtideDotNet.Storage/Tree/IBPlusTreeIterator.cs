@@ -35,9 +35,5 @@ namespace FlowtideDotNet.Storage.Tree
         /// This method allows using the same iterator over a longer course of time.
         /// </summary>
         void Reset();
-
-        TreeForwardIterator<K, V, TKeyContainer, TValueContainer> CreateForwardIterator();
-
-        TreeBackwardIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator();
     }
 }

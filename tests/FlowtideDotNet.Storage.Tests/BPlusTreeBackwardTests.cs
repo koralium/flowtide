@@ -56,13 +56,11 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 await _tree.Upsert(i, $"{i}");
             }
-            var it = _tree.CreateIterator();
+            var it = _tree.CreateBackwardIterator();
             await it.Seek(9);
 
-            var backwardIterator = it.CreateBackwardIterator();
-
             int count = 9;
-            await foreach (var page in backwardIterator)
+            await foreach (var page in it)
             {
                 foreach (var kv in page)
                 {
@@ -71,6 +69,33 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
             Assert.Equal(-1, count);
+
+            // Seek a value in the top that does not exist to make sure it can still iterate backwards
+            await it.Seek(10);
+
+            count = 9;
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    Assert.Equal(count, kv.Key);
+                    count--;
+                }
+            }
+            Assert.Equal(-1, count);
+
+            // Seek most left value
+            await it.Seek(-1);
+
+            count = 0;
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    count++;
+                }
+            }
+            Assert.Equal(0, count);
         }
     }
 }

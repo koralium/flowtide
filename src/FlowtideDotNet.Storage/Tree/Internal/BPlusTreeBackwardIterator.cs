@@ -1,20 +1,13 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//  
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>
+    internal class BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
@@ -24,12 +17,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             internal LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode;
             private int index;
             private bool started;
-            private BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> pageIterator;
+            private BackwardsBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> pageIterator;
 
             public Enumerator(in BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
             {
                 this.tree = tree;
-                pageIterator = new BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>(tree);
+                pageIterator = new BackwardsBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>(tree);
             }
 
             public void Reset(LeafNode<K, V, TKeyContainer, TValueContainer>? leafNode, int index)
@@ -64,12 +57,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     pageIterator.Reset(leafNode, index);
                     return ValueTask.FromResult(true);
                 }
-                if (leafNode.next == 0)
+                if (leafNode.previous == 0)
                 {
                     pageIterator.Reset(null, index);
                     return ValueTask.FromResult(false);
                 }
-                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next);
+                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.previous);
 
                 if (!getNextPageTask.IsCompleted)
                 {
@@ -77,7 +70,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 leafNode.Return();
                 leafNode = (getNextPageTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
-                index = 0;
+                index = leafNode.keys.Count - 1;
                 pageIterator.Reset(leafNode, index);
                 return ValueTask.FromResult(true);
             }
@@ -87,7 +80,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var page = await getPageTask;
                 leafNode!.Return();
                 leafNode = (page as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
-                index = 0;
+                index = leafNode.keys.Count - 1;
                 pageIterator.Reset(leafNode, index);
                 return true;
             }
@@ -98,7 +91,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int index;
         private readonly Enumerator enumerator;
 
-        public BPlusTreeIterator(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
+        public BPlusTreeBackwardIterator(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             this.tree = tree;
             enumerator = new Enumerator(tree);
@@ -137,30 +130,28 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(leafNode != null);
             var i = searchComparer.FindIndex(key, leafNode.keys);
-            if (i < 0)
+
+            if (i == -1)
             {
-                i = ~i;
-            }
-            index = i;
-            if (index >= leafNode.keys.Count)
-            {
-                if (leafNode.next == 0)
+                if (leafNode.previous == 0)
                 {
                     leafNode.Return();
                     leafNode = null;
                 }
-                else if (searchComparer.SeekNextPageForValue)
-                {
-                    var nextPage = tree.m_stateClient.GetValue(leafNode.next);
-                    leafNode.Return();
-                    if (!nextPage.IsCompleted)
-                    {
-                        return AfterSeekTask_Slow(nextPage, key, searchComparer);
-                    }
-                    leafNode = (nextPage.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
-                    return AfterSeekTask(key, searchComparer);
-                }
             }
+            else
+            {
+                if (i < 0)
+                {
+                    i = ~i;
+                }
+                if (i >= leafNode.keys.Count)
+                {
+                    i = leafNode.keys.Count - 1;
+                }
+                index = i;
+            }
+            
             enumerator.Reset(leafNode, index);
             return ValueTask.CompletedTask;
         }
@@ -181,7 +172,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 i = ~i;
             }
             index = i;
-            if (index >= leafNode.keys.Count && leafNode.next == 0)
+            if (index < 0 && leafNode.previous == 0)
             {
                 leafNode.Return();
                 leafNode = null;
