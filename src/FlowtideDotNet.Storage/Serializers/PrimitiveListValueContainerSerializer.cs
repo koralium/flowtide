@@ -55,8 +55,6 @@ namespace FlowtideDotNet.Storage.Serializers
             }
             reader.Advance(length);
 
-
-
             return new PrimitiveListValueContainer<T>(nativeMemory, count, _memoryAllocator);
         }
 

@@ -104,6 +104,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
 
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
                     if (isFull)
                     {
                         rootNode.Return();
@@ -205,6 +209,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
+
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        leafNode.Return();
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
 
                     if (isFull)
                     {
@@ -596,6 +606,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
+                if (m_usePreviousPointer && leftNode.next != 0)
+                {
+                    return UpdateRightPrevious(result, leftNode, isFull, true);
+                }
+
                 leftNode.Return();
 
                 if (isFull)
@@ -666,6 +681,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
+                if (m_usePreviousPointer && leafNode.next != 0)
+                {
+                    rightNode.Return();
+                    return UpdateRightPrevious(result, leafNode, isFull, true);
+                }
+
                 if (isFull)
                 {
                     rightNode.Return();
@@ -676,6 +697,31 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             rightNode.Return();
             leafNode.Return();
             return ValueTask.FromResult(result);
+        }
+
+        private async ValueTask<GenericWriteOperation> UpdateRightPrevious(
+            GenericWriteOperation result, 
+            LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            bool isFull,
+            bool returnLeaf)
+        {
+            var nextNodeObj = await m_stateClient.GetValue(leafNode.next);
+            if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
+            {
+                nextNode.previous = leafNode.Id;
+                isFull |= m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
+                if (returnLeaf)
+                {
+                    leafNode.Return();
+                }
+                nextNode.Return();
+                if (isFull)
+                {
+                    await m_stateClient.WaitForNotFullAsync();
+                }
+                return result;
+            }
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -868,6 +914,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             // Set the next id on the new node to the now left childs next id.
             newNode.next = child.next;
+
+            if (m_usePreviousPointer)
+            {
+                newNode.previous = child.Id;
+            }
+            
 
             // Copy half of the values on the right to the new node
             newNode.keys.AddRangeFrom(child.keys, start, child.keys.Count - start);

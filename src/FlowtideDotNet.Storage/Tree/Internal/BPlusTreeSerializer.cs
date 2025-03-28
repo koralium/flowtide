@@ -118,6 +118,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     throw new Exception("Could not read leafNext");
                 }
 
+                if (!sequenceReader.TryReadLittleEndian(out long leafPrevious))
+                {
+                    throw new Exception("Could not read leafPrevious");
+                }
+
                 var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
                 var valueContainer = _valueSerializer.Deserialize(ref sequenceReader);
 
@@ -128,6 +133,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var leaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(id, keyContainer, valueContainer);
                 leaf.next = leafNext;
+                leaf.previous = leafPrevious;
                 return leaf;
             }
             if (typeId == 3)
@@ -174,11 +180,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
-                var headerSpan = bufferWriter.GetSpan(17);
+                var headerSpan = bufferWriter.GetSpan(25);
                 headerSpan[0] = 2;
                 BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), leaf.Id);
                 BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(9), leaf.next);
-                bufferWriter.Advance(17);
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(17), leaf.previous);
+                bufferWriter.Advance(25);
 
                 _keySerializer.Serialize(bufferWriter, leaf.keys);
                 _valueSerializer.Serialize(bufferWriter, leaf.values);
