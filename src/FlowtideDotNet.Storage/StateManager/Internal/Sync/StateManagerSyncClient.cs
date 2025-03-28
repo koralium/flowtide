@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Storage.AppendTree.Internal;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Queue;
+using FlowtideDotNet.Storage.Queue.Internal;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 using System.Diagnostics;
@@ -99,6 +101,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var combinedName = $"{m_name}_{name}";
 
             return stateManager.CreateObjectStateAsync<T>(combinedName);
+        }
+
+        public async ValueTask<IFlowtideQueue<V, TValueContainer>> GetOrCreateQueue<V, TValueContainer>(string name, FlowtideQueueOptions<V, TValueContainer> options) where TValueContainer : IValueContainer<V>
+        {
+            var stateClient = await CreateStateClient<IBPlusTreeNode, FlowtideQueueMetadata>(name, new FlowtideQueueSerializer<V, TValueContainer>(options.ValueSerializer), options.MemoryAllocator);
+            if (options.PageSizeBytes == null)
+            {
+                options.PageSizeBytes = stateClient.BPlusTreePageSize;
+            }
+            var queue = new FlowtideQueue<V, TValueContainer>(stateClient, options);
+            await queue.InitializeAsync();
+            return queue;
         }
     }
 }
