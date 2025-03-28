@@ -369,14 +369,31 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     _validityList.Unset(Count - 1);
                 }
-                _dataColumn!.Update<T>(index, value);
-
-                // Set to not null
-                if (_nullCounter > 0 &&
-                    !_validityList.Get(index))
+                if (_type != value.Type)
                 {
-                    _validityList.Set(index);
-                    _nullCounter--;
+                    var unionColumn = ConvertToUnion();
+                    _type = ArrowTypeId.Union;
+                    var previousColumn = _dataColumn;
+                    _dataColumn = unionColumn;
+                    if (previousColumn != null)
+                    {
+                        previousColumn.Dispose();
+                    }
+                    _validityList.Clear();
+                    _nullCounter = 0;
+                    _dataColumn.Update<T>(index, value);
+                }
+                else
+                {
+                    _dataColumn!.Update<T>(index, value);
+
+                    // Set to not null
+                    if (_nullCounter > 0 &&
+                        !_validityList.Get(index))
+                    {
+                        _validityList.Set(index);
+                        _nullCounter--;
+                    }
                 }
             }
         }
