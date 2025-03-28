@@ -23,4 +23,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         public EventBatchData EventBatch { get; }
         public int Count { get; }
     }
+
+    public struct DataColumnsDeserializeResult
+    {
+        public DataColumnsDeserializeResult(IDataColumn[] dataColumns, int count)
+        {
+            DataColumns = dataColumns;
+            Count = count;
+        }
+
+        public IDataColumn[] DataColumns { get; }
+        public int Count { get; }
+    }
 }
