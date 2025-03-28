@@ -34,10 +34,12 @@ namespace FlowtideDotNet.Substrait.Expressions
 
     public enum WindowBoundType
     {
-        Preceeding,
-        Following,
+        PreceedingRow,
+        FollowingRow,
         CurrentRow,
-        Unbounded
+        Unbounded,
+        PreceedingRange,
+        FollowingRange
     }
 
     public abstract class WindowBound
@@ -45,18 +47,32 @@ namespace FlowtideDotNet.Substrait.Expressions
         public abstract WindowBoundType Type { get; }
     }
 
-    public class PreceedingWindowBound : WindowBound
+    public class PreceedingRowWindowBound : WindowBound
     {
         public long Offset { get; set; }
 
-        public override WindowBoundType Type => WindowBoundType.Preceeding;
+        public override WindowBoundType Type => WindowBoundType.PreceedingRow;
     }
 
-    public class FollowingWindowBound : WindowBound
+    public class PreceedingRangeWindowBound : WindowBound
+    {
+        public required Expression Expression { get; set; }
+
+        public override WindowBoundType Type => WindowBoundType.PreceedingRange;
+    }
+
+    public class FollowingRowWindowBound : WindowBound
     {
         public long Offset { get; set; }
 
-        public override WindowBoundType Type => WindowBoundType.Following;
+        public override WindowBoundType Type => WindowBoundType.FollowingRow;
+    }
+
+    public class FollowingRangeWindowBound : WindowBound
+    {
+        public required Expression Expression { get; set; }
+
+        public override WindowBoundType Type => WindowBoundType.FollowingRange;
     }
 
     public class CurrentRowWindowBound : WindowBound

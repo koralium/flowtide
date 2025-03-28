@@ -25,6 +25,8 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
+using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
@@ -32,9 +34,24 @@ namespace FlowtideDotNet.Core.Operators.Window
     {
         private readonly ConsistentPartitionWindowRelation _relation;
         private IColumnComparer<ColumnRowReference>? _sortComparer;
-        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _persistentTree;
+        private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>? _persistentTree;
+
+        /// <summary>
+        /// This tree contains partitions that have been updated.
+        /// </summary>
+        private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
         private List<int> _partitionColumns;
+        private List<int> _otherColumns;
         private List<Action<EventBatchData, int, Column>> _partitionCalculateExpressions;
+
+        private ColumnStore.Column[]? m_temporaryStateValues;
+        private EventBatchData? m_temporaryStateBatch;
+
+        private ColumnStore.IColumn[]? _partitionBatchColumns;
+        /// <summary>
+        /// Batch used when inserting into the temporary tree
+        /// </summary>
+        private EventBatchData? _partitionBatch;
 
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -43,6 +60,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 throw new NotSupportedException("Only one window function is supported at this time per window operator");
             }
+            
             // Create the comparer for the ordering
             if (relation.OrderBy.Count > 0)
             {
@@ -51,7 +69,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             CreatePartitionColumnExpressions(functionsRegister);
         }
 
-        [MemberNotNull(nameof(_partitionColumns), nameof(_partitionCalculateExpressions))]
+        [MemberNotNull(nameof(_partitionColumns), nameof(_partitionCalculateExpressions), nameof(_otherColumns))]
         private void CreatePartitionColumnExpressions(IFunctionsRegister functionsRegister)
         {
             List<int> partitionColumns = new List<int>();
@@ -73,6 +91,16 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
             _partitionColumns = partitionColumns;
             _partitionCalculateExpressions = partitionCalculateExpressions;
+
+            _otherColumns = new List<int>();
+            for (int i = 0; i < _relation.Input.OutputLength; i++)
+            {
+                if (!_partitionColumns.Contains(i))
+                {
+                    _otherColumns.Add(i);
+                }
+            }
+
         }
 
         public override string DisplayName => "WindowOperator";
@@ -92,14 +120,32 @@ namespace FlowtideDotNet.Core.Operators.Window
             return Task.CompletedTask;
         }
 
-        protected override IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
+        protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
-            return base.OnWatermark(watermark);
+            var temporaryTreeIterator = _temporaryTree!.CreateIterator();
+            await temporaryTreeIterator.SeekFirst();
+
+            var persistentTreeIterator = _persistentTree!.CreateIterator();
+
+            var windowSum = new WindowSumCalculator();
+            await windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator);
+
+            await foreach(var partitionPage in temporaryTreeIterator)
+            {
+                foreach(var partitionKv in partitionPage)
+                {
+                    await windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -1, 0);
+                }
+            }
+
+            yield break;
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_persistentTree != null);
+            Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_partitionBatchColumns != null);
             // Need to calculate any partition expressions into values if they are not already
             Column[] extraPartitionColumns = new Column[_partitionCalculateExpressions.Count];
 
@@ -134,25 +180,106 @@ namespace FlowtideDotNet.Core.Operators.Window
                     RowIndex = i
                 };
 
-                await _persistentTree.RMWNoResult(rowRef, 0, (input, current, exist) =>
+
+                int stateIndex = m_temporaryStateBatch.Count;
+                for (int w = 0; w < _relation.WindowFunctions.Count; w++)
                 {
+                    var stateColumn = m_temporaryStateValues[w];
+                    stateColumn.Add(NullValue.Instance);
+                    var previousValueColumn = m_temporaryStateValues[w + _relation.WindowFunctions.Count];
+                    previousValueColumn.Add(NullValue.Instance);
+                }
+
+                var aggState = new ColumnAggregateStateReference()
+                {
+                    weight = msg.Data.Weights[i],
+                    referenceBatch = m_temporaryStateBatch,
+                    RowIndex = stateIndex,
+                    valueSent = false
+                };
+
+
+                await _persistentTree.RMWNoResult(in rowRef, in aggState, (input, current, exist) =>
+                {
+                    if (exist)
+                    {
+                        current.weight += input.weight;
+
+                        if (current.weight == 0)
+                        {
+                            // Must output the entire row here and the previous value
+                            return (current, GenericWriteOperation.Delete);
+                        }
+
+                        return (current, GenericWriteOperation.Upsert);
+                    }
+                    
                     return (input, GenericWriteOperation.Upsert);
                 });
-            }
 
-            throw new NotImplementedException();
+                for(int p = 0; p < _partitionColumns.Count; p++)
+                {
+                    _partitionBatchColumns[p] = columns[_partitionColumns[p]];
+                }
+
+                var partitionRowRef = new ColumnRowReference()
+                {
+                    referenceBatch = _partitionBatch,
+                    RowIndex = i
+                };
+
+                // Even if the row was deleted we still need to update the temporary tree
+                // Since rows that depend on this row will need to be updated
+                await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
+                {
+                    if (exists)
+                    {
+                        // If the partition already exists in the tree, no need to force a write on the page
+                        return (current, GenericWriteOperation.None);
+                    }
+                    return (input, GenericWriteOperation.Upsert);
+                });
+
+                // Need to calculate the window function
+                var iterator = _persistentTree.CreateIterator();
+                await iterator.Seek(rowRef);
+            }
+            yield break;
         }
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>()
                 {
-                    Comparer = new WindowInsertComparer(_sortComparer, new List<int>(), new List<int>()),
+                    Comparer = new WindowInsertComparer(_sortComparer, _partitionColumns, _otherColumns),
                     KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength + _partitionCalculateExpressions.Count, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
-                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator)
+                    ValueSerializer = new ColumnAggregateValueSerializer(_relation.WindowFunctions.Count, MemoryAllocator),
+                    UseByteBasedPageSizes = true
                 });
+
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
+                {
+                    Comparer = new AggregateInsertComparer(_partitionColumns.Count),
+                    KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
+                    MemoryAllocator = MemoryAllocator,
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
+                    UseByteBasedPageSizes = true
+                });
+
+            m_temporaryStateValues = new ColumnStore.Column[_relation.WindowFunctions.Count * 2];
+
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+
+            m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+
+            _partitionBatchColumns = new IColumn[_partitionColumns.Count];
+            _partitionBatch = new EventBatchData(_partitionBatchColumns);
         }
     }
 }
