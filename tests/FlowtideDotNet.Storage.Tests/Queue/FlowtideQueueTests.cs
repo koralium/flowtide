@@ -157,5 +157,32 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             var result = await queue.Dequeue();
             Assert.Equal(1, result);
         }
+
+        [Fact]
+        public async Task EnqueuePopSingleElement()
+        {
+            var queue = await CreateQueue();
+            await queue.Enqueue(1);
+            var result = await queue.Pop();
+            Assert.Equal(1, result);
+        }
+
+        [Fact]
+        public async Task EnqueuePopAcrossPages()
+        {
+            var queue = await CreateQueue();
+
+            for (int i = 0; i < 10_000; i++)
+            {
+                await queue.Enqueue(i);
+            }
+            
+            for (int i = 0; i < 10_000; i++)
+            {
+                var result = await queue.Pop();
+                Assert.Equal(10_000 - i - 1, result);
+            }
+            
+        }
     }
 }

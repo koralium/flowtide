@@ -231,5 +231,63 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                 QueueSize = 0
             };
         }
+
+        public ValueTask<V> Pop()
+        {
+            Debug.Assert(_stateClient.Metadata != null);
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_leftNode != null);
+            if (_stateClient.Metadata.InsertIndex == 0)
+            {
+                if (_rightNode.previous == 0)
+                {
+                    throw new InvalidOperationException("Queue is empty");
+                }
+                var oldRightNode = _rightNode;
+                if (_rightNode.previous == _leftNode.Id)
+                {
+                    _rightNode = _leftNode;
+                }
+                else
+                {
+                    var getPreviousNodeTask = _stateClient.GetValue(_rightNode.previous);
+                    if (!getPreviousNodeTask.IsCompleted)
+                    {
+                        return Pop_Slow(getPreviousNodeTask);
+                    }
+                    _rightNode = (getPreviousNodeTask.Result) as QueueNode<V, TValueContainer>;
+                    _rightNode!.TryRent();
+                }
+                _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
+                _stateClient.Delete(oldRightNode.Id);
+                oldRightNode.Dispose();
+            }
+            _stateClient.Metadata.InsertIndex--;
+            _stateClient.Metadata.QueueSize--;
+            return ValueTask.FromResult(_rightNode.values.Get(_stateClient.Metadata.InsertIndex));
+        }
+
+        private async ValueTask<V> Pop_Slow(ValueTask<IBPlusTreeNode?> getPreviousNodeTask)
+        {
+            Debug.Assert(_stateClient.Metadata != null);
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_leftNode != null);
+
+            var previousNode = (await getPreviousNodeTask) as QueueNode<V, TValueContainer>;
+
+            if (previousNode == null)
+            {
+                throw new InvalidOperationException("Could not fetch the previous data page in queue.");
+            }
+            var oldRightNode = _rightNode;
+            _rightNode = previousNode;
+            _stateClient.Metadata.InsertIndex = _rightNode.values.Count - 1;
+            _stateClient.Metadata.QueueSize--;
+
+            _stateClient.Delete(oldRightNode.Id);
+            oldRightNode.Dispose();
+
+            return _rightNode.values.Get(_stateClient.Metadata.InsertIndex);
+        }
     }
 }

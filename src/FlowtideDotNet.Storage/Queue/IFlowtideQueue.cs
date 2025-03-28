@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Storage.Queue
 
         ValueTask<V> Dequeue();
 
+        ValueTask<V> Pop();
+
         ValueTask Commit();
 
         ValueTask Clear();
