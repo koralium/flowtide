@@ -809,5 +809,37 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
+
+        [Fact]
+        public void TestSerializeDataColumnOnly()
+        {
+            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 10; i++)
+            {
+                listColumn.Add(new ListValue(new Int64Value(i)));
+                stringColumn.Add(new StringValue(i.ToString()));
+            }
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeDataColumns(bufferWriter, [listColumn, stringColumn], 10);
+
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+
+            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenMemory));
+            var deserializeResult = batchDeserializer.DeserializeDataColumns(ref sequenceReader);
+            var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
+            var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
+
+            Assert.NotNull(deserializedColumn);
+            Assert.NotNull(deserializedStringColumn);
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.Equal(i, deserializedColumn.GetValueAt(i, default).AsList.GetAt(0).AsLong);
+                Assert.Equal(i.ToString(), deserializedStringColumn.GetValueAt(i, default).AsString.ToString());
+            }
+        }
     }
 }
