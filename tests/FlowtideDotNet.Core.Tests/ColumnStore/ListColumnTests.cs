@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
+using System.Buffers;
 using System.Text;
 using System.Text.Json;
 
@@ -1098,6 +1100,153 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(2, copy.GetValueAt(0, default).AsList.Count);
             Assert.Equal(1, copy.GetValueAt(0, default).AsList.GetAt(0).AsLong);
             Assert.Equal(3, copy.GetValueAt(0, default).AsList.GetAt(1).AsLong);
+        }
+
+        [Fact]
+        public void AppendToCurrentList()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            column.AppendToList(0, new Int64Value(3));
+            column.AppendToList(1, new StringValue("a"));
+
+            Assert.Equal(1, column.GetValueAt(0, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(1).AsLong);
+            Assert.Equal(3, column.GetValueAt(0, default).AsList.GetAt(2).AsLong);
+            Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(5, column.GetValueAt(1, default).AsList.GetAt(1).AsLong);
+            Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(2).AsString.ToString());
+        }
+
+        [Fact]
+        public void AppendToCurrentListNullValue()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                NullValue.Instance
+            };
+
+            column.AppendToList(0, new Int64Value(3));
+            column.AppendToList(1, new StringValue("a"));
+
+            Assert.Equal(3, column.GetValueAt(0, default).AsList.GetAt(0).AsLong);
+            Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(0).AsString.ToString());
+        }
+
+        [Fact]
+        public void UpdateElementInList()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            column.UpdateListElement(0, 0, new Int64Value(3));
+            column.UpdateListElement(1, 1, new StringValue("a"));
+
+            Assert.Equal(3, column.GetValueAt(0, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(1).AsLong);
+            Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
+            Assert.Equal("a", column.GetValueAt(1, default).AsList.GetAt(1).AsString.ToString());
+        }
+
+        [Fact]
+        public void UpdateElementInListNullValue()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            column.UpdateListElement(0, 0, NullValue.Instance);
+            column.UpdateListElement(1, 1, NullValue.Instance);
+
+            Assert.True(column.GetValueAt(0, default).AsList.GetAt(0).IsNull);
+            Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(1).AsLong);
+            Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
+            Assert.True(column.GetValueAt(1, default).AsList.GetAt(1).IsNull);
+        }
+
+        [Fact]
+        public void GetListLengthTests()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4)),
+                NullValue.Instance
+            };
+
+            Assert.Equal(2, column.GetListLength(0));
+            Assert.Equal(1, column.GetListLength(1));
+            Assert.Equal(0, column.GetListLength(2));
+        }
+
+        [Fact]
+        public void RemoveElementInList()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            column.RemoveListElement(0, 0);
+            column.RemoveListElement(1, 1);
+
+            Assert.Equal(2, column.GetValueAt(0, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(4, column.GetValueAt(1, default).AsList.GetAt(0).AsLong);
+            Assert.Equal(1, column.GetListLength(0));
+            Assert.Equal(1, column.GetListLength(1));
+
+            column.RemoveListElement(0, 0);
+            column.RemoveListElement(1, 0);
+
+            Assert.Equal(0, column.GetListLength(0));
+            Assert.Equal(0, column.GetListLength(1));
+        }
+
+        [Fact]
+        public void GetListElementValue()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            Assert.Equal(1, column.GetListElementValue(0, 0).AsLong);
+            Assert.Equal(2, column.GetListElementValue(0, 1).AsLong);
+            Assert.Equal(4, column.GetListElementValue(1, 0).AsLong);
+            Assert.Equal(5, column.GetListElementValue(1, 1).AsLong);
+        }
+
+        [Fact]
+        public void GetListElementValueWithDataValueContainer()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance)
+            {
+                new ListValue(new Int64Value(1), new Int64Value(2)),
+                new ListValue(new Int64Value(4), new Int64Value(5))
+            };
+
+            DataValueContainer dataValueContainer = new DataValueContainer();
+
+            column.GetListElementValue(0, 0, dataValueContainer);
+            Assert.Equal(1, dataValueContainer.AsLong);
+            column.GetListElementValue(0, 1, dataValueContainer);
+            Assert.Equal(2, dataValueContainer.AsLong);
+            column.GetListElementValue(1, 0, dataValueContainer);
+            Assert.Equal(4, dataValueContainer.AsLong);
+            column.GetListElementValue(1, 1, dataValueContainer);
+            Assert.Equal(5, dataValueContainer.AsLong);
         }
     }
 }
