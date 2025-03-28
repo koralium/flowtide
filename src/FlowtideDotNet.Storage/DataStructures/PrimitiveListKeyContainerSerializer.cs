@@ -56,7 +56,6 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
             reader.Advance(count);
             return new PrimitiveListKeyContainer<K>(new PrimitiveList<K>(nativeMemory, count / sizeof(K), _memoryAllocator));
-            throw new NotImplementedException();
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
