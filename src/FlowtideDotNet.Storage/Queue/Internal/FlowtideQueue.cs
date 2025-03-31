@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         private readonly int _pageSizeBytes;
 
         private bool _rightNodeUpdated = false;
+        private bool _commited = false;
 
         public long Count => _stateClient.Metadata?.QueueSize ?? 0;
 
@@ -210,11 +211,24 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             {
                 _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
             }
+            _commited = true;
             return _stateClient.Commit();
         }
 
         public async ValueTask Clear()
         {
+            Debug.Assert(_leftNode != null);
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_stateClient.Metadata != null);
+
+            if (!_commited && (_leftNode.Id == _rightNode.Id))
+            {
+                // If only a single page is in use, just reset the indices
+                _stateClient.Metadata.DequeueIndex = 0;
+                _stateClient.Metadata.InsertIndex = 0;
+                _stateClient.Metadata.QueueSize = 0;
+                return;
+            }
             await _stateClient.Reset(true);
             var nodeId = _stateClient.GetNewPageId();
             var emptyKeys = _keySerializer.CreateEmpty();
