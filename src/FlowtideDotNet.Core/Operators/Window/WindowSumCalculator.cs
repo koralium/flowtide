@@ -14,15 +14,10 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Queue;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.FetchDirection;
-using static Substrait.Protobuf.Expression.Types.FieldReference.Types;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
@@ -31,18 +26,22 @@ namespace FlowtideDotNet.Core.Operators.Window
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>? _updateIterator;
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>? _windowIterator;
         private IMemoryAllocator? _memoryAllocator;
-        private Column? _slidingWindow;
-        public Task Initialize(
+        private IFlowtideQueue<IDataValue, DataValueValueContainer>? _queue;
+        public async Task Initialize(
             IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer> persistentTree,
             int partitionCount,
-            IMemoryAllocator memoryAllocator
+            IMemoryAllocator memoryAllocator,
+            IStateManagerClient stateManagerClient
             )
         {
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
+            _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IDataValue, DataValueValueContainer>()
+            {
+                MemoryAllocator = memoryAllocator,
+                ValueSerializer = new DataValueValueContainerSerializer(memoryAllocator)
+            });
             _memoryAllocator = memoryAllocator;
-            _slidingWindow = new Column(_memoryAllocator);
-            return Task.CompletedTask;
         }
 
         private static void DoSum<T>(T value, DataValueContainer currentState, long weight)
@@ -105,9 +104,9 @@ namespace FlowtideDotNet.Core.Operators.Window
         {
             Debug.Assert(_windowIterator != null);
             Debug.Assert(_updateIterator != null);
-            Debug.Assert(_slidingWindow != null);
+            Debug.Assert(_queue != null);
 
-            _slidingWindow.Clear();
+            await _queue.Clear();
             await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
             // This can be made quicker, where the window operator copies the leaf and index to the update iterator
             await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
@@ -130,15 +129,14 @@ namespace FlowtideDotNet.Core.Operators.Window
                 while (windowRowIndex <= (updateRowIndex + to) && await windowEnumerator.MoveNextAsync())
                 {
                     var val = windowEnumerator.Current.Key.referenceBatch.Columns[1].GetValueAt(windowEnumerator.Current.Key.RowIndex, default);
-                    _slidingWindow.Add(val);
+                    await _queue.Enqueue(val);
                     windowRowIndex++;
                     DoSum(val, currentValue, 1);
                 }
 
-                while (_slidingWindow.Count > 0 && windowRowIndex - _slidingWindow.Count < updateRowIndex + from)
+                while (_queue.Count > 0 && windowRowIndex - _queue.Count < updateRowIndex + from)
                 {
-                    var firstVal = _slidingWindow.GetValueAt(0, default);
-                    _slidingWindow.RemoveAt(0);
+                    var firstVal = await _queue.Dequeue();
                     DoSum(firstVal, currentValue, -1);
                 }
 

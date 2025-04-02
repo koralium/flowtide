@@ -53,8 +53,11 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// </summary>
         private EventBatchData? _partitionBatch;
 
+        private WindowSumCalculator _windowSum;
+
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
+            _windowSum = new WindowSumCalculator();
             _relation = relation;
             if (_relation.WindowFunctions.Count > 1)
             {
@@ -125,16 +128,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
 
-            var persistentTreeIterator = _persistentTree!.CreateIterator();
-
-            var windowSum = new WindowSumCalculator();
-            await windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator);
-
             await foreach(var partitionPage in temporaryTreeIterator)
             {
                 foreach(var partitionKv in partitionPage)
                 {
-                    await windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -1, 0);
+                    await _windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -1, 0);
                 }
             }
 
@@ -280,6 +278,8 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
             _partitionBatch = new EventBatchData(_partitionBatchColumns);
+
+            await _windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient);
         }
     }
 }
