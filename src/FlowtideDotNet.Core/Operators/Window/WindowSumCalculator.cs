@@ -30,6 +30,9 @@ namespace FlowtideDotNet.Core.Operators.Window
         private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _windowIterator;
         private IMemoryAllocator? _memoryAllocator;
         private IFlowtideQueue<IDataValue, DataValueValueContainer>? _queue;
+        private PartitionIterator? _updatePartitionIterator;
+        private PartitionIterator? _windowPartitionIterator;
+
         public async Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
             int partitionColumnCount,
@@ -40,6 +43,10 @@ namespace FlowtideDotNet.Core.Operators.Window
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
+
+            _updatePartitionIterator = new PartitionIterator(addOutputRow);
+            _windowPartitionIterator = new PartitionIterator();
+
             _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IDataValue, DataValueValueContainer>()
             {
                 MemoryAllocator = memoryAllocator,
@@ -99,7 +106,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         }
 
 
-        public async Task ComputeRowSlidingWindow(
+        public async IAsyncEnumerable<EventBatchWeighted> ComputeRowSlidingWindow(
             ColumnRowReference partitionValues,
             WindowPartitionStartSearchComparer partitionStartSearchComparer,
             int from,
@@ -109,19 +116,20 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_windowIterator != null);
             Debug.Assert(_updateIterator != null);
             Debug.Assert(_queue != null);
+            Debug.Assert(_addOutputRow != null);
+            Debug.Assert(_windowPartitionIterator != null);
+            Debug.Assert(_updatePartitionIterator != null);
 
             await _queue.Clear();
             await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
-            // This can be made quicker, where the window operator copies the leaf and index to the update iterator
-            await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
-            //_windowIterator.CloneSeekResultTo(_updateIterator);
+            // Copy the seek result to the other iterator
+            _windowIterator.CloneSeekResultTo(_updateIterator);
 
-            // Partition iterators make sure we only iterate inside of a partition
-            var windowIterator = new PartitionIterator(partitionValues, _windowIterator, partitionStartSearchComparer);
-            var updateIterator = new PartitionIterator(partitionValues, _updateIterator, partitionStartSearchComparer, _addOutputRow);
-            
-            var windowEnumerator = windowIterator.GetAsyncEnumerator();
-            var updateEnumerator = updateIterator.GetAsyncEnumerator();
+            _windowPartitionIterator.Reset(partitionValues, _windowIterator, partitionStartSearchComparer);
+            _updatePartitionIterator.Reset(partitionValues, _updateIterator, partitionStartSearchComparer);
+
+            var windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
+            var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
             
             int updateRowIndex = 0;
             int windowRowIndex = 0;
@@ -131,11 +139,6 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             while (await updateEnumerator.MoveNextAsync())
             {
-                //if (updateEnumerator.Current.IsDeleted)
-                //{
-                //    yield updateEnumerator.Current;
-                //    continue;
-                //}
                 while (windowRowIndex <= (updateRowIndex + to) && await windowEnumerator.MoveNextAsync())
                 {
                     var val = windowEnumerator.Current.Key.referenceBatch.Columns[1].GetValueAt(windowEnumerator.Current.Key.RowIndex, default);
@@ -153,7 +156,16 @@ namespace FlowtideDotNet.Core.Operators.Window
                 updateRowIndex++;
                 
                 updateEnumerator.Current.Value.UpdateStateValue(currentValue);
-                // Update row and send output
+
+                if (_addOutputRow.Count >= 100)
+                {
+                    yield return _addOutputRow.GetCurrentBatch();
+                }
+            }
+
+            if (_addOutputRow.Count > 0)
+            {
+                yield return _addOutputRow.GetCurrentBatch();
             }
         }
     }

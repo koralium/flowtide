@@ -31,7 +31,7 @@ using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
-    internal class WindowOperator : UnaryVertex<StreamEventBatch>, IWindowAddOutputRow
+    internal class WindowOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly ConsistentPartitionWindowRelation _relation;
         private IColumnComparer<ColumnRowReference>? _sortComparer;
@@ -45,20 +45,15 @@ namespace FlowtideDotNet.Core.Operators.Window
         private List<int> _otherColumns;
         private List<Action<EventBatchData, int, Column>> _partitionCalculateExpressions;
 
-        private ColumnStore.Column[]? m_temporaryStateValues;
-        private EventBatchData? m_temporaryStateBatch;
-
         private ColumnStore.IColumn[]? _partitionBatchColumns;
+
         /// <summary>
         /// Batch used when inserting into the temporary tree
         /// </summary>
         private EventBatchData? _partitionBatch;
 
         private WindowSumCalculator _windowSum;
-
-        private PrimitiveList<int>? _outputWeights;
-        private PrimitiveList<uint>? _outputIterations;
-        private IColumn[]? _outputColumns;
+        private WindowOutputBuilder? _outputBuilder;
 
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -128,46 +123,8 @@ namespace FlowtideDotNet.Core.Operators.Window
             return Task.CompletedTask;
         }
 
-        public void AddOutputRow<T>(ColumnRowReference columnRowReference, T dataValue, int weight)
-            where T : IDataValue
-        {
-            Debug.Assert(_outputColumns != null);
-            Debug.Assert(_outputWeights != null);
-            Debug.Assert(_outputIterations != null);
-
-            for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
-            {
-                _outputColumns[i].Add(columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default));
-            }
-
-            _outputColumns[_relation.Input.OutputLength].Add(dataValue);
-            _outputWeights.Add(weight);
-            _outputIterations.Add(0);
-
-            if (_outputWeights.Count > 100)
-            {
-                // Send output
-            }
-
-        }
-
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
-            if (_outputColumns == null)
-            {
-                _outputColumns = new IColumn[_relation.OutputLength];
-                _outputIterations = new PrimitiveList<uint>(MemoryAllocator);
-                _outputWeights = new PrimitiveList<int>(MemoryAllocator);
-                for (int i = 0; i < _relation.OutputLength; i++)
-                {
-                    _outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
-                }
-            }
-
-            Debug.Assert(_outputWeights != null);
-            Debug.Assert(_outputIterations != null);
-
-            
 
             var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
@@ -176,66 +133,12 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 foreach(var partitionKv in partitionPage)
                 {
-                    await _windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -2 , 0);
-                }
-            }
-           
-
-            if (_outputWeights.Count > 0)
-            {
-                yield return new StreamEventBatch(new EventBatchWeighted(_outputWeights, _outputIterations, new EventBatchData(_outputColumns)));
-            }
-            else
-            {
-                for (int i = 0; i < _outputColumns.Length; i++)
-                {
-                    _outputColumns[i].Dispose();
-                }
-                _outputWeights.Dispose();
-                _outputIterations.Dispose();
-            }
-            
-            _outputColumns = null;
-            _outputWeights = null;
-            _outputIterations = null;
-        }
-
-        private void AddDeleteToOutput(ColumnRowReference columnRowReference, WindowValue windowValue)
-        {
-            if (_outputColumns == null)
-            {
-                _outputColumns = new IColumn[_relation.OutputLength];
-                _outputIterations = new PrimitiveList<uint>(MemoryAllocator);
-                _outputWeights = new PrimitiveList<int>(MemoryAllocator);
-                for (int i = 0; i < _relation.OutputLength; i++)
-                {
-                    _outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
-                }
-            }
-
-            Debug.Assert(_outputWeights != null);
-            Debug.Assert(_outputIterations != null);
-
-            if (windowValue.valueContainer._previousValueSent.Get(columnRowReference.RowIndex))
-            {
-                var stateLength = windowValue.valueContainer._functionStates[0].GetListLength(columnRowReference.RowIndex);
-                for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
-                {
-                    var existingColumnValue = columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default);
-                    for (int w = 0; w < stateLength; w++)
+                    await foreach(var batch in _windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -2 , 0))
                     {
-                        _outputColumns[i].Add(existingColumnValue);
+                        yield return new StreamEventBatch(batch);
                     }
                 }
-
-                for (int i = 0; i < stateLength; i++)
-                {
-                    _outputColumns[_relation.Input.OutputLength].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(columnRowReference.RowIndex, i));
-                    _outputWeights.Add(-1);
-                    _outputIterations.Add(0);
-                }
             }
-            
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -243,6 +146,8 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_temporaryTree != null);
             Debug.Assert(_partitionBatchColumns != null);
+            Debug.Assert(_outputBuilder != null);
+
             // Need to calculate any partition expressions into values if they are not already
             Column[] extraPartitionColumns = new Column[_partitionCalculateExpressions.Count];
 
@@ -277,16 +182,6 @@ namespace FlowtideDotNet.Core.Operators.Window
                     RowIndex = i
                 };
 
-
-                int stateIndex = m_temporaryStateBatch.Count;
-                for (int w = 0; w < _relation.WindowFunctions.Count; w++)
-                {
-                    var stateColumn = m_temporaryStateValues[w];
-                    stateColumn.Add(NullValue.Instance);
-                    var previousValueColumn = m_temporaryStateValues[w + _relation.WindowFunctions.Count];
-                    previousValueColumn.Add(NullValue.Instance);
-                }
-
                 var windowValue = new WindowValue()
                 {
                     weight = msg.Data.Weights[i],
@@ -300,7 +195,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                         
                         if (current.weight == 0)
                         {
-                            AddDeleteToOutput(rowRef, current);
+                            _outputBuilder.AddDeleteToOutput(rowRef, current);
                             // Must output the entire row here and the previous value
                             return (current, GenericWriteOperation.Delete);
                         }
@@ -359,19 +254,12 @@ namespace FlowtideDotNet.Core.Operators.Window
                     UseByteBasedPageSizes = true
                 });
 
-            m_temporaryStateValues = new ColumnStore.Column[_relation.WindowFunctions.Count * 2];
-
-            for (int i = 0; i < m_temporaryStateValues.Length; i++)
-            {
-                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
-            }
-
-            m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
-
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
             _partitionBatch = new EventBatchData(_partitionBatchColumns);
 
-            await _windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, this);
+            _outputBuilder = new WindowOutputBuilder(_relation.OutputLength, MemoryAllocator);
+
+            await _windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, _outputBuilder);
         }
     }
 }

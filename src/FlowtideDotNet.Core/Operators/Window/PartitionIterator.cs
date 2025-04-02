@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -24,23 +25,25 @@ namespace FlowtideDotNet.Core.Operators.Window
 {
     internal class PartitionIterator : IAsyncEnumerable<KeyValuePair<ColumnRowReference, WindowStateReference>>
     {
-        private readonly ColumnRowReference partitionRow;
-        private readonly IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator;
-        private readonly WindowPartitionStartSearchComparer searchComparer;
+        private ColumnRowReference partitionRow;
+        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? iterator;
+        private WindowPartitionStartSearchComparer? searchComparer;
         private readonly WindowStateReference _windowStateReference;
         private readonly IWindowAddOutputRow? _addOutputRow;
 
-        public PartitionIterator(
-            ColumnRowReference partitionRow,
-            IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator,
-            WindowPartitionStartSearchComparer searchComparer,
-            IWindowAddOutputRow? addOutputRow = default)
+        public PartitionIterator(IWindowAddOutputRow? addOutputRow = default)
         {
-            this.partitionRow = partitionRow;
+            _addOutputRow = addOutputRow;
+            _windowStateReference = new WindowStateReference(addOutputRow);
+        }
+
+        public void Reset(ColumnRowReference partitionValue,
+            IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator,
+            WindowPartitionStartSearchComparer searchComparer)
+        {
+            this.partitionRow = partitionValue;
             this.iterator = iterator;
             this.searchComparer = searchComparer;
-            _windowStateReference = new WindowStateReference(addOutputRow);
-            _addOutputRow = addOutputRow;
         }
 
         public IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -50,6 +53,9 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public async IAsyncEnumerable<KeyValuePair<ColumnRowReference, WindowStateReference>> GetRows()
         {
+            Debug.Assert(iterator != null, "Run reset first before getting rows");
+            Debug.Assert(searchComparer != null, "Run reset first before getting rows");
+
             bool firstPage = true;
             await foreach(var page in iterator)
             {
