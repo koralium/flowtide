@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
                 new TestData()
                 {
                     Value = 4,
-                    Partition = "b"
+                    Partition = "a"
                 }
             }, GlobalMemoryManager.Instance);
             PrimitiveList<int> weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
@@ -192,10 +192,54 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
             iterations.Add(0);
             iterations.Add(0);
             iterations.Add(0);
+
+            var completion = _operator.Completion.ContinueWith((t) =>
+            {
+                if (t.IsFaulted)
+                {
+                    Assert.Fail(t.Exception.Message!);
+                }
+            });
+
             await _operator.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new Core.ColumnStore.EventBatchWeighted(weights, iterations, eventBatch)), 0), default);
 
             await _operator.SendAsync(new Watermark("read", 1));
             var result = await _recieveBuffer.ReceiveAsync();
+
+            if (_operator.Completion.IsFaulted)
+            {
+                Assert.Fail(_operator.Completion.Exception.Message!);
+            }
+
+            var watermarkResult = await _recieveBuffer.ReceiveAsync();
+
+            weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+
+            var eventBatch2 = batchConverter.ConvertToEventBatch(new List<TestData>()
+            {
+                new TestData()
+                {
+                    Value = 1,
+                    Partition = "a"
+                },
+                new TestData()
+                {
+                    Value = 2,
+                    Partition = "a"
+                },
+            }, GlobalMemoryManager.Instance);
+            weights.Add(-1);
+            weights.Add(-1);
+            iterations.Add(0);
+            iterations.Add(0);
+
+            await _operator.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new Core.ColumnStore.EventBatchWeighted(weights, iterations, eventBatch2)), 0), default);
+
+            await _operator.SendAsync(new Watermark("read", 2));
+            var result2 = await _recieveBuffer.ReceiveAsync();
+
+            watermarkResult = await _recieveBuffer.ReceiveAsync();
         }
     }
 }

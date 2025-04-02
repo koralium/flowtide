@@ -11,6 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -32,22 +35,36 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// <summary>
         /// Updates the state for a specific index and specific weight.
         /// This allows different states for duplicate rows.
+        /// 
+        /// Returns true, if a new value was added to state or existing one was updated.
+        /// Returns false if the same value already exists in the state.
         /// </summary>
         /// <typeparam name="T"></typeparam>
         /// <param name="functionIndex"></param>
         /// <param name="weightIndex"></param>
         /// <param name="value"></param>
-        public void UpdateStateValue<T>(int functionIndex, int weightIndex, T value)
+        public bool UpdateStateValue<T>(int functionIndex, int weightIndex, T value, ColumnRowReference columnRowReference, IWindowAddOutputRow addOutputRow)
             where T : IDataValue
         {
             var listCount = valueContainer._functionStates[functionIndex].GetListLength(index);
+            valueContainer._previousValueSent.Set(index);
             if (listCount <= weightIndex)
             {
                 valueContainer._functionStates[functionIndex].AppendToList(index, value);
+                addOutputRow.AddOutputRow(columnRowReference, value, 1);
+                return true;
             }
             else
             {
-                valueContainer._functionStates[functionIndex].UpdateListElement(index, weightIndex, value);
+                var oldValue = valueContainer._functionStates[functionIndex].GetListElementValue(index, weightIndex);
+                if (DataValueComparer.Instance.Compare(value, oldValue) != 0)
+                {
+                    addOutputRow.AddOutputRow(columnRowReference, oldValue, -1);
+                    valueContainer._functionStates[functionIndex].UpdateListElement(index, weightIndex, value);
+                    addOutputRow.AddOutputRow(columnRowReference, value, 1);
+                    return true;
+                }
+                return false;
             }
         }
     }
@@ -67,6 +84,13 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 _functionStates[i] = new ListColumn(memoryAllocator);
             }
+        }
+
+        internal WindowValueContainer(PrimitiveList<int> weights, ListColumn[] functionStates, BitmapList previousValueSent)
+        {
+            _weights = weights;
+            _functionStates = functionStates;
+            _previousValueSent = previousValueSent;
         }
 
         public int Count => _weights.Count;
@@ -100,7 +124,12 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public WindowValue Get(int index)
         {
-            throw new NotImplementedException();
+            return new WindowValue()
+            {
+                index = index,
+                valueContainer = this,
+                weight = _weights.Get(index)
+            };
         }
 
         public int GetByteSize()
@@ -110,7 +139,8 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public int GetByteSize(int start, int end)
         {
-            throw new NotImplementedException();
+            var count = end - start + 1;
+            return (count * sizeof(int)) + _functionStates.Sum(x => x.GetByteSize(start, end)) + _previousValueSent.GetByteSize(start, end);
         }
 
         public ref WindowValue GetRef(int index)
@@ -120,22 +150,37 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public void Insert(int index, WindowValue value)
         {
-            throw new NotImplementedException();
+            _weights.InsertAt(index, value.weight);
+            for (int i = 0; i < _functionStates.Length; i++)
+            {
+                _functionStates[i].InsertAt(index, NullValue.Instance);
+            }
+            _previousValueSent.InsertAt(index, false);
         }
 
         public void RemoveAt(int index)
         {
-            throw new NotImplementedException();
+            _weights.RemoveAt(index);
+            for (int i = 0; i < _functionStates.Length; i++)
+            {
+                _functionStates[i].RemoveAt(index);
+            }
+            _previousValueSent.RemoveAt(index);
         }
 
         public void RemoveRange(int start, int count)
         {
-            throw new NotImplementedException();
+            _weights.RemoveRange(start, count);
+            for (int i = 0; i < _functionStates.Length; i++)
+            {
+                _functionStates[i].RemoveRange(start, count);
+            }
+            _previousValueSent.RemoveRange(start, count);
         }
 
         public void Update(int index, WindowValue value)
         {
-            throw new NotImplementedException();
+            _weights.Update(index, value.weight);
         }
     }
 }

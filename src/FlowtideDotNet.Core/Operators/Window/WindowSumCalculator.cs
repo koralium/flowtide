@@ -21,19 +21,23 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
+    internal delegate void AddOutputRow<T>(ColumnRowReference partitionValues, int rowIndex, T value)
+        where T: IDataValue;
     internal class WindowSumCalculator
     {
-        private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>? _updateIterator;
-        private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer>? _windowIterator;
+        private IWindowAddOutputRow? _addOutputRow;
+        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _updateIterator;
+        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _windowIterator;
         private IMemoryAllocator? _memoryAllocator;
         private IFlowtideQueue<IDataValue, DataValueValueContainer>? _queue;
         public async Task Initialize(
-            IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer> persistentTree,
-            int partitionCount,
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
+            int partitionColumnCount,
             IMemoryAllocator memoryAllocator,
-            IStateManagerClient stateManagerClient
-            )
+            IStateManagerClient stateManagerClient,
+            IWindowAddOutputRow addOutputRow)
         {
+            _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
             _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IDataValue, DataValueValueContainer>()
@@ -110,10 +114,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
             // This can be made quicker, where the window operator copies the leaf and index to the update iterator
             await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
+            //_windowIterator.CloneSeekResultTo(_updateIterator);
 
             // Partition iterators make sure we only iterate inside of a partition
             var windowIterator = new PartitionIterator(partitionValues, _windowIterator, partitionStartSearchComparer);
-            var updateIterator = new PartitionIterator(partitionValues, _updateIterator, partitionStartSearchComparer);
+            var updateIterator = new PartitionIterator(partitionValues, _updateIterator, partitionStartSearchComparer, _addOutputRow);
             
             var windowEnumerator = windowIterator.GetAsyncEnumerator();
             var updateEnumerator = updateIterator.GetAsyncEnumerator();
@@ -126,6 +131,11 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             while (await updateEnumerator.MoveNextAsync())
             {
+                //if (updateEnumerator.Current.IsDeleted)
+                //{
+                //    yield updateEnumerator.Current;
+                //    continue;
+                //}
                 while (windowRowIndex <= (updateRowIndex + to) && await windowEnumerator.MoveNextAsync())
                 {
                     var val = windowEnumerator.Current.Key.referenceBatch.Columns[1].GetValueAt(windowEnumerator.Current.Key.RowIndex, default);
@@ -141,6 +151,8 @@ namespace FlowtideDotNet.Core.Operators.Window
                 }
 
                 updateRowIndex++;
+                
+                updateEnumerator.Current.Value.UpdateStateValue(currentValue);
                 // Update row and send output
             }
         }

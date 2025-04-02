@@ -25,17 +25,22 @@ namespace FlowtideDotNet.Core.Operators.Window
     internal class PartitionIterator : IAsyncEnumerable<KeyValuePair<ColumnRowReference, WindowStateReference>>
     {
         private readonly ColumnRowReference partitionRow;
-        private readonly IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer> iterator;
+        private readonly IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator;
         private readonly WindowPartitionStartSearchComparer searchComparer;
+        private readonly WindowStateReference _windowStateReference;
+        private readonly IWindowAddOutputRow? _addOutputRow;
 
         public PartitionIterator(
             ColumnRowReference partitionRow,
-            IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, ColumnKeyStorageContainer, ColumnAggregateValueContainer> iterator,
-            WindowPartitionStartSearchComparer searchComparer)
+            IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator,
+            WindowPartitionStartSearchComparer searchComparer,
+            IWindowAddOutputRow? addOutputRow = default)
         {
             this.partitionRow = partitionRow;
             this.iterator = iterator;
             this.searchComparer = searchComparer;
+            _windowStateReference = new WindowStateReference(addOutputRow);
+            _addOutputRow = addOutputRow;
         }
 
         public IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>> GetAsyncEnumerator(CancellationToken cancellationToken = default)
@@ -48,6 +53,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             bool firstPage = true;
             await foreach(var page in iterator)
             {
+                _windowStateReference.ResetPage();
                 if (!firstPage)
                 {
                     // Locate indices again
@@ -61,20 +67,35 @@ namespace FlowtideDotNet.Core.Operators.Window
                 for (int k = searchComparer.start; k <= searchComparer.end; k++)
                 {
                     var pageVal = page.Values.Get(k);
+                    var oldOutputCount = pageVal.valueContainer._functionStates[0].GetListLength(k);
+
+                    var columnRowReference = new ColumnRowReference()
+                    {
+                        referenceBatch = page.Keys.Data,
+                        RowIndex = k
+                    };
+
                     for (int w = 0; w < pageVal.weight; w++)
                     {
-                        yield return new KeyValuePair<ColumnRowReference, WindowStateReference>(new ColumnRowReference()
-                        {
-                            referenceBatch = page.Keys.Data,
-                            RowIndex = k
-                        }, new WindowStateReference()
-                        {
-                            referenceBatch = pageVal.referenceBatch,
-                            rowIndex = pageVal.RowIndex,
-                            weightIndex = w
-                        });
+                        _windowStateReference.ResetRow(page.Keys.Get(k), w, pageVal);
+                        yield return new KeyValuePair<ColumnRowReference, WindowStateReference>(columnRowReference, _windowStateReference);
                     }
-                    
+                    // Check if there has been more output before than the current weight
+                    // If that is the case, does weights need to be outputted as negative
+                    if (pageVal.weight < oldOutputCount && _addOutputRow != null)
+                    {
+                        for (int w = oldOutputCount - 1; w >= pageVal.weight; w--)
+                        {
+                            var oldValue = pageVal.valueContainer._functionStates[0].GetListElementValue(k, w);
+                            _addOutputRow.AddOutputRow(columnRowReference, oldValue, -1);
+                        }
+                        _windowStateReference.Updated = true;
+                    }
+                    if (_windowStateReference.Updated)
+                    {
+                        // Save page if it was updated
+                        await page.SavePage(false);
+                    }
                 }
             }
         }

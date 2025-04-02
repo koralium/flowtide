@@ -206,5 +206,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             enumerator.Reset(default, 0);
             leafNode = null;
         }
+
+        public void CloneSeekResultTo(IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> other)
+        {
+            if (other is BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer> otherIterator)
+            {
+                otherIterator.leafNode = this.leafNode;
+                otherIterator.index = this.index;
+                otherIterator.enumerator.Reset(this.leafNode, this.index);
+                return;
+            }
+            throw new NotImplementedException();
+        }
     }
 }
