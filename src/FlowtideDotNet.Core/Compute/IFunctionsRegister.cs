@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -133,5 +134,7 @@ namespace FlowtideDotNet.Core.Compute
         bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
 
         bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
+
+        internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
     }
 }

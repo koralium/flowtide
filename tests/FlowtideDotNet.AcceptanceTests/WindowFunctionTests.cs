@@ -12,6 +12,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,23 +26,210 @@ namespace FlowtideDotNet.AcceptanceTests
         {
         }
 
+        public record SumResult(string? companyId, int userkey, long value);
+
         [Fact]
-        public async Task SumTest()
+        public async Task SumTestBoundedStartToCurrentRow()
         {
             GenerateData();
 
             await StartStream(@"
             INSERT INTO output
             SELECT 
-                SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey) as value,
                 CompanyId,
-                UserKey
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value
             FROM users
             ");
 
             await WaitForUpdate();
 
             var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
+                        
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestUnbounded()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = (long)g.Sum(x => x.DoubleValue);
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestNoPartitionWithOrdering()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (ORDER BY UserKey) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => "1")
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestBoundedStartToBoundedEnd()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND 2 FOLLOWING) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0, z = 0; i < orderedByKey.Count; i++)
+                    {   
+                        for (; z < (i+ 3); z++)
+                        {
+                            if (z < orderedByKey.Count)
+                            {
+                                values.Enqueue(orderedByKey[z].DoubleValue);
+                                sum += orderedByKey[z].DoubleValue;
+                            }
+                            else
+                            {
+                                values.Enqueue(0);
+                            }
+                            
+                        }
+                        while (values.Count > 7)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
         }
     }
 }

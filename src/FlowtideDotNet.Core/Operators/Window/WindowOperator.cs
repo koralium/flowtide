@@ -28,6 +28,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
@@ -52,19 +53,21 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// </summary>
         private EventBatchData? _partitionBatch;
 
-        private WindowSumCalculator _windowSum;
+        //private WindowSumCalculator _windowSum;
+        private readonly IWindowFunction _windowFunction;
         private WindowOutputBuilder? _outputBuilder;
         private List<int> _emitList;
 
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            _windowSum = new WindowSumCalculator();
+            //_windowSum = new WindowSumCalculator();
             _relation = relation;
             if (_relation.WindowFunctions.Count > 1)
             {
                 throw new NotSupportedException("Only one window function is supported at this time per window operator");
             }
-            
+
+            var windowFunction = _relation.WindowFunctions[0];
             // Create the comparer for the ordering
             if (relation.OrderBy.Count > 0)
             {
@@ -84,6 +87,11 @@ namespace FlowtideDotNet.Core.Operators.Window
                     _emitList.Add(i);
                 }
                 _emitList.Add(_emitList.Count);
+            }
+
+            if (!functionsRegister.TryGetWindowFunction(windowFunction, out _windowFunction!))
+            {
+                throw new InvalidOperationException($"The function {windowFunction.ExtensionUri}:{windowFunction.ExtensionName} is not defined.");
             }
         }
 
@@ -148,7 +156,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 foreach(var partitionKv in partitionPage)
                 {
-                    await foreach(var batch in _windowSum.ComputeRowSlidingWindow(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns), -2 , 0))
+                    await foreach(var batch in _windowFunction.ComputePartition(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns)))
                     {
                         yield return new StreamEventBatch(batch);
                     }
@@ -274,7 +282,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             _outputBuilder = new WindowOutputBuilder(_relation.Input.OutputLength, _emitList, MemoryAllocator);
 
-            await _windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, _outputBuilder);
+            await _windowFunction.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, _outputBuilder);
         }
     }
 }

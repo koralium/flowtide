@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Relations;
-using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 {
@@ -792,9 +791,22 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     usageVisitor.Visit(arg, default);
                 }
             }
+
             var input = consistentPartitionWindowRelation.Input;
 
             var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+            if (consistentPartitionWindowRelation.EmitSet)
+            {
+                foreach (var field in consistentPartitionWindowRelation.Emit!)
+                {
+                    if (field < input.OutputLength)
+                    {
+                        usedFields.Add(field);
+                    }
+                }
+            }
+            usedFields = usedFields.Distinct().ToList();
 
             var inputEmitResult = CreateInputEmitList(input, usedFields);
 
