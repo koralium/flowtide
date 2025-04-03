@@ -28,13 +28,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
     {
         Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
-            int partitionColumnCount,
+            List<int> partitionColumns,
             IMemoryAllocator memoryAllocator,
             IStateManagerClient stateManagerClient,
             IWindowAddOutputRow addOutputRow);
 
         IAsyncEnumerable<EventBatchWeighted> ComputePartition(
-            ColumnRowReference partitionValues,
-            WindowPartitionStartSearchComparer partitionStartSearchComparer);
+            ColumnRowReference partitionValues);
     }
 }

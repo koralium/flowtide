@@ -26,24 +26,41 @@ namespace FlowtideDotNet.Core.Operators.Window
     internal class PartitionIterator : IAsyncEnumerable<KeyValuePair<ColumnRowReference, WindowStateReference>>
     {
         private ColumnRowReference partitionRow;
-        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? iterator;
+        private readonly IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator;
         private WindowPartitionStartSearchComparer? searchComparer;
         private readonly WindowStateReference _windowStateReference;
         private readonly IWindowAddOutputRow? _addOutputRow;
 
-        public PartitionIterator(IWindowAddOutputRow? addOutputRow = default)
+        public PartitionIterator(IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator, List<int> partitionColumns, IWindowAddOutputRow? addOutputRow = default)
         {
+            this.iterator = iterator;
             _addOutputRow = addOutputRow;
             _windowStateReference = new WindowStateReference(addOutputRow);
+            searchComparer = new WindowPartitionStartSearchComparer(partitionColumns);
         }
 
-        public void Reset(ColumnRowReference partitionValue,
-            IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator,
-            WindowPartitionStartSearchComparer searchComparer)
+        /// <summary>
+        /// Reset with new partition values
+        /// </summary>
+        /// <param name="partitionValue"></param>
+        /// <returns></returns>
+        public ValueTask Reset(ColumnRowReference partitionValue)
         {
             this.partitionRow = partitionValue;
-            this.iterator = iterator;
-            this.searchComparer = searchComparer;
+            return iterator.Seek(partitionRow, searchComparer);
+        }
+
+        /// <summary>
+        /// Reset with new partition values copied from another partition iterator
+        /// </summary>
+        /// <param name="other"></param>
+        public void ResetCopyFrom(PartitionIterator other)
+        {
+            this.partitionRow = other.partitionRow;
+            this.searchComparer!.start = other.searchComparer!.start;
+            this.searchComparer.end = other.searchComparer.end;
+            this.searchComparer.noMatch = other.searchComparer.noMatch;
+            other.iterator.CloneSeekResultTo(iterator);
         }
 
         public IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>> GetAsyncEnumerator(CancellationToken cancellationToken = default)

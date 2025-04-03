@@ -221,6 +221,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (other is BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> otherIterator)
             {
                 otherIterator.leafNode = leafNode;
+                if (otherIterator.leafNode == null || !otherIterator.leafNode.TryRent())
+                {
+                    throw new InvalidOperationException("Cannot rent leaf node");
+                }
                 otherIterator.index = index;
                 otherIterator.enumerator.Reset(leafNode, index);
             }

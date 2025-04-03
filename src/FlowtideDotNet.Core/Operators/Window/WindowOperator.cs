@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 foreach(var partitionKv in partitionPage)
                 {
-                    await foreach(var batch in _windowFunction.ComputePartition(partitionKv.Key, new WindowPartitionStartSearchComparer(_partitionColumns)))
+                    await foreach(var batch in _windowFunction.ComputePartition(partitionKv.Key))
                     {
                         yield return new StreamEventBatch(batch);
                     }
@@ -287,7 +287,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             _outputBuilder = new WindowOutputBuilder(_relation.Input.OutputLength, _emitList, MemoryAllocator);
 
-            await _windowFunction.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, _outputBuilder);
+            await _windowFunction.Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient, _outputBuilder);
         }
     }
 }

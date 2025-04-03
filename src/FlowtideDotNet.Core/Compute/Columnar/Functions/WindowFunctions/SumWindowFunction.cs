@@ -182,23 +182,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             this._to = to;
         }
 
-        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues, WindowPartitionStartSearchComparer partitionStartSearchComparer)
+        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
         {
-            Debug.Assert(_windowIterator != null);
-            Debug.Assert(_updateIterator != null);
             Debug.Assert(_queue != null);
             Debug.Assert(_addOutputRow != null);
             Debug.Assert(_windowPartitionIterator != null);
             Debug.Assert(_updatePartitionIterator != null);
 
             await _queue.Clear();
-            await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
-            await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
-            // Copy the seek result to the other iterator
-            //_windowIterator.CloneSeekResultTo(_updateIterator);
 
-            _windowPartitionIterator.Reset(partitionValues, _windowIterator, partitionStartSearchComparer);
-            _updatePartitionIterator.Reset(partitionValues, _updateIterator, partitionStartSearchComparer);
+            await _windowPartitionIterator.Reset(partitionValues);
+            _updatePartitionIterator.ResetCopyFrom(_windowPartitionIterator);
 
             var windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
             var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
@@ -241,14 +235,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             }
         }
 
-        public async Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, int partitionColumnCount, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
+        public async Task Initialize(
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
+            List<int> partitionColumns, 
+            IMemoryAllocator memoryAllocator, 
+            IStateManagerClient stateManagerClient, 
+            IWindowAddOutputRow addOutputRow)
         {
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
 
-            _updatePartitionIterator = new PartitionIterator(addOutputRow);
-            _windowPartitionIterator = new PartitionIterator();
+            _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
+            _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IDataValue, DataValueValueContainer>()
             {
@@ -274,21 +273,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             this._to = to;
         }
 
-        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues, WindowPartitionStartSearchComparer partitionStartSearchComparer)
+        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
         {
-            Debug.Assert(_windowIterator != null);
-            Debug.Assert(_updateIterator != null);
             Debug.Assert(_addOutputRow != null);
             Debug.Assert(_windowPartitionIterator != null);
             Debug.Assert(_updatePartitionIterator != null);
-
-            await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
-            await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
-            // Copy the seek result to the other iterator
-            //_windowIterator.CloneSeekResultTo(_updateIterator);
-
-            _windowPartitionIterator.Reset(partitionValues, _windowIterator, partitionStartSearchComparer);
-            _updatePartitionIterator.Reset(partitionValues, _updateIterator, partitionStartSearchComparer);
+            
+            await _windowPartitionIterator.Reset(partitionValues);
+            _updatePartitionIterator.ResetCopyFrom(_windowPartitionIterator);
 
             var windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
             var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
@@ -324,14 +316,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             }
         }
 
-        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, int partitionColumnCount, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
+        public Task Initialize(
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, 
+            List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
         {
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
 
-            _updatePartitionIterator = new PartitionIterator(addOutputRow);
-            _windowPartitionIterator = new PartitionIterator();
+            _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
+            _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
         }
@@ -351,21 +345,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             this._fetchValueFunction = fetchValueFunction;
         }
 
-        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues, WindowPartitionStartSearchComparer partitionStartSearchComparer)
+        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
         {
-            Debug.Assert(_windowIterator != null);
-            Debug.Assert(_updateIterator != null);
             Debug.Assert(_addOutputRow != null);
             Debug.Assert(_windowPartitionIterator != null);
             Debug.Assert(_updatePartitionIterator != null);
 
-            await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
-            await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
-            // Copy the seek result to the other iterator
-            //_windowIterator.CloneSeekResultTo(_updateIterator);
-
-            _windowPartitionIterator.Reset(partitionValues, _windowIterator, partitionStartSearchComparer);
-            _updatePartitionIterator.Reset(partitionValues, _updateIterator, partitionStartSearchComparer);
+            await _windowPartitionIterator.Reset(partitionValues);
+            _updatePartitionIterator.ResetCopyFrom(_windowPartitionIterator);
 
             var windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
             var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
@@ -395,14 +382,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             }
         }
 
-        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, int partitionColumnCount, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
+        public Task Initialize(
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, 
+            List<int> partitionColumns, 
+            IMemoryAllocator memoryAllocator, 
+            IStateManagerClient stateManagerClient, 
+            IWindowAddOutputRow addOutputRow)
         {
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
 
-            _updatePartitionIterator = new PartitionIterator(addOutputRow);
-            _windowPartitionIterator = new PartitionIterator();
+            _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
+            _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
         }
