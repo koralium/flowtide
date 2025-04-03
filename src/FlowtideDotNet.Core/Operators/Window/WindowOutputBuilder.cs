@@ -28,23 +28,25 @@ namespace FlowtideDotNet.Core.Operators.Window
         IColumn[] columns;
         PrimitiveList<int> weights;
         PrimitiveList<uint> iterations;
-        private readonly int columnCount;
+        private readonly int _inputColumnCount;
+        private readonly List<int> emitList;
         private readonly IMemoryAllocator memoryAllocator;
 
         public int Count => weights.Count;
 
-        public WindowOutputBuilder(int columnCount, IMemoryAllocator memoryAllocator)
+        public WindowOutputBuilder(int inputColumnCount, List<int> emitList, IMemoryAllocator memoryAllocator)
         {
-            columns = new IColumn[columnCount];
+            columns = new IColumn[emitList.Count];
 
-            for (int i = 0; i < columnCount; i++)
+            for (int i = 0; i < emitList.Count; i++)
             {
                 columns[i] = ColumnFactory.Get(memoryAllocator);
             }
 
             weights = new PrimitiveList<int>(memoryAllocator);
             iterations = new PrimitiveList<uint>(memoryAllocator);
-            this.columnCount = columnCount;
+            _inputColumnCount = inputColumnCount;
+            this.emitList = emitList;
             this.memoryAllocator = memoryAllocator;
         }
 
@@ -52,8 +54,8 @@ namespace FlowtideDotNet.Core.Operators.Window
         {
             var batch = new EventBatchWeighted(weights, iterations, new EventBatchData(columns));
 
-            columns = new IColumn[columnCount];
-            for (int i = 0; i < columnCount; i++)
+            columns = new IColumn[emitList.Count];
+            for (int i = 0; i < emitList.Count; i++)
             {
                 columns[i] = ColumnFactory.Get(memoryAllocator);
             }
@@ -65,11 +67,26 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public void AddOutputRow<T>(ColumnRowReference columnRowReference, T value, int weight) where T : IDataValue
         {
-            for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
+            for(int i = 0; i < emitList.Count; i++)
             {
-                columns[i].Add(columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default));
+                var emitIndex = emitList[i];
+                if (emitIndex >= _inputColumnCount)
+                {
+                    columns[i].Add(value);
+                }
+                else
+                {
+                    var columnValue = columnRowReference.referenceBatch.Columns[emitList[i]].GetValueAt(columnRowReference.RowIndex, default);
+                    columns[i].Add(columnValue);
+                }
+                
+                //columns[i] = 
             }
-            columns[columns.Length - 1].Add(value);
+            //for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
+            //{
+            //    columns[i].Add(columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default));
+            //}
+            //columns[columns.Length - 1].Add(value);
             weights.Add(weight);
             iterations.Add(0);
         }
@@ -90,7 +107,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
                 for (int i = 0; i < stateLength; i++)
                 {
-                    columns[columnCount - 1].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(columnRowReference.RowIndex, i));
+                    columns[emitList.Count - 1].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(columnRowReference.RowIndex, i));
                     weights.Add(-1);
                     iterations.Add(0);
                 }

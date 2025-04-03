@@ -584,12 +584,48 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             // Go through the found functions
 
+            var windowEmitData = parent.EmitData.Clone();
+
             foreach(var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
             {
-                
+                if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
+                {
+                    throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
+                }
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                var aggregateResponse = mapper(windowFunction, exprVisitor, parent.EmitData);
+                windowRel.WindowFunctions.Add(aggregateResponse.WindowFunction);
+
+                windowEmitData.Add(windowFunction, windowEmitData.Count, "$window", aggregateResponse.Type);
+                if (windowFunction.Over is WindowType.WindowSpecType windowSpec)
+                {
+                    if (windowSpec.Spec.PartitionBy != null)
+                    {
+                        foreach (var partition in windowSpec.Spec.PartitionBy)
+                        {
+                            var visitResult = exprVisitor.Visit(partition, parent.EmitData);
+                            windowRel.PartitionBy.Add(visitResult.Expr);
+                        }
+                    }
+                    if (windowSpec.Spec.OrderBy != null)
+                    {
+                        foreach(var orderBy in windowSpec.Spec.OrderBy)
+                        {
+                            var expr = exprVisitor.Visit(orderBy.Expression, parent.EmitData);
+                            var sortDirection = GetSortDirection(orderBy);
+
+                            windowRel.OrderBy.Add(new Expressions.SortField()
+                            {
+                                Expression = expr.Expr,
+                                SortDirection = sortDirection
+                            });
+                        }
+                    }
+                }
             }
 
-            return new RelationData(windowRel, parent.EmitData);
+            return new RelationData(windowRel, windowEmitData);
         }
 
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)

@@ -17,6 +17,7 @@ namespace FlowtideDotNet.Substrait.Sql
 {
     public record ScalarResponse(Expression Expression, SubstraitBaseType Type);
     public record AggregateResponse(AggregateFunction AggregateFunction, SubstraitBaseType Type);
+    public record WindowResponse(WindowFunction WindowFunction, SubstraitBaseType Type);
 
     public interface ISqlFunctionRegister
     {

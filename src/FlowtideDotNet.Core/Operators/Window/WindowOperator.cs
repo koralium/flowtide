@@ -54,6 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         private WindowSumCalculator _windowSum;
         private WindowOutputBuilder? _outputBuilder;
+        private List<int> _emitList;
 
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -70,6 +71,20 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _sortComparer = SortFieldCompareCompiler.CreateComparer(relation.OrderBy, functionsRegister);
             }
             CreatePartitionColumnExpressions(functionsRegister);
+
+            if (relation.EmitSet)
+            {
+                _emitList = relation.Emit.ToList();
+            }
+            else
+            {
+                _emitList = new List<int>();
+                for (int i = 0; i < relation.Input.OutputLength; i++)
+                {
+                    _emitList.Add(i);
+                }
+                _emitList.Add(_emitList.Count);
+            }
         }
 
         [MemberNotNull(nameof(_partitionColumns), nameof(_partitionCalculateExpressions), nameof(_otherColumns))]
@@ -257,7 +272,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
             _partitionBatch = new EventBatchData(_partitionBatchColumns);
 
-            _outputBuilder = new WindowOutputBuilder(_relation.OutputLength, MemoryAllocator);
+            _outputBuilder = new WindowOutputBuilder(_relation.Input.OutputLength, _emitList, MemoryAllocator);
 
             await _windowSum.Initialize(_persistentTree, _relation.PartitionBy.Count, MemoryAllocator, stateManagerClient, _outputBuilder);
         }

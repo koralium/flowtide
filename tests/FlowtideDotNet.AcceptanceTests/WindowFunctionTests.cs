@@ -32,11 +32,16 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await StartStream(@"
             INSERT INTO output
-            SELECT SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey) as value
+            SELECT 
+                SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey) as value,
+                CompanyId,
+                UserKey
             FROM users
             ");
 
             await WaitForUpdate();
+
+            var actual = GetActualRows();
         }
     }
 }

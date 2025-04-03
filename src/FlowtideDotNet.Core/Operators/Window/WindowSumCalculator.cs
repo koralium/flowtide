@@ -122,8 +122,9 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             await _queue.Clear();
             await _windowIterator.Seek(partitionValues, partitionStartSearchComparer);
+            await _updateIterator.Seek(partitionValues, partitionStartSearchComparer);
             // Copy the seek result to the other iterator
-            _windowIterator.CloneSeekResultTo(_updateIterator);
+            //_windowIterator.CloneSeekResultTo(_updateIterator);
 
             _windowPartitionIterator.Reset(partitionValues, _windowIterator, partitionStartSearchComparer);
             _updatePartitionIterator.Reset(partitionValues, _updateIterator, partitionStartSearchComparer);

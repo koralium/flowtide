@@ -17,6 +17,7 @@ using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System.Diagnostics;
+using static SqlParser.Ast.WindowType;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -759,6 +760,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
+
+            // WindowFunction
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
+            //sqlFunctionRegister.RegisterWindowFunction("sum", (func, visitor, emitData) =>
+            //{
+            //    var argList = GetFunctionArguments(func.Args);
+            //    if (argList.Args == null || argList.Args.Count != 1)
+            //    {
+            //        throw new InvalidOperationException($"sum must have exactly one argument, and not be '*'");
+            //    }
+            //    if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+            //    {
+            //        throw new InvalidOperationException($"sum must have exactly one argument, and not be '*'");
+            //    }
+            //    if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+            //    {
+            //        var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+
+            //        // For now, anytype is returned
+            //        return new WindowResponse(
+            //            new WindowFunction()
+            //            {
+            //                ExtensionUri = FunctionsArithmetic.Uri,
+            //                ExtensionName = FunctionsArithmetic.Sum,
+            //                Arguments = new List<Expressions.Expression>() { argExpr }
+            //            },
+            //            new AnyType()
+            //            );
+            //    }
+            //    throw new InvalidOperationException($"sum must have exactly one argument, and not be '*'");
+            //});
         }
 
         private static void RegisterSingleVariableFunction(
@@ -1029,6 +1061,133 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return new ExpressionData(coalesceFunction, "$concat", returnType);
+        }
+
+        private static WindowBound? ParseWindowBound(WindowFrameBound? windowFrame)
+        {
+            if (windowFrame == null)
+            {
+                return null;
+            }
+            if (windowFrame is WindowFrameBound.Following startFollowingBound)
+            {
+                if (startFollowingBound.Expression is SqlParser.Ast.Expression.LiteralValue literalVal &&
+                    literalVal.Value is Value.Number startNumberString &&
+                    long.TryParse(startNumberString.Value, out var startNumber))
+                {
+                    return new FollowingRowWindowBound()
+                    {
+                        Offset = startNumber
+                    };
+                }
+                else if (startFollowingBound.Expression == null)
+                {
+                    return new UnboundedWindowBound();
+                }
+                else
+                {
+                    throw new SubstraitParseException("Window function with ROWS frame must have a literal integer value for the following bound");
+                }
+            }
+            if (windowFrame is WindowFrameBound.Preceding startPreceedingBound)
+            {
+                if (startPreceedingBound.Expression is SqlParser.Ast.Expression.LiteralValue literalVal &&
+                    literalVal.Value is Value.Number startNumberString &&
+                    long.TryParse(startNumberString.Value, out var startNumber))
+                {
+                    return new PreceedingRowWindowBound()
+                    {
+                        Offset = startNumber
+                    };
+                }
+                else if (startPreceedingBound.Expression == null)
+                {
+                    return new UnboundedWindowBound();
+                }
+                else
+                {
+                    throw new SubstraitParseException("Window function with ROWS frame must have a literal integer value for the preceeding bound");
+                }
+            }
+            if (windowFrame is WindowFrameBound.CurrentRow startCurrentRow)
+            {
+                return new CurrentRowWindowBound();
+            }
+            throw new NotImplementedException("Window function with ROWS have an unknown frame");
+        }
+
+        private static void RegisterSingleVariableWindowFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName,
+            SubstraitBaseType returnType,
+            bool supportRowBounds,
+            bool requireOrderBy)
+        {
+            sqlFunctionRegister.RegisterWindowFunction(functionName, (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 1)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+
+                    WindowBound? lowerBound = default;
+                    WindowBound? upperBound = default;
+                    if (f.Over is WindowSpecType windowSpecType)
+                    {
+                        if (windowSpecType.Spec.OrderBy == null)
+                        {
+                            if (requireOrderBy)
+                            {
+                                throw new SubstraitParseException($"'{functionName}' function must have an order by clause");
+                            }
+                            // If order by is not set use the entire bounds
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new UnboundedWindowBound();
+                        }
+                        if (windowSpecType.Spec.WindowFrame != null)
+                        {
+                            if (windowSpecType.Spec.WindowFrame.Units == WindowFrameUnit.Rows)
+                            {
+                                if (!supportRowBounds)
+                                {
+                                    throw new SubstraitParseException($"'{functionName}' function does not support ROWS frame");
+                                }
+                                lowerBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.StartBound);
+                                upperBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.EndBound);
+                            }
+                        }
+                        // If no window frame, and order by is set, the default is unbounded lower and to current row
+                        else if (windowSpecType.Spec.OrderBy != null && supportRowBounds)
+                        {
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new CurrentRowWindowBound();
+                        }
+                    }
+
+                    return new WindowResponse(
+                        new WindowFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr },
+                            LowerBound = lowerBound,
+                            UpperBound = upperBound
+                        },
+                        returnType
+                        );
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
         }
     }
 }
