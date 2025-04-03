@@ -89,7 +89,11 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _emitList.Add(_emitList.Count);
             }
 
-            if (!functionsRegister.TryGetWindowFunction(windowFunction, out _windowFunction!))
+            if (functionsRegister.TryGetWindowFunction(windowFunction, out var windowFunc))
+            {
+                _windowFunction = windowFunc;
+            }
+            else
             {
                 throw new InvalidOperationException($"The function {windowFunction.ExtensionUri}:{windowFunction.ExtensionName} is not defined.");
             }
@@ -126,7 +130,6 @@ namespace FlowtideDotNet.Core.Operators.Window
                     _otherColumns.Add(i);
                 }
             }
-
         }
 
         public override string DisplayName => "WindowOperator";
@@ -141,15 +144,15 @@ namespace FlowtideDotNet.Core.Operators.Window
             return Task.CompletedTask;
         }
 
-        public override Task OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
-            return Task.CompletedTask;
+            Debug.Assert(_persistentTree != null);
+            await _persistentTree.Commit();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
-
-            var temporaryTreeIterator = _temporaryTree!.CreateIterator();
+            using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
 
             await foreach(var partitionPage in temporaryTreeIterator)
@@ -162,6 +165,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     }
                 }
             }
+            await _temporaryTree.Clear();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -170,6 +174,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_temporaryTree != null);
             Debug.Assert(_partitionBatchColumns != null);
             Debug.Assert(_outputBuilder != null);
+            Debug.Assert(_partitionBatch != null);
 
             // Need to calculate any partition expressions into values if they are not already
             Column[] extraPartitionColumns = new Column[_partitionCalculateExpressions.Count];
