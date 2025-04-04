@@ -26,9 +26,8 @@ using FlowtideDotNet.Core.ColumnStore;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
-using FlowtideDotNet.Core.ColumnStore.DataValues;
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
+using FlowtideDotNet.Base.Metrics;
 
 namespace FlowtideDotNet.Core.Operators.Window
 {
@@ -58,9 +57,11 @@ namespace FlowtideDotNet.Core.Operators.Window
         private WindowOutputBuilder? _outputBuilder;
         private List<int> _emitList;
 
+        private ICounter<long>? _eventsOutCounter;
+        private ICounter<long>? _eventsInCounter;
+
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
-            //_windowSum = new WindowSumCalculator();
             _relation = relation;
             if (_relation.WindowFunctions.Count > 1)
             {
@@ -152,6 +153,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
+            Debug.Assert(_eventsOutCounter != null);
             using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
 
@@ -161,6 +163,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     await foreach(var batch in _windowFunction.ComputePartition(partitionKv.Key))
                     {
+                        _eventsOutCounter.Add(batch.Weights.Count);
                         yield return new StreamEventBatch(batch);
                     }
                 }
@@ -175,6 +178,9 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_partitionBatchColumns != null);
             Debug.Assert(_outputBuilder != null);
             Debug.Assert(_partitionBatch != null);
+            Debug.Assert(_eventsInCounter != null);
+
+            _eventsInCounter.Add(msg.Data.Weights.Count);
 
             // Need to calculate any partition expressions into values if they are not already
             Column[] extraPartitionColumns = new Column[_partitionCalculateExpressions.Count];
@@ -262,6 +268,15 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
+            if (_eventsOutCounter == null)
+            {
+                _eventsOutCounter = Metrics.CreateCounter<long>("events");
+            }
+            if (_eventsInCounter == null)
+            {
+                _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
+            }
+
             _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
                 {
