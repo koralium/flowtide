@@ -25,14 +25,14 @@ namespace FlowtideDotNet.Core.Operators.Window
     internal class WindowInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private readonly IColumnComparer<ColumnRowReference>? orderComparer;
-        private readonly List<int> partitionColumns;
-        private readonly List<int> otherColumns;
+        private readonly IReadOnlyList<int> partitionColumns;
+        private readonly IReadOnlyList<int> otherColumns;
         private readonly DataValueContainer dataValueContainer = new DataValueContainer();
 
         public WindowInsertComparer(
             IColumnComparer<ColumnRowReference>? orderComparer, 
-            List<int> partitionColumns,
-            List<int> otherColumns)
+            IReadOnlyList<int> partitionColumns,
+            IReadOnlyList<int> otherColumns)
         {
             this.orderComparer = orderComparer;
             this.partitionColumns = partitionColumns;
