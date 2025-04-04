@@ -156,5 +156,11 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             return virtualTableReadRelation;
         }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
+        {
+            consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+            return consistentPartitionWindowRelation;
+        }
     }
 }

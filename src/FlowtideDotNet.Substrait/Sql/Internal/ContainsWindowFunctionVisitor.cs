@@ -11,36 +11,36 @@
 // limitations under the License.
 
 using SqlParser.Ast;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
-    /// <summary>
-    /// Goes through expressions and sees if they contain an aggregate function
-    /// It will collect those distinct aggregates.
-    /// This is used to move those functions to an earlier stage in the query plan
-    /// </summary>
-    internal class ContainsAggregateVisitor : BaseExpressionVisitor<bool, object?>
+    internal class ContainsWindowFunctionVisitor : BaseExpressionVisitor<bool, object?>
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
-        private HashSet<Expression.Function> _aggregateFunctions;
+        private HashSet<Expression.Function> _windowFunctions;
 
-        public ContainsAggregateVisitor(SqlFunctionRegister sqlFunctionRegister)
+        public ContainsWindowFunctionVisitor(SqlFunctionRegister sqlFunctionRegister)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
-            _aggregateFunctions = new HashSet<Expression.Function>();
+            _windowFunctions = new HashSet<Expression.Function>();
         }
 
-        public IReadOnlySet<Expression.Function> AggregateFunctions => _aggregateFunctions;
+        public IReadOnlySet<Expression.Function> WindowFunctions => _windowFunctions;
 
         public bool VisitSelectItem(SelectItem selectItem)
         {
             if (selectItem is SelectItem.ExpressionWithAlias expressionWithAlias)
             {
-                return this.Visit(expressionWithAlias.Expression, default);
+                return Visit(expressionWithAlias.Expression, default);
             }
             if (selectItem is SelectItem.UnnamedExpression unnamedExpression)
             {
-                return this.Visit(unnamedExpression.Expression, default);
+                return Visit(unnamedExpression.Expression, default);
             }
             return false;
         }
@@ -71,13 +71,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override bool VisitFunction(Expression.Function function, object? state)
         {
-            var funcType = sqlFunctionRegister.GetFunctionType(function.Name);
             bool containsAggregate = false;
-            if (funcType == FunctionType.Aggregate && function.Over == null)
+            if (function.Over != null)
             {
-                _aggregateFunctions.Add(function);
+                _windowFunctions.Add(function);
                 containsAggregate = true;
             }
+            
             var argList = BuiltInSqlFunctions.GetFunctionArguments(function.Args);
             if (argList.Args != null)
             {

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -19,7 +20,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         NotExist = 0,
         Scalar = 1,
         Aggregate = 2,
-        Table = 3
+        Table = 3,
+        Window = 4
     }
 
     internal class SqlFunctionRegister : ISqlFunctionRegister
@@ -27,12 +29,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse>> _scalarFunctions;
         private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse>> _aggregateFunctions;
         private readonly Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>> _tableFunctions;
+        private readonly Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, WindowResponse>> _windowFunctions;
 
         public SqlFunctionRegister()
         {
             _scalarFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse>>(StringComparer.OrdinalIgnoreCase);
             _aggregateFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse>>(StringComparer.OrdinalIgnoreCase);
             _tableFunctions = new Dictionary<string, Func<SqlTableFunctionArgument, TableFunction>>(StringComparer.OrdinalIgnoreCase);
+            _windowFunctions = new Dictionary<string, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, WindowResponse>>(StringComparer.OrdinalIgnoreCase);
         }
 
         public void RegisterScalarFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, ScalarResponse> mapFunc)
@@ -48,6 +52,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, AggregateResponse> GetAggregateMapper(string name)
         {
             return _aggregateFunctions[name];
+        }
+
+        public bool TryGetWindowMapper(string name, [NotNullWhen(true)] out Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, WindowResponse>? func)
+        {
+            return _windowFunctions.TryGetValue(name, out func);
         }
 
         public Func<SqlTableFunctionArgument, TableFunction> GetTableMapper(string name)
@@ -73,6 +82,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return FunctionType.Table;
             }
+            if (_windowFunctions.ContainsKey(name))
+            {
+                return FunctionType.Window;
+            }
             return FunctionType.NotExist;
         }
 
@@ -84,6 +97,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public void RegisterTableFunction(string name, Func<SqlTableFunctionArgument, TableFunction> mapFunc)
         {
             _tableFunctions.Add(name, mapFunc);
+        }
+
+        public void RegisterWindowFunction(string name, Func<SqlParser.Ast.Expression.Function, SqlExpressionVisitor, EmitData, WindowResponse> mapFunc)
+        {
+            _windowFunctions.Add(name, mapFunc);
         }
     }
 }

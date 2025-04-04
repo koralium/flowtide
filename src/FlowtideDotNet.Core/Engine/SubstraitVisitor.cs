@@ -34,6 +34,7 @@ using FlowtideDotNet.Core.Operators.TableFunction;
 using FlowtideDotNet.Core.Operators.TimestampProvider;
 using FlowtideDotNet.Core.Operators.TopN;
 using FlowtideDotNet.Core.Operators.VirtualTable;
+using FlowtideDotNet.Core.Operators.Window;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
@@ -671,7 +672,19 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
                 return op;
             }
+        }
 
+        public override IStreamVertex VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+            var op = new WindowOperator(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions);
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+            consistentPartitionWindowRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+            return op;
         }
     }
 }

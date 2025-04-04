@@ -167,5 +167,11 @@ namespace FlowtideDotNet.Substrait.Modifier
         {
             return standardOutputExchangeReferenceRelation;
         }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object? state)
+        {
+            consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+            return consistentPartitionWindowRelation;
+        }
     }
 }

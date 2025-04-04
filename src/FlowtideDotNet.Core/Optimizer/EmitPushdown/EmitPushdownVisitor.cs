@@ -758,5 +758,106 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
             return base.VisitBufferRelation(bufferRelation, state);
         }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
+        {
+            if (consistentPartitionWindowRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+            if (consistentPartitionWindowRelation.Input is IterationReferenceReadRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+            if (consistentPartitionWindowRelation.Input is IterationRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+
+            var usageVisitor = new ExpressionFieldUsageVisitor(consistentPartitionWindowRelation.Input.OutputLength);
+
+            foreach(var sortField in consistentPartitionWindowRelation.OrderBy)
+            {
+                usageVisitor.Visit(sortField.Expression, default);
+            }
+            
+            foreach(var partition in consistentPartitionWindowRelation.PartitionBy)
+            {
+                usageVisitor.Visit(partition, default);
+            }
+            
+            foreach(var func in consistentPartitionWindowRelation.WindowFunctions)
+            {
+                foreach(var arg in func.Arguments)
+                {
+                    usageVisitor.Visit(arg, default);
+                }
+            }
+
+            var input = consistentPartitionWindowRelation.Input;
+
+            var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+            if (consistentPartitionWindowRelation.EmitSet)
+            {
+                foreach (var field in consistentPartitionWindowRelation.Emit!)
+                {
+                    if (field < input.OutputLength)
+                    {
+                        usedFields.Add(field);
+                    }
+                }
+            }
+            usedFields = usedFields.Distinct().ToList();
+
+            var inputEmitResult = CreateInputEmitList(input, usedFields);
+
+            var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+
+            foreach (var sortField in consistentPartitionWindowRelation.OrderBy)
+            {
+                replaceVisitor.Visit(sortField.Expression, default);
+            }
+
+            foreach (var partition in consistentPartitionWindowRelation.PartitionBy)
+            {
+                replaceVisitor.Visit(partition, default);
+            }
+
+            foreach (var func in consistentPartitionWindowRelation.WindowFunctions)
+            {
+                foreach (var arg in func.Arguments)
+                {
+                    replaceVisitor.Visit(arg, default);
+                }
+            }
+
+            if (consistentPartitionWindowRelation.EmitSet)
+            {
+                var diff = input.OutputLength - inputEmitResult.Emit.Count;
+                for (int i = 0; i < consistentPartitionWindowRelation.Emit.Count; i++)
+                {
+                    if (consistentPartitionWindowRelation.Emit[i] >= input.OutputLength)
+                    {
+                        consistentPartitionWindowRelation.Emit[i] = consistentPartitionWindowRelation.Emit[i] - diff;
+                    }
+                    else
+                    {
+                        if (inputEmitResult.OldToNew.TryGetValue(consistentPartitionWindowRelation.Emit[i], out var newMapping))
+                        {
+                            consistentPartitionWindowRelation.Emit[i] = newMapping;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Could not find new mapping during optmization.");
+                        }
+                    }
+                }
+            }
+
+            input.Emit = inputEmitResult.Emit;
+
+            return base.VisitConsistentPartitionWindowRelation(consistentPartitionWindowRelation, state);
+        }
     }
 }

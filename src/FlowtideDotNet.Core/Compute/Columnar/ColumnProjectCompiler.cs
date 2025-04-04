@@ -52,5 +52,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var lambda = System.Linq.Expressions.Expression.Lambda<Action<EventBatchData, int, Column>>(addToColumnExpr, batchParam, indexParam, columnParameter);
             return lambda.Compile();
         }
+
+        public static Func<EventBatchData, int, IDataValue> CompileToValue(Substrait.Expressions.Expression expression, IFunctionsRegister functionsRegister)
+        {
+            var visitor = new ColumnarExpressionVisitor(functionsRegister);
+            var batchParam = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
+            var indexParam = System.Linq.Expressions.Expression.Parameter(typeof(int));
+
+            var resultInfo = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
+
+            var paramInfo = new ColumnParameterInfo(new List<ParameterExpression>() { batchParam }, new List<ParameterExpression>() { indexParam }, new List<int>() { 0 }, resultInfo);
+
+            var resultExpr = visitor.Visit(expression, paramInfo);
+
+            if (resultExpr == null)
+            {
+                throw new FlowtideException("Expression visitor did not return a result expression");
+            }
+
+            var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, IDataValue>>(resultExpr, batchParam, indexParam);
+            return lambda.Compile();
+        }
     }
 }
