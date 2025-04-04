@@ -780,10 +780,12 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 usageVisitor.Visit(sortField.Expression, default);
             }
+            
             foreach(var partition in consistentPartitionWindowRelation.PartitionBy)
             {
                 usageVisitor.Visit(partition, default);
             }
+            
             foreach(var func in consistentPartitionWindowRelation.WindowFunctions)
             {
                 foreach(var arg in func.Arguments)
