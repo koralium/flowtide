@@ -42,16 +42,15 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// </summary>
         public int? FullLoadMaxRowCount { get; set; } = 1_000_000;
 
-
         /// <summary>
         /// Interval for full reload of the data when watch/change stream is not supported.
         /// </summary>
         public TimeSpan? FullReloadInterval { get; set; } = TimeSpan.FromSeconds(30);
 
         /// <summary>
-        /// Interval for change tracking.
+        /// Interval for change tracking. Default to 1 second.
         /// </summary>
-        public TimeSpan? ChangeTrackingInterval { get; set; }
+        public TimeSpan? ChangeTrackingInterval { get; set; } = TimeSpan.FromSeconds(1);
 
         public SqlServerSourceOptions()
         {

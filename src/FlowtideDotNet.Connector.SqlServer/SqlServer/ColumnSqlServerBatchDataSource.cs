@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             _watermarks = [_fullTableName];
             _displayName = $"SqlServer-{_fullTableName}";
 
-            if (sourceOptions.ChangeTrackingInterval.HasValue && sourceOptions.IsChangeTrackingEnabled)
+            if (sourceOptions.IsChangeTrackingEnabled)
             {
                 base.DeltaLoadInterval = sourceOptions.ChangeTrackingInterval;
             }
@@ -138,9 +138,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             IObjectState<SqlServerState> State,
             SqlServerSourceOptions Options,
             ReadRelation ReadRelation,
-            List<string> PrimaryKeys,
-            int Offset,
-            int BatchSize);
+            List<string> PrimaryKeys);
 
         private sealed record ResilienceResult(SqlDataReader Reader, SqlConnection Connection, SqlCommand Command) : IAsyncDisposable
         {
@@ -168,94 +166,80 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var watermark = DateTime.UtcNow.Ticks;
 
-            // todo: update CreateChangesSelectStatement to work with batching
-            var batchSize = 10_000;
-            var offset = 0;
-
             var elementCount = 0;
 
-            while (true)
+            var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
+            var pipelineResult = await _options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
+            {
+                try
+                {
+                    Debug.Assert(state?.State.Value?.ChangeTrackingVersion != null);
+
+                    var connection = new SqlConnection(state.Options.ConnectionStringFunc());
+                    await connection.OpenAsync();
+
+                    var command = connection.CreateCommand();
+                    command.CommandText = SqlServerUtils.CreateChangesSelectStatement(state.ReadRelation, state.PrimaryKeys);
+                    command.Parameters.AddWithValue("ChangeVersion", state.State.Value.ChangeTrackingVersion);
+
+                    var reader = await command.ExecuteReaderAsync(ctx.CancellationToken);
+                    return Outcome.FromResult(new ResilienceResult(reader, connection, command));
+                }
+                catch (Exception ex)
+                {
+                    return Outcome.FromException<ResilienceResult>(ex);
+                }
+
+            }, context,
+            new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys[Name]));
+            ResilienceContextPool.Shared.Return(context);
+
+            pipelineResult.ThrowIfException();
+            Debug.Assert(pipelineResult.Result != null);
+            var reader = pipelineResult.Result.Reader;
+
+            var versionOrdinal = reader.GetOrdinal("SYS_CHANGE_VERSION");
+            var operationOrdinal = reader.GetOrdinal("SYS_CHANGE_OPERATION");
+
+            while (await reader.ReadAsync())
             {
                 linkedCancellation.Token.ThrowIfCancellationRequested();
-
-                var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
-                var pipelineResult = await _options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
+                elementCount++;
+                for (int i = 0; i < _convertFunctions.Count; i++)
                 {
-                    try
-                    {
-                        Debug.Assert(state?.State.Value?.ChangeTrackingVersion != null);
-
-                        var connection = new SqlConnection(state.Options.ConnectionStringFunc());
-                        await connection.OpenAsync();
-
-                        var command = connection.CreateCommand();
-                        command.CommandText = SqlServerUtils.CreateChangesSelectStatement(state.ReadRelation, state.PrimaryKeys, state.Offset, state.BatchSize);
-                        command.Parameters.AddWithValue("ChangeVersion", state.State.Value.ChangeTrackingVersion);
-
-                        var reader = await command.ExecuteReaderAsync(ctx.CancellationToken);
-                        return Outcome.FromResult(new ResilienceResult(reader, connection, command));
-                    }
-                    catch (Exception ex)
-                    {
-                        return Outcome.FromException<ResilienceResult>(ex);
-                    }
-
-                }, context,
-                new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys[Name], offset, batchSize));
-                ResilienceContextPool.Shared.Return(context);
-
-                pipelineResult.ThrowIfException();
-                Debug.Assert(pipelineResult.Result != null);
-                var reader = pipelineResult.Result.Reader;
-
-                var versionOrdinal = reader.GetOrdinal("SYS_CHANGE_VERSION");
-                var operationOrdinal = reader.GetOrdinal("SYS_CHANGE_OPERATION");
-
-                offset += batchSize;
-
-                while (await reader.ReadAsync())
-                {
-                    elementCount++;
-                    for (int i = 0; i < _convertFunctions.Count; i++)
-                    {
-                        _convertFunctions[Name][i](reader, columns[i]);
-                    }
-
-                    var changeVersion = reader.GetInt64(versionOrdinal);
-                    var operation = reader.GetString(operationOrdinal);
-
-                    iterations.Add(0);
-                    switch (operation)
-                    {
-                        case "D":
-                            weights.Add(-1);
-                            break;
-                        case "I":
-                        case "U":
-                            weights.Add(1);
-                            break;
-                        default:
-                            break;
-                    }
-
-                    _state.Value.ChangeTrackingVersion = changeVersion;
-
-                    if (weights.Count > 100)
-                    {
-                        var eventBatchData = new EventBatchData(columns);
-                        var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                        yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, watermark));
-                        InitializeBatchCollections(out weights, out iterations, out columns);
-                    }
+                    _convertFunctions[Name][i](reader, columns[i]);
                 }
 
-                await pipelineResult.Result.DisposeAsync();
+                var changeVersion = reader.GetInt64(versionOrdinal);
+                var operation = reader.GetString(operationOrdinal);
 
-                if (elementCount != batchSize)
+                iterations.Add(0);
+                switch (operation)
                 {
-                    break;
+                    case "D":
+                        weights.Add(-1);
+                        break;
+                    case "I":
+                    case "U":
+                        weights.Add(1);
+                        break;
+                    default:
+                        break;
+                }
+
+                _state.Value.ChangeTrackingVersion = changeVersion;
+
+                if (weights.Count > 100)
+                {
+                    var eventBatchData = new EventBatchData(columns);
+                    var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
+                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, watermark));
+                    InitializeBatchCollections(out weights, out iterations, out columns);
                 }
             }
+
+            await pipelineResult.Result.DisposeAsync();
+
 
             if (weights.Count > 0)
             {
