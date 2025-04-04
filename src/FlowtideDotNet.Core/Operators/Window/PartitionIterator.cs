@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                         yield return new KeyValuePair<ColumnRowReference, WindowStateReference>(columnRowReference, _windowStateReference);
                     }
                     // Check if there has been more output before than the current weight
-                    // If that is the case, does weights need to be outputted as negative
+                    // If that is the case, those weights need to be outputted as negative
                     if (pageVal.weight < oldOutputCount && _addOutputRow != null)
                     {
                         for (int w = oldOutputCount - 1; w >= pageVal.weight; w--)
