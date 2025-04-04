@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     yield return _addOutputRow.GetCurrentBatch();
                 }
             }
+            
             if (_addOutputRow.Count > 0)
             {
                 yield return _addOutputRow.GetCurrentBatch();
