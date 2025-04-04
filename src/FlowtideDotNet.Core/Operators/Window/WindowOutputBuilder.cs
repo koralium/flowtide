@@ -25,9 +25,9 @@ namespace FlowtideDotNet.Core.Operators.Window
 {
     internal class WindowOutputBuilder : IWindowAddOutputRow
     {
-        IColumn[] columns;
-        PrimitiveList<int> weights;
-        PrimitiveList<uint> iterations;
+        private IColumn[] columns;
+        private PrimitiveList<int> weights;
+        private PrimitiveList<uint> iterations;
         private readonly int _inputColumnCount;
         private readonly List<int> emitList;
         private readonly IMemoryAllocator memoryAllocator;
