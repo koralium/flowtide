@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Operators.Window
     {
         private ColumnRowReference partitionRow;
         private readonly IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator;
-        private WindowPartitionStartSearchComparer searchComparer;
+        private readonly WindowPartitionStartSearchComparer searchComparer;
         private readonly WindowStateReference _windowStateReference;
         private readonly IWindowAddOutputRow? _addOutputRow;
 
