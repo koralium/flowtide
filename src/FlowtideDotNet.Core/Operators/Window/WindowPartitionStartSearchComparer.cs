@@ -75,6 +75,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     end = high;
                 }
             }
+
             if (_partitionColumnIndices.Count == 0)
             {
                 if (keyContainer.Count > 0)
