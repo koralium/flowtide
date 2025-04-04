@@ -52,7 +52,6 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// </summary>
         private EventBatchData? _partitionBatch;
 
-        //private WindowSumCalculator _windowSum;
         private readonly IWindowFunction _windowFunction;
         private WindowOutputBuilder? _outputBuilder;
         private List<int> _emitList;
@@ -154,6 +153,8 @@ namespace FlowtideDotNet.Core.Operators.Window
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
             Debug.Assert(_eventsOutCounter != null);
+            Debug.Assert(_outputBuilder != null);
+
             using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
 
@@ -168,6 +169,13 @@ namespace FlowtideDotNet.Core.Operators.Window
                     }
                 }
             }
+
+            // Check so events that where output are sent
+            if (_outputBuilder.Count > 0)
+            {
+                yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+            }
+
             await _temporaryTree.Clear();
         }
 
@@ -262,6 +270,12 @@ namespace FlowtideDotNet.Core.Operators.Window
                     }
                     return (input, GenericWriteOperation.Upsert);
                 });
+
+                if (_outputBuilder.Count >= 100)
+                {
+                    // If there are too many deletes of rows, output directly to reduce RAM usage.
+                    yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+                }
             }
             yield break;
         }

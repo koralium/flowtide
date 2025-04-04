@@ -507,5 +507,63 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        /// <summary>
+        /// Checks that if a partition is emptied, its delete output is still sent
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task SingleRowInPartitionThenDelete()
+        {
+            GenerateCompanies(1);
+            GenerateUsers(1);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            DeleteUser(Users[0]);
+
+            await WaitForUpdate();
+
+            var expected = new List<RowNumberResult>();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task DeleteAllEntries()
+        {
+            GenerateData(10_000);
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            while(Users.Count > 0)
+            {
+                DeleteUser(Users[0]);
+            }
+
+            await WaitForUpdate();
+
+            var expected = new List<RowNumberResult>();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }

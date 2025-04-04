@@ -86,9 +86,9 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         internal void AddDeleteToOutput(ColumnRowReference columnRowReference, WindowValue windowValue)
         {
-            if (windowValue.valueContainer._previousValueSent.Get(columnRowReference.RowIndex))
+            if (windowValue.valueContainer._previousValueSent.Get(windowValue.index))
             {
-                var stateLength = windowValue.valueContainer._functionStates[0].GetListLength(columnRowReference.RowIndex);
+                var stateLength = windowValue.valueContainer._functionStates[0].GetListLength(windowValue.index);
                 for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
                 {
                     var existingColumnValue = columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default);
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
                 for (int i = 0; i < stateLength; i++)
                 {
-                    columns[emitList.Count - 1].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(columnRowReference.RowIndex, i));
+                    columns[emitList.Count - 1].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(windowValue.index, i));
                     weights.Add(-1);
                     iterations.Add(0);
                 }
