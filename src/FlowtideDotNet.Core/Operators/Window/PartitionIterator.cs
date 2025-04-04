@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Operators.Window
     {
         private ColumnRowReference partitionRow;
         private readonly IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator;
-        private WindowPartitionStartSearchComparer? searchComparer;
+        private WindowPartitionStartSearchComparer searchComparer;
         private readonly WindowStateReference _windowStateReference;
         private readonly IWindowAddOutputRow? _addOutputRow;
 
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         public void ResetCopyFrom(PartitionIterator other)
         {
             this.partitionRow = other.partitionRow;
-            this.searchComparer!.start = other.searchComparer!.start;
+            this.searchComparer.start = other.searchComparer!.start;
             this.searchComparer.end = other.searchComparer.end;
             this.searchComparer.noMatch = other.searchComparer.noMatch;
             other.iterator.CloneSeekResultTo(iterator);
