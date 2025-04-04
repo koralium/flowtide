@@ -490,12 +490,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 containsAggregate |= containsAggregateVisitor.Visit(select.Having, default);
             }
 
+            bool containsWindow = false;
+            ContainsWindowFunctionVisitor containsWindowFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+
             if (select.Projection != null)
             {
                 foreach (var item in select.Projection)
                 {
                     containsAggregate |= containsAggregateVisitor.VisitSelectItem(item);
+                    containsWindow |= containsWindowFunctionVisitor.VisitSelectItem(item);
                 }
+            }
+
+            if (containsWindow)
+            {
+                outNode = VisitSelectWindow(select, containsWindowFunctionVisitor, outNode);
             }
 
             if (containsAggregate)
@@ -561,6 +570,64 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return outNode;
+        }
+
+        private RelationData VisitSelectWindow(Select select, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        {
+            var outputData = parent;
+
+            // Go through the found functions, we create one relation per window function at this time
+            foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
+            {
+                var windowEmitData = outputData.EmitData.Clone();
+
+                var windowRel = new ConsistentPartitionWindowRelation()
+                {
+                    Input = outputData.Relation,
+                    OrderBy = new List<Expressions.SortField>(),
+                    PartitionBy = new List<Expressions.Expression>(),
+                    WindowFunctions = new List<Expressions.WindowFunction>()
+                };
+
+                if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
+                {
+                    throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
+                }
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                var aggregateResponse = mapper(windowFunction, exprVisitor, outputData.EmitData);
+                windowRel.WindowFunctions.Add(aggregateResponse.WindowFunction);
+
+                windowEmitData.Add(windowFunction, windowEmitData.Count, "$window", aggregateResponse.Type);
+                if (windowFunction.Over is WindowType.WindowSpecType windowSpec)
+                {
+                    if (windowSpec.Spec.PartitionBy != null)
+                    {
+                        foreach (var partition in windowSpec.Spec.PartitionBy)
+                        {
+                            var visitResult = exprVisitor.Visit(partition, outputData.EmitData);
+                            windowRel.PartitionBy.Add(visitResult.Expr);
+                        }
+                    }
+                    if (windowSpec.Spec.OrderBy != null)
+                    {
+                        foreach(var orderBy in windowSpec.Spec.OrderBy)
+                        {
+                            var expr = exprVisitor.Visit(orderBy.Expression, outputData.EmitData);
+                            var sortDirection = GetSortDirection(orderBy);
+
+                            windowRel.OrderBy.Add(new Expressions.SortField()
+                            {
+                                Expression = expr.Expr,
+                                SortDirection = sortDirection
+                            });
+                        }
+                    }
+                }
+                outputData = new RelationData(windowRel, windowEmitData);
+            }
+
+            return outputData;
         }
 
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)

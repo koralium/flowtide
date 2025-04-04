@@ -138,5 +138,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("StandardOutputExchangeReferenceRelation is not implemented");
         }
+
+        public virtual TReturn VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, TState state)
+        {
+            throw new NotImplementedException("ConsistentPartitionWindowRelation is not implemented");
+        }
     }
 }

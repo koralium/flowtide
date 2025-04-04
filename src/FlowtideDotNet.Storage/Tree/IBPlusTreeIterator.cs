@@ -35,5 +35,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// This method allows using the same iterator over a longer course of time.
         /// </summary>
         void Reset();
+
+        void CloneSeekResultTo(IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> other);
     }
 }

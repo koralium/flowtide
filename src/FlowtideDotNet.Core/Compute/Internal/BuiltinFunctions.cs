@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
@@ -36,6 +37,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
             BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
             BuiltInListFunctions.AddListFunctions(functionsRegister);
             BuiltInGuidFunctions.AddBuiltInGuidFunctions(functionsRegister);
+
+            BuiltInWindowFunctions.AddBuiltInWindowFunctions(functionsRegister);
         }
     }
 }

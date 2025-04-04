@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.Core.Compute
         private readonly Dictionary<string, TableFunctionDefinition> _tableFunctions;
         private readonly Dictionary<string, ColumnAggregateFunctionDefinition> _columnAggregateFunctions;
         private readonly Dictionary<string, ColumnTableFunctionDefinition> _columnTableFunctions;
+        private readonly Dictionary<string, WindowFunctionDefinition> _windowFunctions;
 
         public FunctionsRegister()
         {
@@ -39,6 +41,7 @@ namespace FlowtideDotNet.Core.Compute
             _columnScalarFunctions = new Dictionary<string, ColumnFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _columnAggregateFunctions = new Dictionary<string, ColumnAggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _columnTableFunctions = new Dictionary<string, ColumnTableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+            _windowFunctions = new Dictionary<string, WindowFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -212,6 +215,22 @@ namespace FlowtideDotNet.Core.Compute
         public bool TryGetColumnAggregateFunction(string uri, string name, [NotNullWhen(true)] out ColumnAggregateFunctionDefinition? aggregateFunctionDefinition)
         {
             return _columnAggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
+        }
+
+        public void RegisterWindowFunction(string uri, string name, WindowFunctionDefinition windowFunctionDefinition)
+        {
+            _windowFunctions.Add($"{uri}:{name}", windowFunctionDefinition);
+        }
+
+        public bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc)
+        {
+            if(_windowFunctions.TryGetValue($"{windowFunction.ExtensionUri}:{windowFunction.ExtensionName}", out var windowFunctionDefinition))
+            {
+                windowFunc = windowFunctionDefinition.Create(windowFunction, this);
+                return true;
+            }
+            windowFunc = default;
+            return false;
         }
     }
 }
