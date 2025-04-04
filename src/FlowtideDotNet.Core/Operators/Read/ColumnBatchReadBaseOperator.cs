@@ -780,7 +780,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                 _initialSent.Value = true;
             }
 
-            await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));
+            await RegisterTrigger(DeltaLoadTriggerName, DeltaLoadInterval);
             await RegisterTrigger(FullLoadTriggerName, FullLoadInterval);
         }
 
