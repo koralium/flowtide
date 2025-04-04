@@ -391,5 +391,59 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        public record RowNumberMultipleResult(string? companyId, int userkey, long value1, long value2);
+
+        [Fact]
+        public async Task MultipleWindowFunctions()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) as window1,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey DESC) as window2
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberMultipleResult> output = new List<RowNumberMultipleResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberMultipleResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1, orderedByKey.Count - i));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+
+            await Crash();
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberMultipleResult> output = new List<RowNumberMultipleResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberMultipleResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1, orderedByKey.Count - i));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }

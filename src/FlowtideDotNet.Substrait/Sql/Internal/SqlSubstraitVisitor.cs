@@ -574,27 +574,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         private RelationData VisitSelectWindow(Select select, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
         {
-            var windowRel = new ConsistentPartitionWindowRelation()
+            var outputData = parent;
+
+            // Go through the found functions, we create one relation per window function at this time
+            foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
             {
-                Input = parent.Relation,
-                OrderBy = new List<Expressions.SortField>(),
-                PartitionBy = new List<Expressions.Expression>(),
-                WindowFunctions = new List<Expressions.WindowFunction>()
-            };
+                var windowEmitData = outputData.EmitData.Clone();
 
-            // Go through the found functions
+                var windowRel = new ConsistentPartitionWindowRelation()
+                {
+                    Input = outputData.Relation,
+                    OrderBy = new List<Expressions.SortField>(),
+                    PartitionBy = new List<Expressions.Expression>(),
+                    WindowFunctions = new List<Expressions.WindowFunction>()
+                };
 
-            var windowEmitData = parent.EmitData.Clone();
-
-            foreach(var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
-            {
                 if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
                 {
                     throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
                 }
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 
-                var aggregateResponse = mapper(windowFunction, exprVisitor, parent.EmitData);
+                var aggregateResponse = mapper(windowFunction, exprVisitor, outputData.EmitData);
                 windowRel.WindowFunctions.Add(aggregateResponse.WindowFunction);
 
                 windowEmitData.Add(windowFunction, windowEmitData.Count, "$window", aggregateResponse.Type);
@@ -604,7 +605,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         foreach (var partition in windowSpec.Spec.PartitionBy)
                         {
-                            var visitResult = exprVisitor.Visit(partition, parent.EmitData);
+                            var visitResult = exprVisitor.Visit(partition, outputData.EmitData);
                             windowRel.PartitionBy.Add(visitResult.Expr);
                         }
                     }
@@ -612,7 +613,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         foreach(var orderBy in windowSpec.Spec.OrderBy)
                         {
-                            var expr = exprVisitor.Visit(orderBy.Expression, parent.EmitData);
+                            var expr = exprVisitor.Visit(orderBy.Expression, outputData.EmitData);
                             var sortDirection = GetSortDirection(orderBy);
 
                             windowRel.OrderBy.Add(new Expressions.SortField()
@@ -623,9 +624,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         }
                     }
                 }
+                outputData = new RelationData(windowRel, windowEmitData);
             }
 
-            return new RelationData(windowRel, windowEmitData);
+            return outputData;
         }
 
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)
