@@ -79,14 +79,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     var columnValue = columnRowReference.referenceBatch.Columns[emitList[i]].GetValueAt(columnRowReference.RowIndex, default);
                     columns[i].Add(columnValue);
                 }
-                
-                //columns[i] = 
             }
-            //for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
-            //{
-            //    columns[i].Add(columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default));
-            //}
-            //columns[columns.Length - 1].Add(value);
             weights.Add(weight);
             iterations.Add(0);
         }
