@@ -55,6 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             {
                 throw new InvalidOperationException("Can not update state using this iterator");
             }
+
             if (windowValue.UpdateStateValue(0, weightIndex, value, _columnRowReference.Value, _addOutputRow))
             {
                 Updated = true;
