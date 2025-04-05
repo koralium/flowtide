@@ -61,13 +61,13 @@ namespace FlowtideDotNet.Storage.Memory
 
         public Memory<byte> GetMemory(int sizeHint = 0)
         {
-            EnsureSize(sizeHint);
+            EnsureSize(_index + sizeHint);
             return _memoryOwner.Memory.Slice(_index, sizeHint);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
         {
-            EnsureSize(sizeHint);
+            EnsureSize(_index + sizeHint);
             return _memoryOwner.Memory.Span.Slice(_index, sizeHint);
         }
 
