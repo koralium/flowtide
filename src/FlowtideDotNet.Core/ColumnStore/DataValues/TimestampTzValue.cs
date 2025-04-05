@@ -87,6 +87,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void CopyToContainer(DataValueContainer container)
         {
             container._timestampValue = this;
+            container._type = ArrowTypeId.Timestamp;
         }
 
         public DateTimeOffset ToDateTimeOffset()
