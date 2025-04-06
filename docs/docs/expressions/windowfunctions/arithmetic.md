@@ -38,3 +38,24 @@ This function **requires an `ORDER BY` clause** to determine row position and **
 ```sql
 SELECT ROW_NUMBER(column1) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 ```
+
+## Lead
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#lead)
+
+The `LEAD` window function provides access to a subsequent row’s value within the same result set partition. It returns the value of a specified column at a given offset after the current row.
+
+If no row exists at that offset, a default value (if provided) is returned; otherwise, the result is `NULL`.
+
+This function **requires an `ORDER BY` clause** to establish row sequence and **does not support frame boundaries**.
+
+### SQL Usage
+
+```sql
+-- Lead with default offset 1 and null default
+SELECT LEAD(column1) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Lead with offset 2 and null default
+SELECT LEAD(column1, 2) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Lead with offset 2 and default value set to 'hello'
+SELECT LEAD(column1, 2, 'hello') OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+```
