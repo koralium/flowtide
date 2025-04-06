@@ -720,6 +720,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
+            sqlFunctionRegister.RegisterAggregateFunction("surrogate_key_int64", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args != null && argList.Args.Count != 0)
+                {
+                    throw new InvalidOperationException("surrogate_key_int64 must have exactly zero arguments.");
+                }
+
+                return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                            ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
+                            Arguments = new List<Expressions.Expression>()
+                        },
+                        new StringType() { Nullable = true }
+                        );
+            });
+
 
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);

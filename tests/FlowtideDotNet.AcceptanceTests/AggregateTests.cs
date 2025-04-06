@@ -313,5 +313,32 @@ namespace FlowtideDotNet.AcceptanceTests
                 { "company", x.CompanyId! }
             }).ToList() } });
         }
+
+        [Fact]
+        public async Task TestSurrogateKeyInt64()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                surrogate_key_int64() as key,
+                userkey
+            FROM users
+            GROUP BY userkey
+            ");
+
+            await WaitForUpdate();
+
+            long counter = 0;
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                return new
+                {
+                    key = counter++,
+                    x.UserKey
+                };
+            }));
+        }
     }
 }
