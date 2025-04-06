@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
+using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
 using static SqlParser.Ast.WindowType;
@@ -764,6 +765,84 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             // WindowFunction
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
+
+            sqlFunctionRegister.RegisterWindowFunction("lead",
+                (func, visitor, emitData) =>
+                {
+                    var argList = GetFunctionArguments(func.Args);
+                    if (argList.Args == null || argList.Args.Count < 1)
+                    {
+                        throw new InvalidOperationException($"lead must have exactly at least one argument, and not be '*'");
+                    }
+                    if ((argList.Args[0] is FunctionArg.Unnamed unnamed0 && unnamed0.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                    {
+                        throw new InvalidOperationException($"lead must have at least one argument, and not be '*'");
+                    }
+                    if (argList.Args.Count > 3)
+                    {
+                        throw new InvalidOperationException($"lead must have at most three arguments, and not be '*'");
+                    }
+
+                    if (func.Over is WindowSpecType windowSpecType)
+                    {
+                        if (windowSpecType.Spec.OrderBy == null)
+                        {
+                            throw new SubstraitParseException($"'lead' function must have an order by clause");
+                        }
+                        if (windowSpecType.Spec.WindowFrame != null)
+                        {
+                            if (windowSpecType.Spec.WindowFrame.Units == WindowFrameUnit.Rows)
+                            {
+                                throw new SubstraitParseException($"'lead' function does not support ROWS frame");
+                            }
+                        }
+                    }
+
+                    WindowFunction windowFunc = new WindowFunction()
+                    {
+                        Arguments = new List<Expressions.Expression>(),
+                        ExtensionName = FunctionsArithmetic.Lead,
+                        ExtensionUri = FunctionsArithmetic.Uri,
+                    };
+
+                    SubstraitBaseType? returnType = null;
+                    for (int i = 0; i < argList.Args.Count; i++)
+                    {
+                        var arg = argList.Args[i];
+                        if (arg is FunctionArg.Unnamed unnamed)
+                        {
+                            if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                            {
+                                var expr = visitor.Visit(funcExpr.Expression, emitData);
+                                windowFunc.Arguments.Add(expr.Expr);
+
+                                if (i == 0)
+                                {
+                                    returnType = expr.Type;
+                                }
+                                else if (returnType != expr.Type && i == 2)
+                                {
+                                    returnType = AnyType.Instance;
+                                }
+                            }
+                            else
+                            {
+                                throw new NotImplementedException("lead does not support the input parameter");
+                            }
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("lead does not support the input parameter");
+                        }
+                    }
+
+                    if (returnType == null)
+                    {
+                        returnType = AnyType.Instance;
+                    }
+
+                    return new WindowResponse(windowFunc, returnType);
+                });
         }
 
         private static void RegisterSingleVariableFunction(
