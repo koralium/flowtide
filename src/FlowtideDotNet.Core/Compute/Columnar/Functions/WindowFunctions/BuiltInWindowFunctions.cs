@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         {
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new SumWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new RowNumberWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new LeadWindowFunctionDefinition());
         }
     }
 }

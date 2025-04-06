@@ -50,5 +50,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
 
         // Window
         public const string RowNumber = "row_number";
+        public const string Lead = "lead";
     }
 }
