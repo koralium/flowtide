@@ -678,6 +678,127 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task FilterOnRowNumberOtherWindowInProjection()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (ORDER BY UserKey)
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value == 1)
+                .GroupBy(x => "1")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.userkey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].companyId, orderedByKey[i].userkey, i + 1));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task FilterOnRowNumber()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                1 as val
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value == 1).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task FilterOnRowNumberSameWindowInProjection()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) % 2 = 0
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value % 2 == 0)
+                .GroupBy(x => $"{x.companyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.userkey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].companyId, orderedByKey[i].userkey, i + 1));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
         public async Task SurrogateKeyInt64()
         {
             GenerateData();
