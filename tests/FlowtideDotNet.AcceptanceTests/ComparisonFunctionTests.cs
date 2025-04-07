@@ -225,5 +225,55 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.Visits <= 3).Select(x => new { x.UserKey }));
         }
+
+        [Fact]
+        public async Task GreatestNoNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    greatest(u.userkey, 200, 250)
+                FROM users u");
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                return new
+                {
+                    value = Math.Max(x.UserKey, 250)
+                };
+            }));
+        }
+
+        [Fact]
+        public async Task GreatestNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    greatest(u.visits, 4)
+                FROM users u");
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                if (x.Visits.HasValue)
+                {
+                    return new
+                    {
+                        value = (int?)Math.Max(x.Visits.Value, 4)
+                    };
+                }
+                return new
+                {
+                    value = default(int?)
+                };
+                
+            }));
+        }
     }
 }
