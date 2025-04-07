@@ -84,3 +84,14 @@ SELECT
 FROM Orders
 ```
 
+## Floor timestamp day
+
+*This function has no substrait equivalent*
+
+Rounds a timestamp down to the nearest day by removing the time portion (hours, minutes, seconds, etc.). If the input is null or not of the type timestamp, the result is null.
+
+### SQL Usage
+
+```sql
+SELECT floor_timestamp_day(timestamp_column) FROM ...
+```

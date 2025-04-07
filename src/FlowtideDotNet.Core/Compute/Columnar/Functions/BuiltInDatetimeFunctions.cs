@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Internal.StrftimeImpl;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
@@ -22,6 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void AddBuiltInDatetimeFunctions(FunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
         }
 
         internal static IDataValue StrfTimeImplementation<T1, T2>(T1 value, T2 format, DataValueContainer result)
@@ -54,6 +56,24 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.String;
             result._stringValue = new StringValue(Strftime.ToStrFTime(dateTime, format.AsString.ToString(), CultureInfo.InvariantCulture));
+            return result;
+        }
+
+        internal static IDataValue FloorTimestampDayImplementation<T1>(T1 value, DataValueContainer result)
+            where T1 : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Timestamp)
+            {
+                var dt = value.AsTimestamp.ToDateTimeOffset();
+                // Remove hours, seconds, etc so its only year month day left
+                var newDate = new DateTimeOffset(dt.Year, dt.Month, dt.Day, 0, 0, 0, TimeSpan.Zero);
+
+                result._type = ArrowTypeId.Timestamp;
+                result._timestampValue = new TimestampTzValue(newDate);
+                return result;
+            }
+
+            result._type = ArrowTypeId.Null;
             return result;
         }
     }

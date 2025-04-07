@@ -170,5 +170,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
                 );
         }
+
+        [Fact]
+        public async Task FloorTimestampDay()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                floor_timestamp_day(Orderdate) as Orderdate
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    Orderdate = new DateTimeOffset(o.Orderdate.Year, o.Orderdate.Month, o.Orderdate.Day, 0, 0, 0, TimeSpan.Zero)
+                })
+                );
+        }
     }
 }
