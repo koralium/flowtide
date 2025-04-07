@@ -107,6 +107,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(exprData.Expr, exprData.Type);
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("greatest", (f, visitor, emitData) =>
+            {
+                var exprData = VisitGreatest(f, visitor, emitData);
+                return new ScalarResponse(exprData.Expr, exprData.Type);
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("is_infinite", (f, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
@@ -1113,6 +1119,66 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             return new ExpressionData(coalesceFunction, "$concat", returnType);
+        }
+
+        private static ExpressionData VisitGreatest(SqlParser.Ast.Expression.Function function, SqlExpressionVisitor visitor, EmitData state)
+        {
+            var greatestFunction = new ScalarFunction()
+            {
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.Greatest,
+                Arguments = new List<Expressions.Expression>()
+            };
+
+            SubstraitBaseType? returnType = default;
+
+            {
+                var argList = GetFunctionArguments(function.Args);
+                Debug.Assert(argList.Args != null);
+
+                if (argList.Args.Count < 2)
+                {
+                    throw new SubstraitParseException("Greatest must have at least two arguments");
+                }
+
+                for (int i = 0; i < argList.Args.Count; i++)
+                {
+                    var arg = argList.Args[i];
+                    if (arg is FunctionArg.Unnamed unnamed)
+                    {
+                        if (unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
+                        {
+                            var expr = visitor.Visit(funcExpr.Expression, state);
+
+                            if (returnType == null)
+                            {
+                                returnType = expr.Type;
+                            }
+                            else if (returnType != expr.Type)
+                            {
+                                returnType = new AnyType();
+                            }
+
+                            greatestFunction.Arguments.Add(expr.Expr);
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("Greatest does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new NotImplementedException("Greatest does not support the input parameter");
+                    }
+                }
+            }
+
+            if (returnType == null)
+            {
+                throw new InvalidOperationException("Greatest must have at least two arguments");
+            }
+
+            return new ExpressionData(greatestFunction, "$greatest", returnType);
         }
 
         private static WindowBound? ParseWindowBound(WindowFrameBound? windowFrame)
