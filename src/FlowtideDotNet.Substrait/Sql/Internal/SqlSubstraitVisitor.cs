@@ -473,15 +473,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Selection != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
-                outNode = new RelationData(new FilterRelation()
+                bool selectionContainsWindow = false;
+                ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+                selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+                if (selectionContainsWindow)
+                {   
+                    // Does not include expressions from the window functions in the emit data
+                    outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
+                }
+                else
                 {
-                    Input = outNode.Relation,
-                    Condition = expr.Expr
-                }, outNode.EmitData);
-            }
-
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
+                    outNode = new RelationData(new FilterRelation()
+                    {
+                        Input = outNode.Relation,
+                        Condition = expr.Expr
+                    }, outNode.EmitData);
+                }
+            }   
 
             ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
             bool containsAggregate = select.GroupBy != null;
@@ -504,7 +514,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (containsWindow)
             {
-                outNode = VisitSelectWindow(select, containsWindowFunctionVisitor, outNode);
+                outNode = VisitWindow(containsWindowFunctionVisitor, outNode);
             }
 
             if (containsAggregate)
@@ -572,7 +582,32 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outNode;
         }
 
-        private RelationData VisitSelectWindow(Select select, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        private RelationData VisitFilterWithWindowExpressions(Expression filter, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        {
+            var windowResult = VisitWindow(containsWindowFunctionVisitor, parent);
+
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var expr = exprVisitor.Visit(filter, windowResult.EmitData);
+
+            var filterRelation = new FilterRelation()
+            {
+                Input = windowResult.Relation,
+                Condition = expr.Expr
+            };
+
+            List<int> emitList = new List<int>();
+            for (int i = 0; i < parent.EmitData.Count; i++)
+            {
+                emitList.Add(i);
+            }
+
+            filterRelation.Emit = emitList;
+            
+            var outNode = new RelationData(filterRelation, parent.EmitData);
+            return outNode;
+        }
+
+        private RelationData VisitWindow(ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
         {
             var outputData = parent;
 
