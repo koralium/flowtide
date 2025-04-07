@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 {
                     if (scalarFunction.Arguments.Count < 2)
                     {
-                        throw new InvalidOperationException("Greatest require a minimum of two arguments.");
+                        throw new InvalidOperationException("Greatest requires a minimum of two arguments.");
                     }
 
                     // Implements the following logic:
