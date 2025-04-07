@@ -753,5 +753,49 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task FilterOnRowNumberSameWindowInProjection()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) % 2 = 0
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value % 2 == 0)
+                .GroupBy(x => $"{x.companyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.userkey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].companyId, orderedByKey[i].userkey, i + 1));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }
