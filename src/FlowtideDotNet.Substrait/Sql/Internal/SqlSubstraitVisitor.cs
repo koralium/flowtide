@@ -471,18 +471,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             }
 
-            bool selectionContainsWindow = false;
-            ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-
             if (select.Selection != null)
             {
+                bool selectionContainsWindow = false;
+                ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
                 selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
-            }
-
-            if (select.Selection != null)
-            {
                 if (selectionContainsWindow)
-                {
+                {   
                     // Does not include expressions from the window functions in the emit data
                     outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
                 }
