@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Window;
@@ -41,6 +42,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _updateIterator;
         private PartitionIterator? _updatePartitionIterator;
 
+        public bool RequirePartitionCompute => true;
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
+        }
+
         public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
         {
             Debug.Assert(_updatePartitionIterator != null);
@@ -71,18 +79,28 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         }
 
         public Task Initialize(
-            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, 
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
             IMemoryAllocator memoryAllocator, 
             IStateManagerClient stateManagerClient, 
             IWindowAddOutputRow addOutputRow)
         {
+            if (persistentTree == null)
+            {
+                throw new ArgumentNullException(nameof(persistentTree));
+            }
+
             _addOutputRow = addOutputRow;
             _updateIterator = persistentTree.CreateIterator();
 
             _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
 
             return Task.CompletedTask;
+        }
+
+        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
+        {
+            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
         }
     }
 }

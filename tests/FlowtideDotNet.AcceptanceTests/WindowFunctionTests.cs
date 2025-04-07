@@ -64,7 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests
                         values.Enqueue(orderedByKey[i].DoubleValue);
                         sum += orderedByKey[i].DoubleValue;
                         output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
-                        
+
                     }
                     return output;
                 }).ToList();
@@ -228,8 +228,8 @@ namespace FlowtideDotNet.AcceptanceTests
                     Queue<double> values = new Queue<double>();
                     List<SumResult> output = new List<SumResult>();
                     for (int i = 0, z = 0; i < orderedByKey.Count; i++)
-                    {   
-                        for (; z < (i+ 3); z++)
+                    {
+                        for (; z < (i + 3); z++)
                         {
                             if (z < orderedByKey.Count)
                             {
@@ -240,14 +240,14 @@ namespace FlowtideDotNet.AcceptanceTests
                             {
                                 values.Enqueue(0);
                             }
-                            
+
                         }
                         while (values.Count > 7)
                         {
                             var dequeued = values.Dequeue();
                             sum -= dequeued;
                         }
-                        
+
                         output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
 
                     }
@@ -554,7 +554,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            while(Users.Count > 0)
+            while (Users.Count > 0)
             {
                 DeleteUser(Users[0]);
             }
@@ -794,6 +794,63 @@ namespace FlowtideDotNet.AcceptanceTests
                     }
                     return output;
                 }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SurrogateKeyInt64()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                surrogate_key_int64() OVER (PARTITION BY CompanyId)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+
+            await Crash();
+
+            GenerateData();
+
+            await WaitForUpdate();
+
+            Dictionary<string, int> keyLookup = new Dictionary<string, int>();
+            int counter = 0;
+            int nullKey = -1;
+
+            var expected = Users.Select(x =>
+            {
+                if (x.CompanyId == null)
+                {
+                    if (nullKey == -1)
+                    {
+                        nullKey = counter++;
+                    }
+                    return new
+                    {
+                        key = nullKey
+                    };
+                }
+                if (keyLookup.TryGetValue(x.CompanyId, out var key))
+                {
+                    return new
+                    {
+                        key
+                    };
+                }
+                key = counter++;
+                keyLookup.Add(x.CompanyId, key);
+                return new
+                {
+                    key
+                };
+            }).ToList();
 
             AssertCurrentDataEqual(expected);
         }

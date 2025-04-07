@@ -727,6 +727,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
+            sqlFunctionRegister.RegisterAggregateFunction("surrogate_key_int64", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args != null && argList.Args.Count != 0)
+                {
+                    throw new InvalidOperationException("surrogate_key_int64 must have exactly zero arguments.");
+                }
+
+                return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                            ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
+                            Arguments = new List<Expressions.Expression>()
+                        },
+                        new StringType() { Nullable = true }
+                        );
+            });
+
 
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
@@ -771,6 +790,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             // WindowFunction
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
+            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>

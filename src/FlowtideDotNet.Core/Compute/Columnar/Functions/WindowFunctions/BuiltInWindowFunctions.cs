@@ -10,12 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.SurrogateKey;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 {
@@ -26,6 +22,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new SumWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new RowNumberWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new LeadWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new SurrogateKeyInt64WindowFunctionDefinition());
         }
     }
 }
