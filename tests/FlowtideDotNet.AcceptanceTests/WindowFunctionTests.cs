@@ -676,5 +676,71 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task FilterOnRowNumberSameInProjection()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value == 1).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task FilterOnRowNumber()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                1 as val
+            FROM users
+            WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => $"{x.CompanyId}")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, i + 1));
+                    }
+                    return output;
+                })
+                .Where(x => x.value == 1).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }
