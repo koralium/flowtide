@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Window;
@@ -175,6 +176,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private readonly long _from;
         private readonly long _to;
 
+        public bool RequirePartitionCompute => true;
+
         public SumWindowFunctionBounded(Func<EventBatchData, int, IDataValue> fetchValueFunction, long from, long to)
         {
             this._fetchValueFunction = fetchValueFunction;
@@ -236,12 +239,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         }
 
         public async Task Initialize(
-            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree,
             List<int> partitionColumns, 
             IMemoryAllocator memoryAllocator, 
             IStateManagerClient stateManagerClient, 
             IWindowAddOutputRow addOutputRow)
         {
+            if (persistentTree == null)
+            {
+                throw new ArgumentNullException(nameof(persistentTree));
+            }
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
@@ -255,6 +262,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                 ValueSerializer = new DataValueValueContainerSerializer(memoryAllocator)
             });
         }
+
+        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
+        {
+            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
+        }
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
+        }
     }
 
     internal class SumWindowFunctionBoundedUnboundedFrom : IWindowFunction
@@ -266,6 +283,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private PartitionIterator? _windowPartitionIterator;
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private readonly long _to;
+
+        public bool RequirePartitionCompute => true;
 
         public SumWindowFunctionBoundedUnboundedFrom(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
         {
@@ -317,9 +336,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         }
 
         public Task Initialize(
-            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, 
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
         {
+            if (persistentTree == null)
+            {
+                throw new ArgumentNullException(nameof(persistentTree));
+            }
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
@@ -328,6 +351,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
+        }
+
+        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
+        {
+            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
+        }
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
         }
     }
 
@@ -339,6 +372,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private PartitionIterator? _updatePartitionIterator;
         private PartitionIterator? _windowPartitionIterator;
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
+
+        public bool RequirePartitionCompute => true;
 
         public SumWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction)
         {
@@ -383,12 +418,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         }
 
         public Task Initialize(
-            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, 
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
             IMemoryAllocator memoryAllocator, 
             IStateManagerClient stateManagerClient, 
             IWindowAddOutputRow addOutputRow)
         {
+            if (persistentTree == null)
+            {
+                throw new ArgumentNullException(nameof(persistentTree));
+            }
+
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
@@ -397,6 +437,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
+        }
+
+        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
+        {
+            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
+        }
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
         }
     }
 }

@@ -16,18 +16,15 @@ using FlowtideDotNet.Core.Operators.Window;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 {
     internal interface IWindowFunction
     {
+        bool RequirePartitionCompute { get; }
+
         Task Initialize(
-            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree,
+            IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree,
             List<int> partitionColumns,
             IMemoryAllocator memoryAllocator,
             IStateManagerClient stateManagerClient,
@@ -35,5 +32,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 
         IAsyncEnumerable<EventBatchWeighted> ComputePartition(
             ColumnRowReference partitionValues);
+
+        IAsyncEnumerable<EventBatchWeighted> OnReceive(
+            ColumnRowReference partitionValues,
+            ColumnRowReference inputRow,
+            int weight);
+
+        ValueTask Commit();
     }
 }
