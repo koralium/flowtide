@@ -678,7 +678,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task FilterOnRowNumberSameInProjection()
+        public async Task FilterOnRowNumberOtherWindowInProjection()
         {
             GenerateData();
 
@@ -687,7 +687,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT 
                 CompanyId,
                 UserKey,
-                ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey)
+                ROW_NUMBER() OVER (ORDER BY UserKey)
             FROM users
             WHERE ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1
             ");
@@ -705,7 +705,18 @@ namespace FlowtideDotNet.AcceptanceTests
                     }
                     return output;
                 })
-                .Where(x => x.value == 1).ToList();
+                .Where(x => x.value == 1)
+                .GroupBy(x => "1")
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.userkey).ToList();
+                    List<RowNumberResult> output = new List<RowNumberResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new RowNumberResult(orderedByKey[i].companyId, orderedByKey[i].userkey, i + 1));
+                    }
+                    return output;
+                }).ToList();
 
             AssertCurrentDataEqual(expected);
         }
