@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Tests.SqlServer;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks.Dataflow;
+using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
@@ -77,7 +78,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 {
                     if (!_options.IsView && !_options.AllowFullReloadOnTablesWithoutChangeTracking)
                     {
-                        throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'. {nameof(_options.EnableFullReload)} is only available for views.");
+                        throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'. {nameof(_options.EnableFullReload)} or {nameof(_options.AllowFullReloadOnTablesWithoutChangeTracking)} must be set to true.");
                     }
 
                     if (!_options.FullReloadInterval.HasValue)
@@ -130,7 +131,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             string fullName = string.Join(".", tableName);
             //_options.TableName = fullName;
-            return new ColumnSqlServerDataSource(_options.ConnectionStringFunc, fullName, readRelation, dataflowBlockOptions);
+            //return new ColumnSqlServerDataSource(_options.ConnectionStringFunc, fullName, readRelation, dataflowBlockOptions);
             return new ColumnSqlServerBatchDataSource(_options, readRelation, functionsRegister, dataflowBlockOptions);
         }
     }

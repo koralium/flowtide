@@ -164,8 +164,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns);
 
-            var watermark = DateTime.UtcNow.Ticks;
-
             var elementCount = 0;
 
             var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
@@ -233,7 +231,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 {
                     var eventBatchData = new EventBatchData(columns);
                     var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, watermark));
+                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
                     InitializeBatchCollections(out weights, out iterations, out columns);
                 }
             }
@@ -245,7 +243,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, watermark));
+                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
+            }
+            else
+            {
                 weights.Dispose();
                 iterations.Dispose();
             }
@@ -267,6 +268,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(_state != null);
+            Debug.Assert(_state.Value?.ChangeTrackingVersion != null);
             Debug.Assert(_primaryKeys != null);
             Debug.Assert(_primaryKeyOrdinals != null);
             Debug.Assert(_convertFunctions != null);
@@ -279,12 +281,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var primaryKeyValues = new Dictionary<string, object>();
 
-            // todo: fix watermark
-            var watermark = DateTime.UtcNow.Ticks;
             var batchSize = 10000;
-            // todo: should we have retries?
-            var retryCount = 0;
-            // todo: error handling, setting health
             while (true)
             {
                 linkedCancellation.Token.ThrowIfCancellationRequested();
@@ -336,6 +333,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 var reader = pipelineResult.Result.Reader;
 
                 int elementCount = 0;
+
                 while (await reader.ReadAsync(linkedCancellation.Token))
                 {
                     elementCount++;
@@ -357,7 +355,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     {
                         var eventBatchData = new EventBatchData(columns);
                         var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                        yield return new ColumnReadEvent(weightedBatch, watermark);
+                        yield return new ColumnReadEvent(weightedBatch, _state.Value.ChangeTrackingVersion);
                         InitializeBatchCollections(out weights, out iterations, out columns);
                     }
                 }
@@ -374,11 +372,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                yield return new ColumnReadEvent(weightedBatch, watermark);
+                yield return new ColumnReadEvent(weightedBatch, _state.Value.ChangeTrackingVersion);
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
             }
 
-            weights.Dispose();
-            iterations.Dispose();
             linkedCancellation.Dispose();
         }
 

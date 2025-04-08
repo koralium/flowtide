@@ -467,6 +467,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             Debug.Assert(_validityList != null);
+
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -480,7 +481,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return;
                 }
             }
-            _dataColumn!.GetValueAt(in index, in dataValueContainer, child);
+
+            Debug.Assert(_dataColumn != null, $"{nameof(_dataColumn)} is null");
+            _dataColumn.GetValueAt(in index, in dataValueContainer, child);
         }
 
         public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)

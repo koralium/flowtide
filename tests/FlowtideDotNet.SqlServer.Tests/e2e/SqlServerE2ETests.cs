@@ -338,5 +338,94 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             });
             Assert.Equal(expectedDate, date);
         }
+
+        [Fact]
+        public async Task SelectFromView()
+        {
+            var testName = nameof(SelectFromView);
+            var sourceTableName = $"{testName}_source";
+            var sourceViewName = $"{sourceTableName}_view";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+
+            await _fixture.RunCommand($@"
+            CREATE VIEW [{sourceViewName}] AS 
+            SELECT [id], [age] FROM [test-db].[dbo].[{sourceTableName}];
+            ");
+
+            await _fixture.RunCommand($"ALTER TABLE [test-db].[dbo].[{sourceTableName}] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            var expectedValues = new List<(int, int)>
+            {
+                (1, 1),
+                (2, 2),
+                (3, 3),
+                (4, 4),
+                (5, 5)
+            };
+
+            // Insert some data
+            await _fixture.RunCommand($@"
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[0].Item1}, {expectedValues[0].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[1].Item1}, {expectedValues[1].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[2].Item1}, {expectedValues[2].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[3].Item1}, {expectedValues[3].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[4].Item1}, {expectedValues[4].Item2});
+            ");
+
+            var testStream = new SqlServerTestStream(testName, _fixture.ConnectionString);
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+
+            await testStream.StartStream($@"
+                INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceViewName}]
+            ");
+
+            var count = 0;
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                count = await _fixture.ExecuteReader($"SELECT count(*) from [test-db].[dbo].[{destinationTableName}]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+
+                if (count >= expectedValues.Count)
+                {
+                    break;
+                }
+            }
+
+            var result = await _fixture.ExecuteReader($"SELECT [id], [age] from [test-db].[dbo].[{destinationTableName}]", (reader) =>
+            {
+                var rows = new List<(int, int)>();
+                while (reader.Read())
+                {
+                    rows.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                }
+
+                return rows;
+            });
+
+
+            Assert.Equal(expectedValues, result);
+        }
     }
 }

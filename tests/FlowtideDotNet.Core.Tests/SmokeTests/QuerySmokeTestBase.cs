@@ -12,7 +12,6 @@
 
 using FASTER.core;
 using FlowtideDotNet.Base.Engine;
-using FlowtideDotNet.Base.Metrics.Gauge;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;

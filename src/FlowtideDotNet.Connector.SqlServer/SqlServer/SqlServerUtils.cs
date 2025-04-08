@@ -616,13 +616,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return stringBuilder.ToString();
         }
 
-        public static string CreateChangesSelectStatement(ReadRelation readRelation, List<string> primaryKeys, int offset, int batchSize)
-        {
-            var str = CreateChangesSelectStatement(readRelation, primaryKeys);
-            str += $" OFFSET {offset} ROWS FETCH NEXT {batchSize} ROWS ONLY";
-            return str;
-        }
-
         public static string CreateMergeIntoProcedure(string tmpTableName, string destinationTableName, HashSet<string> primaryKeys, DataTable dataTable)
         {
             StringBuilder stringBuilder = new StringBuilder();
