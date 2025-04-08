@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Core.Engine
                 _useColumnStore,
                 _taskScheduler);
 
-            // Set the notification reciever to the function register to allow check functions get access to it.
+            // Set the notification receiver to the function register to allow check functions get access to it.
             _functionsRegister.SetCheckNotificationReciever(dataflowStreamBuilder.StreamNotificationReceiver);
 
             visitor.BuildPlan();
