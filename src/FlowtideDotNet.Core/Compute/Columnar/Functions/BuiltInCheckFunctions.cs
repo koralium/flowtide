@@ -92,19 +92,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 });
         }
 
-        private static IDataValue CheckValueImplementation<T1, T2, T3>(T1 value, T2 condition, T3 message, ICheckNotificatioReceiver notificationReciever)
+        private static IDataValue CheckValueImplementation<T1, T2, T3>(T1 value, T2 condition, T3 message, ICheckNotificatioReceiver notificationReceiver)
             where T1 : IDataValue
             where T2 : IDataValue
             where T3 : IDataValue
         {
             if (condition.Type == ArrowTypeId.Boolean && !condition.AsBool && message.Type == ArrowTypeId.String)
             {
-                notificationReciever.OnCheckFailure(message.AsString.Span);
+                notificationReceiver.OnCheckFailure(message.AsString.Span);
             }
             return value;
         }
 
-        private static IDataValue CheckTrueImplementation<T1, T2>(T1 condition, T2 message, ICheckNotificatioReceiver notificationReciever)
+        private static IDataValue CheckTrueImplementation<T1, T2>(T1 condition, T2 message, ICheckNotificatioReceiver notificationReceiver)
             where T1 : IDataValue
             where T2 : IDataValue
         {
