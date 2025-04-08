@@ -21,17 +21,17 @@ namespace FlowtideDotNet.Core.Compute
 {
     public interface IFunctionServices
     {
-        ICheckNotificationReciever CheckNotificationReciever { get; }
+        ICheckNotificationReceiver CheckNotificationReceiver { get; }
     }
     public class FunctionServices : IFunctionServices
     {
-        private ICheckNotificationReciever? _checkNotificationReciever;
+        private ICheckNotificationReceiver? _checkNotificationReceiver;
 
-        public ICheckNotificationReciever CheckNotificationReciever => _checkNotificationReciever ?? throw new NotSupportedException("No check notification reciever has been registered.");
+        public ICheckNotificationReceiver CheckNotificationReceiver => _checkNotificationReceiver ?? throw new NotSupportedException("No check notification receiver has been registered.");
 
-        public void SetCheckNotificationReciever(ICheckNotificationReciever checkNotificationReciever)
+        public void SetCheckNotificationReceiver(ICheckNotificationReceiver checkNotificationReceiver)
         {
-            _checkNotificationReciever = checkNotificationReciever ?? throw new ArgumentNullException(nameof(checkNotificationReciever));
+            _checkNotificationReceiver = checkNotificationReceiver ?? throw new ArgumentNullException(nameof(checkNotificationReceiver));
         }
     }
 }
