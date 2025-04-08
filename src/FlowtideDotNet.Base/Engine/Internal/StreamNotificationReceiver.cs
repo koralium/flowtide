@@ -14,7 +14,7 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 
 namespace FlowtideDotNet.Base.Engine.Internal
 {
-    internal sealed class StreamNotificationReceiver : ICheckNotificatioReceiver
+    internal sealed class StreamNotificationReceiver : ICheckNotificationReceiver
     {
         private readonly List<ICheckpointListener> _checkpointListeners = [];
         private readonly List<IStreamStateChangeListener> _streamStateListeners = [];
