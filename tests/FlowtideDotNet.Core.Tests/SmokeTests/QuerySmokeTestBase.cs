@@ -234,8 +234,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             }
         }
 
-        //[Fact(Skip = "Takes a long time to run, can be run manually if required."), Trait("Category", "NLJ")]
-        [Fact]
+        [Fact(Skip = "Takes a long time to run, can be run manually if required."), Trait("Category", "NLJ")]
         public async Task LineItemLeftJoinOrdersNLJ()
         {
             await AddLineItems(TpchData.GetLineItems());
