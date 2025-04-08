@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base.Engine
 {
-    public interface ICheckNotificationReciever
+    public interface ICheckNotificatioReceiver
     {
         void OnCheckFailure(in ReadOnlySpan<byte> message);
     }
