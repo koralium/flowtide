@@ -31,14 +31,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         private readonly SqlServerSourceOptions _options;
         private readonly HashSet<string> _watermarks;
         private readonly string _displayName;
-        private readonly Func<SqlConnection, Task<List<string>>> _pkAction;
-        private readonly Func<SqlConnection, Task<List<int>>> _pkOrdinalsAction;
         private readonly ReadRelation _readRelation;
 
-        // todo: these are added as dictionary to act as a cache, should they be placed in another location or handled in another way?
-        private readonly Dictionary<string, List<string>> _primaryKeys = [];
-        private readonly Dictionary<string, List<int>> _primaryKeyOrdinals = [];
-        private readonly Dictionary<string, Action<SqlDataReader, IColumn>[]> _convertFunctions = [];
+        private List<string>? _primaryKeys;
+        private List<int>? _primaryKeyOrdinals;
+        private List<Action<SqlDataReader, IColumn>>? _convertFunctions;
 
         private readonly string? _filter;
         private readonly string _fullTableName;
@@ -80,17 +77,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     }
                 }
             }
-
-            if (_options.IsView)
-            {
-                _pkAction = (connection) => SqlServerUtils.GetColumns(connection, _fullTableName);
-                _pkOrdinalsAction = (connection) => SqlServerUtils.GetColumnOrdinals(connection, _fullTableName);
-            }
-            else
-            {
-                _pkAction = (connection) => SqlServerUtils.GetPrimaryKeys(connection, _fullTableName);
-                _pkOrdinalsAction = (connection) => SqlServerUtils.GetPrimaryKeyOrdinals(connection, _fullTableName);
-            }
         }
 
         public override string DisplayName => _displayName;
@@ -100,25 +86,23 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             using var connection = new SqlConnection(_options.ConnectionStringFunc());
             await connection.OpenAsync();
 
-            if (!_primaryKeys.ContainsKey(Name))
+            if (_options.IsView)
             {
-                _primaryKeys.Add(Name, await _pkAction(connection));
+                _primaryKeys = await SqlServerUtils.GetColumns(connection, _fullTableName);
+                _primaryKeyOrdinals = [.. (await SqlServerUtils.GetColumnOrdinals(connection, _fullTableName)).Select(s => s - 1)];
+            }
+            else
+            {
+                _primaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, _fullTableName);
+                _primaryKeyOrdinals = [.. (await SqlServerUtils.GetPrimaryKeyOrdinals(connection, _fullTableName)).Select(s => s - 1)];
             }
 
-            if (!_primaryKeyOrdinals.ContainsKey(Name))
-            {
-                _primaryKeyOrdinals.Add(Name, [.. (await _pkOrdinalsAction(connection)).Select(s => s - 1)]);
-            }
+            using var command = connection.CreateCommand();
+            command.CommandText = SqlServerUtils.CreateSelectStatementTop1(_readRelation);
 
-            if (!_convertFunctions.ContainsKey(Name))
-            {
-                using var command = connection.CreateCommand();
-                command.CommandText = SqlServerUtils.CreateSelectStatementTop1(_readRelation);
-
-                using var reader = await command.ExecuteReaderAsync();
-                var schema = await reader.GetColumnSchemaAsync();
-                _convertFunctions.Add(Name, [.. SqlServerUtils.GetColumnEventCreator(schema)]);
-            }
+            using var reader = await command.ExecuteReaderAsync();
+            var schema = await reader.GetColumnSchemaAsync();
+            _convertFunctions = SqlServerUtils.GetColumnEventCreator(schema);
 
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<SqlServerState>("sqlserver_state");
             _state.Value ??= new SqlServerState
@@ -129,9 +113,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override Task Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            return Task.CompletedTask;
+            Debug.Assert(_state != null);
+            await _state.Commit();
         }
 
         private sealed record DeltaLoadResilienceState(
@@ -189,7 +174,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 }
 
             }, context,
-            new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys[Name]));
+            new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys));
             ResilienceContextPool.Shared.Return(context);
 
             pipelineResult.ThrowIfException();
@@ -203,9 +188,9 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 linkedCancellation.Token.ThrowIfCancellationRequested();
                 elementCount++;
-                for (int i = 0; i < _convertFunctions.Count; i++)
+                for (int i = 0; i < columns.Length; i++)
                 {
-                    _convertFunctions[Name][i](reader, columns[i]);
+                    _convertFunctions[i](reader, columns[i]);
                 }
 
                 var changeVersion = reader.GetInt64(versionOrdinal);
@@ -291,7 +276,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     _state,
                     _options,
                     _readRelation,
-                    _primaryKeys[Name],
+                    _primaryKeys,
                     primaryKeyValues.Count > 0,
                     batchSize,
                     _filter,
@@ -341,14 +326,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     iterations.Add(0);
 
                     primaryKeyValues.Clear();
-                    for (int i = 0; i < _primaryKeyOrdinals[Name].Count; i++)
+                    for (int i = 0; i < _primaryKeyOrdinals.Count; i++)
                     {
-                        primaryKeyValues.Add(_primaryKeys[Name][i], reader.GetValue(_primaryKeyOrdinals[Name][i]));
+                        primaryKeyValues.Add(_primaryKeys[i], reader.GetValue(_primaryKeyOrdinals[i]));
                     }
 
                     for (int i = 0; i < columns.Length; i++)
                     {
-                        _convertFunctions[Name][i](reader, columns[i]);
+                        _convertFunctions[i](reader, columns[i]);
                     }
 
                     if (weights.Count > 100)
