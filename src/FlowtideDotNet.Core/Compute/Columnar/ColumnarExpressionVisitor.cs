@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         {
             if (functionsRegister.TryGetColumnScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var functionDef))
             {
-                return functionDef.MapFunc(scalarFunction, state, this);
+                return functionDef.MapFunc(scalarFunction, state, this, functionsRegister.FunctionServices);
             }
             if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var function))
             {

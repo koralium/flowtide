@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Columnar.Functions.BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
             Columnar.Functions.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
             Columnar.Functions.BuiltInRoundingFunctions.AddRoundingFunctions(functionsRegister);
+            Columnar.Functions.BuiltInCheckFunctions.RegisterCheckFunctions(functionsRegister);
 
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);

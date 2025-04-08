@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
 
-            functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor) =>
+            functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor, functionServices) =>
             {
                 if (!methodDetails.TryGetValue(func.Arguments.Count, out var methodsInformation))
                 {

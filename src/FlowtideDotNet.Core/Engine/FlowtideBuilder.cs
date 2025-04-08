@@ -126,6 +126,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder WithCheckFailureListener(ICheckFailureListener listener)
+        {
+            dataflowStreamBuilder.AddCheckFailureListener(listener);
+            return this;
+        }
+
         public FlowtideBuilder WithFailureListener<T>()
             where T : IFailureListener, new()
         {
@@ -257,6 +263,9 @@ namespace FlowtideDotNet.Core.Engine
                 _getTimestampInterval,
                 _useColumnStore,
                 _taskScheduler);
+
+            // Set the notification reciever to the function register to allow check functions get access to it.
+            _functionsRegister.SetCheckNotificationReciever(dataflowStreamBuilder.StreamNotificationReceiver);
 
             visitor.BuildPlan();
 

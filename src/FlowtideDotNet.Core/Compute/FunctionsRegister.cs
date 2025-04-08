@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
@@ -31,6 +32,9 @@ namespace FlowtideDotNet.Core.Compute
         private readonly Dictionary<string, ColumnAggregateFunctionDefinition> _columnAggregateFunctions;
         private readonly Dictionary<string, ColumnTableFunctionDefinition> _columnTableFunctions;
         private readonly Dictionary<string, WindowFunctionDefinition> _windowFunctions;
+        private readonly FunctionServices _functionServices;
+
+        public IFunctionServices FunctionServices => _functionServices;
 
         public FunctionsRegister()
         {
@@ -42,6 +46,8 @@ namespace FlowtideDotNet.Core.Compute
             _columnAggregateFunctions = new Dictionary<string, ColumnAggregateFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _columnTableFunctions = new Dictionary<string, ColumnTableFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
             _windowFunctions = new Dictionary<string, WindowFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
+
+            _functionServices = new FunctionServices();
         }
 
         public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
@@ -54,7 +60,7 @@ namespace FlowtideDotNet.Core.Compute
             return _columnScalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
         }
 
-        public void RegisterColumnScalarFunction(string uri, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc)
+        public void RegisterColumnScalarFunction(string uri, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc)
         {
             _columnScalarFunctions.Add($"{uri}:{name}", new ColumnFunctionDefinition(uri, name, mapFunc));
         }
@@ -231,6 +237,11 @@ namespace FlowtideDotNet.Core.Compute
             }
             windowFunc = default;
             return false;
+        }
+
+        public void SetCheckNotificationReciever(ICheckNotificationReciever checkNotificationReciever)
+        {
+            _functionServices.SetCheckNotificationReciever(checkNotificationReciever);
         }
     }
 }

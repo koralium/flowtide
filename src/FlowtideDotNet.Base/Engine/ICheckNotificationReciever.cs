@@ -10,9 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Base.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.SqlServer.Tests")]
+namespace FlowtideDotNet.Base.Engine
+{
+    public interface ICheckNotificationReciever
+    {
+        void OnCheckFailure(in ReadOnlySpan<byte> message);
+    }
+}

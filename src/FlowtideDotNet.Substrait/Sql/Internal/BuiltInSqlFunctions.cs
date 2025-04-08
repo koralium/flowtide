@@ -871,6 +871,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                     return new WindowResponse(windowFunc, returnType);
                 });
+
+            // Check functions
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "check_value", FunctionsCheck.Uri, FunctionsCheck.CheckValue);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "check_true", FunctionsCheck.Uri, FunctionsCheck.CheckTrue);
         }
 
         private static void RegisterSingleVariableFunction(
