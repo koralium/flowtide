@@ -239,7 +239,7 @@ namespace FlowtideDotNet.Core.Compute
             return false;
         }
 
-        public void SetCheckNotificationReceiver(ICheckNotificationReceiver checkNotificationReceiver)
+        public void SetCheckNotificationReceiver(ICheckNotificationReciever checkNotificationReceiver)
         {
             _functionServices.SetCheckNotificationReceiver(checkNotificationReceiver);
         }

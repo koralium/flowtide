@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         checkValue,
                         checkCondition,
                         checkMessage,
-                        System.Linq.Expressions.Expression.Constant(functionServices.CheckNotificationReciever)
+                        System.Linq.Expressions.Expression.Constant(functionServices.CheckNotificationReceiver)
                     );
                 });
 
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         genericMethod,
                         checkCondition,
                         checkMessage,
-                        System.Linq.Expressions.Expression.Constant(functionServices.CheckNotificationReciever)
+                        System.Linq.Expressions.Expression.Constant(functionServices.CheckNotificationReceiver)
                     );
                 });
         }
