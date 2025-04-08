@@ -49,7 +49,7 @@ namespace FlowtideDotNet.AcceptanceTests
             var listener = new CheckFailureListener();
             await StartStream(@"
                INSERT INTO output 
-                SELECT check_value(UserKey, UserKey < 900, concat('Userkey: ', UserKey, ' is too large')) 
+                SELECT CHECK_VALUE(UserKey, UserKey < 900, concat('Userkey: ', UserKey, ' is too large')) 
                 FROM users", failureListener: listener);
 
             await WaitForUpdate();
@@ -58,6 +58,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Select(x => $"Userkey: {x.UserKey} is too large");
 
             Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
