@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 if (!condition.AsBool && message.Type == ArrowTypeId.String)
                 {
-                    notificationReciever.OnCheckFailure(message.AsString.Span);
+                    notificationReceiver.OnCheckFailure(message.AsString.Span);
                 }
                 return condition;
             }
