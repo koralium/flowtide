@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.Substrait.Sql;
 
 namespace FlowtideDotNet.SqlServer.Tests.e2e
@@ -383,7 +384,12 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[4].Item1}, {expectedValues[4].Item2});
             ");
 
-            var testStream = new SqlServerTestStream(testName, _fixture.ConnectionString);
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = true
+            });
+
             testStream.RegisterTableProviders((builder) =>
             {
                 builder.AddSqlServerProvider(() => _fixture.ConnectionString);
@@ -424,8 +430,256 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 return rows;
             });
 
+            Assert.Equal(expectedValues, result);
+        }
+
+        [Fact]
+        public async Task FullLoadOnTableWithoutChangeTrackingIfAllowed()
+        {
+            var testName = nameof(FullLoadOnTableWithoutChangeTrackingIfAllowed);
+            var sourceTableName = $"{testName}_source";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+
+            await _fixture.RunCommand($"ALTER TABLE [test-db].[dbo].[{sourceTableName}] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            var expectedValues = new List<(int, int)>
+            {
+                (1, 1),
+                (2, 2),
+                (3, 3),
+                (4, 4),
+                (5, 5)
+            };
+
+            // Insert some data
+            await _fixture.RunCommand($@"
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[0].Item1}, {expectedValues[0].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[1].Item1}, {expectedValues[1].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[2].Item1}, {expectedValues[2].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[3].Item1}, {expectedValues[3].Item2});
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES ({expectedValues[4].Item1}, {expectedValues[4].Item2});
+            ");
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = true
+            });
+
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+
+            await testStream.StartStream($@"
+                INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceTableName}]
+            ");
+
+            var count = 0;
+            while (true)
+            {
+                await testStream.SchedulerTick();
+                count = await _fixture.ExecuteReader($"SELECT count(*) from [test-db].[dbo].[{destinationTableName}]", (reader) =>
+                {
+                    reader.Read();
+                    return reader.GetInt32(0);
+                });
+
+                if (count >= expectedValues.Count)
+                {
+                    break;
+                }
+            }
+
+            var result = await _fixture.ExecuteReader($"SELECT [id], [age] from [test-db].[dbo].[{destinationTableName}]", (reader) =>
+            {
+                var rows = new List<(int, int)>();
+                while (reader.Read())
+                {
+                    rows.Add((reader.GetInt32(0), reader.GetInt32(1)));
+                }
+
+                return rows;
+            });
 
             Assert.Equal(expectedValues, result);
+        }
+
+        [Fact]
+        public async Task FullLoadOnTableWithoutChangeTrackingThrows()
+        {
+            var testName = nameof(FullLoadOnTableWithoutChangeTrackingThrows);
+            var sourceTableName = $"{testName}_source";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = true
+            });
+
+            var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceTableName}]";
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
+            Assert.NotEmpty(exception.Message);
+        }
+
+        [Fact]
+        public async Task ViewWithoutFullLoadThrows()
+        {
+            var testName = nameof(ViewWithoutFullLoadThrows);
+            var sourceTableName = $"{testName}_source";
+            var sourceViewName = $"{testName}_view_source";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+            await _fixture.RunCommand($@"
+                CREATE VIEW [{sourceViewName}] AS 
+                SELECT [id], [age] FROM [test-db].[dbo].[{sourceTableName}];
+            ");
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = false
+            });
+
+            var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceViewName}]";
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
+            Assert.NotEmpty(exception.Message);
+        }
+
+        [Fact]
+        public async Task ViewWithoutFullLoadIntervalThrows()
+        {
+            var testName = nameof(ViewWithoutFullLoadIntervalThrows);
+            var sourceTableName = $"{testName}_source";
+            var sourceViewName = $"{testName}_view_source";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+            await _fixture.RunCommand($@"
+                CREATE VIEW [{sourceViewName}] AS 
+                SELECT [id], [age] FROM [test-db].[dbo].[{sourceTableName}];
+            ");
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = true,
+                FullReloadInterval = null
+            });
+
+            var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceViewName}]";
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
+            Assert.NotEmpty(exception.Message);
+        }
+
+        [Fact]
+        public async Task TableFullLoadWithTooManyRowsThrows()
+        {
+            var testName = nameof(TableFullLoadWithTooManyRowsThrows);
+            var sourceTableName = $"{testName}_source";
+            var sourceViewName = $"{testName}_view_source";
+            var destinationTableName = $"{testName}_destination";
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
+                [id] [int] primary key,
+                [age] [int] NOT NULL
+            )");
+
+            await _fixture.RunCommand($@"
+                CREATE VIEW [{sourceViewName}] AS 
+                SELECT [id], [age] FROM [test-db].[dbo].[{sourceTableName}];
+            ");
+
+            await _fixture.RunCommand($@"
+            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
+                [id] [int]  PRIMARY KEY,
+                [age] [int] NOT NULL
+            )");
+
+            await _fixture.RunCommand($@"
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES (1, 2);
+            INSERT INTO [test-db].[dbo].[{sourceTableName}] ([id], [age]) VALUES (2, 2);
+            ");
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                EnableFullReload = true,
+                FullReloadInterval = TimeSpan.FromSeconds(30),
+                FullLoadMaxRowCount = 1
+            });
+
+            var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
+                SELECT
+                    id,
+                    age
+                FROM [test-db].[dbo].[{sourceViewName}]";
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
+            Assert.NotEmpty(exception.Message);
         }
     }
 }
