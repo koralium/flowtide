@@ -105,6 +105,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
                 }
             }
+            else if (!_options.ChangeTrackingInterval.HasValue)
+            {
+                _options.ChangeTrackingInterval = TimeSpan.FromSeconds(1);
+            }
 
             List<int> pkIndices = new List<int>();
             foreach (var pk in primaryKeys)
