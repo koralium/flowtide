@@ -69,5 +69,17 @@ namespace FlowtideDotNet.DependencyInjection
                 builder.WithCheckLogger(logLevel);
             });
         }
+
+        /// <summary>
+        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// </summary>
+        /// <returns></returns>
+        public static IFlowtideDIBuilder WriteCheckFailuresAsActivity(this IFlowtideDIBuilder builder)
+        {
+            return builder.AddCustomOptions((provider, builder) =>
+            {
+                builder.WithCheckActivityLogger();
+            });
+        }
     }
 }

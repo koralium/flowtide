@@ -219,6 +219,16 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// </summary>
+        /// <returns></returns>
+        public FlowtideBuilder WithCheckActivityLogger()
+        {
+            WithCheckFailureListener(new ActivityCheckFailureListener());
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
