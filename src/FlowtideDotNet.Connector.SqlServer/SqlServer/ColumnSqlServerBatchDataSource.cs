@@ -106,6 +106,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             _convertFunctions = SqlServerUtils.GetColumnEventCreator(schema);
 
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<SqlServerState>("sqlserver_state");
+
             _state.Value ??= new SqlServerState
             {
                 ChangeTrackingVersion = -1
@@ -266,6 +267,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Logger.SelectingAllData(_fullTableName, StreamName, Name);
 
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
+            
+            using var connection = new SqlConnection(_options.ConnectionStringFunc());
+            await connection.OpenAsync(cancellationToken);
+            _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
 
             InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns);
 
