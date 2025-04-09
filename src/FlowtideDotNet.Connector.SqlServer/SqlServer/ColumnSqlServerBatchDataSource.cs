@@ -121,22 +121,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await _state.Commit();
         }
 
-        private sealed record DeltaLoadResilienceState(
-            IObjectState<SqlServerState> State,
-            SqlServerSourceOptions Options,
-            ReadRelation ReadRelation,
-            List<string> PrimaryKeys);
-
-        private sealed record ResilienceResult(SqlDataReader Reader, SqlConnection Connection, SqlCommand Command) : IAsyncDisposable
-        {
-            public async ValueTask DisposeAsync()
-            {
-                await Reader.DisposeAsync();
-                await Connection.DisposeAsync();
-                await Command.DisposeAsync();
-            }
-        }
-
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(_options != null);
@@ -156,6 +140,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             var elementCount = 0;
 
             var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
+            var resilienceState = new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys);
             var pipelineResult = await _options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
             {
                 try
@@ -177,8 +162,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     return Outcome.FromException<ResilienceResult>(ex);
                 }
 
-            }, context,
-            new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys));
+            }, context, resilienceState);
+
             ResilienceContextPool.Shared.Return(context);
 
             pipelineResult.ThrowIfException();
@@ -246,15 +231,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             linkedCancellation.Dispose();
         }
 
-        private sealed record FullLoadResilienceState(
-            IObjectState<SqlServerState> State,
-            SqlServerSourceOptions Options,
-            ReadRelation ReadRelation,
-            List<string> PrimaryKeys,
-            bool IncludePkParameters,
-            int BatchSize,
-            string? Filter,
-            Dictionary<string, object> PrimaryKeyValues);
 
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
@@ -267,7 +243,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Logger.SelectingAllData(_fullTableName, StreamName, Name);
 
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
-            
+
             using var connection = new SqlConnection(_options.ConnectionStringFunc());
             await connection.OpenAsync(cancellationToken);
             _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
@@ -411,6 +387,37 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
             return Task.FromResult<IReadOnlySet<string>>(_watermarks);
+        }
+
+
+        private sealed record DeltaLoadResilienceState(
+            IObjectState<SqlServerState> State,
+            SqlServerSourceOptions Options,
+            ReadRelation ReadRelation,
+            List<string> PrimaryKeys)
+        {
+        }
+
+        private sealed record FullLoadResilienceState(
+            IObjectState<SqlServerState> State,
+            SqlServerSourceOptions Options,
+            ReadRelation ReadRelation,
+            List<string> PrimaryKeys,
+            bool IncludePkParameters,
+            int BatchSize,
+            string? Filter,
+            Dictionary<string, object> PrimaryKeyValues)
+        {
+        }
+
+        private sealed record ResilienceResult(SqlDataReader Reader, SqlConnection Connection, SqlCommand Command) : IAsyncDisposable
+        {
+            public async ValueTask DisposeAsync()
+            {
+                await Reader.DisposeAsync();
+                await Connection.DisposeAsync();
+                await Command.DisposeAsync();
+            }
         }
     }
 }
