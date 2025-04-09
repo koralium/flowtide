@@ -165,6 +165,42 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task CheckValueWithWindowFunction()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT CHECK_VALUE(UserKey, ROW_NUMBER() OVER (PARTITION BY CompanyId ORDER BY UserKey) = 1, 'Duplicate user: {userkey} found for company {companyId}', userkey, companyId) 
+                FROM users", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    bool first = true;
+                    List<string> output = new List<string>();
+
+                    foreach (var row in x)
+                    {
+                        if (first)
+                        {
+                            first = false;
+                            continue;
+                        }
+                        output.Add($"Duplicate user: {row.UserKey} found for company {row.CompanyId ?? "null"}");
+                    }
+                    return output;
+                }).ToList();
+
+            Assert.Equal(expected.OrderBy(x => x).ToList(), listener.Errors.OrderBy(x => x).ToList());
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
         public async Task CheckTrueWithTags()
         {
             GenerateData();
