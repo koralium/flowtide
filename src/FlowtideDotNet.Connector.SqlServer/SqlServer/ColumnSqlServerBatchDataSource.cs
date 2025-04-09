@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Logging;
 using Polly;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -144,6 +145,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Debug.Assert(_primaryKeyOrdinals != null);
             Debug.Assert(_convertFunctions != null);
 
+            Logger.SelectingChanges(_fullTableName, StreamName, Name);
+
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
             await EnterCheckpointLock();
 
@@ -216,6 +219,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 {
                     var eventBatchData = new EventBatchData(columns);
                     var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
+                    Logger.ChangesFoundInTable(weights.Count, _fullTableName, StreamName, Name);
                     yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
                     InitializeBatchCollections(out weights, out iterations, out columns);
                 }
@@ -228,6 +232,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
+                Logger.ChangesFoundInTable(weights.Count, _fullTableName, StreamName, Name);
                 yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
             }
             else
