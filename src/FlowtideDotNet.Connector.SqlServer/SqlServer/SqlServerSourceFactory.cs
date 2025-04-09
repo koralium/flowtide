@@ -20,7 +20,6 @@ using FlowtideDotNet.Substrait.Tests.SqlServer;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks.Dataflow;
-using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
