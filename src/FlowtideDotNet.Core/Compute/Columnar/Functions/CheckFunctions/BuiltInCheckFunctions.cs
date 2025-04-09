@@ -20,7 +20,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace FlowtideDotNet.Core.Compute.Columnar.Functions
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
 {
     internal static class BuiltInCheckFunctions
     {
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     {
                         throw new InvalidOperationException("Check function requires at least 3 arguments.");
                     }
-                    
+
                     if ((func.Arguments.Count - 3) % 2 != 0)
                     {
                         throw new InvalidOperationException("Check function has invalid tag arguments, they must come in pairs with key and then value.");

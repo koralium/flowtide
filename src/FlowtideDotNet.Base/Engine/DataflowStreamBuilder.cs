@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Base.Engine
         private readonly StreamNotificationReceiver _streamNotificationReceiver;
 
         internal StreamNotificationReceiver StreamNotificationReceiver => _streamNotificationReceiver;
+        internal ILoggerFactory? LoggerFactory => _loggerFactory;
 
         public DataflowStreamBuilder(string streamName)
         {

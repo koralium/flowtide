@@ -33,13 +33,14 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT map('a', t.val) FROM testtable t
+SELECT check_value(t.val, t.val > 100, '{val} is too low', t.val) FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val;
 ";
 
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
+.WriteCheckFailuresToLogger()
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));

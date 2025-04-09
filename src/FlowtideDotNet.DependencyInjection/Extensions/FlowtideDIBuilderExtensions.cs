@@ -15,6 +15,7 @@ using FlowtideDotNet.DependencyInjection.Internal;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -59,6 +60,14 @@ namespace FlowtideDotNet.DependencyInjection
                 return new PlanProvider(sqlPlanBuilder.GetPlan());
             });
             return builder;
+        }
+
+        public static IFlowtideDIBuilder WriteCheckFailuresToLogger(this IFlowtideDIBuilder builder, LogLevel logLevel = LogLevel.Warning)
+        {
+            return builder.AddCustomOptions((provider, builder) =>
+            {
+                builder.WithCheckLogger(logLevel);
+            });
         }
     }
 }
