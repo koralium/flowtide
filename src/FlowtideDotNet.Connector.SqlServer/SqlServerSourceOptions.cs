@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// Allows flowtide to do a full reload of the data on interval when watch/change stream is not supported.
         /// Requires that a value is set for <see cref="FullReloadInterval"/> as well. 
         /// </summary>
-        public bool EnableFullReload { get; set; } = true; // todo: don't enable by default
+        public bool EnableFullReload { get; set; }
 
         /// <summary>
         /// Allows flowtide to do a full reload of the data on interval when change tracking is not supported on a table.
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// <summary>
         /// Interval for full reload of the data when watch/change stream is not supported.
         /// </summary>
-        public TimeSpan? FullReloadInterval { get; set; } = TimeSpan.FromSeconds(30);
+        public TimeSpan? FullReloadInterval { get; set; }
 
         /// <summary>
         /// Interval for change tracking. Default to 1 second.
