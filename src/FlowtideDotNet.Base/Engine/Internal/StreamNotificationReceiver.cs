@@ -75,9 +75,9 @@ namespace FlowtideDotNet.Base.Engine.Internal
             }
         }
 
-        public void OnCheckFailure(in ReadOnlySpan<byte> message)
+        public void OnCheckFailure(in string message, ReadOnlySpan<KeyValuePair<string, object?>> tags)
         {
-            var notification = new CheckFailureNotification(ref _streamName, message);
+            var notification = new CheckFailureNotification(ref _streamName, message, tags);
             foreach (var listener in _checkFailureListeners)
             {
                 try

@@ -14,6 +14,6 @@ namespace FlowtideDotNet.Base.Engine
 {
     public interface ICheckNotificationReceiver
     {
-        void OnCheckFailure(in ReadOnlySpan<byte> message);
+        void OnCheckFailure(in string message, ReadOnlySpan<KeyValuePair<string, object?>> tags);
     }
 }

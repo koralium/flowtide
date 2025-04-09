@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -37,7 +32,27 @@ namespace FlowtideDotNet.AcceptanceTests
 
             public void OnCheckFailure(ref readonly CheckFailureNotification notification)
             {
-                Errors.Add(Encoding.UTF8.GetString(notification.Utf8Message));
+                Errors.Add(notification.Message);
+            }
+        }
+
+        private class CheckFailureReplaceListener : ICheckFailureListener
+        {
+            public List<string> Errors { get; }
+
+            public CheckFailureReplaceListener()
+            {
+                Errors = new List<string>();
+            }
+
+            public void OnCheckFailure(ref readonly CheckFailureNotification notification)
+            {
+                var msg = notification.Message;
+                for (int i = 0; i < notification.Tags.Length; i++)
+                {
+                    msg = msg.Replace($"{{{notification.Tags[i].Key}}}", notification.Tags[i].Value?.ToString() ?? "null", StringComparison.OrdinalIgnoreCase);
+                }
+                Errors.Add(msg);
             }
         }
 
@@ -74,6 +89,117 @@ namespace FlowtideDotNet.AcceptanceTests
                   UserKey
                 FROM users
                 WHERE CHECK_TRUE(userkey < 900, concat('Userkey: ', UserKey, ' is too large'))
+            ", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.UserKey >= 900)
+                .Select(x => $"Userkey: {x.UserKey} is too large");
+
+            Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey < 900).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task CheckValueWithTags()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {userkey} is too large', userkey => UserKey) 
+                FROM users", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.UserKey >= 900)
+                .Select(x => $"Userkey: {x.UserKey} is too large");
+
+            Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task CheckValueWithTagsNullValue()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {userkey} is too large', userkey => null) 
+                FROM users", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.UserKey >= 900)
+                .Select(x => $"Userkey: null is too large");
+
+            Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task CheckValueWithTagsNonNamed()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT CHECK_VALUE(UserKey, UserKey < 900, 'Userkey: {userkey} is too large', userkey) 
+                FROM users", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.UserKey >= 900)
+                .Select(x => $"Userkey: {x.UserKey} is too large");
+
+            Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task CheckTrueWithTags()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT 
+                  UserKey
+                FROM users
+                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {userkey} is too large', userkey => UserKey)
+            ", failureListener: listener);
+
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.UserKey >= 900)
+                .Select(x => $"Userkey: {x.UserKey} is too large");
+
+            Assert.Equal(expected, listener.Errors);
+
+            AssertCurrentDataEqual(Users.Where(x => x.UserKey < 900).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task CheckTrueWithTagsNoNamed()
+        {
+            GenerateData();
+
+            var listener = new CheckFailureReplaceListener();
+            await StartStream(@"
+               INSERT INTO output 
+                SELECT 
+                  UserKey
+                FROM users
+                WHERE CHECK_TRUE(userkey < 900, 'Userkey: {userkey} is too large', UserKey)
             ", failureListener: listener);
 
             await WaitForUpdate();
