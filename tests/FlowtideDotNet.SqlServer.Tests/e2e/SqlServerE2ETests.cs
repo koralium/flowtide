@@ -198,6 +198,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             await _fixture.RunCommand(@"
             UPDATE [test-db].[dbo].[test-table3] SET [guid-dash] = '57f20bbe-3a17-45a7-bacc-614d89bde121' WHERE name = 'test1';
             ");
+
             var expectedGuid = Guid.Parse("57f20bbe-3a17-45a7-bacc-614d89bde121");
 
             while (true)
@@ -387,7 +388,8 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                EnableFullReload = true
+                EnableFullReload = true,
+                FullReloadInterval = TimeSpan.FromSeconds(60)
             });
 
             testStream.RegisterTableProviders((builder) =>
