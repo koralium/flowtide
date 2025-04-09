@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         var max = _options.FullLoadMaxRowCount;
                         if (count < 0 || count > max)
                         {
-                            throw new InvalidOperationException($"Row count of view {fullName} is too large, maximum is {max:0,0} rows (is {count:0,0}).");
+                            throw new InvalidOperationException($"Row count of view {fullName} is too large, max allowed rows according to {nameof(_options.FullLoadMaxRowCount)} is {max:0,0} rows (actual: {count:0,0}).");
                         }
                     }
                 }
