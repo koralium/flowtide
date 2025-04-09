@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             ColumnStringAggAggregation.Register(functionsRegister);
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
-                (scalarFunction, parameters, visitor) =>
+                (scalarFunction, parameters, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count < 2)
                     {
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
-                (func, parameters, visitor) =>
+                (func, parameters, visitor, functionServices) =>
                 {
                     bool ignoreNulls = false;
 
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor) =>
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor, functionServices) =>
             {
                 if (func.Arguments.Count != 1)
                 {

@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Compute
         void RegisterColumnScalarFunction(
             string uri,
             string name,
-            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc);
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc);
 
         /// <summary>
         /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
@@ -136,5 +136,7 @@ namespace FlowtideDotNet.Core.Compute
         bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
 
         internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
+
+        IFunctionServices FunctionServices { get; }
     }
 }

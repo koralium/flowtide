@@ -83,17 +83,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void AddBooleanFunctions(FunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.And,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, andExpr);
                 });
             functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Or,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, orExpr);
                 });
             functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Xor,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, xorExpr);
                 });

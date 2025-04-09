@@ -10,9 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Base.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.SqlServer.Tests")]
+namespace FlowtideDotNet.Base.Engine
+{
+    public interface ICheckFailureListener
+    {
+        /// <summary>
+        /// Called when a check fails
+        /// </summary>
+        /// <param name="notification">The notification</param>
+        void OnCheckFailure(ref readonly CheckFailureNotification notification);
+    }
+}

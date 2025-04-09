@@ -44,4 +44,18 @@ namespace FlowtideDotNet.Base.Engine
             Exception = exception;
         }
     }
+
+    public ref struct CheckFailureNotification
+    {
+        public readonly ref string StreamName;
+        public readonly string Message;
+        public readonly ReadOnlySpan<KeyValuePair<string, object?>> Tags;
+
+        public CheckFailureNotification(ref string streamName, string message, ReadOnlySpan<KeyValuePair<string, object?>> tags)
+        {
+            StreamName = ref streamName;
+            Message = message;
+            Tags = tags;
+        }
+    }
 }

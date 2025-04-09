@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
@@ -40,6 +41,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _useColumnStore = true;
         private string _version = "";
         private bool _useHashPlanAsVersion = false;
+        private bool _isCheckFailureRegistered = false;
 
         public FlowtideBuilder(string streamName)
         {
@@ -126,6 +128,13 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder WithCheckFailureListener(ICheckFailureListener listener)
+        {
+            _isCheckFailureRegistered = true;
+            dataflowStreamBuilder.AddCheckFailureListener(listener);
+            return this;
+        }
+
         public FlowtideBuilder WithFailureListener<T>()
             where T : IFailureListener, new()
         {
@@ -200,6 +209,26 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder WithCheckLogger(LogLevel logLevel = LogLevel.Warning)
+        {
+            if (dataflowStreamBuilder.LoggerFactory == null)
+            {
+                throw new InvalidOperationException("LoggerFactory is not set. Cannot add check logger.");
+            }
+            WithCheckFailureListener(new LoggerCheckFailureListener(dataflowStreamBuilder.LoggerFactory.CreateLogger<LoggerCheckFailureListener>(), logLevel));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// </summary>
+        /// <returns></returns>
+        public FlowtideBuilder WithCheckActivityLogger()
+        {
+            WithCheckFailureListener(new ActivityCheckFailureListener());
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -257,6 +286,20 @@ namespace FlowtideDotNet.Core.Engine
                 _getTimestampInterval,
                 _useColumnStore,
                 _taskScheduler);
+
+            // Set the notification receiver to the function register to allow check functions get access to it.
+            _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);
+
+            if (!_isCheckFailureRegistered)
+            {
+                // This should perhaps be moved in the future to some validation step
+                if (CheckFunctionFinder.CheckPlan(_plan) &&
+                    dataflowStreamBuilder.LoggerFactory != null)
+                {
+                    var checkFunctionLogger = dataflowStreamBuilder.LoggerFactory.CreateLogger("FlowtideDotNet.Core.Engine.CheckFunctionFinder");
+                    checkFunctionLogger.LogWarning("Check function found in plan, but no check failure listener is registered.");
+                }
+            }
 
             visitor.BuildPlan();
 

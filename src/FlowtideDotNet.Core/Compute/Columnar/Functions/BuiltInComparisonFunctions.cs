@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNan, typeof(BuiltInComparisonFunctions), nameof(IsNanImplementation));
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     var lastArg = visitor.Visit(scalarFunction.Arguments[scalarFunction.Arguments.Count - 1], parametersInfo);
 
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Greatest,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count < 2)
                     {

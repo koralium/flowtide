@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public ColumnFunctionDefinition(
             string uri,
             string name,
-            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc)
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc)
         {
             Uri = uri;
             Name = name;
@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public string Name { get; }
 
-        public Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> MapFunc { get; }
+        public Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> MapFunc { get; }
     }
 
     public class FunctionDefinition

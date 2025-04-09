@@ -40,6 +40,9 @@ namespace FlowtideDotNet.Base.Engine
         private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
         private readonly StreamNotificationReceiver _streamNotificationReceiver;
 
+        internal StreamNotificationReceiver StreamNotificationReceiver => _streamNotificationReceiver;
+        internal ILoggerFactory? LoggerFactory => _loggerFactory;
+
         public DataflowStreamBuilder(string streamName)
         {
             _streamName = streamName;
@@ -131,6 +134,12 @@ namespace FlowtideDotNet.Base.Engine
         public DataflowStreamBuilder AddFailureListener(IFailureListener listener)
         {
             _streamNotificationReceiver.AddFailureListener(listener);
+            return this;
+        }
+
+        public DataflowStreamBuilder AddCheckFailureListener(ICheckFailureListener listener)
+        {
+            _streamNotificationReceiver.AddCheckFailureListener(listener);
             return this;
         }
 

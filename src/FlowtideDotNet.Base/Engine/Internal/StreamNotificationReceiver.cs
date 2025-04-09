@@ -14,11 +14,12 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 
 namespace FlowtideDotNet.Base.Engine.Internal
 {
-    internal sealed class StreamNotificationReceiver
+    internal sealed class StreamNotificationReceiver : ICheckNotificationReceiver
     {
         private readonly List<ICheckpointListener> _checkpointListeners = [];
         private readonly List<IStreamStateChangeListener> _streamStateListeners = [];
         private readonly List<IFailureListener> _failureListeners = [];
+        private readonly List<ICheckFailureListener> _checkFailureListeners = [];
         private string _streamName;
 
         public StreamNotificationReceiver(string streamName)
@@ -74,6 +75,22 @@ namespace FlowtideDotNet.Base.Engine.Internal
             }
         }
 
+        public void OnCheckFailure(in string message, ReadOnlySpan<KeyValuePair<string, object?>> tags)
+        {
+            var notification = new CheckFailureNotification(ref _streamName, message, tags);
+            foreach (var listener in _checkFailureListeners)
+            {
+                try
+                {
+                    listener.OnCheckFailure(in notification);
+                }
+                catch
+                {
+                    // All errors are catched so check failure listeners cant break the stream
+                }
+            }
+        }
+
         internal void AddCheckpointListener(ICheckpointListener checkpointListener)
         {
             _checkpointListeners.Add(checkpointListener);
@@ -87,6 +104,11 @@ namespace FlowtideDotNet.Base.Engine.Internal
         internal void AddFailureListener(IFailureListener failureListener)
         {
             _failureListeners.Add(failureListener);
+        }
+
+        internal void AddCheckFailureListener(ICheckFailureListener checkFailureListener)
+        {
+            _checkFailureListeners.Add(checkFailureListener);
         }
     }
 }
