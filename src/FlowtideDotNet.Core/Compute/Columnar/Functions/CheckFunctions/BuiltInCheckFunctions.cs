@@ -157,10 +157,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
 
                     var block = Expression.Block(blockExpressions);
 
-                    var checckIfMessageString = Expression.IfThen(Expression.Equal(messageTypeProp, Expression.Constant(ArrowTypeId.String)), block);
-                    var checkMessageBlock = Expression.Block(new[] { checkMessageTemporaryVariable }, checkMessageAssign, checckIfMessageString);
-                    var checkIfContiditionNotTrue = Expression.IfThen(Expression.Not(conditionAsBoolProp), checkMessageBlock);
-                    var checkIfConditionIsBoolean = Expression.IfThen(Expression.Equal(conditionTypeProp, Expression.Constant(ArrowTypeId.Boolean)), checkIfContiditionNotTrue);
+                    var checkIfMessageString = Expression.IfThen(Expression.Equal(messageTypeProp, Expression.Constant(ArrowTypeId.String)), block);
+                    var checkMessageBlock = Expression.Block(new[] { checkMessageTemporaryVariable }, checkMessageAssign, checkIfMessageString);
+                    var checkIfConditionNotTrue = Expression.IfThen(Expression.Not(conditionAsBoolProp), checkMessageBlock);
+                    var checkIfConditionIsBoolean = Expression.IfThen(Expression.Equal(conditionTypeProp, Expression.Constant(ArrowTypeId.Boolean)), checkIfConditionNotTrue);
 
                     var returnBlockExpr = Expression.Block(typeof(IDataValue), new[] { checkConditionTemporaryVariable }, [checkConditionAssign, checkIfConditionIsBoolean, checkValue]);
 
@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
 
                             var tagValue = Expression.Call(objectConverterConstant, deserializeGenericMethod, tagValueExpr);
                             var createKeyValuePair = Expression.Call(genericCreateKeyValuePair, propName, tagValue);
-                            var arrayIndex = Expression.ArrayAccess(staticArray, Expression.Constant((i - 3) / 2));
+                            var arrayIndex = Expression.ArrayAccess(staticArray, Expression.Constant((i - 2) / 2));
                             var elementAssign = Expression.Assign(arrayIndex, createKeyValuePair);
                             blockExpressions.Add(elementAssign);
                         }
