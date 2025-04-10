@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         [LoggerMessage(
             EventId = 10,
-            Level = LogLevel.Information,
+            Level = LogLevel.Trace,
             Message = "Selecting changes from {tableName} in stream: `{stream}`, operator: `{operatorId}`")]
         public static partial void SelectingChanges(this ILogger logger, string tableName, string stream, string operatorId);
     }
