@@ -448,7 +448,6 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 [age] [int] NOT NULL
             )");
 
-            await _fixture.RunCommand($"ALTER TABLE [test-db].[dbo].[{sourceTableName}] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
             await _fixture.RunCommand($@"
             CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
                 [id] [int]  PRIMARY KEY,
@@ -476,7 +475,9 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                EnableFullReload = true
+                EnableFullReload = true,
+                AllowFullReloadOnTablesWithoutChangeTracking = true,
+                FullReloadInterval = TimeSpan.FromMinutes(1)
             });
 
             testStream.RegisterTableProviders((builder) =>
@@ -522,12 +523,14 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.Equal(expectedValues, result);
         }
 
-        [Fact]
-        public async Task FullLoadOnTableWithoutChangeTrackingThrows()
+        [Theory]
+        [InlineData(true, null)]
+        [InlineData(false, 1)]
+        public async Task FullLoadOnTableWithoutChangeTrackingThrows(bool allow, int? fromMinutes)
         {
-            var testName = nameof(FullLoadOnTableWithoutChangeTrackingThrows);
-            var sourceTableName = $"{testName}_source";
-            var destinationTableName = $"{testName}_destination";
+            var testName = $"{nameof(FullLoadOnTableWithoutChangeTrackingThrows)}_{allow}_{fromMinutes}";
+            var sourceTableName = $"{testName}_{allow}_{fromMinutes}_source";
+            var destinationTableName = $"{testName}_{allow}_{fromMinutes}_destination";
 
             await _fixture.RunCommand($@"
             CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
@@ -544,7 +547,9 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                EnableFullReload = true
+                EnableFullReload = true,
+                AllowFullReloadOnTablesWithoutChangeTracking = allow,
+                FullReloadInterval = fromMinutes.HasValue ? TimeSpan.FromMinutes(fromMinutes.Value) : null
             });
 
             var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
@@ -557,13 +562,15 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.NotEmpty(exception.Message);
         }
 
-        [Fact]
-        public async Task ViewWithoutFullLoadThrows()
+        [Theory]
+        [InlineData(true, null)]
+        [InlineData(false, null)]
+        public async Task ViewWithoutFullLoadThrows(bool allow, int? fromMinutes)
         {
-            var testName = nameof(ViewWithoutFullLoadThrows);
-            var sourceTableName = $"{testName}_source";
-            var sourceViewName = $"{testName}_view_source";
-            var destinationTableName = $"{testName}_destination";
+            var testName = $"{nameof(ViewWithoutFullLoadThrows)}_{allow}_{fromMinutes}";
+            var sourceTableName = $"{testName}_{allow}_{fromMinutes}_source";
+            var sourceViewName = $"{testName}_{allow}_{fromMinutes}_view_source";
+            var destinationTableName = $"{testName}_{allow}_{fromMinutes}_destination";
 
             await _fixture.RunCommand($@"
             CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
@@ -583,47 +590,8 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
             {
                 ConnectionStringFunc = () => _fixture.ConnectionString,
-                EnableFullReload = false
-            });
-
-            var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
-                SELECT
-                    id,
-                    age
-                FROM [test-db].[dbo].[{sourceViewName}]";
-
-            var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
-            Assert.NotEmpty(exception.Message);
-        }
-
-        [Fact]
-        public async Task ViewWithoutFullLoadIntervalThrows()
-        {
-            var testName = nameof(ViewWithoutFullLoadIntervalThrows);
-            var sourceTableName = $"{testName}_source";
-            var sourceViewName = $"{testName}_view_source";
-            var destinationTableName = $"{testName}_destination";
-
-            await _fixture.RunCommand($@"
-            CREATE TABLE [test-db].[dbo].[{sourceTableName}] (
-                [id] [int] primary key,
-                [age] [int] NOT NULL
-            )");
-            await _fixture.RunCommand($@"
-                CREATE VIEW [{sourceViewName}] AS 
-                SELECT [id], [age] FROM [test-db].[dbo].[{sourceTableName}];
-            ");
-            await _fixture.RunCommand($@"
-            CREATE TABLE [test-db].[dbo].[{destinationTableName}] (
-                [id] [int]  PRIMARY KEY,
-                [age] [int] NOT NULL
-            )");
-
-            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
-            {
-                ConnectionStringFunc = () => _fixture.ConnectionString,
-                EnableFullReload = true,
-                FullReloadInterval = null
+                EnableFullReload = allow,
+                FullReloadInterval = fromMinutes.HasValue ? TimeSpan.FromMinutes(fromMinutes.Value) : null
             });
 
             var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
