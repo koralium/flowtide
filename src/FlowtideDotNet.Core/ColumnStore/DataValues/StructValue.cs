@@ -11,16 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    public struct StructHeader : IEquatable<StructHeader>
+    public struct StructHeader : IEquatable<StructHeader>, IComparable<StructHeader>
     {
         internal int[] offsets;
         internal byte[] utf8Bytes;
@@ -67,6 +63,25 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             return utf8Bytes.AsSpan(start, length);
         }
 
+        public int FindIndex(string columnName)
+        {
+            var str = new FlxString(Encoding.UTF8.GetBytes(columnName));
+            return FindIndex(str);
+        }
+
+        public int FindIndex(FlxString str)
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                var columnNameBytes = new FlxString(GetColumnNameUtf8(i));
+                if (FlxString.CompareIgnoreCase(columnNameBytes, str) == 0)
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
         public string GetColumnName(int index)
         {
             return Encoding.UTF8.GetString(GetColumnNameUtf8(index));
@@ -103,6 +118,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             HashCode hashCode = new HashCode();
             hashCode.AddBytes(utf8Bytes);
             return hashCode.ToHashCode();
+        }
+
+        public int CompareTo(StructHeader other)
+        {
+            var offsetCompare = offsets.AsSpan().SequenceCompareTo(other.offsets.AsSpan());
+
+            if (offsetCompare != 0)
+            {
+                return offsetCompare;
+            }
+
+            var utf8Compare = utf8Bytes.AsSpan().SequenceCompareTo(other.utf8Bytes.AsSpan());
+            return utf8Compare;
         }
     } 
     public struct StructValue : IStructValue

@@ -23,8 +23,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
     public struct ReferenceStructValue : IStructValue
     {
-        private readonly StructColumn column;
-        private readonly int index;
+        internal readonly StructColumn column;
+        internal readonly int index;
 
         internal ReferenceStructValue(StructColumn column, int index)
         {

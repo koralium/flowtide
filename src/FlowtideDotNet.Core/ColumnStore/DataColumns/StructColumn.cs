@@ -82,6 +82,66 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
         {
+            if (validityList != null &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    // Compare on property level
+                    var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+                    // Compare with the inner column
+                    return _columns[columnIndex].CompareTo(index, value, mapKeyReferenceSegment.Child);
+                }
+                throw new NotImplementedException();
+            }
+            else
+            {
+                var structValue = value.AsStructValue;
+                var headerCompare = _header.CompareTo(structValue.Header);
+
+                if (headerCompare != 0)
+                {
+                    // If the headers dont match, return directly
+                    return headerCompare;
+                }
+
+                if (structValue is ReferenceStructValue refStructValue)
+                {
+                    for (int i = 0; i < _columns.Length; i++)
+                    {
+                        var compare = _columns[i].CompareTo(refStructValue.column._columns[i], index, refStructValue.index);
+                        if (compare != 0)
+                        {
+                            return compare;
+                        }
+                    }
+                    return 0;
+                }
+                else if (structValue is StructValue structVal)
+                {
+                    for (int i = 0; i < _columns.Length; i++)
+                    {
+                        var compare = _columns[i].CompareTo(index, structVal._columnValues[i], default);
+                        if (compare != 0)
+                        {
+                            return compare;
+                        }
+                    }
+                    return 0;
+                }
+            }
             throw new NotImplementedException();
         }
 
