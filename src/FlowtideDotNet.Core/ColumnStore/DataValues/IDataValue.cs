@@ -40,6 +40,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         TimestampTzValue AsTimestamp { get; }
 
+        IStructValue AsStructValue { get; }
+
         void CopyToContainer(DataValueContainer container);
 
         void Accept(in DataValueVisitor visitor);

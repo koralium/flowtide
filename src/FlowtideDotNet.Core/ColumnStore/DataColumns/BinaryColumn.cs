@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -48,6 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _data.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Binary;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public int Add<T>(in T value) where T : IDataValue
         {

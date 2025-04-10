@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal IListValue? _listValue;
         internal IMapValue? _mapValue;
         internal TimestampTzValue _timestampValue;
+        internal IStructValue? _structValue;
         internal ArrowTypeId _type;
 
 
@@ -55,6 +56,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => _type == ArrowTypeId.Null;
 
         public TimestampTzValue AsTimestamp => _timestampValue;
+
+        public IStructValue AsStructValue => _structValue!;
 
         public void Accept(in DataValueVisitor visitor)
         {
@@ -128,6 +131,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._decimalValue = _decimalValue;
             container._listValue = _listValue;
             container._mapValue = _mapValue;
+            container._structValue = _structValue;
         }
     }
 }

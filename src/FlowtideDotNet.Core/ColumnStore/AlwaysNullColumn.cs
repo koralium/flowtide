@@ -34,6 +34,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.Null;
 
+        int IColumn.Count => throw new NotImplementedException();
+
+        ArrowTypeId IColumn.Type => throw new NotImplementedException();
+
+        StructHeader? IColumn.StructHeader => default;
+
         public void Add<T>(in T value) where T : IDataValue
         {
             throw new NotSupportedException();
@@ -154,6 +160,111 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();
+        }
+
+        void IColumn.Add<T>(in T value)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.InsertAt<T>(in int index, in T value)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.UpdateAt<T>(in int index, in T value)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.RemoveAt(in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        ArrowTypeId IColumn.GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            throw new NotImplementedException();
+        }
+
+        IDataValue IColumn.GetValueAt(in int index, in ReferenceSegment? child)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IColumn.CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IColumn.CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
+        {
+            throw new NotImplementedException();
+        }
+
+        (int, int) IColumn.SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc)
+        {
+            throw new NotImplementedException();
+        }
+
+        (IArrowArray, IArrowType) IColumn.ToArrowArray()
+        {
+            throw new NotImplementedException();
+        }
+
+        SerializationEstimation IColumn.GetSerializationEstimate()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.Rent(int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.Return()
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.RemoveRange(in int index, in int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        int IColumn.GetByteSize()
+        {
+            throw new NotImplementedException();
+        }
+
+        int IColumn.GetByteSize(int start, int end)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IColumn.WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            throw new NotImplementedException();
+        }
+
+        Column IColumn.Copy(IMemoryAllocator memoryAllocator)
+        {
+            throw new NotImplementedException();
+        }
+
+        void IDisposable.Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

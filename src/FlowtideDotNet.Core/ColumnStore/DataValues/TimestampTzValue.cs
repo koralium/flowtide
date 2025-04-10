@@ -102,6 +102,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
 
+        public IStructValue AsStructValue => throw new NotImplementedException();
+
         public override string ToString()
         {
             return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");

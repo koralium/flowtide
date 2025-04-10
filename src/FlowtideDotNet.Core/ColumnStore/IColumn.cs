@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Storage.Memory;
@@ -80,5 +81,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
 
         Column Copy(IMemoryAllocator memoryAllocator);
+
+        internal StructHeader? StructHeader { get; }
     }
 }

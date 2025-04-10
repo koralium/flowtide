@@ -29,6 +29,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Null;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public NullColumn()
         {
         }

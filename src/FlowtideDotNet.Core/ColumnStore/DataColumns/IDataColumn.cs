@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
@@ -89,5 +90,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         SerializationEstimation GetSerializationEstimate();
+
+        /// <summary>
+        /// Only used for struct column, added for ease of access.
+        /// Returns the header of a struct (column names).
+        /// </summary>
+        StructHeader StructHeader { get; }
     }
 }

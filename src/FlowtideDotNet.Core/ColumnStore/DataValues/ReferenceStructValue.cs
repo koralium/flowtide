@@ -10,16 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.Flexbuffer;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    [DebuggerDisplay(@"\{null\}")]
-    public struct NullValue : IDataValue
+    public struct ReferenceStructValue : IStructValue
     {
-        public static readonly NullValue Instance = new NullValue();
-        public ArrowTypeId Type => ArrowTypeId.Null;
+        private readonly StructColumn column;
+        private readonly int index;
+
+        internal ReferenceStructValue(StructColumn column, int index)
+        {
+            this.column = column;
+            this.index = index;
+        }
+        public StructHeader Header => column._header;
+
+        public ArrowTypeId Type => ArrowTypeId.Struct;
 
         public long AsLong => throw new NotImplementedException();
 
@@ -37,25 +51,43 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public decimal AsDecimal => throw new NotImplementedException();
 
-        public bool IsNull => true;
+        public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
-        public IStructValue AsStructValue => throw new NotImplementedException();
+        public IStructValue AsStructValue => this;
 
         public void Accept(in DataValueVisitor visitor)
         {
-            visitor.VisitNullValue(in this);
+            throw new NotImplementedException();
         }
 
         public void CopyToContainer(DataValueContainer container)
         {
-            container._type = ArrowTypeId.Null;
+            throw new NotImplementedException();
+        }
+
+        public IDataValue GetAt(in int index)
+        {
+            return column._columns[index].GetValueAt(this.index, default);
         }
 
         public override string ToString()
         {
-            return "null";
+            StringBuilder stringBuilder = new StringBuilder();
+            stringBuilder.Append("{");
+            for (int i = 0; i < column._columns.Length; i++)
+            {
+                stringBuilder.Append(column._header.GetColumnName(i));
+                stringBuilder.Append(": ");
+                stringBuilder.Append(column._columns[i].GetValueAt(this.index, default).ToString());
+                if (i < column._columns.Length - 1)
+                {
+                    stringBuilder.Append(", ");
+                }
+            }
+            stringBuilder.Append("}");
+            return stringBuilder.ToString();
         }
     }
 }
