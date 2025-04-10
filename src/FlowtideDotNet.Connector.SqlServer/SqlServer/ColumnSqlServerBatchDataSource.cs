@@ -19,7 +19,6 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Logging;
 using Polly;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
@@ -89,13 +88,30 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             if (_options.IsView)
             {
-                _primaryKeys = await SqlServerUtils.GetColumns(connection, _fullTableName);
-                _primaryKeyOrdinals = [.. (await SqlServerUtils.GetColumnOrdinals(connection, _fullTableName)).Select(s => s - 1)];
+                _primaryKeys = _readRelation.BaseSchema.Names;
             }
             else
             {
                 _primaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, _fullTableName);
-                _primaryKeyOrdinals = [.. (await SqlServerUtils.GetPrimaryKeyOrdinals(connection, _fullTableName)).Select(s => s - 1)];
+            }
+
+            _primaryKeyOrdinals ??= [];
+            foreach (var key in _primaryKeys)
+            {
+                var foundKey = false;
+                for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
+                {
+                    if (_readRelation.BaseSchema.Names[i].Equals(key, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundKey = true;
+                        _primaryKeyOrdinals.Add(i);
+                    }
+                }
+
+                if (!foundKey)
+                {
+                    throw new InvalidOperationException($"Primary key ordinal not found for '{key}'");
+                }
             }
 
             using var command = connection.CreateCommand();
@@ -109,7 +125,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             _state.Value ??= new SqlServerState
             {
-                ChangeTrackingVersion = -1
+                ChangeTrackingVersion = 0
             };
 
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
@@ -201,7 +217,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                 _state.Value.ChangeTrackingVersion = changeVersion;
 
-                if (weights.Count > 100)
+                if (weights.Count >= 100)
                 {
                     var eventBatchData = new EventBatchData(columns);
                     var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
@@ -244,13 +260,23 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
 
-            using var connection = new SqlConnection(_options.ConnectionStringFunc());
-            await connection.OpenAsync(cancellationToken);
-            _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
-
             InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns);
 
             var primaryKeyValues = new Dictionary<string, object>();
+
+            if (!_options.IsChangeTrackingEnabled && _state.Value.ChangeTrackingVersion < 1)
+            {
+                using var connection = new SqlConnection(_options.ConnectionStringFunc());
+                await connection.OpenAsync(linkedCancellation.Token);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
+            }
+            else if (!_options.IsChangeTrackingEnabled)
+            {
+                // when reading from a view or a table without change tracking, use the server timestamp as the version identifier
+                using var connection = new SqlConnection(_options.ConnectionStringFunc());
+                await connection.OpenAsync(linkedCancellation.Token);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetServerTimestamp(connection);
+            }
 
             var batchSize = 10000;
             while (true)
@@ -279,7 +305,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                         var command = connection.CreateCommand();
                         command.CommandText = SqlServerUtils.CreateInitialSelectStatement(state.ReadRelation, state.PrimaryKeys, state.BatchSize, state.IncludePkParameters, state.Filter);
-                        command.Parameters.AddWithValue("ChangeVersion", state.State.Value.ChangeTrackingVersion);
 
                         foreach (var pk in state.PrimaryKeyValues)
                         {
@@ -374,14 +399,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         protected override async ValueTask<List<int>> GetPrimaryKeyColumns()
         {
-            using var connection = new SqlConnection(_options.ConnectionStringFunc());
-            await connection.OpenAsync();
-            if (_options.IsView)
-            {
-                return [.. (await SqlServerUtils.GetColumnOrdinals(connection, _fullTableName)).Select(s => s - 1)];
-            }
-
-            return [.. (await SqlServerUtils.GetPrimaryKeyOrdinals(connection, _fullTableName)).Select(s => s - 1)];
+            Debug.Assert(_primaryKeyOrdinals != null);
+            return _primaryKeyOrdinals;
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()

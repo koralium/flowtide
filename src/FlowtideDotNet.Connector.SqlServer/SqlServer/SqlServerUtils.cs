@@ -743,6 +743,22 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
         }
 
+        public static async Task<long> GetServerTimestamp(SqlConnection sqlConnection)
+        {
+            using var cmd = sqlConnection.CreateCommand();
+            cmd.CommandText = "SELECT SYSDATETIMEOFFSET()";
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var dateTimeOffset = reader.GetDateTimeOffset(0);
+                return dateTimeOffset.ToUniversalTime().Ticks;
+            }
+            else
+            {
+                throw new InvalidOperationException("Could not get server timestamp from sql server.");
+            }
+        }
+
         public static string GetCreateTemporaryTableQuery(ReadOnlyCollection<DbColumn> columns, string tmpTableName)
         {
             StringBuilder stringBuilder = new StringBuilder();
