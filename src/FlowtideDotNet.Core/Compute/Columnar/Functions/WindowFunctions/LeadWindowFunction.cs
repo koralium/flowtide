@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -65,6 +66,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private readonly Func<EventBatchData, int, IDataValue> _leadValueFunc;
         private readonly Func<EventBatchData, int, IDataValue>? _leadOffsetFunc;
         private readonly Func<EventBatchData, int, IDataValue>? _defaultValueFunc;
+
+        public bool RequirePartitionCompute => true;
 
         public LeadWindowFunction(
             Func<EventBatchData, int, IDataValue> leadValueFunc,
@@ -160,8 +163,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             }
         }
 
-        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> persistentTree, List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
+        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
         {
+            if (persistentTree == null)
+            {
+                throw new ArgumentNullException(nameof(persistentTree));
+            }
             _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
             _updateIterator = persistentTree.CreateIterator();
@@ -170,6 +177,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
+        }
+
+        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
+        {
+            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
+        }
+
+        public ValueTask Commit()
+        {
+            return ValueTask.CompletedTask;
         }
     }
 }

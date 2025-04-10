@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 
@@ -27,6 +28,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Columnar.Functions.BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
             Columnar.Functions.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
             Columnar.Functions.BuiltInRoundingFunctions.AddRoundingFunctions(functionsRegister);
+            BuiltInCheckFunctions.RegisterCheckFunctions(functionsRegister);
 
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);

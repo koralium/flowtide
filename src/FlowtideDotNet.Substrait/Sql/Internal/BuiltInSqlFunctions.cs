@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
@@ -727,6 +728,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
             });
 
+            sqlFunctionRegister.RegisterAggregateFunction("surrogate_key_int64", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args != null && argList.Args.Count != 0)
+                {
+                    throw new InvalidOperationException("surrogate_key_int64 must have exactly zero arguments.");
+                }
+
+                return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                            ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
+                            Arguments = new List<Expressions.Expression>()
+                        },
+                        new StringType() { Nullable = true }
+                        );
+            });
+
 
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
@@ -765,12 +785,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.Uri, FunctionsString.ToJson);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
 
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay);
+
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
 
             // WindowFunction
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
+            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
@@ -849,6 +872,137 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                     return new WindowResponse(windowFunc, returnType);
                 });
+
+            // Check functions
+            sqlFunctionRegister.RegisterScalarFunction("check_value", (func, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(func.Args);
+                if (argList.Args == null || argList.Args.Count < 3)
+                {
+                    throw new SubstraitParseException($"check_value must have at least three arguments");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new SubstraitParseException($"check_value must have at least three arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new SubstraitParseException($"check_value must have at least three arguments, and not be '*'");
+                }
+                if ((argList.Args[2] is FunctionArg.Unnamed unnamed3 && unnamed3.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new SubstraitParseException($"check_value must have at least three arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                argList.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3)
+                {
+                    var argExprResult = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+                    var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData).Expr;
+
+                    List<Expressions.Expression> argumentList = new List<Expressions.Expression>()
+                    {
+                        argExprResult.Expr,
+                        argExpr2,
+                        argExpr3
+                    };
+
+                    for (int i = 3; i < argList.Args.Count; i++)
+                    {
+                        if (argList.Args[i] is FunctionArg.Named namedArg && namedArg.Arg is FunctionArgExpression.FunctionExpression namedExpr)
+                        {
+                            argumentList.Add(new StringLiteral() { Value = namedArg.Name.Value });
+                            var expr = visitor.Visit(namedExpr.Expression, emitData).Expr;
+                            argumentList.Add(expr);
+                        }
+                        else if (argList.Args[i] is FunctionArg.Unnamed unnamedTag && unnamedTag.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedExpr)
+                        {
+                            var expr = visitor.Visit(unnamedExpr.Expression, emitData);
+                            argumentList.Add(new StringLiteral() { Value = expr.Name });
+                            argumentList.Add(expr.Expr);
+                        }
+                        else
+                        {
+                            throw new SubstraitParseException($"Check value arguments cannot be '*'");
+                        }
+                    }
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsCheck.Uri,
+                            ExtensionName = FunctionsCheck.CheckValue,
+                            Arguments = argumentList
+                        },
+                        argExprResult.Type
+                        );
+                }
+
+                throw new InvalidOperationException($"check_value must have at least three arguments, and not be '*'");
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("check_true", (func, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(func.Args);
+                if (argList.Args == null || argList.Args.Count < 2)
+                {
+                    throw new SubstraitParseException($"check_true must have at least two arguments");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new SubstraitParseException($"check_true must have at least two arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new SubstraitParseException($"check_true must have at least two arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+
+                    List<Expressions.Expression> argumentList = new List<Expressions.Expression>()
+                    {
+                        argExpr,
+                        argExpr2
+                    };
+
+                    for (int i = 2; i < argList.Args.Count; i++)
+                    {
+                        if (argList.Args[i] is FunctionArg.Named namedArg && namedArg.Arg is FunctionArgExpression.FunctionExpression namedExpr)
+                        {
+                            argumentList.Add(new StringLiteral() { Value = namedArg.Name.Value });
+                            var expr = visitor.Visit(namedExpr.Expression, emitData).Expr;
+                            argumentList.Add(expr);
+                        }
+                        else if (argList.Args[i] is FunctionArg.Unnamed unnamedTag && unnamedTag.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedExpr)
+                        {
+                            var expr = visitor.Visit(unnamedExpr.Expression, emitData);
+                            argumentList.Add(new StringLiteral() { Value = expr.Name });
+                            argumentList.Add(expr.Expr);
+                        }
+                        else
+                        {
+                            throw new SubstraitParseException($"check_true value arguments cannot be '*'");
+                        }
+                    }
+
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsCheck.Uri,
+                            ExtensionName = FunctionsCheck.CheckTrue,
+                            Arguments = argumentList
+                        },
+                        new BoolType()
+                        );
+                }
+
+                throw new InvalidOperationException($"check_true must have at least two arguments, and not be '*'");
+            });
         }
 
         private static void RegisterSingleVariableFunction(

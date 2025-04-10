@@ -90,6 +90,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             containsAggregate |= Visit(namedFuncArgExpr.Expression, state);
                         }
                     }
+                    else if (arg is FunctionArg.Unnamed unnamedFunctionArg)
+                    {
+                        if (unnamedFunctionArg.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedFuncArgExpr)
+                        {
+                            containsAggregate |= Visit(unnamedFuncArgExpr.Expression, state);
+                        }
+                    }
                 }
             }
 

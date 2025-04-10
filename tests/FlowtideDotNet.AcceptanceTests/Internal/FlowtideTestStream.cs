@@ -174,7 +174,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
-            bool ignoreSameDataCheck = false)
+            bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -247,6 +248,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
                     }
                 });
+
+            if (checkFailureListener != null)
+            {
+                flowtideBuilder.WithCheckFailureListener(checkFailureListener);
+            }
+
             var stream = flowtideBuilder.Build();
             _stream = stream;
             await _stream.StartAsync();

@@ -10,9 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
-
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Base.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.SqlServer.Tests")]
+namespace FlowtideDotNet.Substrait.FunctionExtensions
+{
+    public static class FunctionsCheck
+    {
+        public const string Uri = "/check.yaml";
+        public const string CheckValue = "check_value";
+        public const string CheckTrue = "check_true";
+    }
+}
