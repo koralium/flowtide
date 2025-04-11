@@ -743,6 +743,22 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
         }
 
+        public static async Task<long> GetServerTimestamp(SqlConnection sqlConnection)
+        {
+            using var cmd = sqlConnection.CreateCommand();
+            cmd.CommandText = "SELECT SYSDATETIMEOFFSET()";
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var dateTimeOffset = reader.GetDateTimeOffset(0);
+                return dateTimeOffset.ToUniversalTime().Ticks;
+            }
+            else
+            {
+                throw new InvalidOperationException("Could not get server timestamp from sql server.");
+            }
+        }
+
         public static string GetCreateTemporaryTableQuery(ReadOnlyCollection<DbColumn> columns, string tmpTableName)
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -849,6 +865,105 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 output.Add(reader.GetString(0));
             }
+            return output;
+        }
+
+        public static async Task<List<int>> GetPrimaryKeyOrdinals(SqlConnection connection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await connection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT ORDINAL_POSITION
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+            WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + QUOTENAME(CONSTRAINT_NAME)), 'IsPrimaryKey') = 1
+            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static async Task<List<string>> GetColumns(SqlConnection connection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+            await connection.ChangeDatabaseAsync(db);
+            var cmd = @"
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+            var output = new List<string>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetString(0));
+            }
+            return output;
+        }
+
+        public static async Task<List<int>> GetColumnOrdinals(SqlConnection connection, string tableFullName)
+        {
+
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await connection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT ORDINAL_POSITION
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
             return output;
         }
 
@@ -1501,6 +1616,55 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             string output = "(" + string.Join(" OR ", primaryKeyComparators) + ")";
             return output;
+        }
+
+        public static async Task<bool> IsView(SqlConnection sqlConnection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await sqlConnection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT type_desc 
+            FROM Sys.objects o
+            JOIN Sys.schemas s ON s.schema_id = o.schema_id
+            WHERE o.name = @name AND s.name = @schema";
+
+            using var command = sqlConnection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.AddWithValue("name", table);
+            command.Parameters.AddWithValue("schema", schema);
+
+            var value = await command.ExecuteScalarAsync();
+            return (string?)value == "VIEW";
+        }
+
+        public static async Task<int> GetRowCount(SqlConnection sqlConnection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            using var command = sqlConnection.CreateCommand();
+            command.CommandText = $@"SELECT COUNT(*) FROM [{db}].[{schema}].[{table}]";
+            var count = await command.ExecuteScalarAsync();
+            return (int?)count ?? -1;
         }
     }
 }

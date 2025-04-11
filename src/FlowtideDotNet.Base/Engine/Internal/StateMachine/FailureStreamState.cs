@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context.ForEachBlock((key, block) =>
             {
-                block.Fault(new Exception());
+                block.Fault(new Exception($"Faulting block due to stream failure."));
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });

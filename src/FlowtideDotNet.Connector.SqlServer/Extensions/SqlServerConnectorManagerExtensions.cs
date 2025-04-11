@@ -24,7 +24,21 @@ namespace FlowtideDotNet.Core
             Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)
         {
-            connectorManager.AddSource(new SqlServerSourceFactory(connectionStringFunc, tableNameTransform, useDatabaseDefinedInConnectionStringOnly));
+            connectorManager.AddSource(new SqlServerSourceFactory(new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = connectionStringFunc,
+                TableNameTransform = tableNameTransform,
+                UseDatabaseDefinedInConnectionStringOnly = useDatabaseDefinedInConnectionStringOnly
+            }));
+
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddSqlServerSource(
+            this IConnectorManager connectorManager,
+            SqlServerSourceOptions options)
+        {
+            connectorManager.AddSource(new SqlServerSourceFactory(options));
             return connectorManager;
         }
 

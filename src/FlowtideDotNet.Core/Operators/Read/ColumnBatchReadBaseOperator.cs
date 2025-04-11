@@ -345,7 +345,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                        var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
+                                        deleteBatchColumns[k].Add(value);
                                     }
                                     return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                                 }
@@ -780,11 +781,11 @@ namespace FlowtideDotNet.Core.Operators.Read
                 _initialSent.Value = true;
             }
 
-            await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));
+            await RegisterTrigger(DeltaLoadTriggerName, DeltaLoadInterval);
             await RegisterTrigger(FullLoadTriggerName, FullLoadInterval);
         }
 
-        protected virtual TimeSpan? DeltaLoadInterval { get; set; } = TimeSpan.FromSeconds(1);
+        protected virtual TimeSpan? DeltaLoadInterval { get; set; }
 
         protected virtual TimeSpan? FullLoadInterval { get; set; }
 
