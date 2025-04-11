@@ -271,6 +271,7 @@ namespace FlowtideDotNet.Substrait.Sql
                                     if (namedStructType.Names[z].Equals(keyAccess, StringComparison.Ordinal))
                                     {
                                         structIndex = z;
+                                        break;
                                     }
                                 }
 
@@ -286,6 +287,11 @@ namespace FlowtideDotNet.Substrait.Sql
                                 };
                                 seg.Child = newStructReference;
                                 seg = newStructReference;
+                                if (namedStructType.Struct != null)
+                                {
+                                    baseType = namedStructType.Struct.Types[structIndex];
+                                }
+                                
                                 mapIdentifiers.Add(keyAccess);
                             }
 
@@ -299,6 +305,7 @@ namespace FlowtideDotNet.Substrait.Sql
                                 mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
                                 seg.Child = newSegment;
                                 seg = newSegment;
+                                baseType = AnyType.Instance;
                             }
                         }
 
@@ -311,10 +318,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             name = GetName(emitInfoPartial.Index[0]);
                         }
-
-
-                        // TODO: For now we just return any type, but we should try to find the correct type
-                        type = new AnyType();
+                        type = baseType;
                         return true;
                     }
                 }
