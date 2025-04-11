@@ -353,5 +353,95 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(-3, low3);
             Assert.Equal(-3, high3);
         }
+
+        [Fact]
+        public void SearchBoundaryDescending()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            var structHeader = StructHeader.Create("colum1", "column2");
+            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("world")
+            }));
+            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            }));
+
+            var toFind1 = new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            });
+            var toFind2 = new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("world")
+            });
+            var toFind3 = new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(122),
+                new StringValue("world")
+            });
+            var toFind4 = new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(124),
+                new StringValue("world")
+            });
+
+            var (low1, high1) = column.SearchBoundries(toFind1, 0, column.Count - 1, default, true);
+            var (low2, high2) = column.SearchBoundries(toFind2, 0, column.Count - 1, default, true);
+            var (low3, high3) = column.SearchBoundries(toFind3, 0, column.Count - 1, default, true);
+            var (low4, high4) = column.SearchBoundries(toFind4, 0, column.Count - 1, default, true);
+
+            Assert.Equal(1, low1);
+            Assert.Equal(1, high1);
+            Assert.Equal(0, low2);
+            Assert.Equal(0, high2);
+            Assert.Equal(-3, low3);
+            Assert.Equal(-3, high3);
+            Assert.Equal(-1, low4);
+            Assert.Equal(-1, high4);
+        }
+
+        [Fact]
+        public void SearchBoundaryDescendingWithChild()
+        {
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+
+            var structHeader = StructHeader.Create("column1", "column2");
+            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("world")
+            }));
+            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            }));
+
+            var toFind1 = new Int64Value(123);
+            var toFind2 = new Int64Value(122);
+            var toFind3 = new Int64Value(124);
+
+            var childMap = new MapKeyReferenceSegment()
+            {
+                Key = "column1"
+            };
+            var (low1, high1) = column.SearchBoundries(toFind1, 0, column.Count - 1, childMap, true);
+            var (low2, high2) = column.SearchBoundries(toFind2, 0, column.Count - 1, childMap, true);
+            var (low3, high3) = column.SearchBoundries(toFind3, 0, column.Count - 1, childMap, true);
+
+            Assert.Equal(0, low1);
+            Assert.Equal(1, high1);
+            Assert.Equal(-3, low2);
+            Assert.Equal(-3, high2);
+            Assert.Equal(-1, low3);
+            Assert.Equal(-1, high3);
+        }
     }
 }
