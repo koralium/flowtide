@@ -408,7 +408,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             return Task.FromResult<IReadOnlySet<string>>(_watermarks);
         }
 
-
         private sealed record DeltaLoadResilienceState(
             IObjectState<SqlServerState> State,
             SqlServerSourceOptions Options,
