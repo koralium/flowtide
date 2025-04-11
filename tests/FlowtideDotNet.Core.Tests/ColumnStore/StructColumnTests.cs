@@ -28,8 +28,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
             column.Add(new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
-            var val2 = column.GetValueAt(1, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
+            var val2 = column.GetValueAt(1, default).AsStruct;
 
             Assert.Equal(123, val1.GetAt(0).AsLong);
             Assert.Equal("hello", val1.GetAt(1).AsString.ToString());
@@ -47,8 +47,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.InsertAt(0, new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
             column.InsertAt(0, new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
-            var val2 = column.GetValueAt(1, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
+            var val2 = column.GetValueAt(1, default).AsStruct;
 
             Assert.Equal(321, val1.GetAt(0).AsLong);
             Assert.Equal("world", val1.GetAt(1).AsString.ToString());
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             column.UpdateAt(0, new StructValue(structHeader, new Int64Value(456), new StringValue("updated")));
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
 
             Assert.Equal(456, val1.GetAt(0).AsLong);
             Assert.Equal("updated", val1.GetAt(1).AsString.ToString());
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(structVal);
 
             var val1 = column.GetValueAt(0, default);
-            var val2 = column.GetValueAt(1, default).AsStructValue;
+            var val2 = column.GetValueAt(1, default).AsStruct;
 
             Assert.Equal(123, val1.AsLong);
             Assert.Equal(321, val2.GetAt(0).AsLong);
@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(structVal);
             column.Add(new Int64Value(321));
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
             var val2 = column.GetValueAt(1, default);
 
             Assert.Equal(123, val1.GetAt(0).AsLong);
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             intColumn.InsertRangeFrom(1, structColumn, 0, 1);
 
             var val1 = intColumn.GetValueAt(0, default);
-            var val2 = intColumn.GetValueAt(1, default).AsStructValue;
+            var val2 = intColumn.GetValueAt(1, default).AsStruct;
 
             Assert.Equal(123, val1.AsLong);
             Assert.Equal(321, val2.GetAt(0).AsLong);
@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             unionWithoutStructColumn.InsertRangeFrom(1, unionWithStructColumn, 0, 2);
 
             var val1 = unionWithoutStructColumn.GetValueAt(0, default);
-            var val2 = unionWithoutStructColumn.GetValueAt(1, default).AsStructValue;
+            var val2 = unionWithoutStructColumn.GetValueAt(1, default).AsStruct;
             var val3 = unionWithoutStructColumn.GetValueAt(2, default);
             var val4 = unionWithoutStructColumn.GetValueAt(3, default);
 
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             column.RemoveAt(0);
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
 
             Assert.Single(column);
             Assert.Equal(321, val1.GetAt(0).AsLong);
@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             column.RemoveRange(0, 1);
 
-            var val1 = column.GetValueAt(0, default).AsStructValue;
+            var val1 = column.GetValueAt(0, default).AsStruct;
 
             Assert.Single(column);
             Assert.Equal(321, val1.GetAt(0).AsLong);

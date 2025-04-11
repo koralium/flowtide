@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             switch (type)
             {
                 case ArrowTypeId.Struct:
-                    return new StructColumn(value.AsStructValue.Header, _memoryAllocator);
+                    return new StructColumn(value.AsStruct.Header, _memoryAllocator);
                 default:
                     return CreateArrayByType(type);
             }
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             if (_type == ArrowTypeId.Struct)
             {
-                return StructHeader.Equals(value.AsStructValue.Header);
+                return StructHeader.Equals(value.AsStruct.Header);
             }
             return true;
         }

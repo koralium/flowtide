@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => _timestampValue;
 
-        public IStructValue AsStructValue => _structValue!;
+        public IStructValue AsStruct => _structValue!;
 
         public void Accept(in DataValueVisitor visitor)
         {
@@ -113,6 +113,20 @@ namespace FlowtideDotNet.Core.ColumnStore
                     else
                     {
                         throw new System.InvalidOperationException($"Unknown map type: {_mapValue!.GetType()}");
+                    }
+                    break;
+                case ArrowTypeId.Struct:
+                    if (_structValue is StructValue structVal)
+                    {
+                        visitor.VisitStructValue(ref structVal);
+                    }
+                    else if (_structValue is ReferenceStructValue refStructVal)
+                    {
+                        visitor.VisitReferenceStructValue(ref refStructVal);
+                    }
+                    else
+                    {
+                        throw new System.InvalidOperationException($"Unknown struct type: {_structValue!.GetType()}");
                     }
                     break;
                 default:

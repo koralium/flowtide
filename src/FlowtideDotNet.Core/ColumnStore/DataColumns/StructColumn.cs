@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Struct)
             {
-                var structVal = value.AsStructValue;
+                var structVal = value.AsStruct;
                 for (int i = 0; i < _columns.Length; i++)
                 {
                     var dataValue = structVal.GetAt(i);
@@ -120,7 +120,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             else
             {
-                var structValue = value.AsStructValue;
+                var structValue = value.AsStruct;
                 var headerCompare = _header.CompareTo(structValue.Header);
 
                 if (headerCompare != 0)
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Struct)
             {
-                var structVal = value.AsStructValue;
+                var structVal = value.AsStruct;
                 for (int i = 0; i < _columns.Length; i++)
                 {
                     var dataValue = structVal.GetAt(i);
@@ -310,7 +310,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (child == null)
             {
-                var structVal = dataValue.AsStructValue;
+                var structVal = dataValue.AsStruct;
 
                 var headerCompare = _header.CompareTo(structVal.Header);
 
@@ -408,7 +408,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Struct)
             {
-                var structVal = value.AsStructValue;
+                var structVal = value.AsStruct;
                 for (int i = 0; i < _columns.Length; i++)
                 {
                     var dataValue = structVal.GetAt(i);

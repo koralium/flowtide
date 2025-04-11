@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             }
             else if (value.Type == ArrowTypeId.Struct)
             {
-                var structval = value.AsStructValue;
+                var structval = value.AsStruct;
                 var structLength = structval.Header.Count;
                 var obj = typeInfo.CreateObject!();
                 for (int i = 0; i < structLength; i++)

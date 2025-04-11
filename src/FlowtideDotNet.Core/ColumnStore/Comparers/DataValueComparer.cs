@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                 case ArrowTypeId.List:
                     return CompareList(x.AsList, y.AsList);
                 case ArrowTypeId.Struct:
-                    return CompareStruct(x.AsStructValue, y.AsStructValue);
+                    return CompareStruct(x.AsStruct, y.AsStruct);
                 default:
                     throw new NotImplementedException();
             }

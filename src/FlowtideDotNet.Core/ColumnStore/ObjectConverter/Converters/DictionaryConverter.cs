@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 {
                     throw new NotImplementedException("Only string key is supported for struct type.");
                 }
-                var structValue = value.AsStructValue;
+                var structValue = value.AsStruct;
                 var dictionary = (IDictionary<TKey, TValue>)typeInfo.CreateObject!();
                 for (int i = 0; i < structValue.Header.Count; i++)
                 {

@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             if (type == ArrowTypeId.Struct)
             {
                 CheckStructLookup();
-                if (!_structLookup.TryGetValue(value.AsStructValue.Header, out var existingIndex))
+                if (!_structLookup.TryGetValue(value.AsStruct.Header, out var existingIndex))
                 {
                     var newIndex = (sbyte)valueColumns.Count;
                     if (valueColumns.Count >= 127)
@@ -125,8 +125,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         throw new InvalidOperationException("Cannot add more than 127 types to a union column.");
                     }
                     
-                    _structLookup.Add(value.AsStructValue.Header, newIndex);
-                    valueColumns.Add(new StructColumn(value.AsStructValue.Header, _memoryAllocator));
+                    _structLookup.Add(value.AsStruct.Header, newIndex);
+                    valueColumns.Add(new StructColumn(value.AsStruct.Header, _memoryAllocator));
                     return newIndex;
                 }
                 return existingIndex;

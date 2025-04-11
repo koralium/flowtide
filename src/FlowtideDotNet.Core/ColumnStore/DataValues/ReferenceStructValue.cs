@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
-        public IStructValue AsStructValue => this;
+        public IStructValue AsStruct => this;
 
         public void Accept(in DataValueVisitor visitor)
         {

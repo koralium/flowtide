@@ -792,7 +792,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
-            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStructValue;
+            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStruct;
             Assert.Equal(123, row1.GetAt(0).AsLong);
             Assert.Equal("hello", row1.GetAt(1).AsString.ToString());
         }
@@ -824,11 +824,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
-            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStructValue;
+            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStruct;
             Assert.Equal(123, row1.GetAt(0).AsLong);
             Assert.Equal("hello", row1.GetAt(1).AsString.ToString());
 
-            var row2 = deserializedBatch.Columns[0].GetValueAt(1, default).AsStructValue;
+            var row2 = deserializedBatch.Columns[0].GetValueAt(1, default).AsStruct;
             Assert.Equal(321, row2.GetAt(0).AsLong);
             Assert.Equal("world", row2.GetAt(1).AsString.ToString());
         }   
