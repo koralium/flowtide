@@ -58,11 +58,16 @@ namespace FlowtideDotNet.Connector.SqlServer
             ResiliencePipeline = new ResiliencePipelineBuilder()
                 .AddRetry(new RetryStrategyOptions
                 {
-                    MaxRetryAttempts = 5,
+                    MaxRetryAttempts = 10,
                     DelayGenerator = (args) =>
                     {
-                        var seconds = args.AttemptNumber == 1 ? 1 : args.AttemptNumber * 5;
-                        return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromSeconds(seconds));
+                        if (args.AttemptNumber < 5)
+                        {
+                            var seconds = args.AttemptNumber == 1 ? 1 : args.AttemptNumber * 5;
+                            return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromSeconds(seconds));
+                        }
+
+                        return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromMinutes(args.AttemptNumber - 4));
                     },
                 })
                 .Build();
@@ -70,7 +75,7 @@ namespace FlowtideDotNet.Connector.SqlServer
 
         /// <summary>
         /// Resilience pipeline for the source.
-        /// The default pipeline waits and retries 5 times with increasing intervals.
+        /// The default pipeline waits and retries 10 times with increasing intervals.
         /// </summary>
         public ResiliencePipeline ResiliencePipeline { get; set; }
 
