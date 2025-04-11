@@ -397,10 +397,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
         }
 
-        protected override async ValueTask<List<int>> GetPrimaryKeyColumns()
+        protected override ValueTask<List<int>> GetPrimaryKeyColumns()
         {
             Debug.Assert(_primaryKeyOrdinals != null);
-            return _primaryKeyOrdinals;
+            return ValueTask.FromResult(_primaryKeyOrdinals);
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
