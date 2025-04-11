@@ -48,6 +48,22 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 }
                 return dictionary;
             }
+            else if (value.Type == ArrowTypeId.Struct)
+            {
+                if (typeof(TKey) != typeof(string))
+                {
+                    throw new NotImplementedException("Only string key is supported for struct type.");
+                }
+                var structValue = value.AsStructValue;
+                var dictionary = (IDictionary<TKey, TValue>)typeInfo.CreateObject!();
+                for (int i = 0; i < structValue.Header.Count; i++)
+                {
+                    var key = (TKey)(object)structValue.Header.GetColumnName(i);
+                    var innerVal = valueConverter.Deserialize(structValue.GetAt(i));
+                    dictionary.Add((TKey)key, (TValue)innerVal);
+                }
+                return dictionary;
+            }
 
             throw new NotImplementedException();
         }

@@ -396,7 +396,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
-            if (deserialized.BaseObject is Dictionary<object, object> dict)
+            if (deserialized.BaseObject is Dictionary<string, object> dict)
             {
                 Assert.Equal(((InnerObject)testObject.BaseObject!).Name, dict["Name"]);
             }

@@ -35,18 +35,22 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
         private readonly ObjectConverterTypeInfo typeInfo;
         private readonly IReadOnlyList<IObjectColumnConverter> converters;
         private Dictionary<string, ColumnInfo> columns;
+        private StructHeader structHeader;
 
         public ObjectConverter(ObjectConverterTypeInfo typeInfo, IReadOnlyList<IObjectColumnConverter> converters)
         {
             this.typeInfo = typeInfo;
             this.converters = converters;
 
+            string[] columnNames = new string[typeInfo.Properties.Count];
             columns = new Dictionary<string, ColumnInfo>();
             for (int i = 0; i < typeInfo.Properties.Count; i++)
             {
                 var property = typeInfo.Properties[i];
+                columnNames[i] = property.Name!;
                 columns[property.Name!] = new ColumnInfo(converters[i], property);
             }
+            structHeader = StructHeader.Create(columnNames);
         }
 
         public object Deserialize<T>(T value) where T : IDataValue
@@ -73,6 +77,22 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 }
                 return obj;
             }
+            else if (value.Type == ArrowTypeId.Struct)
+            {
+                var structval = value.AsStructValue;
+                var structLength = structval.Header.Count;
+                var obj = typeInfo.CreateObject!();
+                for (int i = 0; i < structLength; i++)
+                {
+                    var columnName = structval.Header.GetColumnName(i);
+                    if (columns.TryGetValue(columnName, out var converter))
+                    {
+                        var propertyValue = converter.Converter.Deserialize(structval.GetAt(i));
+                        converter.PropertyInfo.SetFunc!(obj, propertyValue);
+                    }
+                }
+                return obj;
+            }
             else
             {
                 throw new NotImplementedException();
@@ -81,7 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
-            List<KeyValuePair<IDataValue, IDataValue>> values = new List<KeyValuePair<IDataValue, IDataValue>>();
+            IDataValue[] values = new IDataValue[structHeader.Count];
             for (int i = 0; i < typeInfo.Properties.Count; i++)
             {
                 var property = typeInfo.Properties[i];
@@ -97,7 +117,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 
                 if (value == null)
                 {
-                    values.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue(property.Name), NullValue.Instance));
+                    values[i] = NullValue.Instance;
                 }
                 else
                 {
@@ -109,11 +129,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                         throw new InvalidOperationException("Boxed value is null");
                     }
 
-                    values.Add(new KeyValuePair<IDataValue, IDataValue>(new StringValue(property.Name), func.BoxedValue));
+                    values[i] = func.BoxedValue;
                 }
 
             }
-            addFunc.AddValue(new MapValue(values));
+            addFunc.AddValue(new StructValue(structHeader, values));
         }
 
         public SubstraitBaseType GetSubstraitType()

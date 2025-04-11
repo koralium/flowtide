@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
     public struct StructValue : IStructValue
     {
         internal StructHeader _header;
-        internal readonly IReadOnlyList<IDataValue> _columnValues;
+        internal readonly IDataValue[] _columnValues;
 
         public StructHeader Header => _header;
 
@@ -180,14 +180,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IStructValue AsStructValue => this;
 
-        public StructValue(StructHeader header, IReadOnlyList<IDataValue> columnValues)
+        public StructValue(StructHeader header, params IDataValue[] columnValues)
         {
             _header = header;
             _columnValues = columnValues;
 
-            if (_header.Count != columnValues.Count)
+            if (_header.Count != columnValues.Length)
             {
-                throw new ArgumentException($"StructValue header count {_header.Count} does not match column values count {columnValues.Count}");
+                throw new ArgumentException($"StructValue header count {_header.Count} does not match column values count {columnValues.Length}");
             }
         }
 

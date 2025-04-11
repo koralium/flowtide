@@ -25,16 +25,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
 
             var val1 = column.GetValueAt(0, default).AsStructValue;
             var val2 = column.GetValueAt(1, default).AsStructValue;
@@ -52,16 +44,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.InsertAt(0, new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.InsertAt(0, new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.InsertAt(0, new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.InsertAt(0, new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
 
             var val1 = column.GetValueAt(0, default).AsStructValue;
             var val2 = column.GetValueAt(1, default).AsStructValue;
@@ -78,22 +62,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
 
-            column.UpdateAt(0, new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(456),
-                new StringValue("updated")
-            }));
+            column.UpdateAt(0, new StructValue(structHeader, new Int64Value(456), new StringValue("updated")));
 
             var val1 = column.GetValueAt(0, default).AsStructValue;
 
@@ -108,11 +80,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var structHeader = StructHeader.Create("colum1", "column2");
             column.Add(new Int64Value(123));
-            var structVal = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            });
+            var structVal = new StructValue(structHeader, new Int64Value(321), new StringValue("world"));
             column.Add(structVal);
 
             var val1 = column.GetValueAt(0, default);
@@ -129,11 +97,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            var structVal = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            });
+            var structVal = new StructValue(structHeader, new Int64Value(123), new StringValue("hello"));
             column.Add(structVal);
             column.Add(new Int64Value(321));
 
@@ -155,11 +119,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var structHeader = StructHeader.Create("colum1", "column2");
             intColumn.Add(new Int64Value(123));
-            var structVal = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            });
+            var structVal = new StructValue(structHeader, new Int64Value(321), new StringValue("world"));
 
             Column structColumn = Column.Create(GlobalMemoryManager.Instance);
 
@@ -184,11 +144,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var structHeader = StructHeader.Create("colum1", "column2");
 
-            var structVal = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            });
+            var structVal = new StructValue(structHeader, new Int64Value(321), new StringValue("world"));
 
             Column unionWithStructColumn = Column.Create(GlobalMemoryManager.Instance);
 
@@ -216,16 +172,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
             Assert.Equal(2, column.Count);
 
             column.RemoveAt(0);
@@ -243,16 +191,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(321), new StringValue("world")));
             Assert.Equal(2, column.Count);
 
             column.RemoveRange(0, 1);
@@ -270,37 +210,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));
 
-            var toFind1 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            });
-            var toFind2 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            });
-            var toFind3 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(122),
-                new StringValue("world")
-            });
-            var toFind4 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(124),
-                new StringValue("world")
-            });
+            var toFind1 = new StructValue(structHeader, new Int64Value(123), new StringValue("hello"));
+            var toFind2 = new StructValue(structHeader, new Int64Value(123), new StringValue("world"));
+            var toFind3 = new StructValue(structHeader, new Int64Value(122), new StringValue("world"));
+            var toFind4 = new StructValue(structHeader, new Int64Value(124), new StringValue("world"));
 
             var (low1, high1) = column.SearchBoundries(toFind1, 0, column.Count - 1, default);
             var (low2, high2) = column.SearchBoundries(toFind2, 0, column.Count - 1, default);
@@ -323,16 +239,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("column1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));
 
             var toFind1 = new Int64Value(123);
             var toFind2 = new Int64Value(122);
@@ -360,37 +268,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("colum1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
 
-            var toFind1 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            });
-            var toFind2 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            });
-            var toFind3 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(122),
-                new StringValue("world")
-            });
-            var toFind4 = new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(124),
-                new StringValue("world")
-            });
+            var toFind1 = new StructValue(structHeader, new Int64Value(123), new StringValue("hello"));
+            var toFind2 = new StructValue(structHeader, new Int64Value(123), new StringValue("world"));
+            var toFind3 = new StructValue(structHeader, new Int64Value(122), new StringValue("world"));
+            var toFind4 = new StructValue(structHeader, new Int64Value(124), new StringValue("world"));
 
             var (low1, high1) = column.SearchBoundries(toFind1, 0, column.Count - 1, default, true);
             var (low2, high2) = column.SearchBoundries(toFind2, 0, column.Count - 1, default, true);
@@ -413,16 +297,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = Column.Create(GlobalMemoryManager.Instance);
 
             var structHeader = StructHeader.Create("column1", "column2");
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("world")
-            }));
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("world")));
+            column.Add(new StructValue(structHeader, new Int64Value(123), new StringValue("hello")));
 
             var toFind1 = new Int64Value(123);
             var toFind2 = new Int64Value(122);

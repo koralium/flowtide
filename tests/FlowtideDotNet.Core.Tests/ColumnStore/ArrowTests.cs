@@ -772,12 +772,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             var structHeader = StructHeader.Create("column1", "column2");
 
-            Column column = new Column(GlobalMemoryManager.Instance);
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            Column column = new Column(GlobalMemoryManager.Instance)
             {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
+                new StructValue(structHeader, new Int64Value(123), new StringValue("hello"))
+            };
 
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [
@@ -805,17 +803,11 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var structHeader = StructHeader.Create("column1", "column2");
             var otherStructHeader = StructHeader.Create("col1", "col2");
 
-            Column column = new Column(GlobalMemoryManager.Instance);
-            column.Add(new StructValue(structHeader, new List<IDataValue>()
+            Column column = new Column(GlobalMemoryManager.Instance)
             {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(otherStructHeader, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+                new StructValue(structHeader, new Int64Value(123), new StringValue("hello")),
+                new StructValue(otherStructHeader, new Int64Value(321), new StringValue("world"))
+            };
 
             var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
             [

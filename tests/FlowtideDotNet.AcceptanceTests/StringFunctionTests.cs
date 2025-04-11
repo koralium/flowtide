@@ -238,7 +238,7 @@ namespace FlowtideDotNet.AcceptanceTests
             INSERT INTO output 
             SELECT from_json(to_json(map('firstName', firstName, 'lastName', lastName))) as json FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { json = new { firstName = x.FirstName, lastName = x.LastName } }));
+            AssertCurrentDataEqual(Users.Select(x => new { json = new Dictionary<string, object?>() { { "firstName", x.FirstName }, { "lastName", x.LastName } } }));
         }
     }
 }

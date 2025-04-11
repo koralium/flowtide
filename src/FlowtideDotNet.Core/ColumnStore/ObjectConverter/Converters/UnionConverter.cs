@@ -65,6 +65,8 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                     return GetConverter(typeof(Dictionary<object, object>)).Deserialize(value);
                 case ArrowTypeId.Decimal128:
                     return GetConverter(typeof(decimal)).Deserialize(value);
+                case ArrowTypeId.Struct:
+                    return GetConverter(typeof(Dictionary<string, object>)).Deserialize(value);
                 default:
                     throw new NotImplementedException();
             }

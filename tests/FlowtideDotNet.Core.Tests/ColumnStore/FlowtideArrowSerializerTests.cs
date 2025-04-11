@@ -847,16 +847,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             StructHeader header = StructHeader.Create("column1", "column2");
             Column column = Column.Create(GlobalMemoryManager.Instance);
-            column.Add(new StructValue(header, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }));
-            column.Add(new StructValue(header, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            column.Add(new StructValue(header, new Int64Value(123), new StringValue("hello")));
+            column.Add(new StructValue(header, new Int64Value(321), new StringValue("world")));
 
             var batch = new EventBatchData([column]);
             var serializer = new EventBatchSerializer();
@@ -893,16 +885,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             StructHeader header = StructHeader.Create("column1", "column2");
             SerializeDeserializeTest(
-            new StructValue(header, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }),
-            new StructValue(header, new List<IDataValue>()
-            {
-                new Int64Value(321),
-                new StringValue("world")
-            }));
+            new StructValue(header, new Int64Value(123), new StringValue("hello")),
+            new StructValue(header, new Int64Value(321), new StringValue("world")));
         }
 
         [Fact]
@@ -911,15 +895,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             StructHeader header = StructHeader.Create("column1", "column2");
             StructHeader otherHeader = StructHeader.Create("ints");
             SerializeDeserializeTest(
-            new StructValue(header, new List<IDataValue>()
-            {
-                new Int64Value(123),
-                new StringValue("hello")
-            }),
-            new StructValue(otherHeader, new List<IDataValue>()
-            {
-                new Int64Value(321)
-            }),
+            new StructValue(header, new Int64Value(123), new StringValue("hello")),
+            new StructValue(otherHeader, new Int64Value(321)),
             new StringValue("world"));
         }
     }
