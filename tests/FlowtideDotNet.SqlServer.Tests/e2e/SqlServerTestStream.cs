@@ -32,6 +32,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         public SqlServerTestStream(string testName, SqlServerSourceOptions options) : base(testName)
         {
             this.options = options;
+            this.connectionString = options.ConnectionStringFunc();
         }
 
         protected override void AddReadResolvers(IConnectorManager factory)
