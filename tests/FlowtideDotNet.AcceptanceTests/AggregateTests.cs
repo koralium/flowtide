@@ -315,6 +315,40 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task ListAggWithNamedStructAndUpdates()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(named_struct('userkey', userkey, 'company', u.companyId))
+                FROM users u
+                ");
+            await WaitForUpdate();
+            
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            Users[0].CompanyId = "newCompany";
+            AddOrUpdateUser(Users[0]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            DeleteUser(Users[10]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+        }
+
+        [Fact]
         public async Task TestSurrogateKeyInt64()
         {
             GenerateData();

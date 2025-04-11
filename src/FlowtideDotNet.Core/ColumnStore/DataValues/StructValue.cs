@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public decimal AsDecimal => throw new NotImplementedException();
 
-        public bool IsNull => throw new NotImplementedException();
+        public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
