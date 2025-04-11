@@ -237,11 +237,31 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
+            if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+            {
+                var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+                if (columnIndex < 0)
+                {
+                    return NullValue.Instance;
+                }
+                return _columns[columnIndex].GetValueAt(index, child.Child);
+            }
             return new ReferenceStructValue(this, index);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
+            if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+            {
+                var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+                if (columnIndex < 0)
+                {
+                    dataValueContainer._type = ArrowTypeId.Null;
+                    return;
+                }
+                _columns[columnIndex].GetValueAt(in index, in dataValueContainer, child);
+                return;
+            }
             dataValueContainer._structValue = new ReferenceStructValue(this, index);
             dataValueContainer._type = ArrowTypeId.Struct;
         }

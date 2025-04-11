@@ -291,5 +291,23 @@ namespace FlowtideDotNet.AcceptanceTests
             var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { Name = new { firstName = x.FirstName, lastName = x.LastName } }));
         }
+
+        [Fact]
+        public async Task SelectSubPropertyFromNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW testview AS
+                SELECT 
+                    named_struct('firstName', firstName, 'lastName', lastName) AS name
+                FROM users;
+
+                INSERT INTO output
+                SELECT name.firstName FROM testview;");
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
     }
 }
