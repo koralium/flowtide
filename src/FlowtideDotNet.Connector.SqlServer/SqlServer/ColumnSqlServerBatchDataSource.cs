@@ -241,6 +241,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 weights.Dispose();
                 iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
             }
 
             ExitCheckpointLock();
@@ -374,6 +378,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 weights.Dispose();
                 iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
             }
 
             linkedCancellation.Dispose();
