@@ -513,7 +513,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             throw new SubstraitParseException("named_struct key must be a string literal");
                         }
-                        names.Add(keyExpr.Name);
+                        names.Add(keyStringLiteral.Value);
                         arguments.Add(keyExpr.Expr);
 
                         if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)

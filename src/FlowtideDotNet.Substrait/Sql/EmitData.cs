@@ -255,18 +255,51 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             Field = emitInfoPartial.Index[0]
                         };
+                        var baseType = _types[emitInfoPartial.Index[0]];
 
                         Expressions.ReferenceSegment seg = segment;
                         List<string> mapIdentifiers = new List<string>();
                         for (int k = i; k < compoundIndentifier.Idents.Count; k++)
                         {
-                            var newSegment = new Expressions.MapKeyReferenceSegment()
+                            bool foundField = false;
+                            var keyAccess = compoundIndentifier.Idents[k].Value;
+                            if (baseType is NamedStruct namedStructType)
                             {
-                                Key = compoundIndentifier.Idents[k].Value,
-                            };
-                            mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
-                            seg.Child = newSegment;
-                            seg = newSegment;
+                                int structIndex = -1;
+                                for (int z = 0; z < namedStructType.Names.Count; z++)
+                                {
+                                    if (namedStructType.Names[z].Equals(keyAccess, StringComparison.Ordinal))
+                                    {
+                                        structIndex = z;
+                                    }
+                                }
+
+                                if (structIndex == -1)
+                                {
+                                    throw new InvalidOperationException($"Field '{keyAccess}' not found in struct '{string.Join(".", namedStructType.Names)}'");
+                                }
+
+                                foundField = true;
+                                var newStructReference = new Expressions.StructReferenceSegment()
+                                {
+                                    Field = structIndex
+                                };
+                                seg.Child = newStructReference;
+                                seg = newStructReference;
+                                mapIdentifiers.Add(keyAccess);
+                            }
+
+                            // Fallback if the field could not be found
+                            if (!foundField)
+                            {
+                                var newSegment = new Expressions.MapKeyReferenceSegment()
+                                {
+                                    Key = compoundIndentifier.Idents[k].Value,
+                                };
+                                mapIdentifiers.Add(compoundIndentifier.Idents[k].Value);
+                                seg.Child = newSegment;
+                                seg = newSegment;
+                            }
                         }
 
                         if (mapIdentifiers.Count > 0)

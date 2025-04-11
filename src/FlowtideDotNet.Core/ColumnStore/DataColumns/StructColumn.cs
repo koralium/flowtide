@@ -237,31 +237,51 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+            if (child != null)
             {
-                var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
-                if (columnIndex < 0)
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
                 {
-                    return NullValue.Instance;
+                    var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+                    if (columnIndex < 0)
+                    {
+                        return NullValue.Instance;
+                    }
+                    return _columns[columnIndex].GetValueAt(index, child.Child);
                 }
-                return _columns[columnIndex].GetValueAt(index, child.Child);
+                throw new NotImplementedException($"{child.GetType()} is not yet implemented as a reference segment in struct.");
             }
+            
             return new ReferenceStructValue(this, index);
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+            if (child != null)
             {
-                var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
-                if (columnIndex < 0)
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
                 {
-                    dataValueContainer._type = ArrowTypeId.Null;
+                    var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+                    if (columnIndex < 0)
+                    {
+                        dataValueContainer._type = ArrowTypeId.Null;
+                        return;
+                    }
+                    _columns[columnIndex].GetValueAt(in index, in dataValueContainer, child);
                     return;
                 }
-                _columns[columnIndex].GetValueAt(in index, in dataValueContainer, child);
-                return;
+                else if (child is StructReferenceSegment structReferenceSegment)
+                {
+                    if (structReferenceSegment.Field > _columns.Length)
+                    {
+                        dataValueContainer._type = ArrowTypeId.Null;
+                        return;
+                    }
+                    _columns[structReferenceSegment.Field].GetValueAt(in index, in dataValueContainer, child.Child);
+                    return;
+                }
+                throw new NotImplementedException($"{child.GetType()} is not yet implemented as a reference segment in struct.");
             }
+                
             dataValueContainer._structValue = new ReferenceStructValue(this, index);
             dataValueContainer._type = ArrowTypeId.Struct;
         }
