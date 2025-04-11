@@ -841,5 +841,86 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 Assert.Equal(i.ToString(), deserializedStringColumn.GetValueAt(i, default).AsString.ToString());
             }
         }
+
+        [Fact]
+        public void TestSerializeStructColumn()
+        {
+            StructHeader header = StructHeader.Create("column1", "column2");
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new StructValue(header, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            }));
+            column.Add(new StructValue(header, new List<IDataValue>()
+            {
+                new Int64Value(321),
+                new StringValue("world")
+            }));
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+
+            var recordBatch = reader.ReadNextRecordBatch();
+
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StructType);
+            var structType = (recordBatch.Schema.FieldsList[0].DataType as StructType)!;
+            Assert.Equal(2, structType.Fields.Count);
+            Assert.Equal("column1", structType.Fields[0].Name);
+            Assert.Equal("column2", structType.Fields[1].Name);
+
+            var deserializedColumn = (Apache.Arrow.StructArray)recordBatch.Column(0);
+            var intColumn = (Apache.Arrow.Int16Array)deserializedColumn.Fields[0];
+            var strColumn = (Apache.Arrow.StringArray)deserializedColumn.Fields[1];
+
+            Assert.Equal(123, (int)intColumn.GetValue(0)!);
+            Assert.Equal(321, (int)intColumn.GetValue(1)!);
+
+            Assert.Equal("hello", strColumn.GetString(0));
+            Assert.Equal("world", strColumn.GetString(1));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeStructColumn()
+        {
+            StructHeader header = StructHeader.Create("column1", "column2");
+            SerializeDeserializeTest(
+            new StructValue(header, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            }),
+            new StructValue(header, new List<IDataValue>()
+            {
+                new Int64Value(321),
+                new StringValue("world")
+            }));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeUnionWithStructColumn()
+        {
+            StructHeader header = StructHeader.Create("column1", "column2");
+            StructHeader otherHeader = StructHeader.Create("ints");
+            SerializeDeserializeTest(
+            new StructValue(header, new List<IDataValue>()
+            {
+                new Int64Value(123),
+                new StringValue("hello")
+            }),
+            new StructValue(otherHeader, new List<IDataValue>()
+            {
+                new Int64Value(321)
+            }),
+            new StringValue("world"));
+        }
     }
 }

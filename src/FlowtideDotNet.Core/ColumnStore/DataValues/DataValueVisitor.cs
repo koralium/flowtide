@@ -85,5 +85,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         {
             throw new NotImplementedException();
         }
+
+        public virtual void VisitStructValue(ref readonly StructValue structValue)
+        {
+            throw new NotImplementedException();
+        }
+
+        public virtual void VisitReferenceStructValue(ref readonly ReferenceStructValue referenceStructValue)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

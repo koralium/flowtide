@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -43,6 +44,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        internal StructColumn(StructHeader header, Column[] columns)
+        {
+            _header = header;
+            _columns = columns;
+        }
+
         public int Count => _columns[0].Count;
 
         public ArrowTypeId Type => ArrowTypeId.Struct;
@@ -69,7 +76,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException("Add to new list is not supported in struct column");
         }
 
         public void Clear()
@@ -101,6 +108,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     // Compare on property level
                     var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+
+                    if (columnIndex < 0)
+                    {
+                        return ArrowTypeId.Null - value.Type;
+                    }
                     // Compare with the inner column
                     return _columns[columnIndex].CompareTo(index, value, mapKeyReferenceSegment.Child);
                 }
@@ -147,17 +159,42 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            if (otherColumn is StructColumn structColumn)
+            {
+                var headerCompare = _header.CompareTo(structColumn._header);
+
+                if (headerCompare != 0)
+                {
+                    // If the headers dont match, return directly
+                    return headerCompare;
+                }
+
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    var compare = _columns[i].CompareTo(structColumn._columns[i], thisIndex, otherIndex);
+                    if (compare != 0)
+                    {
+                        return compare;
+                    }
+                }
+                return 0;
+            }
             throw new NotImplementedException();
         }
 
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
-            throw new NotImplementedException();
+            Column[] copiedColumns = new Column[_columns.Length];
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                copiedColumns[i] = _columns[i].Copy(memoryAllocator);
+            }
+            return new StructColumn(_header, copiedColumns);
         }
 
         public int EndNewList()
         {
-            throw new NotImplementedException();
+            throw new NotSupportedException("End new list is not supported in struct column");
         }
 
         public int GetByteSize(int start, int end)
@@ -271,12 +308,100 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
-            throw new NotImplementedException();
+            if (child == null)
+            {
+                var structVal = dataValue.AsStructValue;
+
+                var headerCompare = _header.CompareTo(structVal.Header);
+
+                if (headerCompare != 0)
+                {
+                    if (headerCompare < 0)
+                    {
+                        if (desc)
+                        {
+                            return (~start, ~start);
+                        }
+                        else
+                        {
+                            var index = ~(end + 1);
+                            return (index, index);
+                        }
+                        
+                    }
+                    else
+                    {
+                        if (desc)
+                        {
+                            var index = ~(end + 1);
+                            return (index, index);
+                        }
+                        else
+                        {
+                            return (~start, ~start);
+                        }
+                        
+                    }
+                }
+
+                int istart = start;
+                int iend = end;
+
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    var (low, high) = _columns[i].SearchBoundries(structVal.GetAt(i), istart, iend, default, desc);
+                    if (low < 0)
+                    {
+                        return (low, high);
+                    }
+                    else
+                    {
+                        istart = low;
+                        iend = high;
+                    }
+                }
+                return (istart, iend);
+            }
+            else if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    // Compare on property level
+                    var columnIndex = _header.FindIndex(mapKeyReferenceSegment.Key);
+
+                    if (columnIndex >= 0)
+                    {
+                        // Compare with the inner column
+                        return _columns[columnIndex].SearchBoundries(dataValue, start, end, mapKeyReferenceSegment.Child, desc);
+                    }
+                }
+            }
+
+            // Fallback
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundriesForDataColumnDesc(this, dataValue, start, end, child, default);
+            }
+            
+            return BoundarySearch.SearchBoundriesForDataColumn(this, dataValue, start, end, child, default);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var fields = new List<Field>();
+            var arrays = new List<IArrowArray>();
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var data = _columns[i].ToArrowArray();
+                var customMetadata = EventArrowSerializer.GetCustomMetadata(data.Item2);
+                var field = new Field(_header.GetColumnName(i), data.Item2, true, customMetadata);
+                fields.Add(field);
+                arrays.Add(data.Item1);
+            }
+
+            var structType = new StructType(fields);
+            var structArr = new StructArray(structType, Count, arrays, nullBuffer, nullCount);
+            return (structArr, structType);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
@@ -295,27 +420,53 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
-            throw new NotImplementedException();
+            writer.WriteStartObject();
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                writer.WritePropertyName(_header.GetColumnNameUtf8(i));
+                _columns[i].WriteToJson(in writer, in index);
+            }
+            writer.WriteEndObject();
         }
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].AddBuffers(ref arrowSerializer);
+            }
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
         {
-            throw new NotImplementedException();
+            for (int i = _columns.Length - 1; i >= 0; i--)
+            {
+                _columns[i].AddFieldNodes(ref arrowSerializer);
+            }
+            arrowSerializer.CreateFieldNode(Count, nullCount);
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
-            throw new NotImplementedException();
+            var structPointer = arrowSerializer.AddStructType();
+            var childStack = pointerStack.Slice(_columns.Length);
+
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var fieldNamePointer = arrowSerializer.CreateStringUtf8(_header.GetColumnNameUtf8(i));
+                pointerStack[i] = _columns[i].CreateSchemaField(ref arrowSerializer, fieldNamePointer, childStack);
+            }
+
+            var structChildrenPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, _columns.Length));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Struct_, structPointer, childrenOffset: structChildrenPointer);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].WriteDataToBuffer(ref dataWriter);
+            }
         }
 
         protected virtual void Dispose(bool disposing)

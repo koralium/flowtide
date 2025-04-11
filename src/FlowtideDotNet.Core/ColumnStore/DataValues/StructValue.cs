@@ -11,17 +11,20 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Flexbuffer;
+using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    public struct StructHeader : IEquatable<StructHeader>, IComparable<StructHeader>
+    public struct StructHeader : IEquatable<StructHeader>, IComparable<StructHeader>, IReadOnlyList<string>
     {
         internal int[] offsets;
         internal byte[] utf8Bytes;
 
         public int Count => offsets.Length - 1;
+
+        public string this[int index] => throw new NotImplementedException();
 
         public StructHeader(int[] offsets, byte[] utf8bytes)
         {
@@ -132,6 +135,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             var utf8Compare = utf8Bytes.AsSpan().SequenceCompareTo(other.utf8Bytes.AsSpan());
             return utf8Compare;
         }
+
+        public IEnumerator<string> GetEnumerator()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                yield return GetColumnName(i);
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
     } 
     public struct StructValue : IStructValue
     {
@@ -182,12 +198,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public void CopyToContainer(DataValueContainer container)
         {
-            throw new NotImplementedException();
+            container._structValue = this;
+            container._type = ArrowTypeId.Struct;
         }
 
         public void Accept(in DataValueVisitor visitor)
         {
-            throw new NotImplementedException();
+            visitor.VisitStructValue(ref this);
         }
     }
 }

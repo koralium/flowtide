@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
@@ -330,6 +331,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     return new DataColumnResult(DeserializeMapColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Map);
                 case ArrowType.Union:
                     return new DataColumnResult(DeserializeUnionColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Union);
+                case ArrowType.Struct_:
+                    return new DataColumnResult(DeserializeStructColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Struct);
                 default:
                     throw new NotImplementedException(fieldStruct.TypeType.ToString());
             }
@@ -596,6 +599,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 return new StringColumn(memoryAllocator);
             }
             return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
+        }
+
+        private StructColumn DeserializeStructColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
+            ref readonly RecordBatchStruct recordBatchStruct,
+            int length)
+        {
+            var childLength = fieldStruct.ChildrenLength;
+
+            Column[] children = new Column[childLength];
+
+            // This array might be able to be improved
+            string[] fieldNames = new string[childLength];
+            for (int i = 0; i < childLength; i++)
+            {
+                var field = fieldStruct.Children(i);
+                fieldNames[i] = Encoding.UTF8.GetString(field.GetNameBytes());
+                children[i] = DeserializeColumn(ref data, ref field, in recordBatchStruct);
+            }
+
+            StructHeader structHeader = StructHeader.Create(fieldNames);
+            return new StructColumn(structHeader, children);
         }
 
         private void ExceptEmptyBuffer(ref SequenceReader<byte> data)

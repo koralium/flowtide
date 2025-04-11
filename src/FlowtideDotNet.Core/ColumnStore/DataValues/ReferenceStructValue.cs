@@ -59,12 +59,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public void Accept(in DataValueVisitor visitor)
         {
-            throw new NotImplementedException();
+            visitor.VisitReferenceStructValue(ref this);
         }
 
         public void CopyToContainer(DataValueContainer container)
         {
-            throw new NotImplementedException();
+            container._structValue = this;
+            container._type = ArrowTypeId.Struct;
         }
 
         public IDataValue GetAt(in int index)

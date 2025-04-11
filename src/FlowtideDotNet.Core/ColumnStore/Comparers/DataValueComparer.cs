@@ -54,6 +54,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                     return CompareMaps(x.AsMap, y.AsMap);
                 case ArrowTypeId.List:
                     return CompareList(x.AsList, y.AsList);
+                case ArrowTypeId.Struct:
+                    return CompareStruct(x.AsStructValue, y.AsStructValue);
                 default:
                     throw new NotImplementedException();
             }
@@ -111,6 +113,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                 var xVal = x.GetAt(i);
                 var yVal = y.GetAt(i);
                 int compare = CompareTo(xVal, yVal);
+                if (compare != 0)
+                {
+                    return compare;
+                }
+            }
+
+            return 0;
+        }
+
+        private static int CompareStruct(IStructValue x, IStructValue y)
+        {
+            var compare = x.Header.CompareTo(y.Header);
+            if (compare != 0)
+            {
+                return compare;
+            }
+
+            for (int i = 0; i < x.Header.Count; i++)
+            {
+                var xVal = x.GetAt(i);
+                var yVal = y.GetAt(i);
+                compare = CompareTo(xVal, yVal);
                 if (compare != 0)
                 {
                     return compare;
