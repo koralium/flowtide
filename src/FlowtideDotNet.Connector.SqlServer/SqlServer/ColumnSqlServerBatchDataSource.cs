@@ -347,7 +347,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         _convertFunctions[i](reader, columns[i]);
                     }
 
-                    if (weights.Count > 100)
+                    if (weights.Count >= 100)
                     {
                         var eventBatchData = new EventBatchData(columns);
                         var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
