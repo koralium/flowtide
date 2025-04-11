@@ -116,6 +116,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     // Compare with the inner column
                     return _columns[columnIndex].CompareTo(index, value, mapKeyReferenceSegment.Child);
                 }
+                else if (child is StructReferenceSegment structReferenceSegment)
+                {
+                    if (structReferenceSegment.Field >= _header.Count)
+                    {
+                        return ArrowTypeId.Null - value.Type;
+                    }
+                    // Compare with the inner column
+                    return _columns[structReferenceSegment.Field].CompareTo(index, value, structReferenceSegment.Child);
+                }
                 throw new NotImplementedException();
             }
             else
@@ -248,6 +257,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     }
                     return _columns[columnIndex].GetValueAt(index, child.Child);
                 }
+                else if (child is StructReferenceSegment structReferenceSegment)
+                {
+                    if (structReferenceSegment.Field >= _columns.Length)
+                    {
+                        return NullValue.Instance;
+                    }
+                    return _columns[structReferenceSegment.Field].GetValueAt(index, child.Child);
+                }
                 throw new NotImplementedException($"{child.GetType()} is not yet implemented as a reference segment in struct.");
             }
             
@@ -271,7 +288,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 else if (child is StructReferenceSegment structReferenceSegment)
                 {
-                    if (structReferenceSegment.Field > _columns.Length)
+                    if (structReferenceSegment.Field >= _columns.Length)
                     {
                         dataValueContainer._type = ArrowTypeId.Null;
                         return;
@@ -413,6 +430,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     {
                         // Compare with the inner column
                         return _columns[columnIndex].SearchBoundries(dataValue, start, end, mapKeyReferenceSegment.Child, desc);
+                    }
+                }
+                else if (child is StructReferenceSegment structReferenceSegment)
+                {
+                    if (structReferenceSegment.Field < _columns.Length)
+                    {
+                        // Compare with the inner column
+                        return _columns[structReferenceSegment.Field].SearchBoundries(dataValue, start, end, structReferenceSegment.Child, desc);
                     }
                 }
             }
