@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var primaryKeyValues = new Dictionary<string, object>();
 
-            if (!_options.IsChangeTrackingEnabled && _state.Value.ChangeTrackingVersion < 1)
+            if (_options.IsChangeTrackingEnabled && _state.Value.ChangeTrackingVersion < 1)
             {
                 using var connection = new SqlConnection(_options.ConnectionStringFunc());
                 await connection.OpenAsync(linkedCancellation.Token);
