@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         internal readonly StructHeader _header;
         internal readonly Column[] _columns;
         private bool disposedValue;
+        private int _count;
 
         public StructColumn(StructHeader structHeader, IMemoryAllocator memoryAllocator)
         {
@@ -42,15 +43,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _columns[i] = Column.Create(memoryAllocator);
             }
+            _count = 0;
         }
 
-        internal StructColumn(StructHeader header, Column[] columns)
+        internal StructColumn(StructHeader header, Column[] columns, int count)
         {
             _header = header;
             _columns = columns;
+            _count = count;
         }
 
-        public int Count => _columns[0].Count;
+        public int Count => _count;
 
         public ArrowTypeId Type => ArrowTypeId.Struct;
 
@@ -60,6 +63,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Struct)
             {
+                _count++;
                 var structVal = value.AsStruct;
                 for (int i = 0; i < _columns.Length; i++)
                 {
@@ -81,6 +85,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void Clear()
         {
+            _count = 0;
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i].Clear();
@@ -198,7 +203,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 copiedColumns[i] = _columns[i].Copy(memoryAllocator);
             }
-            return new StructColumn(_header, copiedColumns);
+            return new StructColumn(_header, copiedColumns, _count);
         }
 
         public int EndNewList()
@@ -307,6 +312,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (value.Type == ArrowTypeId.Struct)
             {
+                _count++;
                 var structVal = value.AsStruct;
                 for (int i = 0; i < _columns.Length; i++)
                 {
@@ -322,6 +328,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void InsertNullRange(int index, int count)
         {
+            _count += count;
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i].InsertNullRange(index, count);
@@ -332,6 +339,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (other is StructColumn otherStructColumn)
             {
+                _count += count;
                 for (int i = 0; i < _columns.Length; i++)
                 {
                     var otherColumn = otherStructColumn._columns[i];
@@ -346,6 +354,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void RemoveAt(in int index)
         {
+            _count--;
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i].RemoveAt(index);
@@ -354,6 +363,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void RemoveRange(int start, int count)
         {
+            _count -= count;
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i].RemoveRange(start, count);
