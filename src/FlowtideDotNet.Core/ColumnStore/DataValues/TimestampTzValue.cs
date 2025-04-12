@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
 
-        public IStructValue AsStruct => throw new NotImplementedException();
+        public IStructValue AsStruct => throw new NotSupportedException();
 
         public override string ToString()
         {
