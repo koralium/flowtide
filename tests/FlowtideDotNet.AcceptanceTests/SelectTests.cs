@@ -288,7 +288,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { Name = new { firstName = x.FirstName, lastName = x.LastName } }));
         }
 
@@ -306,8 +305,21 @@ namespace FlowtideDotNet.AcceptanceTests
                 SELECT name.firstName FROM testview;");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
+        public async Task SelectWithEmptyNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct() AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { } }));
         }
     }
 }

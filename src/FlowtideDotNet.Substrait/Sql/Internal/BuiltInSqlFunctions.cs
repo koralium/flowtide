@@ -481,7 +481,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             sqlFunctionRegister.RegisterScalarFunction("named_struct", (f, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);
-                if (argList.Args == null || argList.Args.Count % 2 != 0)
+
+                if (argList.Args == null || argList.Args.Count == 0)
+                {
+                    // Return an empty named struct creation
+                    return new ScalarResponse(new ScalarFunction()
+                    {
+                        Arguments = new List<Expressions.Expression>(),
+                        ExtensionUri = FunctionsStruct.Uri,
+                        ExtensionName = FunctionsStruct.Create
+                    }, new NamedStruct()
+                    {
+                        Names = new List<string>(),
+                        Struct = new Struct()
+                        {
+                            Types = new List<SubstraitBaseType>()
+                        }
+                    });
+                }
+
+                if (argList.Args.Count % 2 != 0)
                 {
                     throw new InvalidOperationException("named_struct must have an even number of arguments, one for key and one for value.");
                 }
@@ -496,11 +515,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (f.Over != null)
                 {
                     throw new SubstraitParseException("named_struct does not support over");
-                }
-
-                if (argList.Args.Count < 2)
-                {
-                    throw new SubstraitParseException("named_struct must have at least one key-value pair");
                 }
 
                 List<Expressions.Expression> arguments = new List<Expressions.Expression>();

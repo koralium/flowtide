@@ -428,7 +428,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
             var header = StructHeader.Create(columnNames);
 
-            _dataColumn = new StructColumn(header, columns);
+            _dataColumn = new StructColumn(header, columns, array.Length);
             _typeId = ArrowTypeId.Struct;
         }
     }

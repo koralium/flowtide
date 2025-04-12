@@ -621,7 +621,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
 
             StructHeader structHeader = StructHeader.Create(fieldNames);
-            return new StructColumn(structHeader, children);
+            return new StructColumn(structHeader, children, length);
         }
 
         private void ExceptEmptyBuffer(ref SequenceReader<byte> data)
