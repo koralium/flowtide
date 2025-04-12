@@ -21,6 +21,8 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -40,11 +42,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         private List<IDataColumn> _valueColumns;
         private readonly sbyte[] _typeIds;
         private readonly IMemoryAllocator _memoryAllocator;
+        private Dictionary<StructHeader, sbyte>? _structLookup;
         private bool disposedValue;
 
         public int Count => _typeList.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Union;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public IDataValue this[int index] => GetValueAt(index, default);
 
@@ -69,7 +74,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _offsets = new IntList(offsetMemory, count, memoryAllocator);
             for (int i = 0; i < _valueColumns.Count; i++)
             {
+                if (_valueColumns[i].Type == ArrowTypeId.Struct)
+                {
+                    // If it is a struct, the struct lookup must added with the struct headers
+                    // This is required so different structs can be in the union
+                    CheckStructLookup();
+                    _structLookup.Add(_valueColumns[i].StructHeader, (sbyte)i);
+                }
                 _typeIds[(int)_valueColumns[i].Type] = (sbyte)i;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MemberNotNull(nameof(_structLookup))]
+        private void CheckStructLookup()
+        {
+            if (_structLookup == null)
+            {
+                _structLookup = new Dictionary<StructHeader, sbyte>();
             }
         }
 
@@ -88,16 +110,42 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
 
 
-        private void CheckArrayExist(in ArrowTypeId type, sbyte[] typeIds, List<IDataColumn> valueColumns)
+        private sbyte CheckArrayExist<T>(in T value, sbyte[] typeIds, List<IDataColumn> valueColumns)
+            where T : IDataValue
+        {
+            var type = value.Type;
+            if (type == ArrowTypeId.Struct)
+            {
+                CheckStructLookup();
+                if (!_structLookup.TryGetValue(value.AsStruct.Header, out var existingIndex))
+                {
+                    var newIndex = (sbyte)valueColumns.Count;
+                    if (valueColumns.Count >= 127)
+                    {
+                        throw new InvalidOperationException("Cannot add more than 127 types to a union column.");
+                    }
+                    
+                    _structLookup.Add(value.AsStruct.Header, newIndex);
+                    valueColumns.Add(new StructColumn(value.AsStruct.Header, _memoryAllocator));
+                    return newIndex;
+                }
+                return existingIndex;
+            }
+            return CheckArrayTypeExist(in type, typeIds, valueColumns);
+        }
+
+        private sbyte CheckArrayTypeExist(in ArrowTypeId type, sbyte[] typeIds, List<IDataColumn> valueColumns)
         {
             if (type == ArrowTypeId.Null)
             {
-                return;
+                return 0;
             }
             var typeByte = (byte)type;
-            if (typeIds[typeByte] == 0)
+            var existingIndex = typeIds[typeByte];
+            if (existingIndex == 0)
             {
-                typeIds[typeByte] = (sbyte)valueColumns.Count;
+                var newIndex = (sbyte)valueColumns.Count;
+                typeIds[typeByte] = newIndex;
                 switch (type)
                 {
                     case ArrowTypeId.Int64:
@@ -130,7 +178,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     default:
                         throw new NotImplementedException();
                 }
+                return newIndex;
             }
+            return existingIndex;
         }
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
@@ -144,8 +194,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
 
             var typeByte = (byte)value.Type;
-            CheckArrayExist(value.Type, _typeIds, _valueColumns);
-            var arrayIndex = _typeIds[typeByte];
+            var arrayIndex = CheckArrayExist(in value, _typeIds, _valueColumns);
+            
             // Find the first occurence of the same type in the type list
             var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, arrayIndex);
 
@@ -261,8 +311,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public int Update<T>(in int index, in T value) where T : IDataValue
         {
             var currentArrayIndex = _typeList[index];
-            CheckArrayExist(value.Type, _typeIds, _valueColumns);
-            var newValueArrayIndex = _typeIds[(byte)value.Type];
+            var newValueArrayIndex = CheckArrayExist(in value, _typeIds, _valueColumns);
 
             if (currentArrayIndex != newValueArrayIndex)
             {
@@ -387,18 +436,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void AddToNewList<T>(in T value) where T : IDataValue
         {
-            CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
-
-            var typeByte = (byte)ArrowTypeId.List;
-            var arrayIndex = _typeIds[typeByte];
+            var arrayIndex = CheckArrayTypeExist(ArrowTypeId.List, _typeIds, _valueColumns);
             _valueColumns[arrayIndex].AddToNewList(in value);
         }
 
         public int EndNewList()
         {
-            CheckArrayExist(ArrowTypeId.List, _typeIds, _valueColumns);
-            var typeByte = (byte)ArrowTypeId.List;
-            var arrayIndex = _typeIds[typeByte];
+            var arrayIndex = CheckArrayTypeExist(ArrowTypeId.List, _typeIds, _valueColumns);
             var offset = _valueColumns[arrayIndex].EndNewList();
             int index = _typeList.Count;
             _typeList.InsertAt(index, arrayIndex);
@@ -504,12 +548,32 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return size + (Count * sizeof(int));
         }
 
+        private sbyte CheckOtherDataColumnTypeExists(IDataColumn other, sbyte[] typeIds, List<IDataColumn> valueColumns)
+        {
+            if (other.Type == ArrowTypeId.Struct)
+            {
+                CheckStructLookup();
+                if (!_structLookup.TryGetValue(other.StructHeader, out var existingIndex))
+                {
+                    var newIndex = (sbyte)valueColumns.Count;
+                    if (valueColumns.Count >= 127)
+                    {
+                        throw new InvalidOperationException("Cannot add more than 127 types to a union column.");
+                    }
+                    _structLookup.Add(other.StructHeader, newIndex);
+                    valueColumns.Add(new StructColumn(other.StructHeader, _memoryAllocator));
+                    return newIndex;
+                }
+                return existingIndex;
+            }
+            return CheckArrayTypeExist(other.Type, typeIds, valueColumns);
+        }
+
         private void InsertRangeFromBasicColumn(int index, IDataColumn other, int start, int count, BitmapList? validityList)
         {
             if (validityList == null)
             {
-                CheckArrayExist(other.Type, _typeIds, _valueColumns);
-                var valueColumnIndex = _typeIds[(int)other.Type];
+                var valueColumnIndex = CheckOtherDataColumnTypeExists(other, _typeIds, _valueColumns);
                 var valueColumn = _valueColumns[valueColumnIndex];
 
                 var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
@@ -558,8 +622,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         if (valueColumn == null)
                         {
                             // Create the value column of it does not exist
-                            CheckArrayExist(other.Type, _typeIds, _valueColumns);
-                            valueColumnIndex = _typeIds[(int)other.Type];
+                            valueColumnIndex = CheckOtherDataColumnTypeExists(other, _typeIds, _valueColumns);
                             valueColumn = _valueColumns[valueColumnIndex];
 
                             var nextOccurence = AvxUtils.FindFirstOccurence(_typeList.Span, index, valueColumnIndex);
@@ -665,17 +728,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (usedTypes[i])
                 {
-                    sbyte destinationValueIndex;
-                    if (_typeIds[(int)other._valueColumns[i].Type] == 0)
-                    {
-                        // Create the array for the missing type
-                        CheckArrayExist(other._valueColumns[i].Type, _typeIds, _valueColumns);
-                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
-                    }
-                    else
-                    {
-                        destinationValueIndex = _typeIds[(int)other._valueColumns[i].Type];
-                    }
+                    sbyte destinationValueIndex = CheckOtherDataColumnTypeExists(other._valueColumns[i], _typeIds, _valueColumns);
                     mappingTable[i] = destinationValueIndex;
 
                     // Must find next occurence first

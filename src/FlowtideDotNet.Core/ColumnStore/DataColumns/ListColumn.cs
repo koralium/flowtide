@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -34,6 +35,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.List;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {

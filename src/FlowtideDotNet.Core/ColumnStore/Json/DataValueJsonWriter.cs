@@ -132,5 +132,35 @@ namespace FlowtideDotNet.Core.ColumnStore.Json
             }
             jsonWriter.WriteEndObject();
         }
+
+        public override void VisitReferenceStructValue(ref readonly ReferenceStructValue referenceStructValue)
+        {
+            jsonWriter.WriteStartObject();
+            var structLength = referenceStructValue.Header.Count;
+
+            for (int i = 0; i < structLength; i++)
+            {
+                var columnName = referenceStructValue.Header.GetColumnNameUtf8(i);
+                jsonWriter.WritePropertyName(columnName);
+                var val = referenceStructValue.GetAt(i);
+                val.Accept(this);
+            }
+            jsonWriter.WriteEndObject();
+        }
+
+        public override void VisitStructValue(ref readonly StructValue structValue)
+        {
+            jsonWriter.WriteStartObject();
+            var structLength = structValue.Header.Count;
+
+            for (int i = 0; i < structLength; i++)
+            {
+                var columnName = structValue.Header.GetColumnNameUtf8(i);
+                jsonWriter.WritePropertyName(columnName);
+                var val = structValue.GetAt(i);
+                val.Accept(this);
+            }
+            jsonWriter.WriteEndObject();
+        }
     }
 }

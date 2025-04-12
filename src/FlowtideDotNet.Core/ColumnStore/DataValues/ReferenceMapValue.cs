@@ -50,6 +50,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public IStructValue AsStruct => throw new NotSupportedException();
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.Map;

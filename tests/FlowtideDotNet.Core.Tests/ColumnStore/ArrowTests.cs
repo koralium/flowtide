@@ -766,5 +766,71 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(1, column.GetValueAt(0, default).AsTimestamp.ticks);
         }
+
+        [Fact]
+        public void StructSerializeDeserialize()
+        {
+            var structHeader = StructHeader.Create("column1", "column2");
+
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StructValue(structHeader, new Int64Value(123), new StringValue("hello"))
+            };
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStruct;
+            Assert.Equal(123, row1.GetAt(0).AsLong);
+            Assert.Equal("hello", row1.GetAt(1).AsString.ToString());
+        }
+
+        [Fact]
+        public void StructInUnionSerializeDeserialize()
+        {
+            var structHeader = StructHeader.Create("column1", "column2");
+            var otherStructHeader = StructHeader.Create("col1", "col2");
+
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StructValue(structHeader, new Int64Value(123), new StringValue("hello")),
+                new StructValue(otherStructHeader, new Int64Value(321), new StringValue("world"))
+            };
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            var row1 = deserializedBatch.Columns[0].GetValueAt(0, default).AsStruct;
+            Assert.Equal(123, row1.GetAt(0).AsLong);
+            Assert.Equal("hello", row1.GetAt(1).AsString.ToString());
+
+            var row2 = deserializedBatch.Columns[0].GetValueAt(1, default).AsStruct;
+            Assert.Equal(321, row2.GetAt(0).AsLong);
+            Assert.Equal("world", row2.GetAt(1).AsString.ToString());
+        }   
     }
 }

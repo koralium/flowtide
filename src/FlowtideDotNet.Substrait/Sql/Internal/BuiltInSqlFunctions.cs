@@ -478,6 +478,80 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(mapNestedExpression, new MapType(keyType, valueType));
             });
 
+            sqlFunctionRegister.RegisterScalarFunction("named_struct", (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count % 2 != 0)
+                {
+                    throw new InvalidOperationException("named_struct must have an even number of arguments, one for key and one for value.");
+                }
+                if (f.WithinGroup != null)
+                {
+                    throw new SubstraitParseException("named_struct does not support within group");
+                }
+                if (f.Filter != null)
+                {
+                    throw new SubstraitParseException("named_struct does not support filter");
+                }
+                if (f.Over != null)
+                {
+                    throw new SubstraitParseException("named_struct does not support over");
+                }
+
+                if (argList.Args.Count < 2)
+                {
+                    throw new SubstraitParseException("named_struct must have at least one key-value pair");
+                }
+
+                List<Expressions.Expression> arguments = new List<Expressions.Expression>();
+                List<SubstraitBaseType> types = new List<SubstraitBaseType>();
+                List<string> names = new List<string>();
+                for (int i = 0; i < argList.Args.Count; i += 2)
+                {
+                    var keyArg = argList.Args[i];
+                    var valArg = argList.Args[i + 1];
+                    if (keyArg is FunctionArg.Unnamed keyunnamed && keyunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression keyFuncExprUnnamed)
+                    {
+                        var keyExpr = visitor.Visit(keyFuncExprUnnamed.Expression, emitData);
+
+                        if (!(keyExpr.Expr is StringLiteral keyStringLiteral))
+                        {
+                            throw new SubstraitParseException("named_struct key must be a string literal");
+                        }
+                        names.Add(keyStringLiteral.Value);
+                        arguments.Add(keyExpr.Expr);
+
+                        if (valArg is FunctionArg.Unnamed valunnamed && valunnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression valFuncExprUnnamed)
+                        {
+                            var valExpr = visitor.Visit(valFuncExprUnnamed.Expression, emitData);
+                            arguments.Add(valExpr.Expr);
+                            types.Add(valExpr.Type);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("named_struct does not support the input parameter");
+                        }
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("named_struct does not support the input parameter");
+                    }
+                }
+                return new ScalarResponse(new ScalarFunction()
+                {
+                    Arguments = arguments,
+                    ExtensionUri = FunctionsStruct.Uri,
+                    ExtensionName = FunctionsStruct.Create
+                }, new NamedStruct()
+                {
+                    Names = names,
+                    Struct = new Struct()
+                    {
+                        Types = types
+                    }
+                });
+            });
+
             sqlFunctionRegister.RegisterScalarFunction("list", (f, visitor, emitData) =>
             {
                 var argList = GetFunctionArguments(f.Args);

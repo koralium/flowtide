@@ -34,6 +34,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.Null;
 
+        int IColumn.Count => throw new NotImplementedException();
+
+        ArrowTypeId IColumn.Type => throw new NotImplementedException();
+
+        StructHeader? IColumn.StructHeader => default;
+
         public void Add<T>(in T value) where T : IDataValue
         {
             throw new NotSupportedException();
