@@ -841,19 +841,15 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         private bool CompareOtherColumnType(Column otherColumn)
         {
-            if (_type == otherColumn.Type)
+            if (_type != otherColumn.Type)
             {
-                if (_type == ArrowTypeId.Struct)
-                {
-                    if (this.StructHeader.Equals(otherColumn.StructHeader))
-                    {
-                        return true;
-                    }
-                    return false;
-                }
-                return true;
+                return false;
             }
-            return false;
+            if (_type == ArrowTypeId.Struct)
+            {
+                return StructHeader.Equals(otherColumn.StructHeader);
+            }
+            return true;
         }
 
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
