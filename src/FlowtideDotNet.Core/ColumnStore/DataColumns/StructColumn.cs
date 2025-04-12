@@ -324,10 +324,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             for (int i = 0; i < _columns.Length; i++)
             {
-                for (int c = 0; c < count; c++)
-                {
-                    _columns[i].InsertAt(index, NullValue.Instance);
-                }
+                _columns[i].InsertNullRange(index, count);
             }
         }
 

@@ -852,6 +852,32 @@ namespace FlowtideDotNet.Core.ColumnStore
             return true;
         }
 
+        public void InsertNullRange(int index, int count)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                _nullCounter += count;
+                return;
+            }
+            if (_nullCounter > 0)
+            {
+                Debug.Assert(_validityList != null);
+                _validityList.InsertFalseInRange(index, count);
+                _nullCounter += count;
+            }
+            else
+            {
+                Debug.Assert(_validityList != null);
+                CheckNullInitialization();
+                _validityList.InsertFalseInRange(index, count);
+                _nullCounter += count;
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.InsertNullRange(index, count);
+            }
+        }
+
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
             if (otherColumn is Column column)
