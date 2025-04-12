@@ -498,6 +498,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new SubstraitParseException("named_struct does not support over");
                 }
 
+                if (argList.Args.Count < 2)
+                {
+                    throw new SubstraitParseException("named_struct must have at least one key-value pair");
+                }
+
                 List<Expressions.Expression> arguments = new List<Expressions.Expression>();
                 List<SubstraitBaseType> types = new List<SubstraitBaseType>();
                 List<string> names = new List<string>();
