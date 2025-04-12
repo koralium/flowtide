@@ -482,7 +482,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var argList = GetFunctionArguments(f.Args);
 
-                if (argList.Args == null)
+                if (argList.Args == null || argList.Args.Count == 0)
                 {
                     // Return an empty named struct creation
                     return new ScalarResponse(new ScalarFunction()
