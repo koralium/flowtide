@@ -37,11 +37,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     }
                     var argumentsLength = func.Arguments.Count / 2;
 
-                    //var list = new List<IDataValue>();
-                    //for (int i = 0; i < argumentsLength; i++)
-                    //{
-                    //    list.Add(NullValue.Instance);
-                    //}
                     var arr = System.Linq.Expressions.Expression.Constant(new IDataValue[argumentsLength]);
                     string[] columnNames = new string[argumentsLength];
                     List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
@@ -63,19 +58,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         {
                             throw new InvalidOperationException($"Argument {i + 1} must be a valid expression.");
                         }
-
-                        //var indexerProperty = typeof(List<IDataValue>).GetProperty("Item");
-                        //if (indexerProperty == null)
-                        //{
-                        //    throw new InvalidOperationException("List<IDataValue> does not have an indexer property.");
-                        //}
-                        //var indexerMethod = indexerProperty.GetSetMethod();
-                        //if (indexerMethod == null)
-                        //{
-                        //    throw new InvalidOperationException("List<IDataValue> indexer property does not have a setter.");
-                        //}
-                        //var argIndexConstant = System.Linq.Expressions.Expression.Constant(argIndex);
-
 
                         var arrAccess = System.Linq.Expressions.Expression.ArrayAccess(arr, System.Linq.Expressions.Expression.Constant(argIndex));
                         var assignArr = System.Linq.Expressions.Expression.Assign(arrAccess, argResult);
