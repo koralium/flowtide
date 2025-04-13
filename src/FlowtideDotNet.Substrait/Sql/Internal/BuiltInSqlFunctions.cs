@@ -875,6 +875,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay);
 
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast);
+
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
 

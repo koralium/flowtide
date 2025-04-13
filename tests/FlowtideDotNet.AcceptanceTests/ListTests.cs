@@ -189,5 +189,26 @@ namespace FlowtideDotNet.AcceptanceTests
                 new {list = new List<object>(){ 2, "a", "c" }}
             });
         }
+
+        [Fact]
+        public async Task ListSortAscendingNullLast()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_sort_asc_null_last(list(orderkey, userkey))
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                list = (new List<int>() { x.OrderKey, x.UserKey }).OrderBy(x => x).ToList()
+            } );
+
+            AssertCurrentDataEqual(expectedList);
+        }
     }
 }

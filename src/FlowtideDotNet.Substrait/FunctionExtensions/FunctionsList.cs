@@ -17,5 +17,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Uri = "/functions_list.yaml";
         public const string ListAgg = "list_agg";
         public const string ListUnionDistinctAgg = "list_union_distinct_agg";
+        public const string ListSortAscendingNullLast = "list_sort_asc_null_last";
     }
 }
