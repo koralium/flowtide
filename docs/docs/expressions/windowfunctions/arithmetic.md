@@ -59,3 +59,24 @@ SELECT LEAD(column1, 2) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 -- Lead with offset 2 and default value set to 'hello'
 SELECT LEAD(column1, 2, 'hello') OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 ```
+
+## Lag
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#lag)
+
+The `LAG` window function provides access to a preceding row’s value within the same result set partition. It returns the value of a specified column at a given offset before the current row.
+
+If no row exists at that offset (e.g., you're at the start of the partition), a default value (if provided) is returned; otherwise, the result is NULL.
+
+This function **requires an `ORDER BY` clause** to establish row sequence and **does not support frame boundaries**.
+
+### SQL Usage
+
+```sql
+-- Lag with default offset 1 and null default
+SELECT LAG(column1) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Lag with offset 2 and null default
+SELECT LAG(column1, 2) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Lag with offset 2 and default value set to 'hello'
+SELECT LAG(column1, 2, 'hello') OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+```
