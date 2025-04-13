@@ -210,5 +210,26 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expectedList);
         }
+
+        [Fact]
+        public async Task ListFirstDifference()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_first_difference(list(orderkey, userkey), list(orderkey, 5)) as val
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                val = x.UserKey
+            });
+
+            AssertCurrentDataEqual(expectedList);
+        }
     }
 }

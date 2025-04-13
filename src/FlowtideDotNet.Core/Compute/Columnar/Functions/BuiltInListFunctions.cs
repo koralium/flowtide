@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void AddBuiltInListFunctions(IFunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, typeof(BuiltInListFunctions), nameof(ListSortAscendingNullLast));
+            functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListFirstDifference, typeof(BuiltInListFunctions), nameof(ListFirstDifference));
         }
 
         private static IDataValue ListSortAscendingNullLast<T>(T value)
@@ -43,6 +44,47 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 
                 Array.Sort(newList, SortFieldCompareCompiler.CompareAscendingNullsLastImplementation);
                 return new ListValue(newList);
+            }
+            return NullValue.Instance;
+        }
+
+        private static IDataValue ListFirstDifference<T1, T2>(T1 x, T2 y)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (x.Type == ArrowTypeId.List)
+            {
+                var list1 = x.AsList;
+                var list1Count = list1.Count;
+                if (y.Type == ArrowTypeId.List)
+                {
+                    var list2 = y.AsList;
+
+                    
+                    var list2Count = list2.Count;
+
+                    var minCount = Math.Min(list1Count, list2Count);
+
+                    for (int i = 0; i < minCount; i++)
+                    {
+                        var list1Value = list1.GetAt(i);
+                        if (DataValueComparer.Instance.Compare(list1Value, list2.GetAt(i)) != 0)
+                        {
+                            return list1Value;
+                        }
+                    }
+                    if (list1Count > list2Count)
+                    {
+                        return list1.GetAt(list2Count);
+                    }
+                }
+                else
+                {
+                    if (list1Count > 0)
+                    {
+                        return list1.GetAt(0);
+                    }
+                }
             }
             return NullValue.Instance;
         }
