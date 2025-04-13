@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _partitionColumnIndices = partitionColumnIndices;
         }
 
-        public bool SeekNextPageForValue => throw new NotImplementedException();
+        public bool SeekNextPageForValue => true;
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {

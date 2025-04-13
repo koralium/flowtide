@@ -89,18 +89,31 @@ namespace FlowtideDotNet.Core.Operators.Window
             if (windowValue.valueContainer._previousValueSent.Get(windowValue.index))
             {
                 var stateLength = windowValue.valueContainer._functionStates[0].GetListLength(windowValue.index);
-                for (int i = 0; i < columnRowReference.referenceBatch.Columns.Count; i++)
+
+                for (int i = 0; i < emitList.Count; i++)
                 {
-                    var existingColumnValue = columnRowReference.referenceBatch.Columns[i].GetValueAt(columnRowReference.RowIndex, default);
-                    for (int w = 0; w < stateLength; w++)
+                    var emitIndex = emitList[i];
+                    if (emitIndex >= _inputColumnCount)
                     {
-                        columns[i].Add(existingColumnValue);
+                        for (int w = 0; w < stateLength; w++)
+                        {
+                            var value = windowValue.valueContainer._functionStates[0].GetListElementValue(windowValue.index, w);
+                            columns[i].Add(value);
+                        }
+                    }
+                    else
+                    {
+                        var columnValue = columnRowReference.referenceBatch.Columns[emitList[i]].GetValueAt(columnRowReference.RowIndex, default);
+
+                        for (int w = 0; w < stateLength; w++)
+                        {
+                            columns[i].Add(columnValue);
+                        }
                     }
                 }
 
                 for (int i = 0; i < stateLength; i++)
                 {
-                    columns[emitList.Count - 1].Add(windowValue.valueContainer._functionStates[0].GetListElementValue(windowValue.index, i));
                     weights.Add(-1);
                     iterations.Add(0);
                 }
