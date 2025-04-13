@@ -73,6 +73,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(iterator != null, "Run reset first before getting rows");
             Debug.Assert(searchComparer != null, "Run reset first before getting rows");
 
+            if (searchComparer.noMatch)
+            {
+                yield break;
+            }
+
             bool firstPage = true;
             await foreach(var page in iterator)
             {
