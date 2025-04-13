@@ -854,5 +854,113 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task LagWithPartitionOneArgument()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAG(UserKey) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+            var act = GetActualRows();
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<LeadResult> output = new List<LeadResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        long? val = null;
+                        if (i > 0)
+                        {
+                            val = orderedByKey[i - 1].UserKey;
+                        }
+                        output.Add(new LeadResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LagWithPartitionTwoArgumentsStep2()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAG(UserKey, 2) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<LeadResult> output = new List<LeadResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        long? val = null;
+                        if (i > 1)
+                        {
+                            val = orderedByKey[i - 2].UserKey;
+                        }
+                        output.Add(new LeadResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LagWithPartitionThreeArguments()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAG(UserKey, 1, 0) OVER (PARTITION BY CompanyId ORDER BY UserKey)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<LeadResult> output = new List<LeadResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        long? val = 0;
+                        if (i > 0)
+                        {
+                            val = orderedByKey[i - 1].UserKey;
+                        }
+                        output.Add(new LeadResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, val));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }

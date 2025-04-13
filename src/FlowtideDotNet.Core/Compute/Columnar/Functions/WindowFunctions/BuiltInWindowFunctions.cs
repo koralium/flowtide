@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new RowNumberWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new LeadWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new SurrogateKeyInt64WindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lag, new LagWindowFunctionDefinition());
         }
     }
 }
