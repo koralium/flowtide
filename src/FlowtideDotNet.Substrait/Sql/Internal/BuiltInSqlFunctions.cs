@@ -608,6 +608,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(mapNestedExpression, new ListType(valueType));
             });
 
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_filter_null", FunctionsList.Uri, FunctionsList.ListFilterNull);
 
             sqlFunctionRegister.RegisterAggregateFunction("count", (f, visitor, emitData) =>
             {

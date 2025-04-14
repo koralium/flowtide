@@ -14,11 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -28,6 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, typeof(BuiltInListFunctions), nameof(ListSortAscendingNullLast));
             functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListFirstDifference, typeof(BuiltInListFunctions), nameof(ListFirstDifference));
+            functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListFilterNull, typeof(BuiltInListFunctions), nameof(ListFilterNull));
         }
 
         private static IDataValue ListSortAscendingNullLast<T>(T value)
@@ -85,6 +81,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         return list1.GetAt(0);
                     }
                 }
+            }
+            return NullValue.Instance;
+        }
+
+        private static IDataValue ListFilterNull<T>(T value)
+            where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.List)
+            {
+                var list = value.AsList;
+                var newList = new List<IDataValue>();
+                for (int i = 0; i < list.Count; i++)
+                {
+                    var item = list.GetAt(i);
+                    if (item.Type != ArrowTypeId.Null)
+                    {
+                        newList.Add(item);
+                    }
+                }
+                return new ListValue(newList);
             }
             return NullValue.Instance;
         }

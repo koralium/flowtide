@@ -19,5 +19,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string ListUnionDistinctAgg = "list_union_distinct_agg";
         public const string ListSortAscendingNullLast = "list_sort_asc_null_last";
         public const string ListFirstDifference = "list_first_difference";
+        public const string ListFilterNull = "list_filter_null";
     }
 }

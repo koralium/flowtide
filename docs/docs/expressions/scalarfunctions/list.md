@@ -35,3 +35,19 @@ If one or both of the lists are NULL, the function handles them as follows:
 ```sql
 SELECT list_first_difference(list1, list2) FROM ...
 ```
+
+## List Filter Null
+
+*This function has no substrait equivalent*
+
+Removes all NULL elements from a list, returning a new list that retains the original order of the non-NULL elements.
+
+If the input list is NULL, the function returns NULL. If the list contains only NULL values, the result is an empty list.
+
+This function is useful for cleaning data where NULL values may represent missing, irrelevant, or default entries that should be excluded from further processing.
+
+### SQL Usage
+
+```sql
+SELECT list_filter_null(list_column) FROM ...
+```

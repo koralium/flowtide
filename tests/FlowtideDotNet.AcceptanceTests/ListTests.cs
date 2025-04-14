@@ -231,5 +231,26 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expectedList);
         }
+
+        [Fact]
+        public async Task ListFilterNull()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_filter_null(list(orderkey, userkey, null)) as val
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                val = new List<int>() { x.OrderKey, x.UserKey }
+            });
+
+            AssertCurrentDataEqual(expectedList);
+        }
     }
 }

@@ -1,0 +1,12 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_list.yaml'
+
+# basic: Basic examples without any special cases
+list_filter_null([1, 2, 3]::LIST<i32>) = [1, 2, 3]::LIST<i32>
+list_filter_null(['a', 'b', 'c']::LIST<str>) = ['a', 'b', 'c']::LIST<str>
+
+# null_input: Examples with null as input
+list_filter_null([1, 2, null]::LIST<i32>) = [1, 2]::LIST<i32>
+list_filter_null([1, null, 3]::LIST<i32>) = [1, 3]::LIST<i32>
+list_filter_null([null, 2, 3]::LIST<i32>) = [2, 3]::LIST<i32>
+list_filter_null([null, null, null]::LIST<i32>) = []::LIST<i32>
