@@ -1,0 +1,10 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_string.yaml'
+
+# basic: Basic examples without any special cases
+string_join(','::str, ['a', 'b', 'c']::LIST<str>) = 'a,b,c'::str
+string_join(','::str, [1,2,3]::LIST<i32>) = '1,2,3'::str
+
+# null_input: Examples with null as input
+string_join(','::str, ['a', 'b', null]::LIST<str>) = 'a,b'::str
+string_join(','::str, ['a', null, 'b']::LIST<str>) = 'a,b'::str

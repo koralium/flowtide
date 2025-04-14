@@ -205,6 +205,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             });
 
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringJoin, typeof(BuiltInStringFunctions), nameof(StringJoinImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(
@@ -866,6 +867,50 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 Utf8JsonReader reader = new Utf8JsonReader(val.AsBinary);
                 return DataValueJsonReader.Read(ref reader);
             }
+        }
+
+        private static IDataValue StringJoinImplementation<T1, T2>(in T1 separator, in T2 list, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (separator.Type == ArrowTypeId.Null)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (separator.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (list.Type == ArrowTypeId.Null)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (list.Type != ArrowTypeId.List)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var seperatorStringVal = separator.AsString.ToString();
+
+            var listVal = list.AsList;
+
+            List<string> values = new List<string>();
+            for (int i = 0; i < listVal.Count; i++)
+            {
+                var toStringResult = ToStringImplementation(listVal.GetAt(i), result);
+                if (toStringResult.IsNull)
+                {
+                    continue;
+                }
+                values.Add(toStringResult.AsString.ToString());
+            }
+            result._type = ArrowTypeId.String;
+            result._stringValue = new StringValue(string.Join(seperatorStringVal, values));
+            return result;
         }
     }
 }
