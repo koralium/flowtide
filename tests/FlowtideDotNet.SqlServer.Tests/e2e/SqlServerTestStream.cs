@@ -21,6 +21,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
     {
         private readonly string connectionString;
         private readonly List<string>? customPrimaryKeys;
+        private readonly SqlServerSourceOptions? options;
 
         public SqlServerTestStream(string testName, string connectionString, List<string>? customPrimaryKeys = null) : base(testName)
         {
@@ -28,16 +29,30 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             this.customPrimaryKeys = customPrimaryKeys;
         }
 
+        public SqlServerTestStream(string testName, SqlServerSourceOptions options) : base(testName)
+        {
+            this.options = options;
+            this.connectionString = options.ConnectionStringFunc();
+        }
+
         protected override void AddReadResolvers(IConnectorManager factory)
         {
-            factory.AddSqlServerSource(() => connectionString);
+            if (options != null)
+            {
+                factory.AddSqlServerSource(options);
+            }
+            else
+            {
+                factory.AddSqlServerSource(() => connectionString);
+            }
+
         }
 
         protected override void AddWriteResolvers(IConnectorManager factory)
         {
             factory.AddSqlServerSink(new SqlServerSinkOptions()
             {
-                ConnectionStringFunc = () => connectionString,
+                ConnectionStringFunc = options?.ConnectionStringFunc != null ? options.ConnectionStringFunc : () => connectionString,
                 CustomPrimaryKeys = customPrimaryKeys
             });
         }
