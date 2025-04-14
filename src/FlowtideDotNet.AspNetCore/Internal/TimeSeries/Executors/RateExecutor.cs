@@ -55,7 +55,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
                 if (!initialYield)
                 {
-                    yield return new MetricResult((val.value - oldValues[(Math.Abs(index - indexDistance)) % (indexDistance + 1)]) / divisorInSeconds, val.timestamp);
+                    // Only yield the first value if it is above the start timestamp, since there is no history then and history should be treated as 0 when calculating rate.
+                    if (val.timestamp >= startTimestamp)
+                    {
+                        yield return new MetricResult((val.value - oldValues[(Math.Abs(index - indexDistance)) % (indexDistance + 1)]) / divisorInSeconds, val.timestamp);
+                    }
                     initialYield = true;
                 }
                 else if (index >= indexDistance)
