@@ -808,6 +808,14 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     }
                 }
             }
+            else
+            {
+                for (int i = 0; i < consistentPartitionWindowRelation.Input.OutputLength; i++)
+                {
+                    usedFields.Add(i);
+                }
+            }
+
             usedFields = usedFields.Distinct().ToList();
 
             var inputEmitResult = CreateInputEmitList(input, usedFields);
