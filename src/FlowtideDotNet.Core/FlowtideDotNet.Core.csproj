@@ -7,6 +7,9 @@
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Apache.Arrow" Version="16.1.0" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
