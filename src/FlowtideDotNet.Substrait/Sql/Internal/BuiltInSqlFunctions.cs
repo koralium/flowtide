@@ -878,6 +878,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast);
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "list_first_difference", FunctionsList.Uri, FunctionsList.ListFirstDifference);
 
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.Uri, FunctionsString.StringJoin);
+
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
 

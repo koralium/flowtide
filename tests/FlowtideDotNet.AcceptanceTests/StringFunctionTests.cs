@@ -240,5 +240,16 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { json = new Dictionary<string, object?>() { { "firstName", x.FirstName }, { "lastName", x.LastName } } }));
         }
+
+        [Fact]
+        public async Task StringJoin()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT string_join(',', list(firstName, lastName)) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = $"{x.FirstName},{x.LastName}" }));
+        }
     }
 }
