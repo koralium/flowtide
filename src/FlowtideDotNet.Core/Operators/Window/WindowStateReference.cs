@@ -50,21 +50,6 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         internal bool Updated { get; set; }
 
-        public void UpdateStateValue<T>(T value)
-            where T : IDataValue
-        {
-            Debug.Assert(_columnRowReference != null);
-            if (_addOutputRow == null)
-            {
-                throw new InvalidOperationException("Can not update state using this iterator");
-            }
-
-            if (windowValue.UpdateStateValue(0, weightIndex, value, _columnRowReference.Value, _addOutputRow))
-            {
-                Updated = true;
-            }
-        }
-
         internal void UpdateStateValues(IDataValue[] values, IDataValue[] temporaryStorage)
         {
             Debug.Assert(_columnRowReference != null);
