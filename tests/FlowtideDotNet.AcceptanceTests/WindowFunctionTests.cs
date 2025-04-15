@@ -72,6 +72,111 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        [Fact]
+        public async Task SumTestMultipleBounds()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestDuplicateRowDeleteOne()
+        {
+
+            AddOrUpdateUser(new Entities.User()
+            {
+                UserKey = 1,
+                CompanyId = "1",
+                DoubleValue = 123
+            });
+            AddOrUpdateUser(new Entities.User()
+            {
+                UserKey = 2,
+                CompanyId = "1",
+                DoubleValue = 123
+            });
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                1 as userkey,    
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY DoubleValue ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users
+            ");
+                
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            DeleteUser(Users.First());
+
+            await WaitForUpdate();
+
+            var act2 = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, 1, (long)sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
         public record SumOnlyResult(long value);
 
         [Fact]

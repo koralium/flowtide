@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -64,8 +65,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
         }
 
-        public void UpdateStateValues(IDataValue[] values)
+        internal void UpdateStateValues(IDataValue[] values, IDataValue[] temporaryStorage)
         {
+            Debug.Assert(_columnRowReference != null);
+            Debug.Assert(_addOutputRow != null);
+
             bool isNew = false;
             bool isUpdate = false;
             for (int i = 0; i < values.Length; i++)
@@ -75,14 +79,18 @@ namespace FlowtideDotNet.Core.Operators.Window
                 if (listCount <= weightIndex)
                 {
                     isNew = true;
+                    temporaryStorage[i] = NullValue.Instance;
+                    windowValue.valueContainer._functionStates[i].AppendToList(windowValue.index, values[i]);
                 }
                 else
                 {
                     var oldValue = windowValue.valueContainer._functionStates[i].GetListElementValue(windowValue.index, weightIndex);
+                    temporaryStorage[i] = oldValue;
                     if (DataValueComparer.Instance.Compare(values[i], oldValue) != 0)
                     {
                         isUpdate = true;
                     }
+                    windowValue.valueContainer._functionStates[i].UpdateListElement(windowValue.index, weightIndex, values[i]);
                 }
             }
 
@@ -91,25 +99,14 @@ namespace FlowtideDotNet.Core.Operators.Window
                 return;
             }
 
-            for (int i = 0; i < values.Length; i++)
+            if (isUpdate)
             {
-                var listCount = windowValue.valueContainer._functionStates[i].GetListLength(windowValue.index);
-
-                //if (listCount <= weightIndex)
-                //{
-                //    windowValue.valueContainer._functionStates[i].AppendToList(windowValue.index, values[i]);
-                //    //_addOutputRow?.AddOutputRow(_columnRowReference.Value, values[i], 1);
-                //}
-                //else
-                //{
-                //    var oldValue = windowValue.valueContainer._functionStates[i].GetListElementValue(windowValue.index, weightIndex);
-                //    if (DataValueComparer.Instance.Compare(values[i], oldValue) != 0)
-                //    {
-                //        _addOutputRow?.AddOutputRow(_columnRowReference.Value, oldValue, -1);
-                //        windowValue.valueContainer._functionStates[i].UpdateListElement(windowValue.index, weightIndex, values[i]);
-                //        _addOutputRow?.AddOutputRow(_columnRowReference.Value, values[i], 1);
-                //    }
-                //}
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, temporaryStorage, -1);
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
+            }
+            if (isNew)
+            {
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
         }
     }
