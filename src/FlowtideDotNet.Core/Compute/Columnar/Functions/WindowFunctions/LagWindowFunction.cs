@@ -193,5 +193,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         {
             return ValueTask.CompletedTask;
         }
+
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

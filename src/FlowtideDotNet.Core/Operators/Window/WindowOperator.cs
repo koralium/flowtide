@@ -159,6 +159,8 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
 
+            var partitionIterator = new PartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder);
+
             if (_windowFunction.RequirePartitionCompute)
             {
                 using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
@@ -168,11 +170,22 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     foreach (var partitionKv in partitionPage)
                     {
-                        await foreach (var batch in _windowFunction.ComputePartition(partitionKv.Key))
+                        int rowIndex = 0;
+                        await partitionIterator.Reset(partitionKv.Key);
+
+                        await _windowFunction.NewPartition(partitionKv.Key);
+
+                        await foreach(var row in partitionIterator)
                         {
-                            _eventsOutCounter.Add(batch.Weights.Count);
-                            yield return new StreamEventBatch(batch);
+                            var newValue = await _windowFunction.ComputeRow(row, rowIndex);
+                            row.Value.UpdateStateValue()
+                            rowIndex++;
                         }
+                        //await foreach (var batch in _windowFunction.ComputePartition(partitionKv.Key))
+                        //{
+                        //    _eventsOutCounter.Add(batch.Weights.Count);
+                        //    yield return new StreamEventBatch(batch);
+                        //}
                     }
                 }
 

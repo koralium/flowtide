@@ -39,5 +39,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             int weight);
 
         ValueTask Commit();
+
+        ValueTask NewPartition(ColumnRowReference partitionValues);
+
+        ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex);
     }
 }

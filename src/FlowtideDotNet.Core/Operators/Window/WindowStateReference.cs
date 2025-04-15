@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -59,6 +61,55 @@ namespace FlowtideDotNet.Core.Operators.Window
             if (windowValue.UpdateStateValue(0, weightIndex, value, _columnRowReference.Value, _addOutputRow))
             {
                 Updated = true;
+            }
+        }
+
+        public void UpdateStateValues(IDataValue[] values)
+        {
+            bool isNew = false;
+            bool isUpdate = false;
+            for (int i = 0; i < values.Length; i++)
+            {
+                var listCount = windowValue.valueContainer._functionStates[i].GetListLength(windowValue.index);
+
+                if (listCount <= weightIndex)
+                {
+                    isNew = true;
+                }
+                else
+                {
+                    var oldValue = windowValue.valueContainer._functionStates[i].GetListElementValue(windowValue.index, weightIndex);
+                    if (DataValueComparer.Instance.Compare(values[i], oldValue) != 0)
+                    {
+                        isUpdate = true;
+                    }
+                }
+            }
+
+            if (!isNew && !isUpdate)
+            {
+                return;
+            }
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                var listCount = windowValue.valueContainer._functionStates[i].GetListLength(windowValue.index);
+
+                //if (listCount <= weightIndex)
+                //{
+                //    windowValue.valueContainer._functionStates[i].AppendToList(windowValue.index, values[i]);
+                //    //_addOutputRow?.AddOutputRow(_columnRowReference.Value, values[i], 1);
+                //}
+                //else
+                //{
+                //    var oldValue = windowValue.valueContainer._functionStates[i].GetListElementValue(windowValue.index, weightIndex);
+                //    if (DataValueComparer.Instance.Compare(values[i], oldValue) != 0)
+                //    {
+                //        _addOutputRow?.AddOutputRow(_columnRowReference.Value, oldValue, -1);
+                //        windowValue.valueContainer._functionStates[i].UpdateListElement(windowValue.index, weightIndex, values[i]);
+                //        _addOutputRow?.AddOutputRow(_columnRowReference.Value, values[i], 1);
+                //    }
+                //}
             }
         }
     }

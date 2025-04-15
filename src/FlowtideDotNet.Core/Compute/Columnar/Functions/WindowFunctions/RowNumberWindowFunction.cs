@@ -78,6 +78,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             }
         }
 
+        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
@@ -96,6 +101,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
 
             return Task.CompletedTask;
+        }
+
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            throw new NotImplementedException();
         }
 
         public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)

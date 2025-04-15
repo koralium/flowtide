@@ -185,6 +185,46 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             this._to = to;
         }
 
+        private long _windowRowIndex = 0;
+        private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
+        private DataValueContainer _currentValueContainer = new DataValueContainer();
+
+        public async ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            Debug.Assert(_queue != null);
+            Debug.Assert(_windowPartitionIterator != null);
+            await _queue.Clear();
+
+            await _windowPartitionIterator.Reset(partitionValues);
+            _windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
+            _windowRowIndex = 0;
+            _currentValueContainer._type = ArrowTypeId.Null;
+        }
+
+        public async ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            Debug.Assert(_queue != null);
+            Debug.Assert(_windowEnumerator != null);
+            
+            long updateRowIndex = partitionRowIndex;
+
+            while (_windowRowIndex <= (updateRowIndex + _to) && await _windowEnumerator.MoveNextAsync())
+            {
+                var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
+                await _queue.Enqueue(val);
+                _windowRowIndex++;
+                SumWindowUtils.DoSum(val, _currentValueContainer, 1);
+            }
+
+            while (_queue.Count > 0 && _windowRowIndex - _queue.Count < updateRowIndex + _from)
+            {
+                var firstVal = await _queue.Dequeue();
+                SumWindowUtils.DoSum(firstVal, _currentValueContainer, -1);
+            }
+
+            return _currentValueContainer;
+        }
+
         public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
         {
             Debug.Assert(_queue != null);
@@ -362,6 +402,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         {
             return ValueTask.CompletedTask;
         }
+
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     internal class SumWindowFunctionUnbounded : IWindowFunction
@@ -447,6 +497,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         public ValueTask Commit()
         {
             return ValueTask.CompletedTask;
+        }
+
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -54,6 +54,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
             return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
         }
 
+        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            throw new NotImplementedException();
+        }
+
         public async Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
@@ -72,6 +77,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
                 });
             _iterator = _tree.CreateIterator();
             _keyCounterState = await stateManagerClient.GetOrCreateObjectStateAsync<long>("key_counter");
+        }
+
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            throw new NotImplementedException();
         }
 
         public async IAsyncEnumerable<EventBatchWeighted> OnReceive(
