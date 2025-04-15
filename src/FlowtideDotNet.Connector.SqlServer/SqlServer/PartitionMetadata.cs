@@ -10,10 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Tests.SqlServer
+namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    internal static partial class SqlServerUtils
-    {
-        public sealed record PartitionMetadata(string PartitionScheme, string PartitionFunction, string PartitionColumn, string TableName, string SchemeName, byte PartitionOrdinal);
-    }
+    public sealed record PartitionMetadata(string PartitionScheme, string PartitionFunction, string PartitionColumn, string TableName, string SchemeName, byte PartitionOrdinal);
 }

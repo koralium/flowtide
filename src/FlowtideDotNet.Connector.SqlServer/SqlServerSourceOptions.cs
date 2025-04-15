@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using Polly;
 using Polly.Retry;
-using static FlowtideDotNet.Substrait.Tests.SqlServer.SqlServerUtils;
 
 namespace FlowtideDotNet.Connector.SqlServer
 {
@@ -87,6 +87,9 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// </summary>
         internal bool IsChangeTrackingEnabled { get; set; } = true;
 
+        /// <summary>
+        /// Indicates if the source table contains partitioned data.
+        /// </summary>
         internal PartitionMetadata? PartitionMetadata { get; set; }
     }
 }

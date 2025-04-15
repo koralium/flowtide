@@ -20,13 +20,9 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
 using Polly;
-using Polly.Retry;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks.Dataflow;
-using static FlowtideDotNet.Substrait.Tests.SqlServer.SqlServerUtils;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
@@ -135,7 +131,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Debug.Assert(ConvertFunctions != null);
 
             Logger.SelectingChanges(FullTableName, StreamName, Name);
-   
+
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
             await EnterCheckpointLock();
 
@@ -145,7 +141,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
             var resilienceState = new DeltaLoadResilienceState(State, Options, ReadRelation, PrimaryKeys);
-            var pipelineResult = await p.ExecuteOutcomeAsync(static async (ctx, state) =>
+            var pipelineResult = await Options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
             {
                 try
                 {
@@ -289,14 +285,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
     internal class PartitionedTableDataSource : ColumnSqlDeltaSource
     {
-        private readonly PartitionMetadata _partitionMetadata;
-        public PartitionedTableDataSource(SqlServerSourceOptions sourceOptions, PartitionMetadata partitionMetadata, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(sourceOptions, readRelation, functionsRegister, options)
+        public PartitionedTableDataSource(SqlServerSourceOptions sourceOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(sourceOptions, readRelation, functionsRegister, options)
         {
-            _partitionMetadata = partitionMetadata;
+            ArgumentNullException.ThrowIfNull(sourceOptions.PartitionMetadata);
         }
 
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
+            Debug.Assert(Options.PartitionMetadata != null);
             Debug.Assert(PrimaryKeys != null);
             Debug.Assert(ConvertFunctions != null);
 
@@ -307,7 +303,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             await connection.OpenAsync(cancellationToken);
             var paritionIds = await SqlServerUtils.GetParitionIds(connection, ReadRelation);
 
-            var keys = PrimaryKeys.Where(s => s != _partitionMetadata.PartitionColumn);
+            var keys = PrimaryKeys.Where(s => s != Options.PartitionMetadata.PartitionColumn);
 
             var cols = string.Join(", ", ReadRelation.BaseSchema.Names.Select(x => $"[{x}]"));
 
@@ -315,7 +311,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var cmd = $@"SELECT {cols}
                 FROM table --fix
-                WHERE $PARTITION.{_partitionMetadata.PartitionFunction}({_partitionMetadata.PartitionColumn}) = @PartitionId
+                WHERE $PARTITION.{Options.PartitionMetadata.PartitionFunction}({Options.PartitionMetadata.PartitionColumn}) = @PartitionId
                 ORDER BY {string.Join(',', keys)}
                 -- OFFSET 0 ROWS FETCH NEXT 10000 ROWS ONLY";
 
