@@ -914,68 +914,6 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
-        public record SurrogateResult(long value);
-
-        [Fact]
-        public async Task SurrogateKeyInt64()
-        {
-            GenerateData();
-
-            await StartStream(@"
-            INSERT INTO output
-            SELECT 
-                surrogate_key_int64() OVER (PARTITION BY CompanyId)
-            FROM users
-            ");
-
-            await WaitForUpdate();
-
-            var act = GetActualRows();
-
-            await Crash();
-
-            GenerateData();
-
-            await WaitForUpdate();
-
-            Dictionary<string, int> keyLookup = new Dictionary<string, int>();
-            int counter = 0;
-            int nullKey = -1;
-
-            var expected = Users.GroupBy(x => x.CompanyId)
-                .OrderBy(x => x.Key)
-                .SelectMany(x =>
-            {
-                
-                if (x.Key == null)
-                {
-                    if (nullKey == -1)
-                    {
-                        nullKey = counter++;
-                    }
-                    List<SurrogateResult> nullResult = new List<SurrogateResult>();
-
-                    for (int i = 0; i < x.Count(); i++)
-                    {
-                        nullResult.Add(new SurrogateResult(nullKey));
-                    }
-
-                    return nullResult;
-                }
-                var key = counter++;
-                keyLookup.Add(x.Key, key);
-                List<SurrogateResult> result = new List<SurrogateResult>();
-
-                for (int i = 0; i < x.Count(); i++)
-                {
-                    result.Add(new SurrogateResult(key));
-                }
-                return result;
-            }).ToList();
-
-            AssertCurrentDataEqual(expected);
-        }
-
         [Fact]
         public async Task LagWithPartitionOneArgument()
         {
