@@ -84,6 +84,25 @@ namespace FlowtideDotNet.Core.Operators.Window
             iterations.Add(0);
         }
 
+        public void AddOutputRow(ColumnRowReference columnRowReference, IDataValue[] functionValues, int weight)
+        {
+            for (int i = 0; i < emitList.Count; i++)
+            {
+                var emitIndex = emitList[i];
+                if (emitIndex >= _inputColumnCount)
+                {
+                    columns[i].Add(functionValues[emitIndex - _inputColumnCount]);
+                }
+                else
+                {
+                    var columnValue = columnRowReference.referenceBatch.Columns[emitList[i]].GetValueAt(columnRowReference.RowIndex, default);
+                    columns[i].Add(columnValue);
+                }
+            }
+            weights.Add(weight);
+            iterations.Add(0);
+        }
+
         internal void AddDeleteToOutput(ColumnRowReference columnRowReference, WindowValue windowValue)
         {
             if (windowValue.valueContainer._previousValueSent.Get(windowValue.index))

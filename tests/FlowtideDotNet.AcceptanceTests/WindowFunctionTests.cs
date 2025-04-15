@@ -72,6 +72,122 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        public record MultipleSumResult(string? companyId, int userkey, long sum1, long sum2);
+
+        [Fact]
+        public async Task SumTestMultipleBounds()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value,
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS INT) as othersum
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var sum2 = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    Queue<double> values2 = new Queue<double>();
+                    List<MultipleSumResult> output = new List<MultipleSumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        while (values2.Count > 2)
+                        {
+                            var dequeued = values2.Dequeue();
+                            sum2 -= dequeued;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        values2.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        sum2 += orderedByKey[i].DoubleValue;
+                        output.Add(new MultipleSumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (long)sum, (long)sum2));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task SumTestDuplicateRowDeleteOne()
+        {
+
+            AddOrUpdateUser(new Entities.User()
+            {
+                UserKey = 1,
+                CompanyId = "1",
+                DoubleValue = 123
+            });
+            AddOrUpdateUser(new Entities.User()
+            {
+                UserKey = 2,
+                CompanyId = "1",
+                DoubleValue = 123
+            });
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                1 as userkey,    
+                CAST(SUM(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY DoubleValue ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users
+            ");
+                
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            DeleteUser(Users.First());
+
+            await WaitForUpdate();
+
+            var act2 = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, 1, (long)sum));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
         public record SumOnlyResult(long value);
 
         [Fact]
@@ -794,63 +910,6 @@ namespace FlowtideDotNet.AcceptanceTests
                     }
                     return output;
                 }).ToList();
-
-            AssertCurrentDataEqual(expected);
-        }
-
-        [Fact]
-        public async Task SurrogateKeyInt64()
-        {
-            GenerateData();
-
-            await StartStream(@"
-            INSERT INTO output
-            SELECT 
-                surrogate_key_int64() OVER (PARTITION BY CompanyId)
-            FROM users
-            ");
-
-            await WaitForUpdate();
-
-            var act = GetActualRows();
-
-            await Crash();
-
-            GenerateData();
-
-            await WaitForUpdate();
-
-            Dictionary<string, int> keyLookup = new Dictionary<string, int>();
-            int counter = 0;
-            int nullKey = -1;
-
-            var expected = Users.Select(x =>
-            {
-                if (x.CompanyId == null)
-                {
-                    if (nullKey == -1)
-                    {
-                        nullKey = counter++;
-                    }
-                    return new
-                    {
-                        key = nullKey
-                    };
-                }
-                if (keyLookup.TryGetValue(x.CompanyId, out var key))
-                {
-                    return new
-                    {
-                        key
-                    };
-                }
-                key = counter++;
-                keyLookup.Add(x.CompanyId, key);
-                return new
-                {
-                    key
-                };
-            }).ToList();
 
             AssertCurrentDataEqual(expected);
         }

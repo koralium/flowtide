@@ -31,42 +31,6 @@ namespace FlowtideDotNet.Core.Operators.Window
         internal WindowValueContainer valueContainer;
         internal int index;
         public int weight;
-
-        /// <summary>
-        /// Updates the state for a specific index and specific weight.
-        /// This allows different states for duplicate rows.
-        /// 
-        /// Returns true, if a new value was added to state or existing one was updated.
-        /// Returns false if the same value already exists in the state.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="functionIndex"></param>
-        /// <param name="weightIndex"></param>
-        /// <param name="value"></param>
-        public bool UpdateStateValue<T>(int functionIndex, int weightIndex, T value, ColumnRowReference columnRowReference, IWindowAddOutputRow addOutputRow)
-            where T : IDataValue
-        {
-            var listCount = valueContainer._functionStates[functionIndex].GetListLength(index);
-            valueContainer._previousValueSent.Set(index);
-            if (listCount <= weightIndex)
-            {
-                valueContainer._functionStates[functionIndex].AppendToList(index, value);
-                addOutputRow.AddOutputRow(columnRowReference, value, 1);
-                return true;
-            }
-            else
-            {
-                var oldValue = valueContainer._functionStates[functionIndex].GetListElementValue(index, weightIndex);
-                if (DataValueComparer.Instance.Compare(value, oldValue) != 0)
-                {
-                    addOutputRow.AddOutputRow(columnRowReference, oldValue, -1);
-                    valueContainer._functionStates[functionIndex].UpdateListElement(index, weightIndex, value);
-                    addOutputRow.AddOutputRow(columnRowReference, value, 1);
-                    return true;
-                }
-                return false;
-            }
-        }
     }
 
     internal class WindowValueContainer : IValueContainer<WindowValue>
