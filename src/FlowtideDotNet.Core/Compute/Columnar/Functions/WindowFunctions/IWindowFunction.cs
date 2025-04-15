@@ -21,26 +21,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 {
     internal interface IWindowFunction
     {
-        bool RequirePartitionCompute { get; }
-
         Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree,
             List<int> partitionColumns,
             IMemoryAllocator memoryAllocator,
-            IStateManagerClient stateManagerClient,
-            IWindowAddOutputRow addOutputRow);
-
-        IAsyncEnumerable<EventBatchWeighted> ComputePartition(
-            ColumnRowReference partitionValues);
-
-        IAsyncEnumerable<EventBatchWeighted> OnReceive(
-            ColumnRowReference partitionValues,
-            ColumnRowReference inputRow,
-            int weight);
+            IStateManagerClient stateManagerClient);
 
         ValueTask Commit();
 
         ValueTask NewPartition(ColumnRowReference partitionValues);
+
+        ValueTask EndPartition(ColumnRowReference partitionValues);
 
         ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex);
     }

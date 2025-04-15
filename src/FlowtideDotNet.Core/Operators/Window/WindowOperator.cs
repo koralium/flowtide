@@ -28,6 +28,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Core.Operators.Partition;
 namespace FlowtideDotNet.Core.Operators.Window
 {
     internal class WindowOperator : UnaryVertex<StreamEventBatch>
@@ -54,6 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         private readonly IWindowFunction[] _windowFunctions;
         private WindowOutputBuilder? _outputBuilder;
         private List<int> _emitList;
+        private WriterPartitionIterator? _partitionIterator;
 
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsInCounter;
@@ -61,12 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _relation = relation;
-            //if (_relation.WindowFunctions.Count > 1)
-            //{
-            //    throw new NotSupportedException("Only one window function is supported at this time per window operator");
-            //}
 
-            //var windowFunction = _relation.WindowFunctions[0];
             // Create the comparer for the ordering
             if (relation.OrderBy.Count > 0)
             {
@@ -162,12 +159,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         {
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
-
-            
-
-            //if (_windowFunction.RequirePartitionCompute)
-            //{
-            var partitionIterator = new WriterPartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder, _windowFunctions.Length);
+            Debug.Assert(_partitionIterator != null);
 
             using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
@@ -180,14 +172,14 @@ namespace FlowtideDotNet.Core.Operators.Window
                 foreach (var partitionKv in partitionPage)
                 {
                     int rowIndex = 0;
-                    await partitionIterator.Reset(partitionKv.Key);
+                    await _partitionIterator.Reset(partitionKv.Key);
 
                     for (int w = 0; w < _windowFunctions.Length; w++)
                     {
                         await _windowFunctions[w].NewPartition(partitionKv.Key);
                     }
 
-                    await foreach(var row in partitionIterator)
+                    await foreach(var row in _partitionIterator)
                     {
                         for (int w = 0; w < _windowFunctions.Length; w++)
                         {
@@ -195,11 +187,16 @@ namespace FlowtideDotNet.Core.Operators.Window
                         }
                         row.Value.UpdateStateValues(valuesList, temporaryList);
                         rowIndex++;
+
+                        if (_outputBuilder.Count >= 100)
+                        {
+                            yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+                        }
                     }
 
-                    if (_outputBuilder.Count >= 100)
+                    for (int w = 0; w < _windowFunctions.Length; w++)
                     {
-                        yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+                        await _windowFunctions[w].EndPartition(partitionKv.Key);
                     }
                 }
             }
@@ -211,7 +208,6 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
 
             await _temporaryTree.Clear();
-            //}
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -269,8 +265,6 @@ namespace FlowtideDotNet.Core.Operators.Window
                     RowIndex = i
                 };
 
-                //if (_windowFunction.RequirePartitionCompute)
-                //{
                 Debug.Assert(_persistentTree != null);
                 Debug.Assert(_temporaryTree != null);
 
@@ -316,27 +310,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     _eventsOutCounter.Add(_outputBuilder.Count);
                     yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
                 }
-               // }
-                
-                //for (int w = 0; w < _windowFunctions.Length; w++)
-                //{
-                //    await foreach (var batch in _windowFunctions[w].OnReceive(partitionRowRef, rowRef, msg.Data.Weights[i]))
-                //    {
-                //        _eventsOutCounter.Add(batch.Weights.Count);
-                //        yield return new StreamEventBatch(batch);
-                //    }
-                //}
-                
             }
-
-            //if (!_windowFunction.RequirePartitionCompute)
-            //{
-                //if (_outputBuilder.Count > 0)
-                //{
-                //    _eventsOutCounter.Add(_outputBuilder.Count);
-                //    yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
-                //}
-            //}
             yield break;
         }
 
@@ -351,28 +325,25 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
             }
 
-            //if (_windowFunction.RequirePartitionCompute)
-            //{
-                _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
+            new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
+            {
+                Comparer = new WindowInsertComparer(_sortComparer, _partitionColumns, _otherColumns),
+                KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength + _partitionCalculateExpressions.Count, MemoryAllocator),
+                MemoryAllocator = MemoryAllocator,
+                ValueSerializer = new WindowValueContainerSerializer(_relation.WindowFunctions.Count, MemoryAllocator),
+                UseByteBasedPageSizes = true
+            });
+
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
-                    Comparer = new WindowInsertComparer(_sortComparer, _partitionColumns, _otherColumns),
-                    KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength + _partitionCalculateExpressions.Count, MemoryAllocator),
+                    Comparer = new AggregateInsertComparer(_partitionColumns.Count),
+                    KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
-                    ValueSerializer = new WindowValueContainerSerializer(_relation.WindowFunctions.Count, MemoryAllocator),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     UseByteBasedPageSizes = true
                 });
-
-                _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
-                    new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
-                    {
-                        Comparer = new AggregateInsertComparer(_partitionColumns.Count),
-                        KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
-                        MemoryAllocator = MemoryAllocator,
-                        ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
-                        UseByteBasedPageSizes = true
-                    });
-            //}
             
 
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
@@ -382,8 +353,10 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             for (int w = 0; w < _windowFunctions.Length; w++)
             {
-                await _windowFunctions[w].Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient.GetChildManager(w.ToString()), _outputBuilder);
+                await _windowFunctions[w].Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient.GetChildManager(w.ToString()));
             }
+
+            _partitionIterator = new WriterPartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder, _windowFunctions.Length);
         }
     }
 }

@@ -106,6 +106,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
             if (isNew)
             {
+                windowValue.valueContainer._previousValueSent.Set(windowValue.index);
                 _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
         }

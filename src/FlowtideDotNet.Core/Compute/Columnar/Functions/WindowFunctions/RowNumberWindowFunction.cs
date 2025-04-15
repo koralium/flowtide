@@ -38,79 +38,33 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
     }
     internal class RowNumberWindowFunction : IWindowFunction
     {
-        private IWindowAddOutputRow? _addOutputRow;
-        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _updateIterator;
-        private PartitionIterator? _updatePartitionIterator;
-
-        public bool RequirePartitionCompute => true;
-
         public ValueTask Commit()
         {
             return ValueTask.CompletedTask;
         }
 
-        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
+        public ValueTask NewPartition(ColumnRowReference partitionValues)
         {
-            Debug.Assert(_updatePartitionIterator != null);
-            Debug.Assert(_addOutputRow != null);
-
-            await _updatePartitionIterator.Reset(partitionValues);
-            var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
-
-            long updateRowIndex = 1;
-
-            while (await updateEnumerator.MoveNextAsync())
-            {
-                var current = updateEnumerator.Current;
-
-                updateEnumerator.Current.Value.UpdateStateValue(new Int64Value(updateRowIndex));
-                updateRowIndex++;
-
-                if (_addOutputRow.Count >= 100)
-                {
-                    yield return _addOutputRow.GetCurrentBatch();
-                }
-            }
-            
-            if (_addOutputRow.Count > 0)
-            {
-                yield return _addOutputRow.GetCurrentBatch();
-            }
+            return ValueTask.CompletedTask;
         }
 
         public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
         {
-            throw new NotImplementedException();
+            return ValueTask.FromResult<IDataValue>(new Int64Value(partitionRowIndex + 1));
+        }
+
+        public ValueTask EndPartition(ColumnRowReference partitionValues)
+        {
+            return ValueTask.CompletedTask;
         }
 
         public Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
             IMemoryAllocator memoryAllocator, 
-            IStateManagerClient stateManagerClient, 
-            IWindowAddOutputRow addOutputRow)
+            IStateManagerClient stateManagerClient)
         {
-            if (persistentTree == null)
-            {
-                throw new ArgumentNullException(nameof(persistentTree));
-            }
-
-            _addOutputRow = addOutputRow;
-            _updateIterator = persistentTree.CreateIterator();
-
-            _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
-
             return Task.CompletedTask;
-        }
-
-        public ValueTask NewPartition(ColumnRowReference partitionValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
-        {
-            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
         }
     }
 }

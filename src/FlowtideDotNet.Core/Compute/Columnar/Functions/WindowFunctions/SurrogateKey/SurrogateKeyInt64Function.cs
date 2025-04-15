@@ -34,9 +34,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
     internal class SurrogateKeyInt64Function : IWindowFunction
     {
         private IBPlusTree<ColumnRowReference, SurrogateKeyValue, ColumnKeyStorageContainer, SurrogateKeyValueContainer>? _tree;
-        private IBPlusTreeIterator<ColumnRowReference, SurrogateKeyValue, ColumnKeyStorageContainer, SurrogateKeyValueContainer>? _iterator;
-        private IWindowAddOutputRow? _addOutputRow;
         private IObjectState<long>? _keyCounterState;
+        private IDataValue? _currentValue;
+        private bool _rowFound = false;
 
         public bool RequirePartitionCompute => false;
 
@@ -49,24 +49,54 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
             await _keyCounterState.Commit();
         }
 
-        public IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
-        {
-            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
-        }
-
         public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
         {
-            throw new NotImplementedException();
+            Debug.Assert(_currentValue != null);
+
+            _rowFound = true;
+
+            return ValueTask.FromResult(_currentValue);
+        }
+
+        public async ValueTask NewPartition(ColumnRowReference partitionValues)
+        {
+            Debug.Assert(_tree != null);
+            Debug.Assert(_keyCounterState != null);
+
+            _rowFound = false;
+            var result = await _tree.GetValue(in partitionValues);
+            
+            if (result.found)
+            {
+                _currentValue = result.value.Value;
+            }
+            else
+            {
+                _currentValue = new Int64Value(_keyCounterState.Value++);
+                await _tree.Upsert(partitionValues, new SurrogateKeyValue()
+                {
+                    Value = _currentValue,
+                    Weight = 1
+                });
+            }
+        }
+
+        public async ValueTask EndPartition(ColumnRowReference partitionValues)
+        {
+            Debug.Assert(_tree != null);
+            if (!_rowFound)
+            {
+                // Cleanup the tree if no rows exist in the partition
+                await _tree.Delete(partitionValues);
+            }
         }
 
         public async Task Initialize(
             IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, 
             List<int> partitionColumns, 
             IMemoryAllocator memoryAllocator, 
-            IStateManagerClient stateManagerClient, 
-            IWindowAddOutputRow addOutputRow)
+            IStateManagerClient stateManagerClient)
         {
-            _addOutputRow = addOutputRow;
             _tree = await stateManagerClient.GetOrCreateTree("partitions", 
                 new BPlusTreeOptions<ColumnRowReference, SurrogateKeyValue, ColumnKeyStorageContainer, SurrogateKeyValueContainer>()
                 {
@@ -75,61 +105,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
                     ValueSerializer = new SurrogateKeyValueContainerSerializer(memoryAllocator),
                     MemoryAllocator = memoryAllocator
                 });
-            _iterator = _tree.CreateIterator();
             _keyCounterState = await stateManagerClient.GetOrCreateObjectStateAsync<long>("key_counter");
-        }
-
-        public ValueTask NewPartition(ColumnRowReference partitionValues)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async IAsyncEnumerable<EventBatchWeighted> OnReceive(
-            ColumnRowReference partitionValues, 
-            ColumnRowReference inputRow, 
-            int weight)
-        {
-            Debug.Assert(_tree != null);
-            Debug.Assert(_addOutputRow != null);
-            Debug.Assert(_keyCounterState != null);
-
-            var inputValue = new SurrogateKeyValue()
-            {
-                Value = NullValue.Instance,
-                Weight = weight
-            };
-            await _tree.RMWNoResult(partitionValues, inputValue, (input, current, exists) =>
-            {
-                if (exists)
-                {
-                    var value = current.Value;
-                    _addOutputRow.AddOutputRow(inputRow, value, input.Weight);
-                    var newWeight = current.Weight + input.Weight;
-                    current.Weight = newWeight;
-                    if (newWeight == 0)
-                    {
-                        return (current, GenericWriteOperation.Delete);
-                    }
-
-                    return (current, GenericWriteOperation.Upsert);
-                }
-                else
-                {
-                    var newKey = _keyCounterState.Value++;
-                    var newValue = new SurrogateKeyValue()
-                    {
-                        Value = new Int64Value(newKey),
-                        Weight = input.Weight
-                    };
-                    _addOutputRow.AddOutputRow(inputRow, newValue.Value, input.Weight);
-                    return (newValue, GenericWriteOperation.Upsert);
-                }
-            });
-            
-            if (_addOutputRow.Count >= 100)
-            {
-                yield return _addOutputRow.GetCurrentBatch();
-            }
         }
     }
 }

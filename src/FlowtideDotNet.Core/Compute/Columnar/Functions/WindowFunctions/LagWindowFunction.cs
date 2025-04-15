@@ -56,17 +56,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
     }
     internal class LagWindowFunction : IWindowFunction
     {
-        private IWindowAddOutputRow? _addOutputRow;
-        private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _updateIterator;
         private IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _windowIterator;
-        private PartitionIterator? _updatePartitionIterator;
         private PartitionIterator? _windowPartitionIterator;
 
         private readonly Func<EventBatchData, int, IDataValue> _lagValueFunc;
         private readonly Func<EventBatchData, int, IDataValue>? _lagOffsetFunc;
         private readonly Func<EventBatchData, int, IDataValue>? _defaultValueFunc;
 
-        public bool RequirePartitionCompute => true;
+        private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
+        private long _windowRowIndex;
+        private DataValueContainer _valueContainer = new DataValueContainer();
+        private ColumnRowReference _partitionStartValues;
 
         public LagWindowFunction(
             Func<EventBatchData, int, IDataValue> lagValueFunc,
@@ -78,115 +78,92 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             _defaultValueFunc = defaultValueFunc;
         }
 
-        public async IAsyncEnumerable<EventBatchWeighted> ComputePartition(ColumnRowReference partitionValues)
+        public async ValueTask NewPartition(ColumnRowReference partitionValues)
         {
-            Debug.Assert(_addOutputRow != null);
             Debug.Assert(_windowPartitionIterator != null);
-            Debug.Assert(_updatePartitionIterator != null);
 
             await _windowPartitionIterator.Reset(partitionValues);
-            _updatePartitionIterator.ResetCopyFrom(_windowPartitionIterator);
+            _partitionStartValues = partitionValues;
+            _windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
 
-            var windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
-            var updateEnumerator = _updatePartitionIterator.GetAsyncEnumerator();
+            _windowRowIndex = 0;
+            _valueContainer._type = ArrowTypeId.Null;
+        }
 
-            long updateRowIndex = 0;
-            long windowRowIndex = 0;
+        public async ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
+        {
+            Debug.Assert(_windowPartitionIterator != null);
+            Debug.Assert(_windowEnumerator != null);
 
-            var currentValue = new DataValueContainer();
-            currentValue._type = ArrowTypeId.Null;
+            var updateRowIndex = partitionRowIndex;
 
-            while (await updateEnumerator.MoveNextAsync())
+            int rowOffset = 1;
+            if (_lagOffsetFunc != null)
             {
-                int rowOffset = 1;
-                if (_lagOffsetFunc != null)
+                var offsetValue = _lagOffsetFunc(row.Key.referenceBatch, row.Key.RowIndex);
+                if (offsetValue is Int64Value int64Value)
                 {
-                    var offsetValue = _lagOffsetFunc(updateEnumerator.Current.Key.referenceBatch, updateEnumerator.Current.Key.RowIndex);
-                    if (offsetValue is Int64Value int64Value)
-                    {
-                        rowOffset = (int)int64Value.AsLong;
-                    }
+                    rowOffset = (int)int64Value.AsLong;
+                }
+            }
+
+            long targetRowIndex = updateRowIndex - rowOffset;
+
+            if (targetRowIndex < 0)
+            {
+                // Smaller than 0, use default value
+                IDataValue defaultValue = _defaultValueFunc != null
+                    ? _defaultValueFunc(row.Key.referenceBatch, row.Key.RowIndex)
+                    : NullValue.Instance;
+
+                return defaultValue;
+            }
+            else
+            {
+                if (_windowRowIndex > targetRowIndex)
+                {
+                    // Reset to beginning if window is ahead of where we need to be
+                    await _windowPartitionIterator.Reset(_partitionStartValues);
+                    _windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
+                    _windowRowIndex = 0;
                 }
 
-                long targetRowIndex = updateRowIndex - rowOffset;
-
-                if (targetRowIndex < 0)
+                bool movedNext = false;
+                while (_windowRowIndex <= targetRowIndex)
                 {
-                    // Smaller than 0, use default value
-                    IDataValue defaultValue = _defaultValueFunc != null
-                        ? _defaultValueFunc(updateEnumerator.Current.Key.referenceBatch, updateEnumerator.Current.Key.RowIndex)
-                        : NullValue.Instance;
+                    movedNext = await _windowEnumerator.MoveNextAsync();
+                    if (!movedNext)
+                    {
+                        break;
+                    }
+                    _windowRowIndex++;
+                }
 
-                    updateEnumerator.Current.Value.UpdateStateValue(defaultValue);
+                IDataValue val;
+                if (!movedNext || _windowRowIndex - 1 != targetRowIndex)
+                {
+                    val = _defaultValueFunc != null
+                        ? _defaultValueFunc(row.Key.referenceBatch, row.Key.RowIndex)
+                        : NullValue.Instance;
                 }
                 else
                 {
-                    if (windowRowIndex > targetRowIndex)
-                    {
-                        // Reset to beginning if window is ahead of where we need to be
-                        _windowPartitionIterator.ResetCopyFrom(_updatePartitionIterator);
-                        windowEnumerator = _windowPartitionIterator.GetAsyncEnumerator();
-                        windowRowIndex = 0;
-                    }
-
-                    bool movedNext = false;
-                    while (windowRowIndex <= targetRowIndex)
-                    {
-                        movedNext = await windowEnumerator.MoveNextAsync();
-                        if (!movedNext)
-                        {
-                            break;
-                        }
-                        windowRowIndex++;
-                    }
-
-                    IDataValue val;
-                    if (!movedNext || windowRowIndex - 1 != targetRowIndex)
-                    {
-                        val = _defaultValueFunc != null
-                            ? _defaultValueFunc(updateEnumerator.Current.Key.referenceBatch, updateEnumerator.Current.Key.RowIndex)
-                            : NullValue.Instance;
-                    }
-                    else
-                    {
-                        val = _lagValueFunc(windowEnumerator.Current.Key.referenceBatch, windowEnumerator.Current.Key.RowIndex);
-                    }
-                    updateEnumerator.Current.Value.UpdateStateValue(val);
+                    val = _lagValueFunc(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
                 }
-
-                updateRowIndex++;
-
-                if (_addOutputRow.Count >= 100)
-                {
-                    yield return _addOutputRow.GetCurrentBatch();
-                }
-            }
-
-            if (_addOutputRow.Count > 0)
-            {
-                yield return _addOutputRow.GetCurrentBatch();
+                return val;
             }
         }
 
-        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient, IWindowAddOutputRow addOutputRow)
+        public Task Initialize(IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? persistentTree, List<int> partitionColumns, IMemoryAllocator memoryAllocator, IStateManagerClient stateManagerClient)
         {
             if (persistentTree == null)
             {
                 throw new ArgumentNullException(nameof(persistentTree));
             }
-            _addOutputRow = addOutputRow;
             _windowIterator = persistentTree.CreateIterator();
-            _updateIterator = persistentTree.CreateIterator();
-
-            _updatePartitionIterator = new PartitionIterator(_updateIterator, partitionColumns, addOutputRow);
             _windowPartitionIterator = new PartitionIterator(_windowIterator, partitionColumns);
 
             return Task.CompletedTask;
-        }
-
-        public IAsyncEnumerable<EventBatchWeighted> OnReceive(ColumnRowReference partitionValues, ColumnRowReference inputRow, int weight)
-        {
-            return EmptyAsyncEnumerable<EventBatchWeighted>.Instance;
         }
 
         public ValueTask Commit()
@@ -194,14 +171,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask NewPartition(ColumnRowReference partitionValues)
+        public ValueTask EndPartition(ColumnRowReference partitionValues)
         {
-            throw new NotImplementedException();
-        }
-
-        public ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex)
-        {
-            throw new NotImplementedException();
+            return ValueTask.CompletedTask;
         }
     }
 }
