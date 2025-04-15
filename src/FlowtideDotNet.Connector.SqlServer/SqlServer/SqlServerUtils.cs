@@ -26,7 +26,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
-    internal static class SqlServerUtils
+    internal static partial class SqlServerUtils
     {
         public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
@@ -1105,6 +1105,82 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
 
             return (outdata, pkValues);
+        }
+
+        public static async Task<IEnumerable<int>> GetParitionIds(SqlConnection connection, ReadRelation relation)
+        {
+            var schema = relation.NamedTable.Names[1];
+            var tableName = relation.NamedTable.Names[2];
+
+            var cmd = @"SELECT 
+                    p.partition_number AS partition_id
+                FROM sys.partitions p
+                JOIN sys.tables t ON p.object_id = t.object_id
+                JOIN sys.indexes i ON p.object_id = i.object_id AND p.index_id = i.index_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE t.name = @tableName
+                  AND i.index_id < 2
+                  AND s.name = @schema
+                ORDER BY partition_id;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static async Task<PartitionMetadata?> GetPartitionMetadata(SqlConnection connection, ReadRelation relation)
+        {
+            var schema = relation.NamedTable.Names[1];
+            var tableName = relation.NamedTable.Names[2];
+
+            var cmd = @"SELECT
+                    ps.name AS partition_scheme,
+                    pf.name AS partition_function,
+                    c.name AS partition_column,
+                    t.name AS table_name,
+                    s.name AS schema_name,
+                  ic.partition_ordinal
+                FROM sys.indexes i  
+                JOIN sys.partition_schemes ps ON i.data_space_id = ps.data_space_id
+                JOIN sys.partition_functions pf ON ps.function_id = pf.function_id
+                JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                JOIN sys.tables t ON i.object_id = t.object_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE i.index_id < 2 -- clustered index or heap
+                  AND t.name = @tableName
+                  AND s.name = @schema
+                  AND ic.partition_ordinal = 1;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+
+                return new PartitionMetadata(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetByte(5));
+            }
+
+            return null;
         }
 
         public static List<Func<EventBatchData, int, object?>> GetColumnsToDataTableValueMaps(List<DbColumn> columns, DataValueContainer dataValueContainer)

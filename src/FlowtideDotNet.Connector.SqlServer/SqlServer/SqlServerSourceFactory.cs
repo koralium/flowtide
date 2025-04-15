@@ -68,6 +68,9 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
 
             var isChangeTrackingEnabled = SqlServerUtils.IsChangeTrackingEnabled(conn, fullName).GetAwaiter().GetResult();
+
+            _options.PartitionMetadata = SqlServerUtils.GetPartitionMetadata(conn, readRelation).GetAwaiter().GetResult();
+
             if (!isChangeTrackingEnabled)
             {
                 _options.IsChangeTrackingEnabled = false;
@@ -130,7 +133,17 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new ColumnSqlServerBatchDataSource(_options, readRelation, functionsRegister, dataflowBlockOptions);
+            using var conn = new SqlConnection(_options.ConnectionStringFunc());
+            conn.Open();
+            var m = SqlServerUtils.GetPartitionMetadata(conn, readRelation).GetAwaiter().GetResult();
+            if (m != null)
+            {
+                return new PartitionedTableDataSource(_options, m, readRelation, functionsRegister, dataflowBlockOptions);
+            }
+            else
+            {
+                return new ColumnSqlServerBatchDataSource(_options, readRelation, functionsRegister, dataflowBlockOptions);
+            }
         }
     }
 }

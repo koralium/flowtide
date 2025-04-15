@@ -13,6 +13,7 @@
 using FlowtideDotNet.Substrait.Relations;
 using Polly;
 using Polly.Retry;
+using static FlowtideDotNet.Substrait.Tests.SqlServer.SqlServerUtils;
 
 namespace FlowtideDotNet.Connector.SqlServer
 {
@@ -85,5 +86,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// Tracks if change tracking is enabled on the table.
         /// </summary>
         internal bool IsChangeTrackingEnabled { get; set; } = true;
+
+        internal PartitionMetadata? PartitionMetadata { get; set; }
     }
 }

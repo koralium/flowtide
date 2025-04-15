@@ -20,35 +20,40 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
 using Polly;
+using Polly.Retry;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading.Tasks.Dataflow;
+using static FlowtideDotNet.Substrait.Tests.SqlServer.SqlServerUtils;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    internal class ColumnSqlServerBatchDataSource : ColumnBatchReadBaseOperator
+    internal abstract class ColumnSqlDeltaSource : ColumnBatchReadBaseOperator
     {
-        private readonly SqlServerSourceOptions _options;
+        protected SqlServerSourceOptions Options { get; }
+
         private readonly HashSet<string> _watermarks;
+
         private readonly string _displayName;
-        private readonly ReadRelation _readRelation;
+        protected ReadRelation ReadRelation { get; }
 
-        private List<string>? _primaryKeys;
-        private List<int>? _primaryKeyOrdinals;
-        private List<Action<SqlDataReader, IColumn>>? _convertFunctions;
+        protected List<string>? PrimaryKeys { get; private set; }
+        protected List<int>? PrimaryKeyOrdinals { get; private set; }
+        protected List<Action<SqlDataReader, IColumn>>? ConvertFunctions { get; private set; }
 
-        private readonly string? _filter;
-        private readonly string _fullTableName;
-        private IObjectState<SqlServerState>? _state;
+        protected string FullTableName { get; }
+        protected IObjectState<SqlServerState>? State { get; private set; }
 
-        public ColumnSqlServerBatchDataSource(SqlServerSourceOptions sourceOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
+        protected ColumnSqlDeltaSource(SqlServerSourceOptions sourceOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
-            _options = sourceOptions;
-            _readRelation = readRelation;
-            var namedTable = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
-            _fullTableName = string.Join('.', namedTable);
-            _watermarks = [_fullTableName];
-            _displayName = $"SqlServer-{_fullTableName}";
+            Options = sourceOptions;
+            ReadRelation = readRelation;
+            var namedTable = Options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+            FullTableName = string.Join('.', namedTable);
+            _watermarks = [FullTableName];
+            _displayName = $"SqlServer-{FullTableName}";
 
             if (sourceOptions.IsChangeTrackingEnabled)
             {
@@ -60,51 +65,34 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             base.FullLoadInterval = sourceOptions.FullReloadInterval;
-
-            if (readRelation.Filter != null)
-            {
-                var filterVisitor = new SqlServerFilterVisitor(readRelation);
-                var filterResult = filterVisitor.Visit(readRelation.Filter, default);
-                if (filterResult != null)
-                {
-                    if (filterResult.IsBoolean)
-                    {
-                        _filter = filterResult.Content;
-                    }
-                    else
-                    {
-                        _filter = $"{filterResult.Content} = 1";
-                    }
-                }
-            }
         }
 
         public override string DisplayName => _displayName;
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            using var connection = new SqlConnection(_options.ConnectionStringFunc());
+            using var connection = new SqlConnection(Options.ConnectionStringFunc());
             await connection.OpenAsync();
 
-            if (_options.IsView)
+            if (Options.IsView)
             {
-                _primaryKeys = _readRelation.BaseSchema.Names;
+                PrimaryKeys = ReadRelation.BaseSchema.Names;
             }
             else
             {
-                _primaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, _fullTableName);
+                PrimaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, FullTableName);
             }
 
-            _primaryKeyOrdinals ??= [];
-            foreach (var key in _primaryKeys)
+            PrimaryKeyOrdinals ??= [];
+            foreach (var key in PrimaryKeys)
             {
                 var foundKey = false;
-                for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
+                for (int i = 0; i < ReadRelation.BaseSchema.Names.Count; i++)
                 {
-                    if (_readRelation.BaseSchema.Names[i].Equals(key, StringComparison.OrdinalIgnoreCase))
+                    if (ReadRelation.BaseSchema.Names[i].Equals(key, StringComparison.OrdinalIgnoreCase))
                     {
                         foundKey = true;
-                        _primaryKeyOrdinals.Add(i);
+                        PrimaryKeyOrdinals.Add(i);
                     }
                 }
 
@@ -115,15 +103,15 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             using var command = connection.CreateCommand();
-            command.CommandText = SqlServerUtils.CreateSelectStatementTop1(_readRelation);
+            command.CommandText = SqlServerUtils.CreateSelectStatementTop1(ReadRelation);
 
             using var reader = await command.ExecuteReaderAsync();
             var schema = await reader.GetColumnSchemaAsync();
-            _convertFunctions = SqlServerUtils.GetColumnEventCreator(schema);
+            ConvertFunctions = SqlServerUtils.GetColumnEventCreator(schema);
 
-            _state = await stateManagerClient.GetOrCreateObjectStateAsync<SqlServerState>("sqlserver_state");
+            State = await stateManagerClient.GetOrCreateObjectStateAsync<SqlServerState>("sqlserver_state");
 
-            _state.Value ??= new SqlServerState
+            State.Value ??= new SqlServerState
             {
                 ChangeTrackingVersion = 0
             };
@@ -133,21 +121,21 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         protected override async Task Checkpoint(long checkpointTime)
         {
-            Debug.Assert(_state != null);
-            await _state.Commit();
+            Debug.Assert(State != null);
+            await State.Commit();
         }
 
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
-            Debug.Assert(_options != null);
-            Debug.Assert(_state?.Value != null);
-            Debug.Assert(_state?.Value.ChangeTrackingVersion != null);
-            Debug.Assert(_primaryKeys != null);
-            Debug.Assert(_primaryKeyOrdinals != null);
-            Debug.Assert(_convertFunctions != null);
+            Debug.Assert(Options != null);
+            Debug.Assert(State?.Value != null);
+            Debug.Assert(State?.Value.ChangeTrackingVersion != null);
+            Debug.Assert(PrimaryKeys != null);
+            Debug.Assert(PrimaryKeyOrdinals != null);
+            Debug.Assert(ConvertFunctions != null);
 
-            Logger.SelectingChanges(_fullTableName, StreamName, Name);
-
+            Logger.SelectingChanges(FullTableName, StreamName, Name);
+   
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
             await EnterCheckpointLock();
 
@@ -156,8 +144,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             var elementCount = 0;
 
             var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
-            var resilienceState = new DeltaLoadResilienceState(_state, _options, _readRelation, _primaryKeys);
-            var pipelineResult = await _options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
+            var resilienceState = new DeltaLoadResilienceState(State, Options, ReadRelation, PrimaryKeys);
+            var pipelineResult = await p.ExecuteOutcomeAsync(static async (ctx, state) =>
             {
                 try
                 {
@@ -195,7 +183,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 elementCount++;
                 for (int i = 0; i < columns.Length; i++)
                 {
-                    _convertFunctions[i](reader, columns[i]);
+                    ConvertFunctions[i](reader, columns[i]);
                 }
 
                 var changeVersion = reader.GetInt64(versionOrdinal);
@@ -215,14 +203,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         break;
                 }
 
-                _state.Value.ChangeTrackingVersion = changeVersion;
+                State.Value.ChangeTrackingVersion = changeVersion;
 
                 if (weights.Count >= 100)
                 {
                     var eventBatchData = new EventBatchData(columns);
                     var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                    Logger.ChangesFoundInTable(weights.Count, _fullTableName, StreamName, Name);
-                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
+                    Logger.ChangesFoundInTable(weights.Count, FullTableName, StreamName, Name);
+                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, State.Value.ChangeTrackingVersion));
                     InitializeBatchCollections(out weights, out iterations, out columns);
                 }
             }
@@ -234,8 +222,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                Logger.ChangesFoundInTable(weights.Count, _fullTableName, StreamName, Name);
-                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(_readRelation.NamedTable.DotSeperated, _state.Value.ChangeTrackingVersion));
+                Logger.ChangesFoundInTable(weights.Count, FullTableName, StreamName, Name);
+                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, State.Value.ChangeTrackingVersion));
             }
             else
             {
@@ -251,16 +239,153 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             linkedCancellation.Dispose();
         }
 
+        protected override async Task OnCheckpoint(long checkpointTime)
+        {
+            Debug.Assert(State != null);
+            await State.Commit();
+            await base.OnCheckpoint(checkpointTime);
+        }
+
+        protected void InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns)
+        {
+            weights = new PrimitiveList<int>(MemoryAllocator);
+            iterations = new PrimitiveList<uint>(MemoryAllocator);
+            columns = new Column[ReadRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+        }
+
+        protected override ValueTask<List<int>> GetPrimaryKeyColumns()
+        {
+            Debug.Assert(PrimaryKeyOrdinals != null);
+            return ValueTask.FromResult(PrimaryKeyOrdinals);
+        }
+
+        protected override Task<IReadOnlySet<string>> GetWatermarkNames()
+        {
+            return Task.FromResult<IReadOnlySet<string>>(_watermarks);
+        }
+
+        private sealed record DeltaLoadResilienceState(
+            IObjectState<SqlServerState> State,
+            SqlServerSourceOptions Options,
+            ReadRelation ReadRelation,
+            List<string> PrimaryKeys)
+        {
+        }
+
+        protected sealed record ResilienceResult(SqlDataReader Reader, SqlConnection Connection, SqlCommand Command) : IAsyncDisposable
+        {
+            public async ValueTask DisposeAsync()
+            {
+                await Reader.DisposeAsync();
+                await Connection.DisposeAsync();
+                await Command.DisposeAsync();
+            }
+        }
+    }
+
+    internal class PartitionedTableDataSource : ColumnSqlDeltaSource
+    {
+        private readonly PartitionMetadata _partitionMetadata;
+        public PartitionedTableDataSource(SqlServerSourceOptions sourceOptions, PartitionMetadata partitionMetadata, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(sourceOptions, readRelation, functionsRegister, options)
+        {
+            _partitionMetadata = partitionMetadata;
+        }
 
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
-            Debug.Assert(_state != null);
-            Debug.Assert(_state.Value?.ChangeTrackingVersion != null);
-            Debug.Assert(_primaryKeys != null);
-            Debug.Assert(_primaryKeyOrdinals != null);
-            Debug.Assert(_convertFunctions != null);
+            Debug.Assert(PrimaryKeys != null);
+            Debug.Assert(ConvertFunctions != null);
 
-            Logger.SelectingAllData(_fullTableName, StreamName, Name);
+            var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
+            InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns);
+
+            using var connection = new SqlConnection(Options.ConnectionStringFunc());
+            await connection.OpenAsync(cancellationToken);
+            var paritionIds = await SqlServerUtils.GetParitionIds(connection, ReadRelation);
+
+            var keys = PrimaryKeys.Where(s => s != _partitionMetadata.PartitionColumn);
+
+            var cols = string.Join(", ", ReadRelation.BaseSchema.Names.Select(x => $"[{x}]"));
+
+            var primaryKeyValues = new Dictionary<string, object>();
+
+            var cmd = $@"SELECT {cols}
+                FROM table --fix
+                WHERE $PARTITION.{_partitionMetadata.PartitionFunction}({_partitionMetadata.PartitionColumn}) = @PartitionId
+                ORDER BY {string.Join(',', keys)}
+                -- OFFSET 0 ROWS FETCH NEXT 10000 ROWS ONLY";
+
+            foreach (var partitionId in paritionIds)
+            {
+                enumeratorCancellationToken.ThrowIfCancellationRequested();
+
+                using var command = new SqlCommand(cmd, connection);
+                command.Parameters.AddWithValue("partitionId", partitionId);
+
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(linkedCancellation.Token))
+                {
+                    weights.Add(1);
+                    iterations.Add(0);
+
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        ConvertFunctions[i](reader, columns[i]);
+                    }
+
+                    if (weights.Count >= 100)
+                    {
+                        var eventBatchData = new EventBatchData(columns);
+                        var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
+                        yield return new ColumnReadEvent(weightedBatch, State.Value.ChangeTrackingVersion);
+                        InitializeBatchCollections(out weights, out iterations, out columns);
+                    }
+                }
+            }
+
+            linkedCancellation.Dispose();
+        }
+    }
+
+    internal class ColumnSqlServerBatchDataSource : ColumnSqlDeltaSource
+    {
+        private readonly string? _filter;
+        public ColumnSqlServerBatchDataSource(SqlServerSourceOptions sourceOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(sourceOptions, readRelation, functionsRegister, options)
+        {
+            FullLoadInterval = sourceOptions.FullReloadInterval;
+
+            if (readRelation.Filter != null)
+            {
+                var filterVisitor = new SqlServerFilterVisitor(readRelation);
+                var filterResult = filterVisitor.Visit(readRelation.Filter, default);
+                if (filterResult != null)
+                {
+                    if (filterResult.IsBoolean)
+                    {
+                        _filter = filterResult.Content;
+                    }
+                    else
+                    {
+                        _filter = $"{filterResult.Content} = 1";
+                    }
+                }
+            }
+        }
+
+        protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
+        {
+            Debug.Assert(State != null);
+            Debug.Assert(State.Value?.ChangeTrackingVersion != null);
+            Debug.Assert(PrimaryKeys != null);
+            Debug.Assert(PrimaryKeyOrdinals != null);
+            Debug.Assert(ConvertFunctions != null);
+
+            Logger.SelectingAllData(FullTableName, StreamName, Name);
 
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
 
@@ -268,18 +393,18 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             var primaryKeyValues = new Dictionary<string, object>();
 
-            if (_options.IsChangeTrackingEnabled && _state.Value.ChangeTrackingVersion < 1)
+            if (Options.IsChangeTrackingEnabled && State.Value.ChangeTrackingVersion < 1)
             {
-                using var connection = new SqlConnection(_options.ConnectionStringFunc());
+                using var connection = new SqlConnection(Options.ConnectionStringFunc());
                 await connection.OpenAsync(linkedCancellation.Token);
-                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
+                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
             }
-            else if (!_options.IsChangeTrackingEnabled)
+            else if (!Options.IsChangeTrackingEnabled)
             {
                 // when reading from a view or a table without change tracking, use the server timestamp as the version identifier
-                using var connection = new SqlConnection(_options.ConnectionStringFunc());
+                using var connection = new SqlConnection(Options.ConnectionStringFunc());
                 await connection.OpenAsync(linkedCancellation.Token);
-                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetServerTimestamp(connection);
+                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetServerTimestamp(connection);
             }
 
             var batchSize = 10000;
@@ -289,16 +414,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                 var context = ResilienceContextPool.Shared.Get(linkedCancellation.Token);
                 var resilienceState = new FullLoadResilienceState(
-                    _state,
-                    _options,
-                    _readRelation,
-                    _primaryKeys,
+                    State,
+                    Options,
+                    ReadRelation,
+                    PrimaryKeys,
                     primaryKeyValues.Count > 0,
                     batchSize,
                     _filter,
                     primaryKeyValues);
 
-                var pipelineResult = await _options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
+                var pipelineResult = await Options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
                 {
                     Debug.Assert(state?.State.Value?.ChangeTrackingVersion != null);
 
@@ -341,21 +466,21 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     iterations.Add(0);
 
                     primaryKeyValues.Clear();
-                    for (int i = 0; i < _primaryKeyOrdinals.Count; i++)
+                    for (int i = 0; i < PrimaryKeyOrdinals.Count; i++)
                     {
-                        primaryKeyValues.Add(_primaryKeys[i], reader.GetValue(_primaryKeyOrdinals[i]));
+                        primaryKeyValues.Add(PrimaryKeys[i], reader.GetValue(PrimaryKeyOrdinals[i]));
                     }
 
                     for (int i = 0; i < columns.Length; i++)
                     {
-                        _convertFunctions[i](reader, columns[i]);
+                        ConvertFunctions[i](reader, columns[i]);
                     }
 
                     if (weights.Count >= 100)
                     {
                         var eventBatchData = new EventBatchData(columns);
                         var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                        yield return new ColumnReadEvent(weightedBatch, _state.Value.ChangeTrackingVersion);
+                        yield return new ColumnReadEvent(weightedBatch, State.Value.ChangeTrackingVersion);
                         InitializeBatchCollections(out weights, out iterations, out columns);
                     }
                 }
@@ -372,7 +497,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
-                yield return new ColumnReadEvent(weightedBatch, _state.Value.ChangeTrackingVersion);
+                yield return new ColumnReadEvent(weightedBatch, State.Value.ChangeTrackingVersion);
             }
             else
             {
@@ -387,43 +512,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             linkedCancellation.Dispose();
         }
 
-        protected override async Task OnCheckpoint(long checkpointTime)
-        {
-            Debug.Assert(_state != null);
-            await _state.Commit();
-            await base.OnCheckpoint(checkpointTime);
-        }
-
-        private void InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns)
-        {
-            weights = new PrimitiveList<int>(MemoryAllocator);
-            iterations = new PrimitiveList<uint>(MemoryAllocator);
-            columns = new Column[_readRelation.BaseSchema.Names.Count];
-            for (int i = 0; i < columns.Length; i++)
-            {
-                columns[i] = Column.Create(MemoryAllocator);
-            }
-        }
-
-        protected override ValueTask<List<int>> GetPrimaryKeyColumns()
-        {
-            Debug.Assert(_primaryKeyOrdinals != null);
-            return ValueTask.FromResult(_primaryKeyOrdinals);
-        }
-
-        protected override Task<IReadOnlySet<string>> GetWatermarkNames()
-        {
-            return Task.FromResult<IReadOnlySet<string>>(_watermarks);
-        }
-
-        private sealed record DeltaLoadResilienceState(
-            IObjectState<SqlServerState> State,
-            SqlServerSourceOptions Options,
-            ReadRelation ReadRelation,
-            List<string> PrimaryKeys)
-        {
-        }
-
         private sealed record FullLoadResilienceState(
             IObjectState<SqlServerState> State,
             SqlServerSourceOptions Options,
@@ -434,16 +522,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             string? Filter,
             Dictionary<string, object> PrimaryKeyValues)
         {
-        }
 
-        private sealed record ResilienceResult(SqlDataReader Reader, SqlConnection Connection, SqlCommand Command) : IAsyncDisposable
-        {
-            public async ValueTask DisposeAsync()
-            {
-                await Reader.DisposeAsync();
-                await Connection.DisposeAsync();
-                await Command.DisposeAsync();
-            }
         }
     }
 }
