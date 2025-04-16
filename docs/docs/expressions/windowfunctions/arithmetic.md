@@ -80,3 +80,22 @@ SELECT LAG(column1, 2) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 -- Lag with offset 2 and default value set to 'hello'
 SELECT LAG(column1, 2, 'hello') OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 ```
+
+## Last Value
+
+The `LAST_VALUE` window function returns the value of a specified column from the last row in the current window frame. It is useful for carrying forward the final value within a defined subset of rows.
+
+By default, `LAST_VALUE` includes `NULL` values in its evaluation. However, when used with the `IGNORE NULLS` clause, the function will skip over `NULL` values and return the last non-null value in the frame (if any). If all values are null, the result is `NULL`.
+
+This function **requires an ORDER BY clause** to establish row sequence and supports frame boundaries to control which rows are considered. You need to explicitly set the frame to `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING` to get the expected last value from the full partition.
+
+### SQL Usage
+
+```sql
+-- Last value from start to current row
+SELECT LAST_VALUE(column1) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Last value of the previous four rows and current row
+SELECT LAST_VALUE(column1) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM ...
+-- Last value from start to current row ignoring nulls
+SELECT LAST_VALUE(column1) IGNORE NULLS OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+```

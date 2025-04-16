@@ -887,6 +887,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new AnyType(), true, true);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
@@ -1617,6 +1618,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         }
                     }
 
+                    var options = new SortedList<string, string>();
+
+                    if (f.NullTreatment is NullTreatment.IgnoreNulls)
+                    {
+                        options.Add("NULL_TREATMENT", "IGNORE_NULLS");
+                    }
+
                     return new WindowResponse(
                         new WindowFunction()
                         {
@@ -1624,7 +1632,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr },
                             LowerBound = lowerBound,
-                            UpperBound = upperBound
+                            UpperBound = upperBound,
+                            Options = options
                         },
                         returnType
                         );
