@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.Files;
 using FlowtideDotNet.Connector.Files.Internal;
 using FlowtideDotNet.Connector.Files.Internal.CsvFiles;
+using FlowtideDotNet.Connector.Files.Internal.XmlFiles;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait.Type;
 using System;
@@ -20,6 +21,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Schema;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
@@ -74,6 +77,42 @@ namespace Microsoft.Extensions.DependencyInjection
             };
 
             connectorManager.AddSource(new CsvFileDataSourceFactory(tableName, internalOptions));
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddXmlFileSource(this IConnectorManager connectorManager, string tableName, XmlFileOptions xmlFileOptions)
+        {
+            var schemaReader = new StringReader(xmlFileOptions.XmlSchema);
+            var schemaSet = new XmlSchemaSet();
+            
+            var schema = XmlSchema.Read(schemaReader, (obj, events) =>
+            {
+
+            });
+
+            if (schema == null)
+            {
+                throw new InvalidOperationException($"Failed to read XML schema from {xmlFileOptions.XmlSchema}");
+            }
+
+            schemaSet.Add(schema);
+
+            var baseType = new XmlTypeParser().ParseElement(xmlFileOptions.ElementName, schemaSet);
+
+            if (baseType is not NamedStruct namedStruct)
+            {
+                throw new InvalidOperationException($"Element {xmlFileOptions.ElementName} is not a complex type.");
+            }
+
+            connectorManager.AddSource(new XmlFileDataSourceFactory(tableName, new XmlFileInternalOptions()
+            {
+                ElementName = xmlFileOptions.ElementName,
+                FileStorage = xmlFileOptions.FileStorage,
+                FlowtideSchema = namedStruct,
+                InitialFile = xmlFileOptions.InitialFile,
+                XmlSchema = schemaSet
+            }));
+
             return connectorManager;
         }
     }
