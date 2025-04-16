@@ -35,7 +35,10 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         {
                             c.Add(NullValue.Instance);
                         }
-                        c.Add(new StringValue(s));
+                        else
+                        {
+                            c.Add(new StringValue(s));
+                        }
                     };
                 case SubstraitType.Int64:
                 case SubstraitType.Int32:

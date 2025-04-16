@@ -106,7 +106,6 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             if (childElement.MaxOccurs > 1)
                             {
                                 listIndices.Add(parsers.Count);
-                                //parser = new ListTypeXmlParser(childElement.Name!, parser);
                             }
                             lookup.Add(childElement.Name!, parsers.Count);
                             parsers.Add(parser);
@@ -124,7 +123,6 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             if (childElement.MaxOccurs > 1)
                             {
                                 listIndices.Add(parsers.Count);
-                                //parser = new ListTypeXmlParser(childElement.Name!, parser);
                             }
                             lookup[childElement.Name!] = parsers.Count;
                             parsers.Add(parser);
@@ -196,34 +194,29 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
         private IFlowtideXmlParser TypeCodeToParser(XmlTypeCode typeCode)
         {
-
-            return new StringXmlParser();
-            //switch (typeCode)
-            //{
-            //    case XmlTypeCode.Boolean:
-            //        return new BoolType();
-            //    case XmlTypeCode.Decimal:
-            //        return new DecimalType();
-            //    case XmlTypeCode.Double:
-            //    case XmlTypeCode.Float:
-            //        return new Fp64Type();
-            //    case XmlTypeCode.String:
-            //    case XmlTypeCode.Text:
-            //        return new StringType();
-            //    case XmlTypeCode.Short:
-            //    case XmlTypeCode.Int:
-            //    case XmlTypeCode.Integer:
-            //    case XmlTypeCode.NegativeInteger:
-            //    case XmlTypeCode.NonNegativeInteger:
-            //    case XmlTypeCode.UnsignedByte:
-            //    case XmlTypeCode.UnsignedInt:
-            //    case XmlTypeCode.UnsignedLong:
-            //        return new Int64Type();
-            //    case XmlTypeCode.Date:
-            //    case XmlTypeCode.DateTime:
-            //        return new TimestampType();
-            //}
-            //return new AnyType();
+            switch (typeCode)
+            {
+                case XmlTypeCode.String:
+                case XmlTypeCode.Text:
+                    return new StringXmlParser();
+                case XmlTypeCode.UnsignedByte:
+                case XmlTypeCode.UnsignedInt:
+                case XmlTypeCode.UnsignedLong:
+                case XmlTypeCode.UnsignedShort:
+                case XmlTypeCode.Byte:
+                case XmlTypeCode.Int:
+                case XmlTypeCode.Integer:
+                case XmlTypeCode.Long:
+                case XmlTypeCode.Short:
+                case XmlTypeCode.PositiveInteger:
+                case XmlTypeCode.NonNegativeInteger:
+                case XmlTypeCode.NegativeInteger:
+                    return new IntegerElementParser();
+                case XmlTypeCode.Date:
+                case XmlTypeCode.DateTime:
+                    return new DateTimeElementParser();
+            }
+            throw new NotImplementedException($"Type not implemented: {typeCode} for element");
         }
     }
 }

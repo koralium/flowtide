@@ -61,6 +61,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     Input = readRelation
                 };
                 readRelation.Filter = default;
+                readRelation.Emit = default;
                 return filterRel;
             }
             return readRelation;
