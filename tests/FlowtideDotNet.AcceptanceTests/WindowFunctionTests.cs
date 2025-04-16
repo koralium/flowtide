@@ -1025,7 +1025,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public record LastValueResult(string? companyId, int userkey, long? value);
 
         [Fact]
-        public async Task LastValueBoundedStartToCurrentRow()
+        public async Task LastValueIgnoreNullBoundedStartToCurrentRow()
         {
             GenerateData();
 
@@ -1072,7 +1072,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task LastValueBoundedStartToBoundedEnd()
+        public async Task LastValueIgnoreNullBoundedStartToBoundedEnd()
         {
             GenerateData();
 
@@ -1116,6 +1116,282 @@ namespace FlowtideDotNet.AcceptanceTests
                 });
 
             AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullUnbounded()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        if (users[i].Visits != null)
+                        {
+                            val = users[i].Visits;
+                        }
+                    }
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = null;
+                        for (int j = 0; j <= i; j++)
+                        {
+                            if (users[j].Visits != null)
+                            {
+                                val = users[j].Visits;
+                            }
+                        }
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueIgnoreNullDefaultBound()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY userkey) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = null;
+                        for (int j = 0; j <= i; j++)
+                        {
+                            if (users[j].Visits != null)
+                            {
+                                val = users[j].Visits;
+                            }
+                        }
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueRespectNullBoundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = null;
+                        for (int j = i - 4; j <= i; j++)
+                        {
+                            if (j >= 0)
+                            {
+                                val = users[j].Visits;
+                            }
+                        }
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueRespectNullUnbounded()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = users[i].Visits;
+                    }
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueRespectNullUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = null;
+                        for (int j = 0; j <= i; j++)
+                        {
+                            val = users[j].Visits;
+                        }
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LastValueNoOrderByError()
+        {
+            GenerateData();
+
+            var ex = await Assert.ThrowsAsync<SubstraitParseException>(async () =>
+            {
+                await StartStream(@"
+                    INSERT INTO output
+                    SELECT 
+                        CompanyId,
+                        UserKey,
+                        LAST_VALUE(Visits) OVER (PARTITION BY CompanyId) as value
+                    FROM users
+                    ");
+            });
+
+            Assert.Equal("'last_value' function must have an order by clause", ex.Message);
         }
     }
 }
