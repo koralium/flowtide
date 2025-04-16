@@ -1070,5 +1070,52 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task LastValueBoundedStartToBoundedEnd()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                LAST_VALUE(Visits) IGNORE NULLS OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND 2 FOLLOWING) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var actual = GetActualRows();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(x =>
+                {
+                    var users = x.OrderBy(x => x.UserKey).ToList();
+
+                    long? val = default;
+                    List<LastValueResult> output = new List<LastValueResult>();
+                    for (int i = 0; i < users.Count; i++)
+                    {
+                        val = null;
+                        for (int j = i - 4; j <= (i + 2) && j < users.Count; j++)
+                        {
+                            if (j >= 0)
+                            {
+                                if (users[j].Visits != null)
+                                {
+                                    val = users[j].Visits;
+                                }
+                            }
+                        }
+                        output.Add(new LastValueResult(users[i].CompanyId, users[i].UserKey, val));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }
