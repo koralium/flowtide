@@ -61,7 +61,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int Add<T>(in T value) where T : IDataValue
         {
-            if (value.Type == ArrowTypeId.Struct)
+            if (value.IsNull)
+            {
+                _count++;
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    _columns[i].Add(NullValue.Instance);
+                }
+            }
+            else if (value.Type == ArrowTypeId.Struct)
             {
                 _count++;
                 var structVal = value.AsStruct;
@@ -310,7 +318,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
-            if (value.Type == ArrowTypeId.Struct)
+            if (value.IsNull)
+            {
+                _count++;
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    _columns[i].InsertAt(index, NullValue.Instance);
+                }
+            }
+            else if (value.Type == ArrowTypeId.Struct)
             {
                 _count++;
                 var structVal = value.AsStruct;
