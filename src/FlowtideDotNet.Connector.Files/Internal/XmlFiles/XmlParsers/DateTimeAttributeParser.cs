@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,8 +21,15 @@ using System.Xml;
 
 namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
 {
-    public interface IFlowtideXmlParser
+    internal class DateTimeAttributeParser : IFlowtideXmlParser
     {
-        ValueTask<IDataValue> Parse(XmlReader reader);
+        public ValueTask<IDataValue> Parse(XmlReader reader)
+        {
+            if (DateTimeOffset.TryParse(reader.Value, out var val))
+            {
+                return ValueTask.FromResult<IDataValue>(new TimestampTzValue(val));
+            }
+            return ValueTask.FromResult<IDataValue>(NullValue.Instance);
+        }
     }
 }

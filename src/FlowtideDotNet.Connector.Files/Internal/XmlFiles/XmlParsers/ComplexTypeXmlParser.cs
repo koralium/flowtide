@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,17 +23,96 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
 {
     internal class ComplexTypeXmlParser : IFlowtideXmlParser
     {
-        private readonly Dictionary<string, IFlowtideXmlParser> parsers;
+        private readonly string elementName;
+        private readonly Dictionary<string, int> elementsLookup;
+        private readonly Dictionary<string, int> attributeLookup;
+        private StructHeader header;
+        private readonly IFlowtideXmlParser[] parsers;
+        private readonly int[] listIndices;
+        private readonly int[] propertyIndexToListIndex;
 
-        public ComplexTypeXmlParser(Dictionary<string, IFlowtideXmlParser> parsers)
+        public ComplexTypeXmlParser(
+            string elementName, 
+            string[] propertyNames, 
+            IFlowtideXmlParser[] parsers,
+            int[] listIndices,
+            Dictionary<string, int> elementsLookup,
+            Dictionary<string, int> attributeLookup)
         {
+            this.elementName = elementName;
             this.parsers = parsers;
+            this.parsers = parsers;
+            this.listIndices = listIndices;
+            this.elementsLookup = elementsLookup;
+            this.attributeLookup = attributeLookup;
+            propertyIndexToListIndex = new int[propertyNames.Length];
+            for (int i = 0; i < propertyNames.Length; i++)
+            {
+                propertyIndexToListIndex[i] = -1;
+            }
+            for (int i = 0; i < listIndices.Length; i++)
+            {
+                propertyIndexToListIndex[listIndices[i]] = i;
+            }
+
+            header = StructHeader.Create(propertyNames);
         }
 
-        public IDataValue Parse(XmlReader reader)
+        public async ValueTask<IDataValue> Parse(XmlReader reader)
         {
-            
-            throw new NotImplementedException();
+            List<IDataValue>[] lists = new List<IDataValue>[listIndices.Length];
+            IDataValue[] columns = new IDataValue[parsers.Length];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = NullValue.Instance;
+            }
+
+            while (reader.MoveToNextAttribute())
+            {
+                if (attributeLookup.TryGetValue(reader.LocalName, out var attributeIndex))
+                {
+                    columns[attributeIndex] = await parsers[attributeIndex].Parse(reader);
+                }
+            }
+
+            while (await reader.ReadAsync())
+            {
+                if (reader.LocalName == elementName)
+                {
+                    break;
+                }
+                if (elementsLookup.TryGetValue(reader.LocalName, out var propertyIndex))
+                {
+                    var listIndex = propertyIndexToListIndex[propertyIndex];
+                    if (listIndex >= 0)
+                    {
+                        // If it is a list, add the value to a list index
+                        if (lists[listIndex] == null)
+                        {
+                            lists[listIndex] = new List<IDataValue>();
+                        }
+                        lists[listIndex].Add(await parsers[propertyIndex].Parse(reader));
+                    }
+                    else
+                    {
+                        columns[propertyIndex] = await parsers[propertyIndex].Parse(reader);
+                    }
+                }
+            }
+
+            for (int i = 0; i < lists.Length; i++)
+            {
+                if (lists[i] != null)
+                {
+                    columns[listIndices[i]] = new ListValue(lists[i]);
+                }
+                else
+                {
+                    columns[listIndices[i]] = new ListValue(Array.Empty<IDataValue>());
+                }
+            }
+
+            return new StructValue(header, columns);
         }
     }
 }

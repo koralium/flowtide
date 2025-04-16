@@ -20,8 +20,11 @@ using System.Xml;
 
 namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
 {
-    public interface IFlowtideXmlParser
+    internal class StringAttributeParser : IFlowtideXmlParser
     {
-        ValueTask<IDataValue> Parse(XmlReader reader);
+        public ValueTask<IDataValue> Parse(XmlReader reader)
+        {
+            return ValueTask.FromResult<IDataValue>(new StringValue(reader.Value));
+        }
     }
 }

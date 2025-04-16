@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
             this.inner = inner;
         }
 
-        public IDataValue Parse(XmlReader reader)
+        public ValueTask<IDataValue> Parse(XmlReader reader)
         {
             throw new NotImplementedException();
         }

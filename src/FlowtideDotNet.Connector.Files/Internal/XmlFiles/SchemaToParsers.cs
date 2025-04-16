@@ -88,7 +88,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
             if (schemaType is XmlSchemaComplexType complexType)
             {
-                Dictionary<string, IFlowtideXmlParser> parsers = new Dictionary<string, IFlowtideXmlParser>();
+                Dictionary<string, int> lookup = new Dictionary<string, int>();
+                Dictionary<string, int> attributeLookup = new Dictionary<string, int>();
+                List<string> propertyNames = new List<string>();
+                List<IFlowtideXmlParser> parsers = new List<IFlowtideXmlParser>();
+                List<int> listIndices = new List<int>();
 
                 if (complexType.ContentTypeParticle is XmlSchemaSequence sequence)
                 {
@@ -101,9 +105,12 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             var parser = ParseElementInternal(childElement);
                             if (childElement.MaxOccurs > 1)
                             {
-                                parser = new ListTypeXmlParser(childElement.Name!, parser);
+                                listIndices.Add(parsers.Count);
+                                //parser = new ListTypeXmlParser(childElement.Name!, parser);
                             }
-                            parsers.Add(childElement.Name!, parser);
+                            lookup.Add(childElement.Name!, parsers.Count);
+                            parsers.Add(parser);
+                            propertyNames.Add(childElement.Name!);
                         }
                     }
                 }
@@ -116,36 +123,75 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             var parser = ParseElementInternal(childElement);
                             if (childElement.MaxOccurs > 1)
                             {
-                                parser = new ListTypeXmlParser(childElement.Name!, parser);
+                                listIndices.Add(parsers.Count);
+                                //parser = new ListTypeXmlParser(childElement.Name!, parser);
                             }
-                            parsers[childElement.Name!] = parser;
+                            lookup[childElement.Name!] = parsers.Count;
+                            parsers.Add(parser);
+                            propertyNames.Add(childElement.Name!);
                         }
                     }
                 }
 
                 // Handle attributes
-                //foreach (XmlSchemaObject attrObj in complexType.Attributes)
-                //{
-                //    if (attrObj is XmlSchemaAttribute attribute)
-                //    {
-                //        names.Add(attribute.Name!);
+                foreach (XmlSchemaObject attrObj in complexType.Attributes)
+                {
+                    if (attrObj is XmlSchemaAttribute attribute)
+                    {
+                        propertyNames.Add(attribute.Name!);
 
-                //        SubstraitBaseType type = AnyType.Instance;
+                        if (attribute.AttributeSchemaType != null)
+                        {
+                            var parser = AttributeTypeCodeToParser(attribute.AttributeSchemaType.TypeCode);
+                            attributeLookup.Add(attribute.Name!, parsers.Count);
+                            parsers.Add(parser);
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"Attribute {attribute.Name} does not have a schema type");
+                        }
+                    }
+                }
 
-                //        if (attribute.AttributeSchemaType != null)
-                //        {
-                //            type = TypeCodeToParser(attribute.AttributeSchemaType.TypeCode);
-                //        }
 
-                //        types.Add(type);
-                //    }
-                //}
-
-
-                return new ComplexTypeXmlParser(parsers);
+                return new ComplexTypeXmlParser(
+                    element.Name!, 
+                    propertyNames.ToArray(), 
+                    parsers.ToArray(), 
+                    listIndices.ToArray(), 
+                    lookup, 
+                    attributeLookup);
             }
 
             throw new NotImplementedException($"Type not implemented: {schemaType!.GetType()}");
+        }
+
+        private IFlowtideXmlParser AttributeTypeCodeToParser(XmlTypeCode typeCode)
+        {
+            switch (typeCode)
+            {
+                case XmlTypeCode.String:
+                case XmlTypeCode.Text:
+                    return new StringAttributeParser();
+                case XmlTypeCode.UnsignedByte:
+                case XmlTypeCode.UnsignedInt:
+                case XmlTypeCode.UnsignedLong:
+                case XmlTypeCode.UnsignedShort:
+                case XmlTypeCode.Byte:
+                case XmlTypeCode.Int:
+                case XmlTypeCode.Integer:
+                case XmlTypeCode.Long:
+                case XmlTypeCode.Short:
+                case XmlTypeCode.PositiveInteger:
+                case XmlTypeCode.NonNegativeInteger:
+                case XmlTypeCode.NegativeInteger:
+                    return new IntegerAttributeParser();
+                case XmlTypeCode.Date:
+                case XmlTypeCode.DateTime:
+                    return new DateTimeAttributeParser();
+            }
+
+            throw new NotImplementedException($"Type not implemented: {typeCode} for attribute");
         }
 
         private IFlowtideXmlParser TypeCodeToParser(XmlTypeCode typeCode)

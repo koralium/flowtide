@@ -13,7 +13,10 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -32,6 +35,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         private readonly ReadRelation _readRelation;
         private IFlowtideXmlParser _parser;
         private readonly string _watermarkName;
+        private int[] _emitList;
 
         public XmlFileDataSource(XmlFileInternalOptions fileOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
@@ -40,6 +44,57 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             _watermarkName = readRelation.NamedTable.DotSeperated;
 
             _parser = new SchemaToParsers().ParseElement(fileOptions.ElementName, fileOptions.XmlSchema);
+
+            // Build up the emit list
+            var emitList = new List<int>();
+            if (readRelation.EmitSet)
+            {
+                for (int i = 0; i < readRelation.Emit.Count; i++)
+                {
+                    var emitindex = readRelation.Emit[i];
+
+                    var columnName = readRelation.BaseSchema.Names[emitindex];
+
+                    bool found = false;
+                    for (int j = 0; j < _fileOptions.FlowtideSchema.Names.Count; j++)
+                    {
+                        if (columnName.Equals(_fileOptions.FlowtideSchema.Names[j], StringComparison.OrdinalIgnoreCase))
+                        {
+                            found = true;
+                            emitList.Add(j);
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        throw new InvalidOperationException($"Column {columnName} not found in schema");
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
+                {
+                    var columnName = readRelation.BaseSchema.Names[i];
+
+                    bool found = false;
+                    for (int j = 0; j < _fileOptions.FlowtideSchema.Names.Count; j++)
+                    {
+                        if (columnName.Equals(_fileOptions.FlowtideSchema.Names[j], StringComparison.OrdinalIgnoreCase))
+                        {
+                            found = true;
+                            emitList.Add(j);
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        throw new InvalidOperationException($"Column {columnName} not found in schema");
+                    }
+                }
+            }
+
+            _emitList = emitList.ToArray();
         }
 
         public override string DisplayName => $"XmlFile({_watermarkName})";
@@ -71,6 +126,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            await output.EnterCheckpointLock();
             using var stream = await _fileOptions.FileStorage.OpenRead(_fileOptions.InitialFile);
 
             if (stream == null)
@@ -78,15 +134,74 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 throw new InvalidOperationException($"File {_fileOptions.InitialFile} not found");
             }
 
-            var reader = XmlReader.Create(stream);
+            var reader = XmlReader.Create(stream, new XmlReaderSettings()
+            {
+                Async = true
+            });
+
+            Column[] columns = new Column[_emitList.Length];
+            for (int i = 0; i < _emitList.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+            var weights = new PrimitiveList<int>(MemoryAllocator);
+            var iterations = new PrimitiveList<uint>(MemoryAllocator);
 
             while (await reader.ReadAsync())
             {
-                if (reader.Name.Equals(_fileOptions.ElementName, StringComparison.OrdinalIgnoreCase))
+                if (reader.LocalName.Equals(_fileOptions.ElementName, StringComparison.OrdinalIgnoreCase))
                 {
-                    var val = _parser.Parse(reader);
+                    var val = await _parser.Parse(reader);
+
+                    if (val is StructValue structValue)
+                    {
+                        for (int i = 0; i < _emitList.Length; i++)
+                        {
+                            columns[i].Add(structValue.GetAt(_emitList[i]));
+                        }
+                    }
+                    else
+                    {
+                        for (int i = 0; i < _emitList.Length; i++)
+                        {
+                            columns[i].Add(NullValue.Instance);
+                        }
+                    }
+                    weights.Add(1);
+                    iterations.Add(0);
+
+                    if (weights.Count >= 100)
+                    {
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        columns = new Column[_emitList.Length];
+                        for (int i = 0; i < _emitList.Length; i++)
+                        {
+                            columns[i] = Column.Create(MemoryAllocator);
+                        }
+                    }
                 }
             }
+
+            if (weights.Count > 0)
+            {
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i].Dispose();
+                }
+            }
+
+            await output.SendWatermark(new Base.Watermark(_watermarkName, 1));
+            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+
+            output.ExitCheckpointLock();
         }
     }
 }

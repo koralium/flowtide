@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,9 +23,32 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
 {
     internal class StringXmlParser : IFlowtideXmlParser
     {
-        public IDataValue Parse(XmlReader reader)
+        public async ValueTask<IDataValue> Parse(XmlReader reader)
         {
-            throw new NotImplementedException();
+            if (reader.IsEmptyElement)
+            {
+                return NullValue.Instance;
+            }
+            await reader.ReadAsync();
+
+            StringValue? returnVal = default;
+            switch (reader.NodeType)
+            {
+                case XmlNodeType.Text:
+                    returnVal = new StringValue(reader.Value);
+                    break;
+                default:
+                    throw new NotSupportedException($"Unsupported node type: {reader.NodeType} for StringXmlParser");
+            }
+            await reader.ReadAsync();
+            if (reader.NodeType == XmlNodeType.EndElement)
+            {
+                return returnVal;
+            }
+            else
+            {
+                throw new NotSupportedException($"Unsupported node type: {reader.NodeType} for StringXmlParser");
+            }
         }
     }
 }
