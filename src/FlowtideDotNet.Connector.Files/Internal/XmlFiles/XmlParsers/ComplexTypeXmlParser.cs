@@ -75,13 +75,24 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
                 }
             }
 
+            reader.MoveToElement();
+
+            if (reader.IsEmptyElement)
+            {
+                return new StructValue(header, columns);
+            }
+
             while (await reader.ReadAsync())
             {
+                if (reader.NodeType == XmlNodeType.Whitespace)
+                {
+                    continue;
+                }
                 if (reader.LocalName == elementName)
                 {
                     break;
                 }
-                if (elementsLookup.TryGetValue(reader.LocalName, out var propertyIndex))
+                if (reader.NodeType == XmlNodeType.Element && elementsLookup.TryGetValue(reader.LocalName, out var propertyIndex))
                 {
                     var listIndex = propertyIndexToListIndex[propertyIndex];
                     if (listIndex >= 0)
@@ -97,6 +108,10 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
                     {
                         columns[propertyIndex] = await parsers[propertyIndex].Parse(reader);
                     }
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Unknown property {reader.LocalName}");
                 }
             }
 
