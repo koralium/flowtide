@@ -24,6 +24,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using static SqlParser.Ast.AssignmentTarget;
 
 namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
 {
@@ -39,6 +40,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
         private readonly int _fileNameIndex;
         private readonly int _valueIndex;
         private readonly int _outputCount;
+        private readonly int[] _extraColumnsIndices;
 
         private Task? _deltaLoadTask;
         private object _deltaLock = new object();
@@ -51,17 +53,29 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
 
             _fileNameIndex = -1;
             _valueIndex = -1;
+
+            var extraColumns = _fileOptions.ExtraColumns;
+            _extraColumnsIndices = new int[extraColumns.Count];
             for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
             {
-                if (readRelation.BaseSchema.Names[i].Equals("fileName", StringComparison.OrdinalIgnoreCase))
+                var columnName = readRelation.BaseSchema.Names[i];
+                if (columnName.Equals("fileName", StringComparison.OrdinalIgnoreCase))
                 {
                     _fileNameIndex = i;
                     _outputCount++;
                 }
-                if (readRelation.BaseSchema.Names[i].Equals("value", StringComparison.OrdinalIgnoreCase))
+                if (columnName.Equals("value", StringComparison.OrdinalIgnoreCase))
                 {
                     _valueIndex = i;
                     _outputCount++;
+                }
+                for (int j = 0; j < extraColumns.Count; j++)
+                {
+                    if (columnName.Equals(extraColumns[j].ColumnName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        _extraColumnsIndices[j] = i;
+                        _outputCount++;
+                    }
                 }
             }
         }
@@ -151,6 +165,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                     {
                         columns[_valueIndex].Add(new StringValue(row));
                     }
+                    // Add any extra column values
+                    for (int i = 0; i < _extraColumnsIndices.Length; i++)
+                    {
+                        if (_extraColumnsIndices[i] >= 0)
+                        {
+                            columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(file, nextBatchId, _customState.Value));
+                        }
+                    }
+
                     weights.Add(1);
                     iterations.Add(0);
 
@@ -269,6 +292,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                     {
                         columns[_valueIndex].Add(new StringValue(row));
                     }
+                    // Add any extra column values
+                    for (int i = 0; i < _extraColumnsIndices.Length; i++)
+                    {
+                        if (_extraColumnsIndices[i] >= 0)
+                        {
+                            columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(initialFile, _batchNumber.Value, _customState.Value));
+                        }
+                    }
+
                     weights.Add(1);
                     iterations.Add(0);
 

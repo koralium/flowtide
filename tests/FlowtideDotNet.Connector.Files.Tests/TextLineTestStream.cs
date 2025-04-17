@@ -10,27 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Files
+namespace FlowtideDotNet.Connector.Files.Tests
 {
-    public class FileExtraColumn
+    internal class TextLineTestStream : FlowtideTestStream
     {
-        public FileExtraColumn(string columnName, SubstraitBaseType dataType, Func<string, long, Dictionary<string, string>, IDataValue> getValueFunction)
+        private readonly TextLinesFileOptions options;
+
+        public TextLineTestStream(string testName, TextLinesFileOptions options) : base(testName)
         {
-            ColumnName = columnName;
-            DataType = dataType;
-            GetValueFunction = getValueFunction;
+            this.options = options;
         }
 
-        public string ColumnName { get; }
-        public SubstraitBaseType DataType { get; }
-        public Func<string, long, Dictionary<string, string>, IDataValue> GetValueFunction { get; }
+        protected override void AddReadResolvers(IConnectorManager connectorManger)
+        {
+            connectorManger.AddTextLinesFileSource("test", options);
+        }
     }
 }

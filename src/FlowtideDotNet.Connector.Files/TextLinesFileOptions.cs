@@ -36,5 +36,7 @@ namespace FlowtideDotNet.Connector.Files
         public Func<IFileStorage, long, Dictionary<string, string>, Task<IEnumerable<string>>>? DeltaGetNextFiles { get; set; }
 
         public TimeSpan? DeltaInterval { get; set; }
+
+        public List<FileExtraColumn>? ExtraColumns { get; set; }
     }
 }

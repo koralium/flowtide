@@ -45,6 +45,12 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                     Types = new List<SubstraitBaseType>() { new StringType(), new StringType() }
                 }
             };
+
+            foreach(var extraColumn in options.ExtraColumns)
+            {
+                _schema.Names.Add(extraColumn.ColumnName);
+                _schema.Struct.Types.Add(extraColumn.DataType);
+            }
         }
 
         public bool CanHandle(ReadRelation readRelation)

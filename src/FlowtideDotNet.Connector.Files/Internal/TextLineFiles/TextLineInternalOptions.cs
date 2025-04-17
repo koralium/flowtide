@@ -36,5 +36,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
         public TimeSpan? DeltaInterval { get; set; }
 
         public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
+
+        public required List<FileExtraColumn> ExtraColumns { get; set; }
     }
 }

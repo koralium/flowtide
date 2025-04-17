@@ -95,3 +95,44 @@ SELECT * FROM my_xml_table
 | BeforeBatch       | Optional hook to run before each batch is processed.                            | No       | null    |
 | DeltaGetNextFiles | Function to fetch the next delta files. Enables incremental data loading.       | If Delta | null    |
 | DeltaInterval     | Interval for polling new delta files.                                           | No       | null    |
+| ExtraColumns      | Optional list of extra columns                                                  | No       | null    |	
+
+## Text Lines File Source
+
+The Text Lines File Source allows you to ingest line-based files into a Flowtide stream. Each line in the file is treated as an individual row, and metadata such as the file name is also made available as a column. This connector is useful for processing logs, newline-delimited JSON, or simple flat text files.
+
+### Adding the connector
+
+To register the connector in your `ConnectorManager`, use the `AddTextLinesFileSource` extension method:
+
+```csharp
+connectorManager.AddTextLinesFileSource("my_text_lines", new TextLinesFileOptions()
+{
+    FileStorage = Files.Of.LocalDisk("./logdata"),
+    GetInitialFiles = async (fs, state) => new[] { "events.log" }
+});
+```
+
+Once registered, you can query it using Flowtide:
+
+```sql
+SELECT fileName, value FROM my_text_lines
+```
+
+This will return each line in the file as a row with two columns:
+
+* `fileName`: The name of the file that the line came from.
+* `value`: The content of the line.
+
+
+### Options
+
+
+| Name              | Description                                                               | Required | Default |
+| ----------------- | ------------------------------------------------------------------------- | -------- | ------- |
+| FileStorage       | Storage backend to read files from (e.g., local disk, Azure Blob, S3).	| Yes      | -       |
+| GetInitialFiles   | Function returning initial set of files to read during startup.	        | Yes      | -       |
+| DeltaGetNextFiles | Optional function to return new files to ingest over time.                | No       | null    |
+| DeltaInterval     | Optional interval for polling for new files.                              | No       | null    |
+| BeforeBatch       | Hook to run before each batch. Can be used to prepare state.              | No       | null    |
+| ExtraColumns      | Optional list of extra columns                                            | No       | null    |		

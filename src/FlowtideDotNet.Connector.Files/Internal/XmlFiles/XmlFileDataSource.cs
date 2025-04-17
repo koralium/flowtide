@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                         {
                             if (_extraColumnsIndices[i] >= 0)
                             {
-                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(file, _customState.Value));
+                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(file, nextBatchId, _customState.Value));
                             }
                         }
 
@@ -376,7 +376,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                         {
                             if (_extraColumnsIndices[i] >= 0)
                             {
-                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(initialFile, _customState.Value));
+                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(initialFile, _batchNumber.Value, _customState.Value));
                             }
                         }
                         weights.Add(1);

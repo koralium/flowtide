@@ -143,6 +143,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 BeforeBatch = options.BeforeBatch,
                 DeltaGetNextFiles = options.DeltaGetNextFiles,
                 DeltaInterval = options.DeltaInterval,
+                ExtraColumns = options.ExtraColumns ?? new List<FileExtraColumn>()
             };
 
             connectorManager.AddSource(new TextLineFileDataSourceFactory(tableName, internalOptions));

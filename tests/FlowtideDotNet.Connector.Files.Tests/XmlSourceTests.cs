@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.Files.Tests
                 XmlSchema = schema,
                 ExtraColumns = new List<FileExtraColumn>()
                 {
-                    new FileExtraColumn("my_col", new StringType(), (fileName, state) =>
+                    new FileExtraColumn("my_col", new StringType(), (fileName, batchNumber, state) =>
                     {
                         return new StringValue("hello");
                     })
