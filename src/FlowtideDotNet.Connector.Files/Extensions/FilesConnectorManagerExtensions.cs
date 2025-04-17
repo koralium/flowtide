@@ -112,7 +112,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 FlowtideSchema = namedStruct,
                 GetInitialFiles = xmlFileOptions.GetInitialFiles,
                 XmlSchema = schemaSet,
-                BeforeBatch = xmlFileOptions.BeforeBatch
+                BeforeBatch = xmlFileOptions.BeforeBatch,
+                DeltaGetNextFiles = xmlFileOptions.DeltaGetNextFiles,
+                DeltaInterval = xmlFileOptions.DeltaInterval
             }));
 
             return connectorManager;

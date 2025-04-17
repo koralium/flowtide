@@ -42,5 +42,9 @@ namespace FlowtideDotNet.Connector.Files
         public required Func<IFileStorage, Dictionary<string, string>, Task<IEnumerable<string>>> GetInitialFiles { get; set; }
 
         public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
+
+        public Func<IFileStorage, long, Dictionary<string, string>, Task<IEnumerable<string>>>? DeltaGetNextFiles { get; set; }
+
+        public TimeSpan? DeltaInterval { get; set; }
     }
 }
