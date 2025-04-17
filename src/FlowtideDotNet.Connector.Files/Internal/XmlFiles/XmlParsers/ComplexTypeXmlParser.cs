@@ -41,7 +41,6 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
         {
             this.elementName = elementName;
             this.parsers = parsers;
-            this.parsers = parsers;
             this.listIndices = listIndices;
             this.elementsLookup = elementsLookup;
             this.attributeLookup = attributeLookup;
