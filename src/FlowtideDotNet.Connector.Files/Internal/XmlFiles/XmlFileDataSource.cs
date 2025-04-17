@@ -186,8 +186,8 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 return;
             }
             bool sentData = false;
-            Column[] columns = new Column[_emitList.Length];
-            for (int i = 0; i < _emitList.Length; i++)
+            Column[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
             {
                 columns[i] = Column.Create(MemoryAllocator);
             }
@@ -228,6 +228,16 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                                 columns[i].Add(NullValue.Instance);
                             }
                         }
+
+                        // Add any extra column values
+                        for (int i = 0; i < _extraColumnsIndices.Length; i++)
+                        {
+                            if (_extraColumnsIndices[i] >= 0)
+                            {
+                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(file, _customState.Value));
+                            }
+                        }
+
                         weights.Add(1);
                         iterations.Add(0);
 
