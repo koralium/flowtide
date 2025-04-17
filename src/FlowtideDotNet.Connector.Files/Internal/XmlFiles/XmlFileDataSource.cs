@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,6 +37,9 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         private IFlowtideXmlParser _parser;
         private readonly string _watermarkName;
         private int[] _emitList;
+
+        private IObjectState<long>? _batchNumber;
+        private IObjectState<Dictionary<string, string>>? _customState;
 
         public XmlFileDataSource(XmlFileInternalOptions fileOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
@@ -106,7 +110,119 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
         public override Task OnTrigger(string triggerName, object? state)
         {
+            if (triggerName == "delta_load")
+            {
+                RunTask(HandleDelta);
+            }
             return Task.CompletedTask;
+        }
+
+        private async Task HandleDelta(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            Debug.Assert(_batchNumber != null);
+            Debug.Assert(_customState != null);
+            Debug.Assert(_customState.Value != null);
+            Debug.Assert(_fileOptions.DeltaGetNextFiles != null);
+
+            await output.EnterCheckpointLock();
+
+            var nextBatchId = _batchNumber.Value + 1;
+
+            if (_fileOptions.BeforeBatch != null)
+            {
+                await _fileOptions.BeforeBatch(nextBatchId, _customState.Value, _fileOptions.FileStorage);
+            }
+
+            var files = (await _fileOptions.DeltaGetNextFiles(_fileOptions.FileStorage, _batchNumber.Value, _customState.Value)).ToList();
+            
+            if(files.Count == 0)
+            {
+                return;
+            }
+            bool sentData = false;
+            Column[] columns = new Column[_emitList.Length];
+            for (int i = 0; i < _emitList.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+            var weights = new PrimitiveList<int>(MemoryAllocator);
+            var iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            foreach (var file in files)
+            {
+                using var stream = await _fileOptions.FileStorage.OpenRead(file);
+
+                if (stream == null)
+                {
+                    throw new InvalidOperationException($"File {file} not found");
+                }
+
+                var reader = XmlReader.Create(stream, new XmlReaderSettings()
+                {
+                    Async = true
+                });
+
+                while (await reader.ReadAsync())
+                {
+                    if (reader.LocalName.Equals(_fileOptions.ElementName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        var val = await _parser.Parse(reader);
+
+                        if (val is StructValue structValue)
+                        {
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i].Add(structValue.GetAt(_emitList[i]));
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i].Add(NullValue.Instance);
+                            }
+                        }
+                        weights.Add(1);
+                        iterations.Add(0);
+
+                        if (weights.Count >= 100)
+                        {
+                            sentData = true;
+                            await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                            weights = new PrimitiveList<int>(MemoryAllocator);
+                            iterations = new PrimitiveList<uint>(MemoryAllocator);
+                            columns = new Column[_emitList.Length];
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i] = Column.Create(MemoryAllocator);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (weights.Count > 0)
+            {
+                sentData = true;
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i].Dispose();
+                }
+            }
+
+            if (sentData)
+            {
+                await output.SendWatermark(new Base.Watermark(_watermarkName, 1));
+                ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+            output.ExitCheckpointLock();
+
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
@@ -114,9 +230,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _watermarkName });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            return Task.CompletedTask;
+            _batchNumber = await stateManagerClient.GetOrCreateObjectStateAsync<long>("batchNumber");
+            _customState = await stateManagerClient.GetOrCreateObjectStateAsync<Dictionary<string, string>>("customState");
+
+            if (_customState.Value == null)
+            {
+                _customState.Value = new Dictionary<string, string>();
+            }
         }
 
         protected override Task OnCheckpoint(long checkpointTime)
@@ -126,18 +248,13 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            Debug.Assert(_batchNumber != null);
+            Debug.Assert(_customState != null);
+            Debug.Assert(_customState.Value != null);
+
             await output.EnterCheckpointLock();
-            using var stream = await _fileOptions.FileStorage.OpenRead(_fileOptions.InitialFile);
 
-            if (stream == null)
-            {
-                throw new InvalidOperationException($"File {_fileOptions.InitialFile} not found");
-            }
-
-            var reader = XmlReader.Create(stream, new XmlReaderSettings()
-            {
-                Async = true
-            });
+            var files = await _fileOptions.GetInitialFiles(_fileOptions.FileStorage, _customState.Value);
 
             Column[] columns = new Column[_emitList.Length];
             for (int i = 0; i < _emitList.Length; i++)
@@ -147,38 +264,58 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             var weights = new PrimitiveList<int>(MemoryAllocator);
             var iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            while (await reader.ReadAsync())
+            if (_fileOptions.BeforeBatch != null)
             {
-                if (reader.LocalName.Equals(_fileOptions.ElementName, StringComparison.OrdinalIgnoreCase))
+                await _fileOptions.BeforeBatch(_batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
+            }
+
+            foreach (var initialFile in files)
+            {
+                using var stream = await _fileOptions.FileStorage.OpenRead(initialFile);
+
+                if (stream == null)
                 {
-                    var val = await _parser.Parse(reader);
+                    throw new InvalidOperationException($"File {initialFile} not found");
+                }
 
-                    if (val is StructValue structValue)
-                    {
-                        for (int i = 0; i < _emitList.Length; i++)
-                        {
-                            columns[i].Add(structValue.GetAt(_emitList[i]));
-                        }
-                    }
-                    else
-                    {
-                        for (int i = 0; i < _emitList.Length; i++)
-                        {
-                            columns[i].Add(NullValue.Instance);
-                        }
-                    }
-                    weights.Add(1);
-                    iterations.Add(0);
+                var reader = XmlReader.Create(stream, new XmlReaderSettings()
+                {
+                    Async = true
+                });
 
-                    if (weights.Count >= 100)
+                while (await reader.ReadAsync())
+                {
+                    if (reader.LocalName.Equals(_fileOptions.ElementName, StringComparison.OrdinalIgnoreCase))
                     {
-                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-                        weights = new PrimitiveList<int>(MemoryAllocator);
-                        iterations = new PrimitiveList<uint>(MemoryAllocator);
-                        columns = new Column[_emitList.Length];
-                        for (int i = 0; i < _emitList.Length; i++)
+                        var val = await _parser.Parse(reader);
+
+                        if (val is StructValue structValue)
                         {
-                            columns[i] = Column.Create(MemoryAllocator);
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i].Add(structValue.GetAt(_emitList[i]));
+                            }
+                        }
+                        else
+                        {
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i].Add(NullValue.Instance);
+                            }
+                        }
+                        weights.Add(1);
+                        iterations.Add(0);
+
+                        if (weights.Count >= 100)
+                        {
+                            await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                            weights = new PrimitiveList<int>(MemoryAllocator);
+                            iterations = new PrimitiveList<uint>(MemoryAllocator);
+                            columns = new Column[_emitList.Length];
+                            for (int i = 0; i < _emitList.Length; i++)
+                            {
+                                columns[i] = Column.Create(MemoryAllocator);
+                            }
                         }
                     }
                 }
@@ -200,6 +337,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
             await output.SendWatermark(new Base.Watermark(_watermarkName, 1));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+
+            if (_fileOptions.DeltaGetNextFiles != null)
+            {
+                await RegisterTrigger("delta_load", _fileOptions.DeltaInterval);
+            }
 
             output.ExitCheckpointLock();
         }

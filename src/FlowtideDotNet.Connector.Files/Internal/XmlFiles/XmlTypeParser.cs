@@ -53,7 +53,41 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     return ParseElementInternal(kv.Value);
                 }
             }
+            foreach(var kv in globalElements)
+            {
+                var result = TryFindElement(elementName, kv.Value);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
             throw new Exception($"Element not found: {elementName}");
+        }
+
+        private SubstraitBaseType? TryFindElement(string name, XmlSchemaElement element)
+        {
+            if (name == element.Name)
+                return ParseElementInternal(element);
+            XmlSchemaType? schemaType = element.ElementSchemaType;
+            if (schemaType is XmlSchemaComplexType complexType)
+            {
+                if (complexType.ContentTypeParticle is XmlSchemaSequence sequence)
+                {
+                    foreach(var item in sequence.Items)
+                    {
+                        if (item is XmlSchemaElement childElement)
+                        {
+                            var result = TryFindElement(name, childElement);
+                            if (result != null)
+                            {
+                                return result;
+                            }
+                        }
+                            
+                    }
+                }
+            }
+            return default;
         }
 
         private SubstraitBaseType ParseElementInternal(XmlSchemaElement element)

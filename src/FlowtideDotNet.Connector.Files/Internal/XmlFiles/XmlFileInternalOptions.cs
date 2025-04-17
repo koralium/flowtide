@@ -35,8 +35,14 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         /// <summary>
         /// The initial file to read from for initial load.
         /// </summary>
-        public required string InitialFile { get; set; }
+        public required Func<IFileStorage, Dictionary<string, string>, Task<IEnumerable<string>>> GetInitialFiles { get; set; }
 
         public required NamedStruct FlowtideSchema { get; set; }
+
+        public Func<IFileStorage, long, Dictionary<string, string>, Task<IEnumerable<string>>>? DeltaGetNextFiles { get; set; }
+
+        public TimeSpan? DeltaInterval { get; set; }
+
+        public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
     }
 }

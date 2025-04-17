@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
         /// <summary>
         /// The initial file to read from for initial load.
         /// </summary>
-        public required string InitialFile { get; set; }
+        public required Func<Task<IEnumerable<string>>> GetInitialFiles { get; set; }
 
         /// <summary>
         /// If the file have a header, set this to true to skip it.
@@ -57,6 +57,8 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
         /// First parameter is the file name that will be read, second is the batch number, third is the state that can be modified.
         /// </summary>
         public Func<string, long, Dictionary<string, string>, IFileStorage, Task>? BeforeReadFile { get; set; }
+
+        public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
 
         /// <summary>
         /// Optional modify function, the first parameter contains the columns from the csv and the second is the output columns before being converted.

@@ -37,8 +37,10 @@ namespace FlowtideDotNet.Connector.Files
         public required string ElementName { get; set; }
 
         /// <summary>
-        /// The initial file to read from for initial load.
+        /// The initial files to read from for initial load.
         /// </summary>
-        public required string InitialFile { get; set; }
+        public required Func<IFileStorage, Dictionary<string, string>, Task<IEnumerable<string>>> GetInitialFiles { get; set; }
+
+        public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
     }
 }

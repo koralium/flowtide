@@ -55,7 +55,41 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     return ParseElementInternal(kv.Value);
                 }
             }
+            foreach (var kv in globalElements)
+            {
+                var result = TryFindElement(elementName, kv.Value);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
             throw new Exception($"Element not found: {elementName}");
+        }
+
+        private IFlowtideXmlParser? TryFindElement(string name, XmlSchemaElement element)
+        {
+            if (name == element.Name)
+                return ParseElementInternal(element);
+            XmlSchemaType? schemaType = element.ElementSchemaType;
+            if (schemaType is XmlSchemaComplexType complexType)
+            {
+                if (complexType.ContentTypeParticle is XmlSchemaSequence sequence)
+                {
+                    foreach (var item in sequence.Items)
+                    {
+                        if (item is XmlSchemaElement childElement)
+                        {
+                            var result = TryFindElement(name, childElement);
+                            if (result != null)
+                            {
+                                return result;
+                            }
+                        }
+
+                    }
+                }
+            }
+            return default;
         }
 
         private IFlowtideXmlParser ParseElementInternal(XmlSchemaElement element)
@@ -187,6 +221,8 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 case XmlTypeCode.Date:
                 case XmlTypeCode.DateTime:
                     return new DateTimeAttributeParser();
+                case XmlTypeCode.Decimal:
+                    return new DecimalAttributeParser();
             }
 
             throw new NotImplementedException($"Type not implemented: {typeCode} for attribute");
@@ -215,6 +251,8 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 case XmlTypeCode.Date:
                 case XmlTypeCode.DateTime:
                     return new DateTimeElementParser();
+                case XmlTypeCode.Decimal:
+                    return new DecimalElementParser();
             }
             throw new NotImplementedException($"Type not implemented: {typeCode} for element");
         }

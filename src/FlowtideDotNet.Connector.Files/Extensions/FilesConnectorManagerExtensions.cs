@@ -65,7 +65,7 @@ namespace Microsoft.Extensions.DependencyInjection
                 DeltaCsvColumns = deltaColumns,
                 DeltaWeightFunction = deltaWeightFunction,
                 FileStorage = options.FileStorage,
-                InitialFile = options.InitialFile,
+                GetInitialFiles = options.GetInitialFiles,
                 InitialWeightFunction = initialWeightFunction,
                 OutputSchema = outputSchema,
                 BeforeReadFile = options.BeforeReadFile,
@@ -73,7 +73,8 @@ namespace Microsoft.Extensions.DependencyInjection
                 DeltaInterval = options.DeltaInterval,
                 FilesHaveHeader = options.FilesHaveHeader,
                 ModifyRow = options.ModifyRow,
-                Delimiter = options.Delimiter
+                Delimiter = options.Delimiter,
+                BeforeBatch = options.BeforeBatch
             };
 
             connectorManager.AddSource(new CsvFileDataSourceFactory(tableName, internalOptions));
@@ -109,8 +110,9 @@ namespace Microsoft.Extensions.DependencyInjection
                 ElementName = xmlFileOptions.ElementName,
                 FileStorage = xmlFileOptions.FileStorage,
                 FlowtideSchema = namedStruct,
-                InitialFile = xmlFileOptions.InitialFile,
-                XmlSchema = schemaSet
+                GetInitialFiles = xmlFileOptions.GetInitialFiles,
+                XmlSchema = schemaSet,
+                BeforeBatch = xmlFileOptions.BeforeBatch
             }));
 
             return connectorManager;

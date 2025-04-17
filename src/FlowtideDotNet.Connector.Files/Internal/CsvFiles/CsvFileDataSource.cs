@@ -176,6 +176,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
             await output.EnterCheckpointLock();
 
+            if (_fileOptions.BeforeBatch != null)
+            {
+                await _fileOptions.BeforeBatch(nextBatchId, _customState.Value, _fileOptions.FileStorage);
+            }
+
             if (_fileOptions.BeforeReadFile != null)
             {
                 await _fileOptions.BeforeReadFile(deltaFileName, nextBatchId, _customState.Value, _fileOptions.FileStorage);
@@ -286,9 +291,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             }
         }
 
-        protected override Task OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.CompletedTask;
+            Debug.Assert(_batchNumber != null);
+            Debug.Assert(_customState != null);
+            Debug.Assert(_lastLoadedFile != null);
+
+            await _lastLoadedFile.Commit();
+            await _customState.Commit();
+            await _batchNumber.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -306,34 +317,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             await output.EnterCheckpointLock();
             _batchNumber.Value = 1;
 
-            if (_fileOptions.BeforeReadFile != null)
-            {
-                await _fileOptions.BeforeReadFile(_fileOptions.InitialFile, _batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
-            }
-
-            using var stream = await _fileOptions.FileStorage.OpenRead(_fileOptions.InitialFile);
-
-            if (stream == null)
-            {
-                throw new InvalidOperationException($"File {_fileOptions.InitialFile} not found");
-            }
-
-            using var reader = new StreamReader(stream);
-
-            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                Delimiter = _fileOptions.Delimiter,
-            };
-            using var csv = new CsvReader(reader, csvConfig);
-
-            if (_fileOptions.FilesHaveHeader)
-            {
-                await csv.ReadAsync();
-                csv.ReadHeader();
-            }
-
-            string?[] rowValues = new string?[_fileOptions.CsvColumns.Count];
-            string?[] outputValues = new string?[_fileOptions.OutputSchema.Names.Count];
+            var initialFiles = await _fileOptions.GetInitialFiles();
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -343,42 +327,83 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
                 outputColumns[i] = Column.Create(MemoryAllocator);
             }
 
-            while (await csv.ReadAsync())
+            if (_fileOptions.BeforeBatch != null)
             {
-                for (int i = 0; i < csv.ColumnCount; i++)
+                await _fileOptions.BeforeBatch(_batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
+            }
+
+            foreach (var initialFile in initialFiles)
+            {
+                if (_fileOptions.BeforeReadFile != null)
                 {
-                    rowValues[i] = csv.GetField(i);
+                    await _fileOptions.BeforeReadFile(initialFile, _batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
                 }
 
-                for (int i = 0; i < initialCsvRowsToOutput.Count; i++)
+                _lastLoadedFile.Value = initialFile;
+
+                using var stream = await _fileOptions.FileStorage.OpenRead(initialFile);
+
+                if (stream == null)
                 {
-                    if (initialCsvRowsToOutput[i] >= 0)
+                    throw new InvalidOperationException($"File {initialFile} not found");
+                }
+
+                using var reader = new StreamReader(stream);
+
+                var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+                {
+                    Delimiter = _fileOptions.Delimiter,
+                };
+                using var csv = new CsvReader(reader, csvConfig);
+
+                if (_fileOptions.FilesHaveHeader)
+                {
+                    await csv.ReadAsync();
+                    csv.ReadHeader();
+                }
+
+                string?[] rowValues = new string?[_fileOptions.CsvColumns.Count];
+                string?[] outputValues = new string?[_fileOptions.OutputSchema.Names.Count];
+
+                
+
+                while (await csv.ReadAsync())
+                {
+                    for (int i = 0; i < csv.ColumnCount; i++)
                     {
-                        outputValues[initialCsvRowsToOutput[i]] = rowValues[i];
+                        rowValues[i] = csv.GetField(i);
                     }
-                }
 
-                if (_fileOptions.ModifyRow != null)
-                {
-                    _fileOptions.ModifyRow(rowValues, outputValues, _batchNumber.Value, _fileOptions.InitialFile, _customState.Value);
-                }
+                    for (int i = 0; i < initialCsvRowsToOutput.Count; i++)
+                    {
+                        if (initialCsvRowsToOutput[i] >= 0)
+                        {
+                            outputValues[initialCsvRowsToOutput[i]] = rowValues[i];
+                        }
+                    }
 
-                for (int i = 0; i < emitList.Count; i++)
-                {
-                    _convertFunctions[i](outputValues[emitList[i]], outputColumns[i]);
-                }
-                weights.Add(_fileOptions.InitialWeightFunction(rowValues));
-                iterations.Add(0);
+                    if (_fileOptions.ModifyRow != null)
+                    {
+                        _fileOptions.ModifyRow(rowValues, outputValues, _batchNumber.Value, initialFile, _customState.Value);
+                    }
 
-                if (weights.Count >= 100)
-                {
-                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns))));
-                    weights = new PrimitiveList<int>(MemoryAllocator);
-                    iterations = new PrimitiveList<uint>(MemoryAllocator);
-                    outputColumns = new Column[emitList.Count];
                     for (int i = 0; i < emitList.Count; i++)
                     {
-                        outputColumns[i] = Column.Create(MemoryAllocator);
+                        _convertFunctions[i](outputValues[emitList[i]], outputColumns[i]);
+                    }
+                    weights.Add(_fileOptions.InitialWeightFunction(rowValues));
+                    iterations.Add(0);
+
+                    if (weights.Count >= 100)
+                    {
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns))));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        outputColumns = new Column[emitList.Count];
+                        for (int i = 0; i < emitList.Count; i++)
+                        {
+                            outputColumns[i] = Column.Create(MemoryAllocator);
+                        }
                     }
                 }
             }
@@ -397,7 +422,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
                 }
             }
 
-            _lastLoadedFile.Value = _fileOptions.InitialFile;
+            
 
             await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
