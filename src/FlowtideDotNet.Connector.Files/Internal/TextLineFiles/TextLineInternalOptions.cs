@@ -10,42 +10,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Type;
 using Stowage;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Xml.Schema;
 
-namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
+namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
 {
-    internal class XmlFileInternalOptions
+    internal class TextLineInternalOptions
     {
         /// <summary>
         /// File storage where to find the files
         /// </summary>
         public required IFileStorage FileStorage { get; set; }
 
-        public required XmlSchemaSet XmlSchema { get; set; }
-
-        public required string ElementName { get; set; }
-
         /// <summary>
         /// The initial file to read from for initial load.
         /// </summary>
         public required Func<IFileStorage, Dictionary<string, string>, Task<IEnumerable<string>>> GetInitialFiles { get; set; }
-
-        public required NamedStruct FlowtideSchema { get; set; }
 
         public Func<IFileStorage, long, Dictionary<string, string>, Task<IEnumerable<string>>>? DeltaGetNextFiles { get; set; }
 
         public TimeSpan? DeltaInterval { get; set; }
 
         public Func<long, Dictionary<string, string>, IFileStorage, Task>? BeforeBatch { get; set; }
-
-        public required List<FileExtraColumn> ExtraColumns { get; set; }
-
     }
 }

@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Substrait.Type;
 using Stowage;
 using System;
 using System.Collections.Generic;
@@ -35,7 +37,14 @@ namespace FlowtideDotNet.Connector.Files.Tests
                 {
                     return Task.FromResult<IEnumerable<string>>(new List<string>() { "test.xml" });
                 },
-                XmlSchema = schema
+                XmlSchema = schema,
+                ExtraColumns = new List<FileExtraColumn>()
+                {
+                    new FileExtraColumn("my_col", new StringType(), (fileName, state) =>
+                    {
+                        return new StringValue("hello");
+                    })
+                }
             });
 
             await stream.StartStream(@"
@@ -72,7 +81,8 @@ namespace FlowtideDotNet.Connector.Files.Tests
                             price = 9.90m
                         }
                     },
-                    orderid = "889923"
+                    orderid = "889923",
+                    my_col = "hello"
                 },
                 new {
                     orderperson = "John Smit",
@@ -99,7 +109,8 @@ namespace FlowtideDotNet.Connector.Files.Tests
                             price = 9.90m,
                         }
                     },
-                    orderid = "889924"
+                    orderid = "889924",
+                    my_col = "hello"
                 }
 
             });

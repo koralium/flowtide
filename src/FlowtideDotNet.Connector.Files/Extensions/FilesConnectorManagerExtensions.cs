@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.Files;
 using FlowtideDotNet.Connector.Files.Internal;
 using FlowtideDotNet.Connector.Files.Internal.CsvFiles;
+using FlowtideDotNet.Connector.Files.Internal.TextLineFiles;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait.Type;
@@ -85,7 +86,7 @@ namespace Microsoft.Extensions.DependencyInjection
         {
             var schemaReader = new StringReader(xmlFileOptions.XmlSchema);
             var schemaSet = new XmlSchemaSet();
-            
+
             var schema = XmlSchema.Read(schemaReader, (obj, events) =>
             {
 
@@ -105,6 +106,18 @@ namespace Microsoft.Extensions.DependencyInjection
                 throw new InvalidOperationException($"Element {xmlFileOptions.ElementName} is not a complex type.");
             }
 
+            if (xmlFileOptions.ExtraColumns != null)
+            {
+                foreach (var extraColumn in xmlFileOptions.ExtraColumns)
+                {
+                    namedStruct.Names.Add(extraColumn.ColumnName);
+                    if (namedStruct.Struct != null)
+                    {
+                        namedStruct.Struct.Types.Add(extraColumn.DataType);
+                    }
+                }
+            }
+
             connectorManager.AddSource(new XmlFileDataSourceFactory(tableName, new XmlFileInternalOptions()
             {
                 ElementName = xmlFileOptions.ElementName,
@@ -114,9 +127,25 @@ namespace Microsoft.Extensions.DependencyInjection
                 XmlSchema = schemaSet,
                 BeforeBatch = xmlFileOptions.BeforeBatch,
                 DeltaGetNextFiles = xmlFileOptions.DeltaGetNextFiles,
-                DeltaInterval = xmlFileOptions.DeltaInterval
+                DeltaInterval = xmlFileOptions.DeltaInterval,
+                ExtraColumns = xmlFileOptions.ExtraColumns ?? new List<FileExtraColumn>(),
             }));
 
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddTextLinesFileSource(this IConnectorManager connectorManager, string tableName, TextLinesFileOptions options)
+        {
+            var internalOptions = new TextLineInternalOptions()
+            {
+                FileStorage = options.FileStorage,
+                GetInitialFiles = options.GetInitialFiles,
+                BeforeBatch = options.BeforeBatch,
+                DeltaGetNextFiles = options.DeltaGetNextFiles,
+                DeltaInterval = options.DeltaInterval,
+            };
+
+            connectorManager.AddSource(new TextLineFileDataSourceFactory(tableName, internalOptions));
             return connectorManager;
         }
     }

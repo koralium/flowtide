@@ -41,6 +41,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         private IObjectState<long>? _batchNumber;
         private IObjectState<Dictionary<string, string>>? _customState;
 
+        private Task? _deltaLoadTask;
+        private object _deltaLock = new object();
+
+        private readonly int[] _extraColumnsIndices;
+
         public XmlFileDataSource(XmlFileInternalOptions fileOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             _fileOptions = fileOptions;
@@ -49,8 +54,16 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
             _parser = new SchemaToParsers().ParseElement(fileOptions.ElementName, fileOptions.XmlSchema);
 
+            var extraColumns = _fileOptions.ExtraColumns;
+
             // Build up the emit list
             var emitList = new List<int>();
+            _extraColumnsIndices = new int[_fileOptions.ExtraColumns.Count];
+            for (int i = 0; i < _extraColumnsIndices.Length; i++)
+            {
+                _extraColumnsIndices[i] = -1;
+            }
+
             if (readRelation.EmitSet)
             {
                 for (int i = 0; i < readRelation.Emit.Count; i++)
@@ -73,6 +86,17 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     {
                         throw new InvalidOperationException($"Column {columnName} not found in schema");
                     }
+
+                    for (int j = 0; j < extraColumns.Count; j++)
+                    {
+                        if (columnName.Equals(extraColumns[j].ColumnName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _extraColumnsIndices[j] = emitindex;
+                            emitList.Remove(emitList.Count - 1);
+                        }
+                    }
+
+                    
                 }
             }
             else
@@ -95,6 +119,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     {
                         throw new InvalidOperationException($"Column {columnName} not found in schema");
                     }
+
+                    for (int j = 0; j < extraColumns.Count; j++)
+                    {
+                        if (columnName.Equals(extraColumns[j].ColumnName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _extraColumnsIndices[j] = i;
+                            emitList.Remove(emitList.Count - 1);
+                        }
+                    }
                 }
             }
 
@@ -112,7 +145,20 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         {
             if (triggerName == "delta_load")
             {
-                RunTask(HandleDelta);
+                lock (_deltaLock)
+                {
+                    if (_deltaLoadTask == null)
+                    {
+                        _deltaLoadTask = RunTask(HandleDelta)
+                            .ContinueWith((t) =>
+                            {
+                                lock (_deltaLock)
+                                {
+                                    _deltaLoadTask = null;
+                                }
+                            });
+                    }
+                }
             }
             return Task.CompletedTask;
         }
@@ -216,9 +262,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 }
             }
 
+            _batchNumber.Value = nextBatchId;
+
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(_watermarkName, 1));
+                await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             output.ExitCheckpointLock();
@@ -241,9 +289,13 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             }
         }
 
-        protected override Task OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.CompletedTask;
+            Debug.Assert(_batchNumber != null);
+            Debug.Assert(_customState != null);
+
+            await _batchNumber.Commit();
+            await _customState.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -252,22 +304,28 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             Debug.Assert(_customState != null);
             Debug.Assert(_customState.Value != null);
 
+            if (_batchNumber.Value > 0)
+            {
+                return;
+            }
+
             await output.EnterCheckpointLock();
+
+            _batchNumber.Value = 1;
+            if (_fileOptions.BeforeBatch != null)
+            {
+                await _fileOptions.BeforeBatch(_batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
+            }
 
             var files = await _fileOptions.GetInitialFiles(_fileOptions.FileStorage, _customState.Value);
 
-            Column[] columns = new Column[_emitList.Length];
-            for (int i = 0; i < _emitList.Length; i++)
+            Column[] columns = new Column[_readRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
             {
                 columns[i] = Column.Create(MemoryAllocator);
             }
             var weights = new PrimitiveList<int>(MemoryAllocator);
             var iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-            if (_fileOptions.BeforeBatch != null)
-            {
-                await _fileOptions.BeforeBatch(_batchNumber.Value, _customState.Value, _fileOptions.FileStorage);
-            }
 
             foreach (var initialFile in files)
             {
@@ -301,6 +359,14 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             for (int i = 0; i < _emitList.Length; i++)
                             {
                                 columns[i].Add(NullValue.Instance);
+                            }
+                        }
+                        // Add any extra column values
+                        for (int i = 0; i < _extraColumnsIndices.Length; i++)
+                        {
+                            if (_extraColumnsIndices[i] >= 0)
+                            {
+                                columns[_extraColumnsIndices[i]].Add(_fileOptions.ExtraColumns[i].GetValueFunction(initialFile, _customState.Value));
                             }
                         }
                         weights.Add(1);
