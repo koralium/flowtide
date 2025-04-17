@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
                     }
                     break;
                 default:
-                    throw new NotSupportedException($"Unsupported node type: {reader.NodeType} for StringXmlParser");
+                    throw new NotSupportedException($"Unsupported node type: {reader.NodeType} for DateTimeElementParser");
             }
             await reader.ReadAsync();
             if (reader.NodeType == XmlNodeType.EndElement)
