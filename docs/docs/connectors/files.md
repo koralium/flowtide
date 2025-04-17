@@ -40,7 +40,7 @@ You can now query your CSV file directly:
 SELECT * FROM my_csv_table
 ```
 
-### CsvFileOptions
+### Options
 
 | Name                  | Description                                                                                 | Required | Default |
 | --------------------- | ------------------------------------------------------------------------------------------- | -------- | ------- |
