@@ -1,0 +1,6 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+
+# basic: Basic examples without any special cases
+parse_timestamp('20200304-130401'::str, 'yyyyMMdd-HHmmss'::str) = '2020-03-04T13:04:01'::ts
+parse_timestamp('20200304-080401'::str, 'yyyyMMdd-HHmmss'::str) = '2020-03-04T08:04:01'::ts
