@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
         }
 
         internal static IDataValue StrfTimeImplementation<T1, T2>(T1 value, T2 format, DataValueContainer result)
@@ -70,6 +71,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
                 result._type = ArrowTypeId.Timestamp;
                 result._timestampValue = new TimestampTzValue(newDate);
+                return result;
+            }
+
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        internal static IDataValue TimestampParseImplementation<T1, T2>(T1 value, T2 format, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (format.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var valueStr = value.AsString.ToString();
+            var formatStr = format.AsString.ToString();
+
+            if (DateTimeOffset.TryParseExact(valueStr, formatStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            {
+                result._type = ArrowTypeId.Timestamp;
+                result._timestampValue = new TimestampTzValue(dt);
                 return result;
             }
 

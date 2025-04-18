@@ -880,6 +880,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.Uri, FunctionsString.StringJoin);
 
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_parse", FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp);
+
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
 
