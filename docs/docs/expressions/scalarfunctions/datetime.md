@@ -95,3 +95,22 @@ Rounds a timestamp down to the nearest day by removing the time portion (hours, 
 ```sql
 SELECT floor_timestamp_day(timestamp_column) FROM ...
 ```
+
+## Timestamp Parse
+
+The `timestamp_parse` function converts a string representation of a date and/or time into a `timestamp` value, using a specified format string.
+
+The format string follows the .NET DateTime format, allowing for flexible and expressive parsing patterns. This includes support for components like year (yyyy), month (MM), day (dd), hour (HH/hh), minute (mm), second (ss), fractional seconds (fff), time zone offsets (zzz), and more.
+
+The format string follows the [.NET DateTime format](https://learn.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings).
+
+If the input string does not match the provided format exactly, the function will return `NULL`.
+
+```sql
+-- Basic date parsing
+SELECT TIMESTAMP_PARSE('2025-04-16', 'yyyy-MM-dd');
+
+-- Date and time parsing with 24-hour format
+SELECT TIMESTAMP_PARSE('2025-04-16 14:30:45', 'yyyy-MM-dd HH:mm:ss');
+```
+
