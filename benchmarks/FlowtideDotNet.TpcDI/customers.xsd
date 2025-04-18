@@ -1,0 +1,88 @@
+﻿<xsd:schema targetNamespace="http://www.tpc.org/tpc-di"
+xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:TPCDI="http://www.tpc.org/tpc-di">
+	<xsd:element name="Action" type="TPCDI:ActionDef" />
+	<xsd:element name="Actions">
+		<xsd:complexType>
+			<xsd:sequence>
+				<xsd:element ref="TPCDI:Action" maxOccurs="unbounded" />
+			</xsd:sequence>
+		</xsd:complexType>
+	</xsd:element>
+	<xsd:complexType name="ActionDef">
+		<xsd:all>
+			<xsd:element name="Customer" minOccurs="1" maxOccurs="1">
+				<xsd:complexType>
+					<xsd:sequence>
+						<xsd:element name="Name" minOccurs="0" >
+							<xsd:complexType>
+								<xsd:all>
+									<xsd:element name="C_L_NAME" type="xsd:string" />
+									<xsd:element name="C_F_NAME" type="xsd:string" />
+									<xsd:element name="C_M_NAME" type="xsd:string" minOccurs="0" />
+								</xsd:all>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element name="Address" minOccurs="0">
+							<xsd:complexType>
+								<xsd:all>
+									<xsd:element name="C_ADLINE1" type="xsd:string" />
+									<xsd:element name="C_ADLINE2" type="xsd:string" minOccurs="0" />
+									<xsd:element name="C_ZIPCODE" type="xsd:string" />
+									<xsd:element name="C_CITY" type="xsd:string" />
+									<xsd:element name="C_STATE_PROV" type="xsd:string" />
+									<xsd:element name="C_CTRY" type="xsd:string" />
+								</xsd:all>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element name="ContactInfo" minOccurs="0">
+							<xsd:complexType>
+								<xsd:all>
+									<xsd:element name="C_PRIM_EMAIL" type="xsd:string" minOccurs="0" />
+									<xsd:element name="C_ALT_EMAIL" type="xsd:string" minOccurs="0" />
+									<xsd:element name="C_PHONE_1" type="TPCDI:PhoneNumber" minOccurs="0" />
+									<xsd:element name="C_PHONE_2" type="TPCDI:PhoneNumber" minOccurs="0" />
+									<xsd:element name="C_PHONE_3" type="TPCDI:PhoneNumber" minOccurs="0" />
+								</xsd:all>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element name="TaxInfo" minOccurs="0">
+							<xsd:complexType>
+								<xsd:all>
+									<xsd:element name="C_LCL_TX_ID" type="xsd:string" />
+									<xsd:element name="C_NAT_TX_ID" type="xsd:string" />
+								</xsd:all>
+							</xsd:complexType>
+						</xsd:element>
+						<xsd:element name="Account" minOccurs="0" maxOccurs="unbounded">
+							<xsd:complexType>
+								<xsd:all>
+									<xsd:element name="CA_B_ID" type="xsd:string" minOccurs="0" />
+									<xsd:element name="CA_NAME" type="xsd:string" minOccurs="0" />
+								</xsd:all>
+								<xsd:attribute name="CA_ID" type="xsd:string" use="required" />
+								<xsd:attribute name="CA_TAX_ST" type="xsd:string" />
+							</xsd:complexType>
+						</xsd:element>
+					</xsd:sequence>
+					<xsd:attribute name="C_ID" type="xsd:string" use="required" />
+					<xsd:attribute name="C_TAX_ID" type="xsd:string" />
+					<xsd:attribute name="C_GNDR" type="xsd:string" />
+					<xsd:attribute name="C_TIER" type="xsd:unsignedByte" />
+					<xsd:attribute name="C_DOB" type="xsd:date" />
+				</xsd:complexType>
+			</xsd:element>
+		</xsd:all>
+		<xsd:attribute name="ActionType" type="xsd:string" />
+		<!-- restrict to certain values? -->
+		<xsd:attribute name="ActionTS" type="xsd:dateTime" />
+		<!-- yyyy-mm-dd -->
+	</xsd:complexType>
+	<xsd:complexType name="PhoneNumber">
+		<xsd:sequence>
+			<xsd:element name="C_CTRY_CODE" type="xsd:string" minOccurs="0" />
+			<xsd:element name="C_AREA_CODE" type="xsd:string" />
+			<xsd:element name="C_LOCAL" type="xsd:string" />
+			<xsd:element name="C_EXT" type="xsd:string" minOccurs="0" />
+		</xsd:sequence>
+	</xsd:complexType>
+</xsd:schema>

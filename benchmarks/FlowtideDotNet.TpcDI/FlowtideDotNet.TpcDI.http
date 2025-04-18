@@ -1,0 +1,6 @@
+@FlowtideDotNet.TpcDI_HostAddress = http://localhost:5140
+
+GET {{FlowtideDotNet.TpcDI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
