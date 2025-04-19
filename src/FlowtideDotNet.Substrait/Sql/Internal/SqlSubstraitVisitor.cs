@@ -795,9 +795,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 
+                Expressions.Expression? filter = default;
+                if (foundMeasure.Filter != null)
+                {
+                    filter = exprVisitor.Visit(foundMeasure.Filter, parent.EmitData).Expr;
+                }
+
                 var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
+                    Filter = filter,
                     Measure = aggregateResponse.AggregateFunction
                 });
                 aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}", aggregateResponse.Type);
