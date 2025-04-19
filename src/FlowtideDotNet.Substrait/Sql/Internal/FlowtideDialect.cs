@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
     {
 
         public override bool SupportsConnectBy => true;
-
+        public override bool SupportsFilterDuringAggregation => true;
 
         private static bool TryParseSubstream(Parser parser)
         {
