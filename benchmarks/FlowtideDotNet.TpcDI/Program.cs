@@ -33,6 +33,9 @@ var finwiresql = File.ReadAllText("./finwire.sql");
 var industrysql = File.ReadAllText("./industry.sql");
 var statustypesql = File.ReadAllText("./statustype.sql");
 var dimcompanysql = File.ReadAllText("./dimcompany.sql");
+var dimsecuritysql = File.ReadAllText("./dimsecurity.sql");
+var financialsql = File.ReadAllText("./financial.sql");
+var dimtradesql = File.ReadAllText("./dimtrade.sql");
 
 
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
@@ -46,7 +49,10 @@ var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     finwiresql,
     industrysql,
     statustypesql,
-    dimcompanysql);
+    dimcompanysql,
+    dimsecuritysql,
+    financialsql,
+    dimtradesql);
 
 var filesLocation = Files.Of.LocalDisk("./inputdata");
 
@@ -55,20 +61,74 @@ builder.Services.AddFlowtideStream("stream")
     .WriteCheckFailuresToLogger()
     .AddConnectors(c =>
     {
-        c.AddCsvFileSource("statustype_raw", new CsvFileOptions()
+        c.AddCsvFileSource("trade_raw", new CsvFileOptions()
         {
+            Delimiter = "|",
             CsvColumns = new List<string>()
             {
-                "ST_ID",
-                "ST_NAME"
+                "T_ID",
+                "T_DTS",
+                "T_ST_ID",
+                "T_TT_ID",
+                "T_IS_CASH",
+                "T_S_SYMB",
+                "T_QTY",
+                "T_BID_PRICE",
+                "T_CA_ID",
+                "T_EXEC_NAME",
+                "T_TRADE_PRICE",
+                "T_CHRG",
+                "T_COMM",
+                "T_TAX"
             },
             FileStorage = filesLocation,
             GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
             {
-                "Batch1/StatusType.txt"
+                "Batch1/Trade.txt"
             }),
-            Delimiter = "|"
+            OutputSchema = new NamedStruct()
+            {
+                Names = new List<string>()
+                {
+                    "T_ID",
+                    "T_DTS",
+                    "T_ST_ID",
+                    "T_TT_ID",
+                    "T_IS_CASH",
+                    "T_S_SYMB",
+                    "T_QTY",
+                    "T_BID_PRICE",
+                    "T_CA_ID",
+                    "T_EXEC_NAME",
+                    "T_TRADE_PRICE",
+                    "T_CHRG",
+                    "T_COMM",
+                    "T_TAX"
+                },
+                Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>()
+                    {
+                        new Int64Type(),
+                        new TimestampType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new Int64Type(),
+                        new DecimalType(),
+                        new StringType(),
+                        new StringType(),
+                        new DecimalType(),
+                        new DecimalType(),
+                        new DecimalType(),
+                        new DecimalType(),
+                    }
+                }
+            }
         });
+        c.AddTradeHistoryData(filesLocation);
+        c.AddStatusTypeData(filesLocation);
         c.AddIndustryData(filesLocation);
         c.AddFinwireData(filesLocation);
         c.AddHrData(filesLocation);
