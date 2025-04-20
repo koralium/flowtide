@@ -475,7 +475,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     return new
                     {
                         UserKey = x.Key,
-                        MinVal = order.Orderdate
+                        MaxVal = order.Orderdate
                     };
                 })
             );
