@@ -1,5 +1,5 @@
 ﻿
-CREATE VIEW tradehistory_base AS
+CREATE VIEW tradehistory_joined AS
 SELECT
   T_ID as TradeID,
   th.TH_ST_ID as StatusID,
@@ -19,8 +19,35 @@ FROM trade_raw t
 INNER JOIN tradehistory_raw th
 ON t.T_ID = th.TH_T_ID;
 
+CREATE VIEW trade_latest AS
+SELECT
+  TradeID,
+  MAX_BY(named_struct(
+      'StatusID', StatusID,
+      'TradeTypeID', TradeTypeID,
+      'IsCash', IsCash,
+      'Symbol', Symbol,
+      'Quantity', Quantity,
+      'BidPrice', BidPrice,
+      'CustomerAccountId', CustomerAccountId,
+      'ExecName', ExecName,
+      'TradePrice', TradePrice,
+      'Charge', Charge,
+      'Commision', Commision,
+      'Tax', Tax
+    ), DTS) AS latest_state,
+  MIN(DTS) FILTER (
+      WHERE (StatusID = 'SBMT' AND TradeTypeID IN ('TMB', 'TMS'))
+         OR StatusID = 'PNDG'
+    ) AS RawCreateDTS,
+  MIN(DTS) FILTER (
+      WHERE StatusID IN ('CMPT', 'CNCL')
+    ) AS RawCloseDTS
+FROM tradehistory_joined
+GROUP BY TradeID;
+
 INSERT INTO console
-SELECT * FROM tradehistory_base;
+SELECT * FROM trade_latest;
 
 
 
