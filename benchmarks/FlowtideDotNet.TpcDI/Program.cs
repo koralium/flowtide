@@ -24,6 +24,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 var datesql = File.ReadAllText("./dimdate.sql");
 var taxratesql = File.ReadAllText("./taxrate.sql");
+var tradetypesql = File.ReadAllText("./tradetype.sql");
 var customerbasesql = File.ReadAllText("./customerbase.sql");
 var prospectsql = File.ReadAllText("./prospect.sql");
 var dimcustomersql = File.ReadAllText("./dimcustomer.sql");
@@ -36,11 +37,16 @@ var dimcompanysql = File.ReadAllText("./dimcompany.sql");
 var dimsecuritysql = File.ReadAllText("./dimsecurity.sql");
 var financialsql = File.ReadAllText("./financial.sql");
 var dimtradesql = File.ReadAllText("./dimtrade.sql");
+var factcashbalancesql = File.ReadAllText("./factcashbalances.sql");
+var factholdingssql = File.ReadAllText("./factholdings.sql");
+var factwatchessql = File.ReadAllText("./factwatches.sql");
+//var factmarkethistorysql = File.ReadAllText("./factmarkethistory.sql");
 
 
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     datesql,
     taxratesql,
+    tradetypesql,
     customerbasesql,
     prospectsql,
     dimcustomersql,
@@ -52,7 +58,11 @@ var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     dimcompanysql,
     dimsecuritysql,
     financialsql,
-    dimtradesql);
+    dimtradesql,
+    factcashbalancesql,
+    factholdingssql,
+    factwatchessql);
+    //factmarkethistorysql);
 
 var filesLocation = Files.Of.LocalDisk("./inputdata");
 
@@ -61,72 +71,53 @@ builder.Services.AddFlowtideStream("stream")
     .WriteCheckFailuresToLogger()
     .AddConnectors(c =>
     {
-        c.AddCsvFileSource("trade_raw", new CsvFileOptions()
+        c.AddCsvFileSource("dailymarket_raw", new CsvFileOptions()
         {
-            Delimiter = "|",
             CsvColumns = new List<string>()
             {
-                "T_ID",
-                "T_DTS",
-                "T_ST_ID",
-                "T_TT_ID",
-                "T_IS_CASH",
-                "T_S_SYMB",
-                "T_QTY",
-                "T_BID_PRICE",
-                "T_CA_ID",
-                "T_EXEC_NAME",
-                "T_TRADE_PRICE",
-                "T_CHRG",
-                "T_COMM",
-                "T_TAX"
+                "DM_DATE",
+                "DM_S_SYMB",
+                "DM_CLOSE",
+                "DM_HIGH",
+                "DM_LOW",
+                "DM_VOL"
             },
             FileStorage = filesLocation,
             GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
             {
-                "Batch1/Trade.txt"
+                "Batch1/DailyMarket.txt"
             }),
+            Delimiter = "|",
             OutputSchema = new NamedStruct()
             {
                 Names = new List<string>()
                 {
-                    "T_ID",
-                    "T_DTS",
-                    "T_ST_ID",
-                    "T_TT_ID",
-                    "T_IS_CASH",
-                    "T_S_SYMB",
-                    "T_QTY",
-                    "T_BID_PRICE",
-                    "T_CA_ID",
-                    "T_EXEC_NAME",
-                    "T_TRADE_PRICE",
-                    "T_CHRG",
-                    "T_COMM",
-                    "T_TAX"
+                    "DM_DATE",
+                    "DM_S_SYMB",
+                    "DM_CLOSE",
+                    "DM_HIGH",
+                    "DM_LOW",
+                    "DM_VOL"
                 },
                 Struct = new Struct()
                 {
                     Types = new List<SubstraitBaseType>()
                     {
-                        new Int64Type(),
                         new TimestampType(),
                         new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new Int64Type(),
-                        new DecimalType(),
-                        new StringType(),
-                        new StringType(),
-                        new DecimalType(),
-                        new DecimalType(),
-                        new DecimalType(),
-                        new DecimalType(),
+                        new Fp64Type(),
+                        new Fp64Type(),
+                        new Fp64Type(),
+                        new Int64Type()
                     }
                 }
             }
         });
+        c.AddWatchHistoryData(filesLocation);
+        c.AddHoldingHistoryData(filesLocation);
+        c.AddCashTransactionData(filesLocation);
+        c.AddTradeTypeData(filesLocation);
+        c.AddTradeData(filesLocation);
         c.AddTradeHistoryData(filesLocation);
         c.AddStatusTypeData(filesLocation);
         c.AddIndustryData(filesLocation);
@@ -137,12 +128,17 @@ builder.Services.AddFlowtideStream("stream")
         c.AddDatesData(filesLocation);
         c.AddProspectData(filesLocation);
 
+        c.AddCatalog("sink", (sink) =>
+        {
+            sink.AddBlackholeSink("*");
+        });
         c.AddConsoleSink("console");
         c.AddBlackholeSink("blackhole");
     })
     .AddStorage(s =>
     {
-        s.AddTemporaryDevelopmentStorage();
+        s.AddFasterKVFileSystemStorage("./tmpdir");
+        //s.AddTemporaryDevelopmentStorage();
     });
 
 var app = builder.Build();

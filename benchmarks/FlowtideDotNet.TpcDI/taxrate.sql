@@ -5,5 +5,5 @@ SELECT
   TX_RATE
 FROM taxrate_raw;
 
-INSERT INTO blackhole
+INSERT INTO sink.TaxRate
 SELECT * FROM TaxRateView;

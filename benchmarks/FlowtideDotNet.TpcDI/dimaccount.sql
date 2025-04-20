@@ -13,7 +13,7 @@ SELECT
     ELSE 'INACTIVE'
   END as Status,
   acc.CA_ID as AccountID, 
-  c.Customer.C_ID as CustomerID,
+  CAST(c.Customer.C_ID AS INT) as CustomerID,
   CAST(acc.CA_B_ID AS INT) as BrokerID,
   acc.CA_TAX_ST as TaxStatus, 
   acc.CA_NAME as AccountDesc,
@@ -109,5 +109,5 @@ FROM (
 	accounts_base
 ) a;
 
-INSERT INTO blackhole
+INSERT INTO sink.DimAccount
 SELECT * FROM DimAccountView;

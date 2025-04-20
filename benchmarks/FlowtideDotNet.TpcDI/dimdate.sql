@@ -21,5 +21,5 @@ SELECT
 	HolidayFlag
 FROM dates_raw;
 
-INSERT INTO blackhole
+INSERT INTO sink.DimDate
 SELECT * FROM DimDateView;

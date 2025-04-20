@@ -22,5 +22,5 @@ FROM hr_raw e
 JOIN mindate md ON 1 = 1
 WHERE e.EmployeeJobCode = 314; 
 
-INSERT INTO blackhole
+INSERT INTO sink.DimBroker
 SELECT BrokerID FROM DimBrokerView;

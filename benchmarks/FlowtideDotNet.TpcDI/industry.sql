@@ -5,5 +5,5 @@ SELECT
   IN_SC_ID
 FROM industry_raw;
 
-INSERT INTO blackhole
+INSERT INTO sink.Industry
 SELECT * FROM IndustryView;

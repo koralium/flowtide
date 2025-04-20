@@ -67,6 +67,5 @@ SELECT
   EndDate
 FROM DimCompanyView;
 
-INSERT INTO blackhole
-SELECT * FROM DimCompanyView
-WHERE companyId = '0000000973';
+INSERT INTO sink.DimCompany
+SELECT * FROM DimCompanyView;

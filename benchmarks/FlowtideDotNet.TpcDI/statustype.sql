@@ -4,5 +4,5 @@ SELECT
   ST_NAME
 FROM statustype_raw;
 
-INSERT INTO blackhole
+INSERT INTO sink.StatusType
 SELECT * FROM StatusTypeView;

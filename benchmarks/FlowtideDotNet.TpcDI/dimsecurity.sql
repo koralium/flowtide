@@ -86,5 +86,5 @@ FROM (
 	security_base
 ) s;
 
-INSERT INTO blackhole
+INSERT INTO sink.DimSecurity
 SELECT * FROM DimSecurityView;

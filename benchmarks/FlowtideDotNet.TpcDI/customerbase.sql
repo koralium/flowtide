@@ -3,7 +3,7 @@ SELECT * FROM customers_history;
 
 CREATE VIEW customers_all_events AS
 SELECT
-  c.Customer.C_ID as CustomerID,
+  CAST(c.Customer.C_ID AS INT) as CustomerID,
   c.Customer.C_TAX_ID AS TaxID,
   CASE 
     WHEN c.ActionType IN ('NEW', 'UPDCUST') THEN 'ACTIVE'

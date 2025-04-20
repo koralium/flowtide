@@ -14,7 +14,8 @@ SELECT
   T_TRADE_PRICE as TradePrice,
   T_CHRG as Charge,
   T_COMM as Commision,
-  T_TAX as Tax
+  T_TAX as Tax,
+  1 as BatchID
 FROM trade_raw t
 INNER JOIN tradehistory_raw th
 ON t.T_ID = th.TH_T_ID;
@@ -22,6 +23,7 @@ ON t.T_ID = th.TH_T_ID;
 CREATE VIEW trade_latest AS
 SELECT
   TradeID,
+  -- Get the latest state of each trade
   MAX_BY(named_struct(
       'StatusID', StatusID,
       'TradeTypeID', TradeTypeID,
@@ -42,20 +44,48 @@ SELECT
     ) AS RawCreateDTS,
   MIN(DTS) FILTER (
       WHERE StatusID IN ('CMPT', 'CNCL')
-    ) AS RawCloseDTS
+    ) AS RawCloseDTS,
+  -- Find the first occurance for PTS (used to join dim tables) and batchId since it should be the first occurance
+  MIN_BY(named_struct('DTS', DTS, 'BatchID', BatchID), DTS) as FirstOccurance
 FROM tradehistory_joined
 GROUP BY TradeID;
 
-INSERT INTO console
-SELECT * FROM trade_latest;
+CREATE VIEW DimTradeView AS
+SELECT
+  TradeID,
+  da.SK_BrokerID,
+  CAST(strftime(RawCreateDTS, '%Y%m%d') as INT) as SK_CreateDateID,
+  CAST(strftime(RawCreateDTS, '%H%M%S') as INT) as SK_CreateTimeID,
+  CAST(strftime(RawCloseDTS, '%Y%m%d') as INT) as SK_CloseDateID,
+  CAST(strftime(RawCloseDTS, '%H%M%S') as INT) as SK_CloseTimeID,
+  st.ST_NAME as Status,
+  tt.TT_NAME as Type,
+  latest_state.IsCash as IsCashFlag,
+  ds.SK_SecurityID as SK_SecurityID,
+  ds.SK_CompanyID as SK_CompanyID,
+  latest_state.Quantity,
+  latest_state.BidPrice,
+  da.SK_AccountID as SK_AccountID,
+  da.SK_CustomerID as SK_CustomerID,
+  latest_state.ExecName as ExecutedBy,
+  latest_state.TradePrice,
+  latest_state.Charge as Fee,
+  latest_state.Commision,
+  latest_state.Tax,
+  FirstOccurance.BatchID
+FROM trade_latest tl
+INNER JOIN StatusTypeView st
+ON latest_state.StatusID = st.ST_ID
+INNER JOIN TradeTypeView tt
+ON latest_state.TradeTypeID = tt.TT_ID
+INNER JOIN DimSecurityView ds
+ON latest_state.Symbol = ds.Symbol AND
+FirstOccurance.DTS >= ds.EffectiveDate AND
+FirstOccurance.DTS <= ds.EndDate
+INNER JOIN DimAccountView da
+ON latest_state.CustomerAccountId = da.AccountID AND
+FirstOccurance.DTS >= da.EffectiveDate AND
+FirstOccurance.DTS <= da.EndDate;
 
-
-
---  INSERT INTO blackhole
---  SELECT
---	tradeid,
---	create_ts,
---	max_time,
---	status
---	FROM tradehistory_base
---	WHERE create_ts != max_time;
+INSERT INTO sink.DimTrade
+SELECT * FROM DimTradeView;

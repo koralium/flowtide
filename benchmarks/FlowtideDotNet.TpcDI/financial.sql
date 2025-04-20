@@ -43,5 +43,5 @@ AND c.EffectiveDate <= f.PTS
 AND c.EndDate > f.PTS;
 
 
-INSERT INTO blackhole
+INSERT INTO sink.Financial
 SELECT * FROM FinancialView;

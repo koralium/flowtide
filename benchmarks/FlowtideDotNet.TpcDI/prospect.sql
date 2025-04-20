@@ -47,5 +47,5 @@ ON
 	c.IsCurrent = true AND
 	c.Status = 'ACTIVE';
 
-INSERT INTO blackhole
+INSERT INTO sink.Prospect
 SELECT * FROM ProspectView;

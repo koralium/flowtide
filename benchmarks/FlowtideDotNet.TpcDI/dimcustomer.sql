@@ -43,5 +43,5 @@ ON
 	UPPER(p.PostalCode) = UPPER(c.PostalCode) AND
 	c.IsCurrent = true;
 
-INSERT INTO blackhole
+INSERT INTO sink.DimCustomer
 SELECT * FROM DimCustomerView;
