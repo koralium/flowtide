@@ -725,6 +725,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterSingleVariableFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new AnyType());
             RegisterSingleVariableFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, new AnyType());
+            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
+            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 
             sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
             {
@@ -1212,6 +1214,49 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
+        }
+
+        private static void RegisterTwoVariableAggregateFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType> returnTypeFunc)
+        {
+            sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg1 && arg1.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr1 &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr1 = visitor.Visit(funcExpr1.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+
+                    var returnType = returnTypeFunc(argExpr1.Type, argExpr2.Type);
+                    return new AggregateResponse(
+                        new AggregateFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr1.Expr, argExpr2.Expr }
+                        },
+                        returnType
+                        );
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
             });
         }
 
