@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             var methodInfo = typeof(ColumnMinMaxByAggregation).GetMethod(nameof(DoMinMaxBy), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.MakeGenericMethod(inputType1, inputType2);
 
             var ev1 = System.Linq.Expressions.Expression.Parameter(inputType1, "ev1");
-            var ev2 = System.Linq.Expressions.Expression.Parameter(inputType1, "ev2");
+            var ev2 = System.Linq.Expressions.Expression.Parameter(inputType2, "ev2");
             var state = System.Linq.Expressions.Expression.Parameter(typeof(ColumnReference), "state");
             var weight = System.Linq.Expressions.Expression.Parameter(typeof(long), "weight");
             var singleton = System.Linq.Expressions.Expression.Parameter(typeof(MinMaxByColumnAggregationSingleton), "singleton");
