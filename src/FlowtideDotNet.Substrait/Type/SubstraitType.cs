@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Substrait.Type
         Map = 10,
         List = 11,
         Binary = 12,
-        TimestampTz = 13
+        TimestampTz = 13,
+        Null = 14
     }
 }
