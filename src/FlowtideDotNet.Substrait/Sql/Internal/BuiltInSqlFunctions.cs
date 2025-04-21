@@ -876,6 +876,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, (p1) => new TimestampType());
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_extract", FunctionsDatetime.Uri, FunctionsDatetime.Extract, (p1, p2) => new Int64Type());
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, p1 =>
             {

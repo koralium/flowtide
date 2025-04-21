@@ -14,8 +14,10 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Internal.StrftimeImpl;
 using FlowtideDotNet.Core.Flexbuffer;
+using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
+using System.Reflection;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -27,7 +29,103 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
 
-            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Extract, typeof(BuiltInDatetimeFunctions), nameof(ExtractImplementation));
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Extract,
+                (function, parameterInfo, visitor, functionServices) =>
+                {
+                    if (function.Arguments.Count != 2)
+                    {
+                        throw new InvalidOperationException("Extract function must have two arguments");
+                    }
+
+                    var componentArg = function.Arguments[0];
+                    var valueArg = function.Arguments[1];
+
+                    var valueExpr = visitor.Visit(valueArg, parameterInfo);
+
+                    if (valueExpr == null)
+                    {
+                        throw new InvalidOperationException("Value argument could not be compiled for extract");
+                    }
+
+                    if (componentArg is StringLiteral stringLiteral)
+                    {
+                        var component = stringLiteral.Value.ToUpper();
+
+                        switch (component)
+                        {
+                            case "YEAR":
+                                return CallExtractFunction(nameof(ExtractYearImplementation), valueExpr);
+                            case "ISO_YEAR":
+                                return CallExtractFunction(nameof(ExtractIsoYearImplementation), valueExpr);
+                            case "US_YEAR":
+                                return CallExtractFunction(nameof(ExtractUsYearImplementation), valueExpr);
+                            case "QUARTER":
+                                return CallExtractFunction(nameof(ExtractQuarterImplementation), valueExpr);
+                            case "MONTH":
+                                return CallExtractFunction(nameof(ExtractMonthImplementation), valueExpr);
+                            case "DAY":
+                                return CallExtractFunction(nameof(ExtractDaysImplementation), valueExpr);
+                            case "DAY_OF_YEAR":
+                                return CallExtractFunction(nameof(ExtractDayOfYearImplementation), valueExpr);
+                            case "MONDAY_DAY_OF_WEEK":
+                                return CallExtractFunction(nameof(ExtractMondayDayOfWeekImplementation), valueExpr);
+                            case "SUNDAY_DAY_OF_WEEK":
+                                return CallExtractFunction(nameof(ExtractSundayDayOfWeekImplementation), valueExpr);
+                            case "MONDAY_WEEK":
+                                return CallExtractFunction(nameof(ExtractMondayWeekImplementation), valueExpr);
+                            case "SUNDAY_WEEK":
+                                return CallExtractFunction(nameof(ExtractSundayWeekImplementation), valueExpr);
+                            case "ISO_WEEK":
+                                return CallExtractFunction(nameof(ExtractWeekImplementation), valueExpr);
+                            case "US_WEEK":
+                                return CallExtractFunction(nameof(ExtractUsWeekImplementation), valueExpr);
+                            case "HOUR":
+                                return CallExtractFunction(nameof(ExtractHoursImplementation), valueExpr);
+                            case "SECOND":
+                                return CallExtractFunction(nameof(ExtractSecondImplementation), valueExpr);
+                            case "MINUTE":
+                                return CallExtractFunction(nameof(ExtractMinuteImplementation), valueExpr);
+                            case "MILLISECOND":
+                                return CallExtractFunction(nameof(ExtractMillisecondsImplementation), valueExpr);
+                            case "MICROSECOND":
+                                return CallExtractFunction(nameof(ExtractMicrosecondsImplementation), valueExpr);
+                            default:
+                                throw new InvalidOperationException($"Unknown component {component} for extract function");
+                        }
+                    }
+
+                    var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(ExtractImplementation), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                    var componentExpr = visitor.Visit(componentArg, parameterInfo);
+                    
+
+                    var genericMethod = method!.MakeGenericMethod(componentExpr!.Type, valueExpr!.Type);
+
+                    System.Linq.Expressions.Expression[] parameters = new System.Linq.Expressions.Expression[3];
+                    parameters[0] = componentExpr;
+                    parameters[1] = valueExpr;
+                    parameters[2] = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
+
+                    var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+                    return call;
+                });
+        }
+
+        private static System.Linq.Expressions.Expression CallExtractFunction(string methodName, System.Linq.Expressions.Expression valueExpr)
+        {
+            var method = typeof(BuiltInDatetimeFunctions).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException($"Method {methodName} not found");
+            }
+
+            var genericMethod = method!.MakeGenericMethod(valueExpr.Type);
+
+            System.Linq.Expressions.Expression[] parameters = [valueExpr, System.Linq.Expressions.Expression.Constant(new DataValueContainer())];
+
+            var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+            return call;
         }
 
         internal static IDataValue StrfTimeImplementation<T1, T2>(T1 value, T2 format, DataValueContainer result)
@@ -109,34 +207,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             result._type = ArrowTypeId.Null;
             return result;
         }
-
-        private enum DateComponent
-        {
-            YEAR,
-            ISO_YEAR,
-            US_YEAR,
-            QUARTER,
-            MONTH,
-            DAY,
-            DAY_OF_YEAR,
-            MONDAY_DAY_OF_WEEK,
-            SUNDAY_DAY_OF_WEEK,
-            MONDAY_WEEK,
-            SUNDAY_WEEK,
-            ISO_WEEK,
-            US_WEEK,
-            HOUR,
-            MINUTE,
-            SECOND,
-            MILLISECOND,
-            MICROSECOND,
-            NANOSECOND,
-            PICOSECOND,
-            SUBSECOND,
-            UNIX_TIME,
-            TIMEZONE_OFFSET
-        }
-
 
         internal static IDataValue ExtractImplementation<T1, T2>(T1 component, T2 value, DataValueContainer result)
             where T1 : IDataValue
