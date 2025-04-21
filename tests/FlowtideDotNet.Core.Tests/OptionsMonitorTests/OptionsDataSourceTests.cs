@@ -39,7 +39,6 @@ namespace FlowtideDotNet.Core.Tests.OptionsMonitorTests
         protected override void AddReadResolvers(IConnectorManager manager)
         {
             manager.AddOptionsSource<TestOptions>("testtable", options);
-            base.AddReadResolvers(manager);
         }
     }
 

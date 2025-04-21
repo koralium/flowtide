@@ -99,3 +99,33 @@ SELECT LAST_VALUE(column1) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETW
 -- Last value from start to current row ignoring nulls
 SELECT LAST_VALUE(column1) IGNORE NULLS OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 ```
+
+## Min By
+
+*This function does not have a substrait definition.*
+
+Returns the value of `x` associated with the minimum value of `y`. If there are no rows, a `NULL` value is returned. `MIN_BY` ignores any rows where `y` is `NULL`.
+
+This function **requires an ORDER BY clause** to establish row sequence and supports frame boundaries to control which rows are considered.
+
+### SQL Usage
+
+```sql
+SELECT min_by(x, y) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+SELECT min_by(x, y) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM ...
+```
+
+## Max By
+
+*This function does not have a substrait definition.*
+
+Returns the value of `x` associated with the maximum value of `y`. If there are no rows, a `NULL` value is returned. `MAX_BY` ignores any rows where `y` is `NULL`.
+
+This function **requires an ORDER BY clause** to establish row sequence and supports frame boundaries to control which rows are considered.
+
+### SQL Usage
+
+```sql
+SELECT max_by(x, y) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+SELECT max_by(x, y) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM ...
+```

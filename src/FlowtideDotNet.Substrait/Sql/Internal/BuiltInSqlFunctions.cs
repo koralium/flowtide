@@ -723,8 +723,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
             });
 
-            RegisterSingleVariableFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new AnyType());
-            RegisterSingleVariableFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, new AnyType());
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, p1 => p1);
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, p1 => p1);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 
@@ -875,23 +875,35 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.Uri, FunctionsString.ToJson);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, (p1) => new TimestampType());
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast);
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "list_first_difference", FunctionsList.Uri, FunctionsList.ListFirstDifference);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, p1 =>
+            {
+                return p1;
+            });
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "list_first_difference", FunctionsList.Uri, FunctionsList.ListFirstDifference, (list1type, list2type) => 
+            { 
+                if (list1type is ListType listType)
+                {
+                    return listType.ValueType;
+                }
+                return AnyType.Instance;
+            });
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.Uri, FunctionsString.StringJoin);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.Uri, FunctionsString.StringJoin, (p1, p2) => new StringType());
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_parse", FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_parse", FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, (p1, p2) => new TimestampType());
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
 
             // WindowFunction
-            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new AnyType(), true, false);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, (p1) => p1, true, false);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
-            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new AnyType(), true, true);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
@@ -1181,12 +1193,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
         }
 
-        private static void RegisterSingleVariableFunction(
+        private static void RegisterSingleVariableAggregateFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
             string extensionName,
-            SubstraitBaseType returnType)
+            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc)
         {
             sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1201,14 +1213,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    SubstraitBaseType returnType = returnTypeFunc(argExpr.Type);
 
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr }
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
                         returnType
                         );
@@ -1264,7 +1278,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
-            string extensionName)
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1279,7 +1294,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (typeFunc != null)
+                    {
+                        returnType = typeFunc(argExpr.Type);
+                    }
 
                     // For now, anytype is returned
                     return new ScalarResponse(
@@ -1287,9 +1309,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr }
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
-                        new AnyType()
+                        returnType
                         );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
@@ -1300,7 +1322,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
-            string extensionName)
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1320,8 +1343,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
                 argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (typeFunc != null)
+                    {
+                        returnType = typeFunc(argExpr.Type, argExpr2.Type);
+                    }
 
                     // For now, anytype is returned
                     return new ScalarResponse(
@@ -1329,9 +1359,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr }
                         },
-                        new AnyType()
+                        returnType
                         );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
@@ -1527,7 +1557,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             {
                                 returnType = expr.Type;
                             }
-                            else if (returnType != expr.Type)
+                            else if (returnType != expr.Type && expr.Type.Type != SubstraitType.Null)
                             {
                                 returnType = new AnyType();
                             }
@@ -1612,7 +1642,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string functionName,
             string extensionUri,
             string extensionName,
-            SubstraitBaseType returnType,
+            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
             bool supportRowBounds,
             bool requireOrderBy)
         {
@@ -1629,7 +1659,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
 
                     WindowBound? lowerBound = default;
                     WindowBound? upperBound = default;
@@ -1672,12 +1702,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         options.Add("NULL_TREATMENT", "IGNORE_NULLS");
                     }
 
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (returnTypeFunc != null)
+                    {
+                        returnType = returnTypeFunc(argExpr.Type);
+                    }
+
                     return new WindowResponse(
                         new WindowFunction()
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr },
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr },
                             LowerBound = lowerBound,
                             UpperBound = upperBound,
                             Options = options
@@ -1751,6 +1788,101 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     },
                     returnType
                     );
+                throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
+        }
+
+        private static void RegisterTwoVariableWindowFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
+            bool supportRowBounds,
+            bool requireOrderBy)
+        {
+            sqlFunctionRegister.RegisterWindowFunction(functionName, (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+
+                    WindowBound? lowerBound = default;
+                    WindowBound? upperBound = default;
+                    if (f.Over is WindowSpecType windowSpecType)
+                    {
+                        if (windowSpecType.Spec.OrderBy == null)
+                        {
+                            if (requireOrderBy)
+                            {
+                                throw new SubstraitParseException($"'{functionName}' function must have an order by clause");
+                            }
+                            // If order by is not set use the entire bounds
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new UnboundedWindowBound();
+                        }
+                        if (windowSpecType.Spec.WindowFrame != null)
+                        {
+                            if (windowSpecType.Spec.WindowFrame.Units == WindowFrameUnit.Rows)
+                            {
+                                if (!supportRowBounds)
+                                {
+                                    throw new SubstraitParseException($"'{functionName}' function does not support ROWS frame");
+                                }
+                                lowerBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.StartBound);
+                                upperBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.EndBound);
+                            }
+                        }
+                        // If no window frame, and order by is set, the default is unbounded lower and to current row
+                        else if (windowSpecType.Spec.OrderBy != null && supportRowBounds)
+                        {
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new CurrentRowWindowBound();
+                        }
+                    }
+
+                    var options = new SortedList<string, string>();
+
+                    if (f.NullTreatment is NullTreatment.IgnoreNulls)
+                    {
+                        options.Add("NULL_TREATMENT", "IGNORE_NULLS");
+                    }
+
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (returnTypeFunc != null)
+                    {
+                        returnType = returnTypeFunc(argExpr.Type, argExpr2.Type);
+                    }
+
+                    return new WindowResponse(
+                        new WindowFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr },
+                            LowerBound = lowerBound,
+                            UpperBound = upperBound,
+                            Options = options
+                        },
+                        returnType
+                        );
+                }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
             });
         }

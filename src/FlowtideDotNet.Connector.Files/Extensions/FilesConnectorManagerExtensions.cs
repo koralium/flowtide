@@ -57,6 +57,10 @@ namespace Microsoft.Extensions.DependencyInjection
                 outputSchema = new NamedStruct()
                 {
                     Names = columnNames,
+                    Struct = new Struct()
+                    {
+                        Types = columnNames.Select(x => (SubstraitBaseType)new StringType()).ToList()
+                    }
                 };
             }
 

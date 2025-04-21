@@ -56,7 +56,11 @@ namespace FlowtideDotNet.Substrait.Sql
             switch (binaryOp.Op)
             {
                 case BinaryOperator.Eq:
-                    if (left.Type.Type != AnyType.Instance.Type && right.Type.Type != AnyType.Instance.Type && left.Type.Type != right.Type.Type)
+                    if (left.Type.Type != AnyType.Instance.Type && 
+                        right.Type.Type != AnyType.Instance.Type && 
+                        left.Type.Type != right.Type.Type
+                        && left.Type.Type != SubstraitType.Null &&
+                        right.Type.Type != SubstraitType.Null)
                     {
                         throw new SubstraitParseException($"Missmatch type in equality: '{binaryOp.ToSql()}', type({left.Type.Type.ToString()}) = type({right.Type.Type.ToString()})");
                     }
@@ -418,7 +422,7 @@ namespace FlowtideDotNet.Substrait.Sql
             }
             if (literalValue.Value is Value.Null)
             {
-                return new ExpressionData(new NullLiteral(), "$null", new AnyType());
+                return new ExpressionData(new NullLiteral(), "$null", NullType.Instance);
             }
             if (literalValue.Value is Value.HexStringLiteral hexStringLiteral)
             {
@@ -460,7 +464,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var elseResult = Visit(caseExpression.ElseResult, state);
                 elseExpr = elseResult.Expr;
-                if (returnType != elseResult.Type)
+                if (returnType != elseResult.Type && elseResult.Type.Type != SubstraitType.Null)
                 {
                     returnType = new AnyType();
                 }
@@ -509,7 +513,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     expr.Expr
                 }
-            }, "$isnotnull", expr.Type);
+            }, "$isnotnull", new BoolType() { Nullable = true });
         }
 
         protected override ExpressionData VisitFloor(SqlParser.Ast.Expression.Floor floor, EmitData state)
