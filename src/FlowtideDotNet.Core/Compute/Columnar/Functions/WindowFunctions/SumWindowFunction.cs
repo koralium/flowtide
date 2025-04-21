@@ -131,6 +131,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     currentState._type = ArrowTypeId.Double;
                     currentState._doubleValue = new DoubleValue(floatCount);
                 }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = currentState.AsLong + (value.AsDecimal * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
+                }
             }
             else if (currentState.Type == ArrowTypeId.Double)
             {
@@ -146,6 +152,33 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     currentState._type = ArrowTypeId.Double;
                     currentState._doubleValue = new DoubleValue(count);
                 }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = (decimal)currentState.AsDouble + (value.AsDecimal * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
+                }
+            }
+            else if (currentState.Type == ArrowTypeId.Decimal128)
+            {
+                if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = currentState.AsDecimal + (value.AsDecimal * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
+                }
+                else if (value.Type == ArrowTypeId.Double)
+                {
+                    var count = currentState.AsDecimal + (decimal)(value.AsDouble * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
+                }
+                else if (value.Type == ArrowTypeId.Int64)
+                {
+                    var count = currentState.AsDecimal + (value.AsLong * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
+                }
             }
             else if (currentState.Type == ArrowTypeId.Null)
             {
@@ -160,6 +193,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     var count = (value.AsDouble * weight);
                     currentState._type = ArrowTypeId.Double;
                     currentState._doubleValue = new DoubleValue(count);
+                }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = (value.AsDecimal * weight);
+                    currentState._type = ArrowTypeId.Decimal128;
+                    currentState._decimalValue = new DecimalValue(count);
                 }
             }
         }

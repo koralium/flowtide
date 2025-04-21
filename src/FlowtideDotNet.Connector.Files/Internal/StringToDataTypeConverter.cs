@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         }
                         else
                         {
-                            if (double.TryParse(s, out double d))
+                            if (double.TryParse(s, CultureInfo.InvariantCulture, out double d))
                             {
                                 c.Add(new DoubleValue(d));
                             }
