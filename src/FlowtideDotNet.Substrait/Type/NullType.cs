@@ -12,22 +12,10 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    public enum SubstraitType
+    public class NullType : SubstraitBaseType
     {
-        String = 0,
-        Int32 = 1,
-        Any = 2,
-        Date = 3,
-        Fp64 = 4,
-        Int64 = 5,
-        Bool = 6,
-        Fp32 = 7,
-        Decimal = 8,
-        Struct = 9,
-        Map = 10,
-        List = 11,
-        Binary = 12,
-        TimestampTz = 13,
-        Null = 14
+        public static readonly NullType Instance = new NullType();
+
+        public override SubstraitType Type => SubstraitType.Null;
     }
 }
