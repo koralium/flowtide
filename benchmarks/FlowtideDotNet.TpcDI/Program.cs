@@ -131,11 +131,11 @@ builder.Services.AddFlowtideStream("stream")
 
         c.AddCatalog("sink", (sink) =>
         {
-            //sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
-            //{
-            //    StorageLocation = Files.Of.LocalDisk("./outputdata")
-            //});
-            sink.AddBlackholeSink("*");
+            sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
+            {
+                StorageLocation = Files.Of.LocalDisk("./outputdata")
+            });
+            //sink.AddBlackholeSink("*");
         });
         
         c.AddConsoleSink("console");
@@ -143,8 +143,8 @@ builder.Services.AddFlowtideStream("stream")
     })
     .AddStorage(s =>
     {
-        //s.AddFasterKVFileSystemStorage("./tmpdir");
-        s.AddTemporaryDevelopmentStorage();
+        s.AddFasterKVFileSystemStorage("./tmpdir");
+        //s.AddTemporaryDevelopmentStorage();
     });
 
 var app = builder.Build();

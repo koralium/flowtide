@@ -51,8 +51,5 @@ ON epyc.SK_CompanyID = ds.SK_CompanyID AND
 timestamp_extract('QUARTER', mh.DM_DATE) = timestamp_extract('QUARTER', epyc.FI_QTR_START_DATE) AND
 timestamp_extract('YEAR', mh.DM_DATE) = timestamp_extract('YEAR', epyc.FI_QTR_START_DATE);
 
-INSERT INTO blackhole
-SELECT * FROM earnings_per_year_company;
-
-INSERT INTO console
+INSERT INTO sink.FactMarketHistory
 SELECT * FROM FactMarketHistoryView;
