@@ -902,6 +902,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
             RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
@@ -1786,6 +1788,101 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     },
                     returnType
                     );
+                throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+            });
+        }
+
+        private static void RegisterTwoVariableWindowFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
+            bool supportRowBounds,
+            bool requireOrderBy)
+        {
+            sqlFunctionRegister.RegisterWindowFunction(functionName, (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 2)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly two arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+
+                    WindowBound? lowerBound = default;
+                    WindowBound? upperBound = default;
+                    if (f.Over is WindowSpecType windowSpecType)
+                    {
+                        if (windowSpecType.Spec.OrderBy == null)
+                        {
+                            if (requireOrderBy)
+                            {
+                                throw new SubstraitParseException($"'{functionName}' function must have an order by clause");
+                            }
+                            // If order by is not set use the entire bounds
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new UnboundedWindowBound();
+                        }
+                        if (windowSpecType.Spec.WindowFrame != null)
+                        {
+                            if (windowSpecType.Spec.WindowFrame.Units == WindowFrameUnit.Rows)
+                            {
+                                if (!supportRowBounds)
+                                {
+                                    throw new SubstraitParseException($"'{functionName}' function does not support ROWS frame");
+                                }
+                                lowerBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.StartBound);
+                                upperBound = ParseWindowBound(windowSpecType.Spec.WindowFrame.EndBound);
+                            }
+                        }
+                        // If no window frame, and order by is set, the default is unbounded lower and to current row
+                        else if (windowSpecType.Spec.OrderBy != null && supportRowBounds)
+                        {
+                            lowerBound = new UnboundedWindowBound();
+                            upperBound = new CurrentRowWindowBound();
+                        }
+                    }
+
+                    var options = new SortedList<string, string>();
+
+                    if (f.NullTreatment is NullTreatment.IgnoreNulls)
+                    {
+                        options.Add("NULL_TREATMENT", "IGNORE_NULLS");
+                    }
+
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (returnTypeFunc != null)
+                    {
+                        returnType = returnTypeFunc(argExpr.Type, argExpr2.Type);
+                    }
+
+                    return new WindowResponse(
+                        new WindowFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr },
+                            LowerBound = lowerBound,
+                            UpperBound = upperBound,
+                            Options = options
+                        },
+                        returnType
+                        );
+                }
                 throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
             });
         }

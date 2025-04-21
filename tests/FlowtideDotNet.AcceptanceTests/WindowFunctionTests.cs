@@ -1393,5 +1393,271 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Assert.Equal("'last_value' function must have an order by clause", ex.Message);
         }
+
+        private record MinByResult(string? companyId, int orderkey, int userkey, long value);
+
+        [Fact]
+        public async Task MinByNoNullsBoundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                min_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order}).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var values = new Queue<long>();
+                    var min = long.MaxValue;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        values.Enqueue(sorted[i].order.UserKey);
+                        min = Math.Min(min, sorted[i].order.UserKey);
+                        while (values.Count > 5)
+                        {
+                            var dequeued = values.Dequeue();
+                            if (dequeued == min)
+                            {
+                                min = long.MaxValue;
+                                foreach (var v in values)
+                                {
+                                    min = Math.Min(min, v);
+                                }
+                            }
+                        }
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, min));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MinByNoNullsUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                min_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order }).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var min = long.MaxValue;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        min = Math.Min(min, sorted[i].order.UserKey);
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, min));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MinByNoNullsUnboundedStartToUnboundedEnd()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                min_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order }).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var min = long.MaxValue;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        min = Math.Min(min, sorted[i].order.UserKey);
+                    }
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, min));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MaxByNoNullsBoundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                max_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order }).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var values = new Queue<long>();
+                    var max = long.MinValue;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        values.Enqueue(sorted[i].order.UserKey);
+                        max = Math.Max(max, sorted[i].order.UserKey);
+                        while (values.Count > 5)
+                        {
+                            var dequeued = values.Dequeue();
+                            if (dequeued == max)
+                            {
+                                max = long.MinValue;
+                                foreach (var v in values)
+                                {
+                                    max = Math.Max(max, v);
+                                }
+                            }
+                        }
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, max));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MaxByNoNullsUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                max_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order }).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var max = long.MinValue;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        max = Math.Max(max, sorted[i].order.UserKey);
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, max));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task MaxByNoNullsUnboundedStartToUnboundedEnd()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                u.CompanyId,
+                o.OrderKey,
+                o.UserKey,
+                max_by(o.UserKey, o.UserKey) OVER (PARTITION BY u.CompanyId ORDER BY OrderKey ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as value
+            FROM orders o
+            INNER JOIN users u
+            ON o.userkey = u.userkey
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Orders.Join(Users, x => x.UserKey, x => x.UserKey, (order, user) => new { user, order }).GroupBy(x => x.user.CompanyId)
+                .SelectMany(x =>
+                {
+                    var sorted = x.OrderBy(x => x.order.OrderKey).ToList();
+                    var max = long.MinValue ;
+                    List<MinByResult> output = new List<MinByResult>();
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        max = Math.Max(max, sorted[i].order.UserKey);
+                    }
+
+                    for (int i = 0; i < sorted.Count; i++)
+                    {
+                        output.Add(new MinByResult(sorted[i].user.CompanyId, sorted[i].order.OrderKey, sorted[i].order.UserKey, max));
+                    }
+
+                    return output;
+                });
+
+            AssertCurrentDataEqual(expected);
+        }
     }
 }
