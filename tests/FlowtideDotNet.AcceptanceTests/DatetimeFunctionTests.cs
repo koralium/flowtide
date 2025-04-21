@@ -208,5 +208,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
             );
         }
+
+        [Fact]
+        public async Task TimestampExtract()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                timestamp_extract('DAY', Orderdate) as days
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    days = o.Orderdate.Day
+                })
+                );
+        }
     }
 }
