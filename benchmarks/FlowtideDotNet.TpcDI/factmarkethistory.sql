@@ -31,6 +31,7 @@ SELECT
   ds.SK_SecurityID,
   ds.SK_CompanyID,
   CAST(strftime(mh.DM_DATE, '%Y%m%d') as INT) as SK_DateID,
+  mh.ClosePrice / YEAR_FI_BASIC_EPS as PERatio,
   mh.DM_S_SYMB,
   mh.YearHigh.high as FiftyTwoWeekHigh,
   CAST(strftime(mh.YearHigh.date, '%Y%m%d') as INT) as SK_FiftyTwoWeekHighDate,
@@ -44,7 +45,11 @@ FROM markethistory_base mh
 INNER JOIN DimSecurityView ds
 ON ds.Symbol = mh.DM_S_SYMB AND
 mh.DM_DATE >= ds.EffectiveDate AND
-mh.DM_DATE <= ds.EndDate;
+mh.DM_DATE <= ds.EndDate
+LEFT JOIN earnings_per_year_company epyc
+ON epyc.SK_CompanyID = ds.SK_CompanyID AND
+timestamp_extract('QUARTER', mh.DM_DATE) = timestamp_extract('QUARTER', epyc.FI_QTR_START_DATE) AND
+timestamp_extract('YEAR', mh.DM_DATE) = timestamp_extract('YEAR', epyc.FI_QTR_START_DATE);
 
 INSERT INTO blackhole
 SELECT * FROM earnings_per_year_company;
