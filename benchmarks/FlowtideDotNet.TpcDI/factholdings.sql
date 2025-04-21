@@ -16,6 +16,6 @@ INNER JOIN DimTradeView dt
 ON hh.HH_T_ID = dt.TradeID;
 
 
-INSERT INTO blackhole
+INSERT INTO sink.FactHoldings
 SELECT * FROM FactHoldingsView;
 

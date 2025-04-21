@@ -65,5 +65,5 @@ ON w.W_S_SYMB = ds.Symbol AND
 w.dts >= ds.EffectiveDate AND
 w.dts <= ds.EndDate;
 
-INSERT INTO blackhole
+INSERT INTO sink.FactWatches
 SELECT * FROM FactWatches;

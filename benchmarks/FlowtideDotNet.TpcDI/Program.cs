@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Type;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.TpcDI.Extensions;
 using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -130,15 +131,20 @@ builder.Services.AddFlowtideStream("stream")
 
         c.AddCatalog("sink", (sink) =>
         {
-            sink.AddBlackholeSink("*");
+            sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
+            {
+                StorageLocation = Files.Of.LocalDisk("./outputdata")
+            });
+            //sink.AddBlackholeSink("*");
         });
+        
         c.AddConsoleSink("console");
         c.AddBlackholeSink("blackhole");
     })
     .AddStorage(s =>
     {
-        s.AddFasterKVFileSystemStorage("./tmpdir");
-        //s.AddTemporaryDevelopmentStorage();
+        //s.AddFasterKVFileSystemStorage("./tmpdir");
+        s.AddTemporaryDevelopmentStorage();
     });
 
 var app = builder.Build();
