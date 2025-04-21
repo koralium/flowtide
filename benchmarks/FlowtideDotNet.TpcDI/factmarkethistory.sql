@@ -9,12 +9,12 @@ ON fv.SK_CompanyID = dc.SK_CompanyID;
 
 CREATE VIEW markethistory_base AS
 SELECT
-  --ds.SK_SecurityID,
-  --ds.SK_CompanyID,
+  dm.DM_S_SYMB as DM_S_SYMB,
   DM_CLOSE as ClosePrice,
   DM_HIGH as DayHigh,
   DM_LOW as DayLow,
   DM_VOL as Volume,
+  DM_DATE as DM_DATE,
   min_by(
 	  named_struct(
 		  'low', dm.DM_LOW, 
@@ -25,13 +25,29 @@ SELECT
 		  'date', dm.DM_DATE
 	  ), DM_HIGH) OVER (PARTITION BY dm.DM_S_SYMB ORDER BY dm.DM_DATE ROWS BETWEEN 364 PRECEDING AND CURRENT ROW) as YearHigh
 FROM dailymarket_raw dm;
---INNER JOIN DimSecurityView ds
---ON ds.Symbol = dm.DM_S_SYMB AND
---dm.DM_DATE >= ds.EffectiveDate AND
---dm.DM_DATE <= ds.EndDate;
+
+CREATE VIEW FactMarketHistoryView AS
+SELECT
+  ds.SK_SecurityID,
+  ds.SK_CompanyID,
+  CAST(strftime(mh.DM_DATE, '%Y%m%d') as INT) as SK_DateID,
+  mh.DM_S_SYMB,
+  mh.YearHigh.high as FiftyTwoWeekHigh,
+  CAST(strftime(mh.YearHigh.date, '%Y%m%d') as INT) as SK_FiftyTwoWeekHighDate,
+  mh.YearLow.low as FiftyTwoWeekLow,
+  CAST(strftime(mh.YearLow.date, '%Y%m%d') as INT) as SK_FiftyTwoWeekLowDate,
+  ClosePrice,
+  DayHigh,
+  DayLow,
+  Volume
+FROM markethistory_base mh
+INNER JOIN DimSecurityView ds
+ON ds.Symbol = mh.DM_S_SYMB AND
+mh.DM_DATE >= ds.EffectiveDate AND
+mh.DM_DATE <= ds.EndDate;
 
 INSERT INTO blackhole
 SELECT * FROM earnings_per_year_company;
 
 INSERT INTO console
-SELECT * FROM markethistory_base;
+SELECT * FROM FactMarketHistoryView;

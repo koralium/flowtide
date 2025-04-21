@@ -41,7 +41,7 @@ var dimtradesql = File.ReadAllText("./dimtrade.sql");
 var factcashbalancesql = File.ReadAllText("./factcashbalances.sql");
 var factholdingssql = File.ReadAllText("./factholdings.sql");
 var factwatchessql = File.ReadAllText("./factwatches.sql");
-//var factmarkethistorysql = File.ReadAllText("./factmarkethistory.sql");
+var factmarkethistorysql = File.ReadAllText("./factmarkethistory.sql");
 
 
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
@@ -62,8 +62,8 @@ var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     dimtradesql,
     factcashbalancesql,
     factholdingssql,
-    factwatchessql);
-    //factmarkethistorysql);
+    factwatchessql,
+    factmarkethistorysql);
 
 var filesLocation = Files.Of.LocalDisk("./inputdata");
 
@@ -131,11 +131,11 @@ builder.Services.AddFlowtideStream("stream")
 
         c.AddCatalog("sink", (sink) =>
         {
-            sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
-            {
-                StorageLocation = Files.Of.LocalDisk("./outputdata")
-            });
-            //sink.AddBlackholeSink("*");
+            //sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
+            //{
+            //    StorageLocation = Files.Of.LocalDisk("./outputdata")
+            //});
+            sink.AddBlackholeSink("*");
         });
         
         c.AddConsoleSink("console");
