@@ -15,7 +15,6 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Internal.StrftimeImpl;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using Microsoft.VisualBasic;
 using System.Globalization;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
@@ -203,19 +202,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 return ExtractUsWeekImplementation(value, result);
             }
+            else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("HOUR"u8) == 0)
+            {
+                return ExtractHoursImplementation(value, result);
+            }
             else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("SECOND"u8) == 0)
             {
                 return ExtractSecondImplementation(value, result);
             }
-            
-            
             else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("MINUTE"u8) == 0)
             {
                 return ExtractMinuteImplementation(value, result);
             }
-            else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("MILLISECONDS"u8) == 0)
+            else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("MILLISECOND"u8) == 0)
             {
                 return ExtractMillisecondsImplementation(value, result);
+            }
+            else if (componentSpan.CompareToOrdinalIgnoreCaseUtf8("MICROSECOND"u8) == 0)
+            {
+                return ExtractMicrosecondsImplementation(value, result);
             }
 
             result._type = ArrowTypeId.Null;
@@ -393,6 +398,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
+        internal static IDataValue ExtractMicrosecondsImplementation<T1>(T1 value, DataValueContainer result)
+            where T1 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var dt = value.AsTimestamp.ToDateTimeOffset();
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(dt.Microsecond);
+            return result;
+        }
+
         internal static IDataValue ExtractDaysImplementation<T1>(T1 value, DataValueContainer result)
             where T1 : IDataValue
         {
@@ -406,6 +427,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(dt.Day);
+            return result;
+        }
+
+        internal static IDataValue ExtractHoursImplementation<T1>(T1 value, DataValueContainer result)
+            where T1 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var dt = value.AsTimestamp.ToDateTimeOffset();
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(dt.Hour);
             return result;
         }
 
@@ -466,8 +503,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            // Return the number of the week within the year. First week starts on first Monday of January.
-
             var dt = value.AsTimestamp.ToDateTimeOffset();
 
             int lastYear = dt.Year;
@@ -503,8 +538,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-
-            // Return the number of the week within the year. First week starts on first Monday of January.
 
             var dt = value.AsTimestamp.ToDateTimeOffset();
 
@@ -544,13 +577,32 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            // Return the number of the week within the year. First week starts on first Monday of January.
-
             var dt = value.AsTimestamp.ToDateTimeOffset();
 
-            var firstDay = GetFirstDayOfWeekSunday(dt);
-            DateTimeOffset lastWednesdayOfDecember = GetLastWednesdayOfDecember(firstDay.Year);
+            DateTime weekStart = dt.Date.AddDays(-(int)dt.DayOfWeek);
 
+            DateTime weekThursday = weekStart.AddDays(4);
+            var epiYear = weekThursday.Year;
+
+            DateTime jan1 = new DateTime(epiYear, 1, 1);
+            DateTime firstSunday = jan1.AddDays(-(int)jan1.DayOfWeek);
+
+            int janDays = 0;
+            for (int i = 0; i < 7; i++)
+            {
+                if (firstSunday.AddDays(i).Month == 1)
+                    janDays++;
+            }
+
+            if (janDays < 4)
+            {
+                firstSunday = firstSunday.AddDays(7);
+            }
+
+            int weekNumber = ((weekStart - firstSunday).Days / 7) + 1;
+
+            result._type = ArrowTypeId.Int64;
+            result._int64Value = new Int64Value(weekNumber);
             return result;
         }
     }
