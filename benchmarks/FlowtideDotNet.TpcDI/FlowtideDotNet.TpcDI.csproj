@@ -13,64 +13,64 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="customerbase.sql">
+    <None Update="sql\preprocess\customerbase.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="customers.xsd">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimaccount.sql">
+    <None Update="sql\dimensions\dimaccount.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimbroker.sql">
+    <None Update="sql\dimensions\dimbroker.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimcompany.sql">
+    <None Update="sql\dimensions\dimcompany.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimcustomer.sql">
+    <None Update="sql\dimensions\dimcustomer.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimdate.sql">
+    <None Update="sql\dimensions\dimdate.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimsecurity.sql">
+    <None Update="sql\dimensions\dimsecurity.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="dimtrade.sql">
+    <None Update="sql\dimensions\dimtrade.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="factcashbalances.sql">
+    <None Update="sql\facts\factcashbalances.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="factholdings.sql">
+    <None Update="sql\facts\factholdings.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="factmarkethistory.sql">
+    <None Update="sql\facts\factmarkethistory.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="factwatches.sql">
+    <None Update="sql\facts\factwatches.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="financial.sql">
+    <None Update="sql\reference\financial.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="finwire.sql">
+    <None Update="sql\preprocess\finwire.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="industry.sql">
+    <None Update="sql\reference\industry.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="prospect.sql">
+    <None Update="sql\facts\prospect.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="statustype.sql">
+    <None Update="sql\reference\statustype.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="taxrate.sql">
+    <None Update="sql\reference\taxrate.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="tradetype.sql">
+    <None Update="sql\reference\tradetype.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

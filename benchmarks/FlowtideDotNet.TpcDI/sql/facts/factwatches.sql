@@ -43,7 +43,7 @@ SELECT
   W_S_SYMB,
   date_placed,
   date_canceled,
-  greatest(date_placed, date_canceled) as dts,
+  greatest(coalesce(date_placed, date_canceled), coalesce(date_canceled, date_placed)) as dts,
   BatchID
 FROM watches_aggregate;
 
@@ -54,7 +54,11 @@ SELECT
   ds.SK_SecurityID,
   CAST(strftime(date_placed, '%Y%m%d') as INT) as SK_DateID_DatePlaced,
   CAST(strftime(date_canceled, '%Y%m%d') as INT) as SK_DateID_DateRemoved,
-  w.BatchID
+  w.BatchID,
+  w.W_C_ID,
+  w.dts,
+  w.W_S_SYMB,
+  dc.CustomerID
 FROM watches_single_row w
 INNER JOIN DimCustomerView dc
 ON w.W_C_ID = dc.CustomerID AND

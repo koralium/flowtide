@@ -23,25 +23,25 @@ using FlowtideDotNet.Core;
 var builder = WebApplication.CreateBuilder(args);
 
 
-var datesql = File.ReadAllText("./dimdate.sql");
-var taxratesql = File.ReadAllText("./taxrate.sql");
-var tradetypesql = File.ReadAllText("./tradetype.sql");
-var customerbasesql = File.ReadAllText("./customerbase.sql");
-var prospectsql = File.ReadAllText("./prospect.sql");
-var dimcustomersql = File.ReadAllText("./dimcustomer.sql");
-var brokersql = File.ReadAllText("./dimbroker.sql");
-var dimaccountsql = File.ReadAllText("./dimaccount.sql");
-var finwiresql = File.ReadAllText("./finwire.sql");
-var industrysql = File.ReadAllText("./industry.sql");
-var statustypesql = File.ReadAllText("./statustype.sql");
-var dimcompanysql = File.ReadAllText("./dimcompany.sql");
-var dimsecuritysql = File.ReadAllText("./dimsecurity.sql");
-var financialsql = File.ReadAllText("./financial.sql");
-var dimtradesql = File.ReadAllText("./dimtrade.sql");
-var factcashbalancesql = File.ReadAllText("./factcashbalances.sql");
-var factholdingssql = File.ReadAllText("./factholdings.sql");
-var factwatchessql = File.ReadAllText("./factwatches.sql");
-var factmarkethistorysql = File.ReadAllText("./factmarkethistory.sql");
+var datesql = File.ReadAllText("./sql/dimensions/dimdate.sql");
+var taxratesql = File.ReadAllText("./sql/reference/taxrate.sql");
+var tradetypesql = File.ReadAllText("./sql/reference/tradetype.sql");
+var customerbasesql = File.ReadAllText("./sql/preprocess/customerbase.sql");
+var prospectsql = File.ReadAllText("./sql/facts/prospect.sql");
+var dimcustomersql = File.ReadAllText("./sql/dimensions/dimcustomer.sql");
+var brokersql = File.ReadAllText("./sql/dimensions/dimbroker.sql");
+var dimaccountsql = File.ReadAllText("./sql/dimensions/dimaccount.sql");
+var finwiresql = File.ReadAllText("./sql/preprocess/finwire.sql");
+var industrysql = File.ReadAllText("./sql/reference/industry.sql");
+var statustypesql = File.ReadAllText("./sql/reference/statustype.sql");
+var dimcompanysql = File.ReadAllText("./sql/dimensions/dimcompany.sql");
+var dimsecuritysql = File.ReadAllText("./sql/dimensions/dimsecurity.sql");
+var financialsql = File.ReadAllText("./sql/reference/financial.sql");
+var dimtradesql = File.ReadAllText("./sql/dimensions/dimtrade.sql");
+var factcashbalancesql = File.ReadAllText("./sql/facts/factcashbalances.sql");
+var factholdingssql = File.ReadAllText("./sql/facts/factholdings.sql");
+var factwatchessql = File.ReadAllText("./sql/facts/factwatches.sql");
+var factmarkethistorysql = File.ReadAllText("./sql/facts/factmarkethistory.sql");
 
 
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
