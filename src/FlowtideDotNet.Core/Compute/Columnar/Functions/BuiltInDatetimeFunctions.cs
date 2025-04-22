@@ -109,6 +109,63 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
                     return call;
                 });
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Format,
+                (function, parametersInfo, visitor, functionServices) =>
+                {
+                    if (function.Arguments.Count != 2)
+                    {
+                        throw new InvalidOperationException("Format function must have two arguments");
+                    }
+
+                    var valueArg = function.Arguments[0];
+                    var formatArg = function.Arguments[1];
+
+                    var valueExpr = visitor.Visit(valueArg, parametersInfo);
+
+                    if (valueExpr == null)
+                    {
+                        throw new InvalidOperationException("Value argument could not be compiled for format");
+                    }
+
+                    var memory = new Memory<byte>(new byte[256]);
+
+                    var memoryConstant = System.Linq.Expressions.Expression.Constant(memory);
+
+                    var resultConstant = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
+
+                    if (formatArg is StringLiteral stringLiteral)
+                    {
+                        var format = stringLiteral.Value.ToString();
+
+                        var staticFormatMethod = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(FormatImplementationStaticFormat), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                            ?.MakeGenericMethod(valueExpr.Type);
+
+                        if (staticFormatMethod == null)
+                        {
+                            throw new InvalidOperationException($"Method {nameof(FormatImplementationStaticFormat)} not found");
+                        }
+
+                        return System.Linq.Expressions.Expression.Call(staticFormatMethod, [valueExpr, System.Linq.Expressions.Expression.Constant(format), memoryConstant, resultConstant]);
+                    }
+
+                    var formatExpr = visitor.Visit(formatArg, parametersInfo);
+
+                    if (formatExpr == null)
+                    {
+                        throw new InvalidOperationException("Format argument could not be compiled for format");
+                    }
+
+                    var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(FormatImplementation), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic)
+                        ?.MakeGenericMethod(valueExpr.Type, formatExpr.Type);
+
+                    if (method == null)
+                    {
+                        throw new InvalidOperationException($"Method {nameof(FormatImplementation)} not found");
+                    }
+
+                    return System.Linq.Expressions.Expression.Call(method, [valueExpr, formatExpr, memoryConstant, resultConstant]);
+                });
         }
 
         private static System.Linq.Expressions.Expression CallExtractFunction(string methodName, System.Linq.Expressions.Expression valueExpr)
@@ -674,6 +731,50 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(weekNumber);
             return result;
+        }
+
+        internal static IDataValue FormatImplementation<T1, T2>(T1 value, T2 format, Memory<byte> memory, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (format.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var formatString = format.AsString.ToString();
+            return FormatImplementationStaticFormat(value, formatString, memory, result);
+
+        }
+
+        internal static IDataValue FormatImplementationStaticFormat<T1>(T1 value, string format, Memory<byte> memory, DataValueContainer result)
+            where T1 : IDataValue
+        {
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var dt = value.AsTimestamp.ToDateTimeOffset();
+
+            if (dt.TryFormat(memory.Span, out var bytesWritten, format))
+            {
+                result._type = ArrowTypeId.String;
+                result._stringValue = new StringValue(memory.Slice(0, bytesWritten));
+                return result;
+            }
+            else
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
         }
     }
 }
