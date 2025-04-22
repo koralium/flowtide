@@ -72,48 +72,7 @@ builder.Services.AddFlowtideStream("stream")
     .WriteCheckFailuresToLogger()
     .AddConnectors(c =>
     {
-        c.AddCsvFileSource("dailymarket_raw", new CsvFileOptions()
-        {
-            CsvColumns = new List<string>()
-            {
-                "DM_DATE",
-                "DM_S_SYMB",
-                "DM_CLOSE",
-                "DM_HIGH",
-                "DM_LOW",
-                "DM_VOL"
-            },
-            FileStorage = filesLocation,
-            GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
-            {
-                "Batch1/DailyMarket.txt"
-            }),
-            Delimiter = "|",
-            OutputSchema = new NamedStruct()
-            {
-                Names = new List<string>()
-                {
-                    "DM_DATE",
-                    "DM_S_SYMB",
-                    "DM_CLOSE",
-                    "DM_HIGH",
-                    "DM_LOW",
-                    "DM_VOL"
-                },
-                Struct = new Struct()
-                {
-                    Types = new List<SubstraitBaseType>()
-                    {
-                        new TimestampType(),
-                        new StringType(),
-                        new Fp64Type(),
-                        new Fp64Type(),
-                        new Fp64Type(),
-                        new Int64Type()
-                    }
-                }
-            }
-        });
+        c.AddDailyMarketData(filesLocation);
         c.AddWatchHistoryData(filesLocation);
         c.AddHoldingHistoryData(filesLocation);
         c.AddCashTransactionData(filesLocation);
