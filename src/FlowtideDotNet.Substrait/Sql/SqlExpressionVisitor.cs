@@ -216,7 +216,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             Arguments = concatExpressions
                         }, $"$concat", returnType);
                 case BinaryOperator.Plus:
-                    returnType = ArithmaticReturnType(left.Type, right.Type);
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -232,7 +232,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         returnType
                         );
                 case BinaryOperator.Minus:
-                    returnType = ArithmaticReturnType(left.Type, right.Type);
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         returnType
                         );
                 case BinaryOperator.Multiply:
-                    returnType = ArithmaticReturnType(left.Type, right.Type);
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -261,7 +261,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             }
                         }, "$multiply", returnType);
                 case BinaryOperator.Divide:
-                    returnType = ArithmaticReturnType(left.Type, right.Type);
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -274,7 +274,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             }
                         }, "$divide", returnType);
                 case BinaryOperator.Modulo:
-                    returnType = ArithmaticReturnType(left.Type, right.Type);
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -307,7 +307,7 @@ namespace FlowtideDotNet.Substrait.Sql
             }
         }
 
-        private SubstraitBaseType ArithmaticReturnType(SubstraitBaseType left, SubstraitBaseType right)
+        private SubstraitBaseType ArithmeticReturnType(SubstraitBaseType left, SubstraitBaseType right)
         {
             var maxType = Math.Max((int)left.Type, (int)right.Type);
 

@@ -21,12 +21,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
-    internal static class BuiltInArithmaticFunctions
+    internal static class BuiltInArithmeticFunctions
     {
-        public static void AddBuiltInArithmaticFunctions(FunctionsRegister functionsRegister)
+        public static void AddBuiltInArithmeticFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, typeof(BuiltInArithmaticFunctions), nameof(ModuloImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, typeof(BuiltInArithmaticFunctions), nameof(DivideImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
         }
 
         private static IDataValue ModuloImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
