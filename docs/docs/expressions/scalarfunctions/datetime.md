@@ -6,6 +6,11 @@ sidebar_position: 6
 
 ## Strftime
 
+:::warning
+
+This function exists for backwards compatibility and compliance with substrait. If possible please use [Timestamp Format](#timestamp-format).
+:::
+
 [Substrait definition](https://substrait.io/extensions/functions_datetime/#strftime)
 
 Converts a timestamp in microseconds since 1970-01-01 00:00:00.000000 to a string.
@@ -154,4 +159,20 @@ Extract portion of a timestamp value. This follows the substrait description and
 SELECT timestamp_extract(component, val) FROM ...
 SELECT timestamp_extract('YEAR', val) FROM ...
 SELECT timestamp_extract('QUARTER', val) FROM ...
+```
+
+## Timestamp Format
+
+The `timestamp_format` function formats a `timestamp` value into a string representation using a specified format string.
+
+The format string follows the .NET DateTime format. This includes support for components like year (`yyyy`), month (`MM`), day (`dd`), hour (`HH`/`hh`), minute (`mm`), second (`ss`), fractional seconds (`fff`), time zone offsets (`zzz`), and more.
+
+The format string follows the [.NET DateTime format](https://learn.microsoft.com/en-us/dotnet/standard/base-types/custom-date-and-time-format-strings).
+
+If the input timestamp is `NULL` or the format string is `NULL`, the function will return `NULL`.
+
+### SQL Usage
+
+```sql
+SELECT TIMESTAMP_FORMAT(timestampColumn, 'yyyy-MM-dd');
 ```
