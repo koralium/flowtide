@@ -8,8 +8,7 @@ sidebar_position: 6
 
 :::warning
 
-This function exists for backwards compatability and compliance with substrait. If possible please use [Timestamp Format](#timestamp-format).
-
+This function exists for backwards compatibility and compliance with substrait. If possible please use [Timestamp Format](#timestamp-format).
 :::
 
 [Substrait definition](https://substrait.io/extensions/functions_datetime/#strftime)
