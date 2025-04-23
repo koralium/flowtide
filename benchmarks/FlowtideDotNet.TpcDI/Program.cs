@@ -103,6 +103,9 @@ builder.Services.AddFlowtideStream("stream")
     .AddStorage(s =>
     {
         s.AddFasterKVFileSystemStorage("./tmpdir");
+        s.MaxProcessMemory = 8 * 1024 * 1024 * 1024L; // 8GB
+        s.MinPageCount = 100_000;
+
         //s.AddTemporaryDevelopmentStorage();
     });
 

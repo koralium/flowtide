@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Connector.Files;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Sources.Generic;
 using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.TpcDI.sources.prospects;
 using Stowage;
 
 namespace FlowtideDotNet.TpcDI.Extensions
@@ -21,116 +23,7 @@ namespace FlowtideDotNet.TpcDI.Extensions
     {
         public static IConnectorManager AddProspectData(this IConnectorManager connectorManager, IFileStorage filesLocation)
         {
-            connectorManager.AddCsvFileSource("prospects_raw", new CsvFileOptions()
-            {
-                CsvColumns = new List<string>()
-            {
-                "AgencyID",
-                "LastName",
-                "FirstName",
-                "MiddleInitial",
-                "Gender",
-                "AddressLine1",
-                "AddressLine2",
-                "PostalCode",
-                "City",
-                "State",
-                "Country",
-                "Phone",
-                "Income",
-                "NumberCars",
-                "NumberChildren",
-                "MaritalStatus",
-                "Age",
-                "CreditRating",
-                "OwnOrRentFlag",
-                "Employer",
-                "NumberCreditCards",
-                "NetWorth"
-            },
-                FileStorage = filesLocation,
-                GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
-            {
-                "Batch1/Prospect.csv"
-            }),
-                OutputSchema = new NamedStruct()
-                {
-                    Names = new List<string>()
-                {
-                    "AgencyID",
-                    "LastName",
-                    "FirstName",
-                    "MiddleInitial",
-                    "Gender",
-                    "AddressLine1",
-                    "AddressLine2",
-                    "PostalCode",
-                    "City",
-                    "State",
-                    "Country",
-                    "Phone",
-                    "Income",
-                    "NumberCars",
-                    "NumberChildren",
-                    "MaritalStatus",
-                    "Age",
-                    "CreditRating",
-                    "OwnOrRentFlag",
-                    "Employer",
-                    "NumberCreditCards",
-                    "NetWorth",
-                    "BatchDate",
-                    "BatchID"
-                },
-                    Struct = new Struct()
-                    {
-                        Types = new List<SubstraitBaseType>()
-                    {
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new StringType(),
-                        new DecimalType(),
-                        new Int64Type(),
-                        new Int64Type(),
-                        new StringType(),
-                        new Int64Type(),
-                        new Int64Type(),
-                        new StringType(),
-                        new StringType(),
-                        new Int64Type(),
-                        new DecimalType(),
-                        new TimestampType(),
-                        new Int64Type()
-                    }
-                    }
-                },
-                BeforeBatch = async (batchId, state, storage) =>
-                {
-                    using var stream = await storage.OpenRead($"Batch{batchId}/BatchDate.txt");
-                    if (stream == null)
-                    {
-                        throw new InvalidOperationException($"BatchDate.txt not found in Batch{batchId}");
-                    }
-                    // Read the line
-                    using var reader = new StreamReader(stream);
-                    var line = await reader.ReadLineAsync();
-                    state["batchdate"] = line!;
-                },
-                ModifyRow = (original, output, batchId, fileName, state) =>
-                {
-                    output[original.Length] = state["batchdate"];
-                    output[original.Length + 1] = batchId.ToString();
-                }
-            });
+            connectorManager.AddCustomSource("prospects_raw", (readRelation) => new ProspectsDataSource(filesLocation));
 
             return connectorManager;
         }

@@ -1,8 +1,8 @@
 ﻿CREATE VIEW ProspectView AS
 SELECT
  AgencyID,
- d.SK_DateID AS SK_RecordDateID,
- d.SK_DateID AS SK_UpdateDateID,
+ CAST(timestamp_format(RecordDate, 'yyyyMMdd') as INT) as SK_RecordDateID,
+ CAST(timestamp_format(UpdateDate, 'yyyyMMdd') as INT) as SK_UpdateDateID,
  p.BatchID,
  c.CustomerID is not null AS IsCustomer,
  p.LastName,
@@ -35,8 +35,6 @@ SELECT
 	 CASE WHEN Age < 25 AND NetWorth > 1000000 THEN 'Inherited' ELSE NULL END
  )) AS MarketingNameplate
  FROM prospects_raw p
- INNER JOIN DimDateView d
-ON p.BatchDate = d.DateValue
 LEFT JOIN CustomerHistory c
 ON 
 	UPPER(p.FirstName) = UPPER(c.FirstName) AND
