@@ -11,7 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -47,18 +50,49 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         internal bool Updated { get; set; }
 
-        public void UpdateStateValue<T>(T value)
-            where T : IDataValue
+        internal void UpdateStateValues(IDataValue[] values, IDataValue[] temporaryStorage)
         {
             Debug.Assert(_columnRowReference != null);
-            if (_addOutputRow == null)
+            Debug.Assert(_addOutputRow != null);
+
+            bool isNew = false;
+            bool isUpdate = false;
+            for (int i = 0; i < values.Length; i++)
             {
-                throw new InvalidOperationException("Can not update state using this iterator");
+                var listCount = windowValue.valueContainer._functionStates[i].GetListLength(windowValue.index);
+
+                if (listCount <= weightIndex)
+                {
+                    isNew = true;
+                    temporaryStorage[i] = NullValue.Instance;
+                    windowValue.valueContainer._functionStates[i].AppendToList(windowValue.index, values[i]);
+                }
+                else
+                {
+                    var oldValue = windowValue.valueContainer._functionStates[i].GetListElementValue(windowValue.index, weightIndex);
+                    temporaryStorage[i] = oldValue;
+                    if (DataValueComparer.Instance.Compare(values[i], oldValue) != 0)
+                    {
+                        isUpdate = true;
+                    }
+                    windowValue.valueContainer._functionStates[i].UpdateListElement(windowValue.index, weightIndex, values[i]);
+                }
             }
 
-            if (windowValue.UpdateStateValue(0, weightIndex, value, _columnRowReference.Value, _addOutputRow))
+            if (!isNew && !isUpdate)
             {
-                Updated = true;
+                return;
+            }
+
+            if (isUpdate)
+            {
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, temporaryStorage, -1);
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
+            }
+            if (isNew)
+            {
+                windowValue.valueContainer._previousValueSent.Set(windowValue.index);
+                _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
         }
     }

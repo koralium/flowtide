@@ -374,5 +374,111 @@ namespace FlowtideDotNet.AcceptanceTests
                 };
             }));
         }
+
+        [Fact]
+        public async Task MinAggregateWithFilterAndGroup()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var minSequence = x.Where(x => x.OrderKey % 2 == 0).ToList();
+                    int? output = null;
+                    if (minSequence.Count > 0)
+                    {
+                        output = minSequence.Min(y => y.OrderKey);
+                    }
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MinVal = output
+                    };
+                })
+            );
+        }
+
+        [Fact]
+        public async Task MinByAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min_by(Orderdate, orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var outputrow = x.Min(y => y.OrderKey);
+                    var order = x.First(x => x.OrderKey == outputrow);
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MinVal = order.Orderdate
+                    };
+                })
+            );
+        }
+
+        [Fact]
+        public async Task MaxByAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max_by(Orderdate, orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var outputrow = x.Max(y => y.OrderKey);
+                    var order = x.First(x => x.OrderKey == outputrow);
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MaxVal = order.Orderdate
+                    };
+                })
+            );
+        }
     }
 }

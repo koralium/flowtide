@@ -36,10 +36,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
-        /// <summary>
-        /// Temporary until column based aggregates are implemented
-        /// </summary>
         private List<IColumnAggregateContainer> m_measures;
+        private Func<EventBatchData, int, bool>?[] _measureFilters;
 
         private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
         private ColumnStore.Column[]? m_groupValues;
@@ -64,6 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public ColumnAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             m_measures = new List<IColumnAggregateContainer>();
+            _measureFilters = new Func<EventBatchData, int, bool>?[aggregateRelation.Measures?.Count ?? 0];
             m_aggregateRelation = aggregateRelation;
             m_functionsRegister = functionsRegister;
             m_outputCount = aggregateRelation.OutputLength;
@@ -533,7 +532,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     RowIndex = groupIndex
                 }, comparer);
 
-
                 if (!comparer.noMatch)
                 {
                     var enumerator = _treeIterator.GetAsyncEnumerator();
@@ -549,6 +547,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             for (int k = 0; k < m_measures.Count; k++)
                             {
                                 var stateColumn = page.Values._eventBatch.Columns[k]; //.Get(index);
+                                if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
+                                {
+                                    continue;
+                                }
                                 await m_measures[k].Compute(new ColumnRowReference()
                                 {
                                     referenceBatch = m_groupValuesBatch,
@@ -577,6 +579,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             var col = m_temporaryStateValues[k];
                             // Add a null value for state.
                             col.Add(NullValue.Instance);
+
+                            if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
+                            {
+                                continue;
+                            }
+                            
                             await m_measures[k].Compute(new ColumnRowReference()
                             {
                                 referenceBatch = m_groupValuesBatch,
@@ -685,6 +693,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     var measure = m_aggregateRelation.Measures[i];
                     var aggregateContainer = await ColumnMeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, m_functionsRegister, MemoryAllocator);
                     m_measures.Add(aggregateContainer);
+                    if (measure.Filter != null)
+                    {
+                        _measureFilters[i] = ColumnBooleanCompiler.Compile(measure.Filter, m_functionsRegister);
+                    }
                 }
             }
 

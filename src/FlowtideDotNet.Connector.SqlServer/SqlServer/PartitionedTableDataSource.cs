@@ -192,8 +192,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             linkedCancellation.Dispose();
-
-            linkedCancellation.Dispose();
         }
 
         private sealed record FullLoadResilienceState(

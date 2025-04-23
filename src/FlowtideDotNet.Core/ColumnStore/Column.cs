@@ -277,6 +277,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
+                _validityList.Clear();
                 _validityList.InsertTrueInRange(0, Count);
             }
         }

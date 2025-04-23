@@ -28,6 +28,20 @@ namespace FlowtideDotNet.Storage.Queue
 
         ValueTask<V> Pop();
 
+        /// <summary>
+        /// Peeks the latest enqueued value, returns an action which if set disposes the value after its been used.
+        /// This is required if the value is in another page.
+        /// </summary>
+        /// <returns></returns>
+        ValueTask<(V value, Action? returnFunc)> PeekPop();
+
+        /// <summary>
+        /// Peeks the first value in the queue, returns an action which if set disposes the value after its been used.
+        /// This is required if the value is in another page.
+        /// </summary>
+        /// <returns></returns>
+        ValueTask<(V value, Action? returnFunc)> Peek();
+
         ValueTask Commit();
 
         ValueTask Clear();

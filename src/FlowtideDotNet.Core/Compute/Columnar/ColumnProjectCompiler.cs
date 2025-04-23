@@ -70,6 +70,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 throw new FlowtideException("Expression visitor did not return a result expression");
             }
 
+            if (resultExpr.Type != typeof(IDataValue))
+            {
+                // Cast
+                resultExpr = System.Linq.Expressions.Expression.Convert(resultExpr, typeof(IDataValue));
+            }
+
             var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, IDataValue>>(resultExpr, batchParam, indexParam);
             return lambda.Compile();
         }

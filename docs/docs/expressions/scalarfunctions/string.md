@@ -264,3 +264,17 @@ Converts a JSON string to flowtide data objects. It is also possible to use a bi
 ```sql
 SELECT from_json(myjsoncolumn) ...
 ```
+
+## String Join
+
+Joins the elements of a list into a single string, using the specified separator between each element. The function ignores any `NULL` values in the list—only non-`NULL` elements are included in the final string.
+
+If the list is `NULL`, the function returns `NULL`. If the list is empty or contains only `NULL` values, the result is an empty string.
+
+This function is useful for concatenating list values (e.g., strings or numbers) into a readable or formatted output.
+
+### SQL Usage
+
+```sql
+SELECT string_join(', ', list_column) FROM ...
+```
