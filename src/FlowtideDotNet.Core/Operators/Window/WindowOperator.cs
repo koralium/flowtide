@@ -28,7 +28,7 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Base.Metrics;
-
+using FlowtideDotNet.Core.Operators.Partition;
 namespace FlowtideDotNet.Core.Operators.Window
 {
     internal class WindowOperator : UnaryVertex<StreamEventBatch>
@@ -52,9 +52,10 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// </summary>
         private EventBatchData? _partitionBatch;
 
-        private readonly IWindowFunction _windowFunction;
+        private readonly IWindowFunction[] _windowFunctions;
         private WindowOutputBuilder? _outputBuilder;
         private List<int> _emitList;
+        private WriterPartitionIterator? _partitionIterator;
 
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsInCounter;
@@ -62,12 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _relation = relation;
-            if (_relation.WindowFunctions.Count > 1)
-            {
-                throw new NotSupportedException("Only one window function is supported at this time per window operator");
-            }
 
-            var windowFunction = _relation.WindowFunctions[0];
             // Create the comparer for the ordering
             if (relation.OrderBy.Count > 0)
             {
@@ -89,13 +85,18 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _emitList.Add(_emitList.Count);
             }
 
-            if (functionsRegister.TryGetWindowFunction(windowFunction, out var windowFunc))
+            _windowFunctions = new IWindowFunction[relation.WindowFunctions.Count];
+
+            for (int i = 0; i < relation.WindowFunctions.Count; i++)
             {
-                _windowFunction = windowFunc;
-            }
-            else
-            {
-                throw new InvalidOperationException($"The function {windowFunction.ExtensionUri}:{windowFunction.ExtensionName} is not defined.");
+                if (functionsRegister.TryGetWindowFunction(relation.WindowFunctions[i], out var windowFunc))
+                {
+                    _windowFunctions[i] = windowFunc;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"The function {relation.WindowFunctions[i].ExtensionUri}:{relation.WindowFunctions[i].ExtensionName} is not defined.");
+                }
             }
         }
 
@@ -146,44 +147,67 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public override async Task OnCheckpoint()
         {
-            if (_windowFunction.RequirePartitionCompute)
+            Debug.Assert(_persistentTree != null);
+            await _persistentTree.Commit();
+            for (int i = 0; i < _windowFunctions.Length; i++)
             {
-                Debug.Assert(_persistentTree != null);
-                await _persistentTree.Commit();
+                await _windowFunctions[i].Commit();
             }
-            await _windowFunction.Commit();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
+            Debug.Assert(_partitionIterator != null);
 
-            if (_windowFunction.RequirePartitionCompute)
+            using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
+            await temporaryTreeIterator.SeekFirst();
+
+            IDataValue[] valuesList = new IDataValue[_windowFunctions.Length];
+            IDataValue[] temporaryList = new IDataValue[_windowFunctions.Length];
+
+            await foreach (var partitionPage in temporaryTreeIterator)
             {
-                using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
-                await temporaryTreeIterator.SeekFirst();
-
-                await foreach (var partitionPage in temporaryTreeIterator)
+                foreach (var partitionKv in partitionPage)
                 {
-                    foreach (var partitionKv in partitionPage)
+                    int rowIndex = 0;
+                    await _partitionIterator.Reset(partitionKv.Key);
+
+                    for (int w = 0; w < _windowFunctions.Length; w++)
                     {
-                        await foreach (var batch in _windowFunction.ComputePartition(partitionKv.Key))
+                        await _windowFunctions[w].NewPartition(partitionKv.Key);
+                    }
+
+                    await foreach(var row in _partitionIterator)
+                    {
+                        for (int w = 0; w < _windowFunctions.Length; w++)
                         {
-                            _eventsOutCounter.Add(batch.Weights.Count);
-                            yield return new StreamEventBatch(batch);
+                            valuesList[w] = await _windowFunctions[w].ComputeRow(row, rowIndex);
+                        }
+                        row.Value.UpdateStateValues(valuesList, temporaryList);
+                        rowIndex++;
+
+                        if (_outputBuilder.Count >= 100)
+                        {
+                            yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
                         }
                     }
-                }
 
-                // Check so events that where output are sent
-                if (_outputBuilder.Count > 0)
-                {
-                    yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+                    for (int w = 0; w < _windowFunctions.Length; w++)
+                    {
+                        await _windowFunctions[w].EndPartition(partitionKv.Key);
+                    }
                 }
-
-                await _temporaryTree.Clear();
             }
+
+            // Check so events that where output are sent
+            if (_outputBuilder.Count > 0)
+            {
+                yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+            }
+
+            await _temporaryTree.Clear();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -241,66 +265,48 @@ namespace FlowtideDotNet.Core.Operators.Window
                     RowIndex = i
                 };
 
-                if (_windowFunction.RequirePartitionCompute)
-                {
-                    Debug.Assert(_persistentTree != null);
-                    Debug.Assert(_temporaryTree != null);
+                Debug.Assert(_persistentTree != null);
+                Debug.Assert(_temporaryTree != null);
 
-                    var windowValue = new WindowValue()
-                    {
-                        weight = msg.Data.Weights[i],
-                    };
+                var windowValue = new WindowValue()
+                {
+                    weight = msg.Data.Weights[i],
+                };
                     
-                    await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
+                await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
+                {
+                    if (exist)
                     {
-                        if (exist)
+                        current.weight += input.weight;
+
+                        if (current.weight == 0)
                         {
-                            current.weight += input.weight;
-
-                            if (current.weight == 0)
-                            {
-                                _outputBuilder.AddDeleteToOutput(rowRef, current);
-                                // Must output the entire row here and the previous value
-                                return (current, GenericWriteOperation.Delete);
-                            }
-
-                            return (current, GenericWriteOperation.Upsert);
+                            _outputBuilder.AddDeleteToOutput(rowRef, current);
+                            // Must output the entire row here and the previous value
+                            return (current, GenericWriteOperation.Delete);
                         }
 
-                        return (input, GenericWriteOperation.Upsert);
-                    });
-
-                    // Even if the row was deleted we still need to update the temporary tree
-                    // Since rows that depend on this row will need to be updated
-                    await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
-                    {
-                        if (exists)
-                        {
-                            // If the partition already exists in the tree, no need to force a write on the page
-                            return (current, GenericWriteOperation.None);
-                        }
-                        return (input, GenericWriteOperation.Upsert);
-                    });
-
-                    if (_outputBuilder.Count >= 100)
-                    {
-                        // If there are too many deletes of rows, output directly to reduce RAM usage.
-                        _eventsOutCounter.Add(_outputBuilder.Count);
-                        yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
+                        return (current, GenericWriteOperation.Upsert);
                     }
-                }
-                
-                await foreach(var batch in _windowFunction.OnReceive(partitionRowRef, rowRef, msg.Data.Weights[i]))
-                {
-                    _eventsOutCounter.Add(batch.Weights.Count);
-                    yield return new StreamEventBatch(batch);
-                }
-            }
 
-            if (!_windowFunction.RequirePartitionCompute)
-            {
-                if (_outputBuilder.Count > 0)
+                    return (input, GenericWriteOperation.Upsert);
+                });
+
+                // Even if the row was deleted we still need to update the temporary tree
+                // Since rows that depend on this row will need to be updated
+                await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
                 {
+                    if (exists)
+                    {
+                        // If the partition already exists in the tree, no need to force a write on the page
+                        return (current, GenericWriteOperation.None);
+                    }
+                    return (input, GenericWriteOperation.Upsert);
+                });
+
+                if (_outputBuilder.Count >= 100)
+                {
+                    // If there are too many deletes of rows, output directly to reduce RAM usage.
                     _eventsOutCounter.Add(_outputBuilder.Count);
                     yield return new StreamEventBatch(_outputBuilder.GetCurrentBatch());
                 }
@@ -319,28 +325,25 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _eventsInCounter = Metrics.CreateCounter<long>("events_processed");
             }
 
-            if (_windowFunction.RequirePartitionCompute)
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
+            new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
             {
-                _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>()
+                Comparer = new WindowInsertComparer(_sortComparer, _partitionColumns, _otherColumns),
+                KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength + _partitionCalculateExpressions.Count, MemoryAllocator),
+                MemoryAllocator = MemoryAllocator,
+                ValueSerializer = new WindowValueContainerSerializer(_relation.WindowFunctions.Count, MemoryAllocator),
+                UseByteBasedPageSizes = true
+            });
+
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
-                    Comparer = new WindowInsertComparer(_sortComparer, _partitionColumns, _otherColumns),
-                    KeySerializer = new ColumnStoreSerializer(_relation.Input.OutputLength + _partitionCalculateExpressions.Count, MemoryAllocator),
+                    Comparer = new AggregateInsertComparer(_partitionColumns.Count),
+                    KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
-                    ValueSerializer = new WindowValueContainerSerializer(_relation.WindowFunctions.Count, MemoryAllocator),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     UseByteBasedPageSizes = true
                 });
-
-                _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
-                    new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
-                    {
-                        Comparer = new AggregateInsertComparer(_partitionColumns.Count),
-                        KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
-                        MemoryAllocator = MemoryAllocator,
-                        ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
-                        UseByteBasedPageSizes = true
-                    });
-            }
             
 
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
@@ -348,7 +351,12 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             _outputBuilder = new WindowOutputBuilder(_relation.Input.OutputLength, _emitList, MemoryAllocator);
 
-            await _windowFunction.Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient, _outputBuilder);
+            for (int w = 0; w < _windowFunctions.Length; w++)
+            {
+                await _windowFunctions[w].Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient.GetChildManager(w.ToString()));
+            }
+
+            _partitionIterator = new WriterPartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder, _windowFunctions.Length);
         }
     }
 }

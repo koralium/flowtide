@@ -607,23 +607,80 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outNode;
         }
 
+        /// <summary>
+        /// Helper class to keep partitions and sortings as a key for dictionary.
+        /// This allows grouping window functions that share the same partitions and sortings together
+        /// </summary>
+        private class WindowGroup
+        {
+            public WindowGroup(List<Expressions.Expression> partitionBy, List<Expressions.SortField> sortings)
+            {
+                PartitionBy = partitionBy;
+                Sortings = sortings;
+            }
+
+            public List<Expressions.Expression> PartitionBy { get; }
+            public List<Expressions.SortField> Sortings { get; }
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is not WindowGroup other)
+                {
+                    return false;
+                }
+                if (PartitionBy.Count != other.PartitionBy.Count)
+                {
+                    return false;
+                }
+                if (Sortings.Count != other.Sortings.Count)
+                {
+                    return false;
+                }
+                for (int i = 0; i < PartitionBy.Count; i++)
+                {
+                    if (!PartitionBy[i].Equals(other.PartitionBy[i]))
+                    {
+                        return false;
+                    }
+                }
+                for (int i = 0; i < Sortings.Count; i++)
+                {
+                    if (!Sortings[i].Equals(other.Sortings[i]))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public override int GetHashCode()
+            {
+                HashCode hashCode = new HashCode();
+
+                foreach (var partition in PartitionBy)
+                {
+                    hashCode.Add(partition);
+                }
+
+                foreach (var sort in Sortings)
+                {
+                    hashCode.Add(sort);
+                }
+
+                return hashCode.ToHashCode();
+            }
+        }
+
         private RelationData VisitWindow(ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
         {
             var outputData = parent;
 
+            Dictionary<WindowGroup, List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>> windowOperators = 
+                new Dictionary<WindowGroup, List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>>();
+
             // Go through the found functions, we create one relation per window function at this time
             foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
             {
-                var windowEmitData = outputData.EmitData.Clone();
-
-                var windowRel = new ConsistentPartitionWindowRelation()
-                {
-                    Input = outputData.Relation,
-                    OrderBy = new List<Expressions.SortField>(),
-                    PartitionBy = new List<Expressions.Expression>(),
-                    WindowFunctions = new List<Expressions.WindowFunction>()
-                };
-
                 if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
                 {
                     throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
@@ -631,9 +688,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 
                 var aggregateResponse = mapper(windowFunction, exprVisitor, outputData.EmitData);
-                windowRel.WindowFunctions.Add(aggregateResponse.WindowFunction);
-
-                windowEmitData.Add(windowFunction, windowEmitData.Count, "$window", aggregateResponse.Type);
+                var mappedWindowFunction = aggregateResponse.WindowFunction;
+                List<Expressions.Expression> partitionByExpressions = new List<Expressions.Expression>();
+                List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
                 if (windowFunction.Over is WindowType.WindowSpecType windowSpec)
                 {
                     if (windowSpec.Spec.PartitionBy != null)
@@ -641,7 +698,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         foreach (var partition in windowSpec.Spec.PartitionBy)
                         {
                             var visitResult = exprVisitor.Visit(partition, outputData.EmitData);
-                            windowRel.PartitionBy.Add(visitResult.Expr);
+                            partitionByExpressions.Add(visitResult.Expr);
                         }
                     }
                     if (windowSpec.Spec.OrderBy != null)
@@ -651,15 +708,44 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             var expr = exprVisitor.Visit(orderBy.Expression, outputData.EmitData);
                             var sortDirection = GetSortDirection(orderBy);
 
-                            windowRel.OrderBy.Add(new Expressions.SortField()
+                            sortFields.Add(new Expressions.SortField()
                             {
                                 Expression = expr.Expr,
                                 SortDirection = sortDirection
                             });
                         }
                     }
+
+                    var windowGrouping = new WindowGroup(partitionByExpressions, sortFields);
+
+                    if (!windowOperators.TryGetValue(windowGrouping, out var functions))
+                    {
+                        functions = new List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>();
+                        windowOperators.Add(windowGrouping, functions);
+                    }
+                    functions.Add((windowFunction, mappedWindowFunction, aggregateResponse.Type));
                 }
-                outputData = new RelationData(windowRel, windowEmitData);
+            }
+
+            foreach(var windowGroup in windowOperators)
+            {
+                var windowRel = new ConsistentPartitionWindowRelation()
+                {
+                    Input = outputData.Relation,
+                    OrderBy = windowGroup.Key.Sortings,
+                    PartitionBy = windowGroup.Key.PartitionBy,
+                    WindowFunctions = windowGroup.Value.Select(x => x.Item2).ToList()
+                };
+
+                var emitData = outputData.EmitData.Clone();
+
+                for (int i = 0; i  < windowGroup.Value.Count; i++)
+                {
+                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3);
+                }
+
+
+                outputData = new RelationData(windowRel, emitData);
             }
 
             return outputData;
@@ -709,9 +795,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 
+                Expressions.Expression? filter = default;
+                if (foundMeasure.Filter != null)
+                {
+                    filter = exprVisitor.Visit(foundMeasure.Filter, parent.EmitData).Expr;
+                }
+
                 var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
+                    Filter = filter,
                     Measure = aggregateResponse.AggregateFunction
                 });
                 aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}", aggregateResponse.Type);

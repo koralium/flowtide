@@ -189,5 +189,43 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
                 );
         }
+
+        [Fact]
+        public async Task TimestampParse()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                timestamp_parse('20200317-140301', 'yyyyMMdd-HHmmss') as Date
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    Date = new DateTimeOffset(2020, 03, 17, 14, 03, 01, TimeSpan.Zero)
+                })
+            );
+        }
+
+        [Fact]
+        public async Task TimestampExtract()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                timestamp_extract('DAY', Orderdate) as days
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    days = o.Orderdate.Day
+                })
+                );
+        }
     }
 }

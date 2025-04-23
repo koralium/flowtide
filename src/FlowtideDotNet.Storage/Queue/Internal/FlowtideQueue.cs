@@ -203,6 +203,59 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             return value;
         }
 
+        public ValueTask<(V value, Action? returnFunc)> Peek()
+        {
+            Debug.Assert(_leftNode != null, "Queue must be initialized before dequeuing");
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_stateClient.Metadata != null);
+
+            if (_leftNode.values.Count == _stateClient.Metadata.DequeueIndex)
+            {
+                if (_leftNode.next == 0)
+                {
+                    throw new InvalidOperationException("Queue is empty");
+                }
+                if (_leftNode.next == _rightNode.Id)
+                {
+                    return ValueTask.FromResult<(V value, Action? returnFunc)>((_rightNode.values.Get(0), default));
+                }
+                else
+                {
+                    // Peek slow, need to fetch the next node
+                    var getNextNodeTask = _stateClient.GetValue(_leftNode.next);
+
+                    if (!getNextNodeTask.IsCompleted)
+                    {
+                        return Peek_Slow(getNextNodeTask);
+                    }
+                    var nextNode = (getNextNodeTask.Result) as QueueNode<V, TValueContainer>;
+                    if (nextNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the next data page in queue.");
+                    }
+                    return ValueTask.FromResult<(V value, Action? returnFunc)>((nextNode.values.Get(0), nextNode.Return));
+                }
+            }
+
+            var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
+            return ValueTask.FromResult<(V value, Action? returnFunc)>((value, default));
+        }
+
+        private async ValueTask<(V value, Action? returnFunc)> Peek_Slow(ValueTask<IBPlusTreeNode?> getNextNodeTask)
+        {
+            Debug.Assert(_stateClient.Metadata != null);
+
+            var nextNode = (await getNextNodeTask) as QueueNode<V, TValueContainer>;
+
+            if (nextNode == null)
+            {
+                throw new InvalidOperationException("Could not fetch the next data page in queue.");
+            }
+
+            var value = nextNode.values.Get(0);
+            return (value, nextNode.Return);
+        }
+
         public ValueTask Commit()
         {
             Debug.Assert(_rightNode != null);
@@ -288,6 +341,57 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             oldRightNode.Dispose();
 
             return _rightNode.values.Get(_stateClient.Metadata.InsertIndex);
+        }
+
+        public ValueTask<(V, Action?)> PeekPop()
+        {
+            Debug.Assert(_stateClient.Metadata != null);
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_leftNode != null);
+            if (_stateClient.Metadata.InsertIndex == 0)
+            {
+                if (_rightNode.previous == 0)
+                {
+                    throw new InvalidOperationException("Queue is empty");
+                }
+                if (_rightNode.previous == _leftNode.Id)
+                {
+                    return ValueTask.FromResult<(V, Action?)>((_leftNode.values.Get(_leftNode.values.Count - 1), default));
+                }
+                else
+                {
+                    // Peek pop slow, need to fetch the previous node
+                    var getPreviousNodeTask = _stateClient.GetValue(_rightNode.previous);
+
+                    if (!getPreviousNodeTask.IsCompleted)
+                    {
+                        return PeekPop_Slow(getPreviousNodeTask);
+                    }
+                    var previousNode = (getPreviousNodeTask.Result) as QueueNode<V, TValueContainer>;
+                    if (previousNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the previous data page in queue.");
+                    }
+                    var value = previousNode.values.Get(previousNode.values.Count - 1);
+                    return ValueTask.FromResult<(V, Action?)>((value, previousNode.Return));
+                }
+            }
+            return ValueTask.FromResult<(V, Action?)>((_rightNode.values.Get(_stateClient.Metadata.InsertIndex - 1), default));
+        }
+
+        private async ValueTask<(V, Action?)> PeekPop_Slow(ValueTask<IBPlusTreeNode?> getPreviousNodeTask)
+        {
+            Debug.Assert(_stateClient.Metadata != null);
+
+            var previousNode = (await getPreviousNodeTask) as QueueNode<V, TValueContainer>;
+
+            if (previousNode == null)
+            {
+                throw new InvalidOperationException("Could not fetch the previous data page in queue.");
+            }
+
+            var value = previousNode.values.Get(previousNode.values.Count - 1);
+            return (value, previousNode.Return);
         }
     }
 }

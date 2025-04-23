@@ -25,6 +25,8 @@ namespace FlowtideDotNet.Core.Operators.Window
         public void AddOutputRow<T>(ColumnRowReference columnRowReference, T value, int weight)
             where T : IDataValue;
 
+        public void AddOutputRow(ColumnRowReference columnRowReference, IDataValue[] functionValues, int weight);
+
         int Count { get; }
 
         EventBatchWeighted GetCurrentBatch();
