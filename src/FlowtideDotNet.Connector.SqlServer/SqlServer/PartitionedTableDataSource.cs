@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             using var connection = new SqlConnection(Options.ConnectionStringFunc());
             await connection.OpenAsync(cancellationToken);
-            var paritionIds = await SqlServerUtils.GetParitionIds(connection, ReadRelation);
+            var paritionIds = await SqlServerUtils.GetPartitionIds(connection, ReadRelation);
 
             var keys = PrimaryKeys.Where(s => s != Options.PartitionMetadata.PartitionColumn).ToList();
             var pkOrdinals = new List<int>();

@@ -1148,7 +1148,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
-        public static async Task<IEnumerable<int>> GetParitionIds(SqlConnection connection, ReadRelation relation)
+        public static async Task<IEnumerable<int>> GetPartitionIds(SqlConnection connection, ReadRelation relation)
         {
             var schema = relation.NamedTable.Names[1];
             var tableName = relation.NamedTable.Names[2];
