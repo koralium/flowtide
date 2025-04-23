@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 if (weights.Count >= 100)
                 {
                     yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, _lastWatermark.Value));
-                    columns = new Column[_readRelation.BaseSchema.Names.Count + 1];
+                    columns = new Column[_readRelation.BaseSchema.Names.Count];
                     for (int i = 0; i < columns.Length; i++)
                     {
                         columns[i] = new Column(MemoryAllocator);
