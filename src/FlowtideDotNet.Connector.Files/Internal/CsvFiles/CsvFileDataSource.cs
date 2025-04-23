@@ -157,14 +157,13 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
         {
             Debug.Assert(_batchNumber != null);
             Debug.Assert(_lastLoadedFile != null);
-            Debug.Assert(_lastLoadedFile.Value != null);
             Debug.Assert(_fileOptions.DeltaGetNextFile != null);
             Debug.Assert(_customState != null);
             Debug.Assert(_customState.Value != null);
 
             var nextBatchId = _batchNumber.Value + 1;
 
-            var deltaFileName = _fileOptions.DeltaGetNextFile(_lastLoadedFile.Value, nextBatchId);
+            var deltaFileName = _fileOptions.DeltaGetNextFile(_lastLoadedFile.Value ?? "", nextBatchId);
 
             using var stream = await _fileOptions.FileStorage.OpenRead(deltaFileName);
 
@@ -269,7 +268,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             _batchNumber.Value = nextBatchId;
 
             await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
-            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
 
             output.ExitCheckpointLock();
         }
@@ -311,6 +310,10 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
             if (_batchNumber.Value > 0)
             {
+                if (_fileOptions.DeltaGetNextFile != null)
+                {
+                    await RegisterTrigger("delta_load", _fileOptions.DeltaInterval);
+                }
                 return;
             }
 
