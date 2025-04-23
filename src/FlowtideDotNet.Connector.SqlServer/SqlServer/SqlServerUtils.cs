@@ -1181,8 +1181,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         public static async Task<PartitionMetadata?> GetPartitionMetadata(SqlConnection connection, ReadRelation relation)
         {
-            var schema = relation.NamedTable.Names[1];
-            var tableName = relation.NamedTable.Names[2];
+            GetSchemaAndName(relation, out var schema, out var tableName);
 
             var cmd = @"SELECT
                     ps.name AS partition_scheme,
@@ -1782,6 +1781,29 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             command.CommandText = $@"SELECT COUNT(*) FROM [{db}].[{schema}].[{table}]";
             var count = await command.ExecuteScalarAsync();
             return (int?)count ?? -1;
+        }
+
+        private static void GetSchemaAndName(ReadRelation relation, out string schema, out string tableName)
+        {
+            if (relation.NamedTable.Names.Count > 3)
+            {
+                throw new InvalidOperationException("Incorrect number of sql table name parts");
+            }
+            else if (relation.NamedTable.Names.Count == 3)
+            {
+                schema = relation.NamedTable.Names[1];
+                tableName = relation.NamedTable.Names[2];
+            }
+            else if (relation.NamedTable.Names.Count == 2)
+            {
+                schema = relation.NamedTable.Names[0];
+                tableName = relation.NamedTable.Names[1];
+            }
+            else
+            {
+                schema = "dbo";
+                tableName = relation.NamedTable.Names[0];
+            }
         }
     }
 }
