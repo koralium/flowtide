@@ -12,10 +12,10 @@ SELECT
     WHEN c.ActionType IN ('NEW', 'ADDACCT', 'UPDACCT') THEN 'ACTIVE'
     ELSE 'INACTIVE'
   END as Status,
-  acc.CA_ID as AccountID, 
+  CAST(acc.CA_ID AS INT) as AccountID, 
   CAST(c.Customer.C_ID AS INT) as CustomerID,
   CAST(acc.CA_B_ID AS INT) as BrokerID,
-  acc.CA_TAX_ST as TaxStatus, 
+  CAST(acc.CA_TAX_ST AS INT) as TaxStatus, 
   acc.CA_NAME as AccountDesc,
   c.ActionTS,
   floor_timestamp_day(c.ActionTS) AS EffectiveDate,
@@ -37,6 +37,27 @@ SELECT
   ActionTS
 FROM accounts_all_events;
 
+CREATE VIEW accounts_incremental AS
+SELECT
+  CA_ID as AccountID,
+  CA_C_ID as CustomerID,
+  CASE 
+	WHEN CA_ST_ID = 'ACTV' THEN 'ACTIVE'
+	ELSE 'INACTIVE'
+  END as Status,
+  CA_TAX_ST as TaxStatus,
+  CA_B_ID as BrokerID,
+  CA_NAME as AccountDesc,
+  floor_timestamp_day(ActionTS) as EffectiveDate,
+  BatchID,
+  ActionTS
+FROM account_incremental_raw;
+
+CREATE VIEW accounts_all AS
+SELECT * FROM accounts_resolved
+UNION ALL
+SELECT * FROM accounts_incremental;
+
 -- Create one row per day with the latest values, also find the end date of each row used for joins
 CREATE VIEW accounts_per_day AS
 SELECT
@@ -49,7 +70,7 @@ SELECT
   EffectiveDate,
   COALESCE(LEAD(EffectiveDate) OVER (PARTITION BY AccountID ORDER BY EffectiveDate), CAST('9999-12-31' as TIMESTAMP)) AS EndDate,
   BatchID
-FROM accounts_resolved
+FROM accounts_all
 WHERE ROW_NUMBER() OVER (PARTITION BY AccountID, EffectiveDate ORDER BY ActionTS DESC) = 1;
 
 -- Contains accounts joined with other dimensions, and a dates list of all the effective dates in sorted order

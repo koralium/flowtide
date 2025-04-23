@@ -30,11 +30,28 @@ namespace FlowtideDotNet.TpcDI.Extensions
                     "HH_BEFORE_QTY",
                     "HH_AFTER_QTY"
                 },
+                DeltaCsvColumns = new List<string>()
+                {
+                    "CDC_FLAG",
+                    "CDC_DSN",
+                    "HH_H_T_ID",
+                    "HH_T_ID",
+                    "HH_BEFORE_QTY",
+                    "HH_AFTER_QTY"
+                },
                 FileStorage = filesLocation,
                 GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
                 {
                     "Batch1/HoldingHistory.txt"
                 }),
+                DeltaGetNextFile = (lastFile, batchId) =>
+                {
+                    return $"Batch{batchId}/HoldingHistory.txt";
+                },
+                ModifyRow = (original, output, batchId, fileName, state) =>
+                {
+                    output[output.Length - 1] = batchId.ToString();
+                },
                 Delimiter = "|",
                 OutputSchema = new NamedStruct()
                 {
@@ -43,7 +60,8 @@ namespace FlowtideDotNet.TpcDI.Extensions
                         "HH_H_T_ID",
                         "HH_T_ID",
                         "HH_BEFORE_QTY",
-                        "HH_AFTER_QTY"
+                        "HH_AFTER_QTY",
+                        "BatchID"
                     },
                     Struct = new Struct()
                     {
@@ -52,8 +70,9 @@ namespace FlowtideDotNet.TpcDI.Extensions
                             new Int64Type(),
                             new Int64Type(),
                             new Int64Type(),
+                            new Int64Type(),
                             new Int64Type()
-                    }
+                        }
                     }
                 }
             });

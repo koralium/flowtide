@@ -23,7 +23,8 @@ SELECT
   MAX_BY(named_struct(
 		  'high', dm.DM_HIGH, 
 		  'date', dm.DM_DATE
-	  ), DM_HIGH) OVER (PARTITION BY dm.DM_S_SYMB ORDER BY dm.DM_DATE ROWS BETWEEN 364 PRECEDING AND CURRENT ROW) as YearHigh
+	  ), DM_HIGH) OVER (PARTITION BY dm.DM_S_SYMB ORDER BY dm.DM_DATE ROWS BETWEEN 364 PRECEDING AND CURRENT ROW) as YearHigh,
+  BatchID
 FROM dailymarket_raw dm;
 
 CREATE VIEW FactMarketHistoryView AS
@@ -40,7 +41,8 @@ SELECT
   ClosePrice,
   DayHigh,
   DayLow,
-  Volume
+  Volume,
+  mh.BatchID
 FROM markethistory_base mh
 INNER JOIN DimSecurityView ds
 ON ds.Symbol = mh.DM_S_SYMB AND

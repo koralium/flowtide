@@ -30,10 +30,23 @@ namespace FlowtideDotNet.TpcDI.Extensions
                     "CT_AMT",
                     "CT_NAME"
                 },
+                DeltaCsvColumns = new List<string>()
+                {
+                    "CDC_FLAG",
+                    "CDC_DSN",
+                    "CT_CA_ID",
+                    "CT_DTS",
+                    "CT_AMT",
+                    "CT_NAME"
+                },
                 FileStorage = filesLocation,
                 GetInitialFiles = () =>
                 {
                     return Task.FromResult<IEnumerable<string>>(["Batch1/CashTransaction.txt"]);
+                },
+                DeltaGetNextFile = (lastFile, batchId) =>
+                {
+                    return $"Batch{batchId}/CashTransaction.txt";
                 },
                 Delimiter = "|",
                 OutputSchema = new NamedStruct()
@@ -43,18 +56,24 @@ namespace FlowtideDotNet.TpcDI.Extensions
                         "CT_CA_ID",
                         "CT_DTS",
                         "CT_AMT",
-                        "CT_NAME"
+                        "CT_NAME",
+                        "BatchID"
                     },
                     Struct = new Struct()
                     {
                         Types = new List<SubstraitBaseType>()
                         {
-                            new StringType(),
+                            new Int64Type(),
                             new TimestampType(),
                             new Fp64Type(),
-                            new StringType()
+                            new StringType(),
+                            new Int64Type()
                         }
                     }
+                },
+                ModifyRow = (original, output, batchId, fileName, state) =>
+                {
+                    output[output.Length - 1] = batchId.ToString();
                 }
             });
         }

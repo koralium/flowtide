@@ -3,7 +3,8 @@ CREATE VIEW cashtransactions_per_day AS
 SELECT
   CT_CA_ID as AccountID,
   floor_timestamp_day(CT_DTS) as TransactionDate,
-  SUM(CT_AMT) as Cash
+  SUM(CT_AMT) as Cash,
+  MIN(BatchID) as BatchID
 FROM cashtransaction_raw
 GROUP BY
   CT_CA_ID,
@@ -14,7 +15,7 @@ SELECT
   AccountID,
   SUM(Cash) OVER (PARTITION BY AccountID ORDER BY TransactionDate) AS Cash,
   TransactionDate,
-  1 as BatchID
+  BatchID
 FROM cashtransactions_per_day;
 
 CREATE VIEW FactCashBalancesView AS

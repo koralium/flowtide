@@ -21,7 +21,7 @@ namespace FlowtideDotNet.TpcDI.Extensions
     {
         public static IConnectorManager AddTradeData(this IConnectorManager connectorManager, IFileStorage filesLocation)
         {
-            return connectorManager.AddCsvFileSource("trade_raw", new CsvFileOptions()
+            connectorManager.AddCsvFileSource("trade_batch1_raw", new CsvFileOptions()
             {
                 Delimiter = "|",
                 CsvColumns = new List<string>()
@@ -83,6 +83,83 @@ namespace FlowtideDotNet.TpcDI.Extensions
                             new DecimalType(),
                             new DecimalType(),
                             new DecimalType(),
+                        }
+                    }
+                }
+            });
+
+            return connectorManager.AddCsvFileSource("trade_incremental_raw", new CsvFileOptions()
+            {
+                Delimiter = "|",
+                CsvColumns = new List<string>(),
+                DeltaCsvColumns = new List<string>()
+                {
+                    "CDC_FLAG",
+                    "CDC_DSN",
+                    "T_ID",
+                    "T_DTS",
+                    "T_ST_ID",
+                    "T_TT_ID",
+                    "T_IS_CASH",
+                    "T_S_SYMB",
+                    "T_QTY",
+                    "T_BID_PRICE",
+                    "T_CA_ID",
+                    "T_EXEC_NAME",
+                    "T_TRADE_PRICE",
+                    "T_CHRG",
+                    "T_COMM",
+                    "T_TAX"
+                },
+                FileStorage = filesLocation,
+                GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()),
+                DeltaGetNextFile = (lastFile, batchId) =>
+                {
+                    return $"Batch{batchId}/Trade.txt";
+                },
+                ModifyRow = (original, output, batchId, fileName, state) =>
+                {
+                    output[output.Length - 1] = batchId.ToString();
+                },
+                OutputSchema = new NamedStruct()
+                {
+                    Names = new List<string>()
+                    {
+                        "T_ID",
+                        "T_DTS",
+                        "T_ST_ID",
+                        "T_TT_ID",
+                        "T_IS_CASH",
+                        "T_S_SYMB",
+                        "T_QTY",
+                        "T_BID_PRICE",
+                        "T_CA_ID",
+                        "T_EXEC_NAME",
+                        "T_TRADE_PRICE",
+                        "T_CHRG",
+                        "T_COMM",
+                        "T_TAX",
+                        "BatchID"
+                },
+                    Struct = new Struct()
+                    {
+                        Types = new List<SubstraitBaseType>()
+                        {
+                            new Int64Type(),
+                            new TimestampType(),
+                            new StringType(),
+                            new StringType(),
+                            new StringType(),
+                            new StringType(),
+                            new Int64Type(),
+                            new DecimalType(),
+                            new StringType(),
+                            new StringType(),
+                            new DecimalType(),
+                            new DecimalType(),
+                            new DecimalType(),
+                            new DecimalType(),
+                            new Int64Type()
                         }
                     }
                 }

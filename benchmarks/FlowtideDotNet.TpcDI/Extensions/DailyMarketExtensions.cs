@@ -32,12 +32,31 @@ namespace FlowtideDotNet.TpcDI.Extensions
                     "DM_LOW",
                     "DM_VOL"
                 },
+                DeltaCsvColumns = new List<string>()
+                {
+                    "CDC_FLAG",
+                    "CDC_DSN",
+                    "DM_DATE",
+                    "DM_S_SYMB",
+                    "DM_CLOSE",
+                    "DM_HIGH",
+                    "DM_LOW",
+                    "DM_VOL"
+                },
                 FileStorage = filesLocation,
                 GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
                 {
                     "Batch1/DailyMarket.txt"
                 }),
+                DeltaGetNextFile = (lastFile, batchId) =>
+                {
+                    return $"Batch{batchId}/DailyMarket.txt";
+                },
                 Delimiter = "|",
+                ModifyRow = (original, output, batchId, fileName, state) =>
+                {
+                    output[output.Length - 1] = batchId.ToString();
+                },
                 OutputSchema = new NamedStruct()
                 {
                     Names = new List<string>()
@@ -47,7 +66,8 @@ namespace FlowtideDotNet.TpcDI.Extensions
                         "DM_CLOSE",
                         "DM_HIGH",
                         "DM_LOW",
-                        "DM_VOL"
+                        "DM_VOL",
+                        "BatchID"
                     },
                     Struct = new Struct()
                     {
@@ -58,6 +78,7 @@ namespace FlowtideDotNet.TpcDI.Extensions
                             new Fp64Type(),
                             new Fp64Type(),
                             new Fp64Type(),
+                            new Int64Type(),
                             new Int64Type()
                         }
                     }

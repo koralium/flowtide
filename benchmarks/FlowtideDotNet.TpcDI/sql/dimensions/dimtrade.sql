@@ -9,16 +9,40 @@ SELECT
   T_S_SYMB as Symbol,
   T_QTY as Quantity,
   T_BID_PRICE as BidPrice,
-  T_CA_ID as CustomerAccountId,
+  CAST(T_CA_ID as INT) as CustomerAccountId,
   T_EXEC_NAME as ExecName,
   T_TRADE_PRICE as TradePrice,
   T_CHRG as Charge,
   T_COMM as Commision,
   T_TAX as Tax,
   1 as BatchID
-FROM trade_raw t
+FROM trade_batch1_raw t
 INNER JOIN tradehistory_raw th
 ON t.T_ID = th.TH_T_ID;
+
+CREATE VIEW trade_incremental AS
+SELECT
+T_ID as TradeID,
+  T_ST_ID as StatusID,
+  T_TT_ID as TradeTypeID,
+  T_DTS AS DTS,
+  CASE WHEN T_IS_CASH = '1' THEN true ELSE false END as IsCash,
+  T_S_SYMB as Symbol,
+  T_QTY as Quantity,
+  T_BID_PRICE as BidPrice,
+  CAST(T_CA_ID as INT) as CustomerAccountId,
+  T_EXEC_NAME as ExecName,
+  T_TRADE_PRICE as TradePrice,
+  T_CHRG as Charge,
+  T_COMM as Commision,
+  T_TAX as Tax,
+  BatchID
+FROM trade_incremental_raw;
+
+CREATE VIEW trade_all AS
+SELECT * FROM tradehistory_joined
+UNION ALL
+SELECT * FROM trade_incremental;
 
 CREATE VIEW trade_latest AS
 SELECT
@@ -47,7 +71,7 @@ SELECT
     ) AS RawCloseDTS,
   -- Find the first occurance for PTS (used to join dim tables) and batchId since it should be the first occurance
   MIN_BY(named_struct('DTS', DTS, 'BatchID', BatchID), DTS) as FirstOccurance
-FROM tradehistory_joined
+FROM trade_all
 GROUP BY TradeID;
 
 CREATE VIEW DimTradeView AS

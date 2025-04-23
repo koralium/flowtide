@@ -15,7 +15,7 @@ using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.Connector.Files;
 using Stowage;
 using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.TpcDI.Extensions;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
@@ -90,11 +90,11 @@ builder.Services.AddFlowtideStream("stream")
 
         c.AddCatalog("sink", (sink) =>
         {
-            sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
-            {
-                StorageLocation = Files.Of.LocalDisk("./outputdata")
-            });
-            //sink.AddBlackholeSink("*");
+            //sink.AddDeltaLakeSink(new FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions()
+            //{
+            //    StorageLocation = Files.Of.LocalDisk("./outputdata")
+            //});
+            sink.AddBlackholeSink("*");
         });
         
         c.AddConsoleSink("console");
@@ -109,5 +109,11 @@ builder.Services.AddFlowtideStream("stream")
 var app = builder.Build();
 
 app.UseFlowtideUI("/stream");
+
+app.MapGet("/next_batch", async ([FromKeyedServices("stream")] FlowtideDotNet.Base.Engine.DataflowStream services) =>
+{
+    await services.CallTrigger("delta_load", default);
+    return Results.Ok();
+});
 
 app.Run();

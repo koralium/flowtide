@@ -30,11 +30,24 @@ namespace FlowtideDotNet.TpcDI.Extensions
                     "W_DTS",
                     "W_ACTION"
                 },
+                DeltaCsvColumns = new List<string>()
+                {
+                    "CDC_FLAG",
+                    "CDC_DSN",
+                    "W_C_ID",
+                    "W_S_SYMB",
+                    "W_DTS",
+                    "W_ACTION"
+                },
                 FileStorage = filesLocation,
                 GetInitialFiles = () => Task.FromResult<IEnumerable<string>>(new List<string>()
                 {
                     "Batch1/WatchHistory.txt"
                 }),
+                DeltaGetNextFile = (lastFile, batchId) =>
+                {
+                    return $"Batch{batchId}/WatchHistory.txt";
+                },
                 Delimiter = "|",
                 OutputSchema = new NamedStruct()
                 {
@@ -60,7 +73,7 @@ namespace FlowtideDotNet.TpcDI.Extensions
                 },
                 ModifyRow = (original, output, batchId, fileName, state) =>
                 {
-                    output[original.Length] = batchId.ToString();
+                    output[output.Length - 1] = batchId.ToString();
                 }
             });
         }

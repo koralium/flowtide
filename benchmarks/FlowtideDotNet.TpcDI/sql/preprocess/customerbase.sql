@@ -81,6 +81,53 @@ SELECT
   BatchID
 FROM customers_all_events;
 
+CREATE VIEW customers_incremental AS
+SELECT
+  C_ID as CustomerID,
+  C_TAX_ID as TaxID,
+  CASE 
+    WHEN C_ST_ID = 'ACTV' THEN 'ACTIVE'
+    ELSE 'INACTIVE'
+  END as Status,
+  C_L_NAME as LastName,
+  C_F_NAME as FirstName,
+  C_M_NAME as MiddleName,
+  C_TIER as Tier,
+  C_DOB as DOB,
+  C_EMAIL_1 as Email1,
+  C_EMAIL_2 as Email2,
+  C_GNDR as Gender,
+  C_ADLINE1 as AddressLine1,
+  C_ADLINE2 as AddressLine2,
+  C_ZIPCODE as PostalCode,
+  C_CITY as City,
+  C_STATE_PROV as StateProv,
+  C_CTRY as Country,
+  C_CTRY_1,
+  C_AREA_1,
+  C_LOCAL_1,
+  C_EXT_1,
+  C_CTRY_2,
+  C_AREA_2,
+  C_LOCAL_2,
+  C_EXT_2,
+  C_CTRY_3,
+  C_AREA_3,
+  C_LOCAL_3,
+  C_EXT_3,
+  C_NAT_TX_ID,
+  C_LCL_TX_ID,
+  ActionTS,
+  floor_timestamp_day(ActionTS) AS EffectiveDate,
+  BatchID
+FROM customers_incremental_raw;
+
+CREATE VIEW customers_all AS
+SELECT * FROM customers_base
+UNION ALL
+SELECT * FROM customers_incremental;
+
+
 CREATE VIEW CustomerHistory AS
 SELECT
   surrogate_key_int64() OVER (PARTITION BY CustomerID, EffectiveDate) as SK_CustomerID,
@@ -136,7 +183,7 @@ SELECT
   COALESCE(LEAD(EffectiveDate) OVER (PARTITION BY CustomerID ORDER BY EffectiveDate), CAST('9999-12-31' as TIMESTAMP)) AS EndDate,
   LEAD(EffectiveDate) OVER (PARTITION BY CustomerID ORDER BY EffectiveDate) IS NULL AS IsCurrent,
   c.BatchID
-FROM customers_base c
+FROM customers_all c
 LEFT JOIN TaxRateView ntr
 ON C_NAT_TX_ID = ntr.TX_ID
 LEFT JOIN TaxRateView ltr
