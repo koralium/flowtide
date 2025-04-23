@@ -517,6 +517,46 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return stringBuilder.ToString();
         }
 
+        public static string CreateInitialPartitionedSelectStatement(ReadRelation readRelation, PartitionMetadata partitionMetadata, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
+        {
+            var stringBuilder = new StringBuilder();
+            var cols = string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]"));
+            var table = string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]"));
+
+            stringBuilder.AppendLine($"SELECT {cols}");
+            stringBuilder.AppendLine($"FROM {table}");
+
+            string? filters = filter;
+            if (includePkParameters)
+            {
+                var pkFilters = GetInitialLoadWhereStatement(primaryKeys);
+
+                if (filters != null)
+                {
+                    filters = $"({filters}) AND ({pkFilters})";
+                }
+                else
+                {
+                    filters = pkFilters;
+                }
+            }
+
+            if (filters != null)
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId AND {filters}");
+            }
+            else
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId");
+            }
+
+            stringBuilder.AppendLine($"ORDER BY {string.Join(", ", primaryKeys)}");
+            stringBuilder.AppendLine($"OFFSET 0 ROWS FETCH NEXT {batchSize} ROWS ONLY");
+
+            return stringBuilder.ToString();
+
+        }
+
         public static string CreateInitialSelectStatement(ReadRelation readRelation, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
         {
             StringBuilder stringBuilder = new StringBuilder();
