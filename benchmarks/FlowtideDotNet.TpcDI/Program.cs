@@ -43,7 +43,6 @@ var factholdingssql = File.ReadAllText("./sql/facts/factholdings.sql");
 var factwatchessql = File.ReadAllText("./sql/facts/factwatches.sql");
 var factmarkethistorysql = File.ReadAllText("./sql/facts/factmarkethistory.sql");
 
-
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     datesql,
     taxratesql,

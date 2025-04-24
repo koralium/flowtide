@@ -7,7 +7,15 @@ SELECT
   c.LastName,
   c.FirstName,
   c.MiddleName,
-  c.Tier,
+  CHECK_VALUE(
+    c.Tier,
+	c.Tier IN (1, 2, 3),
+	'C_ID = {CustomerID}, C_TIER = {Tier}',
+	c.CustomerID,
+	c.Tier,
+	messageText => 'Invalid customer tier',
+	MessageSource => 'DimCustomer'
+  ) as Tier,
   c.DOB,
   c.Email1,
   c.Email2,

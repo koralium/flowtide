@@ -26,7 +26,15 @@ SELECT
   st.ST_NAME as Status,
   CompanyName AS Name,
   i.IN_NAME AS Industry,
-  spRating as SPRating,
+  CHECK_VALUE(
+    spRating,
+	spRating IN ('AAA', 'AA', 'AA+', 'AA-', 'A', 'A+', 'A-', 'BBB', 'BBB+', 'BBB-', 'BB', 'BB+', 'BB-', 'B', 'B+', 'B-', 'CCC', 'CCC+', 'CCC-', 'CC', 'C', 'D'),
+	'CO_ID = {CIK}, CO_SP_RATE = {spRating}',
+	CIK,
+	spRating,
+	messageText => 'Invalid SPRating',
+	MessageSource => 'DimCompany'
+  ) as SPRating,
   CASE 
 	WHEN starts_with(spRating, 'A') OR starts_with(spRating, 'BBB') THEN false
 	ELSE true

@@ -93,8 +93,24 @@ SELECT
   da.SK_CustomerID as SK_CustomerID,
   latest_state.ExecName as ExecutedBy,
   latest_state.TradePrice,
-  latest_state.Charge as Fee,
-  latest_state.Commision,
+  CHECK_VALUE(
+    latest_state.Charge,
+    latest_state.Charge is null OR (latest_state.Charge < (latest_state.Quantity * latest_state.BidPrice)),
+    'T_ID = {TradeID}, T_CHRG = {Charge}',
+    TradeID,
+    latest_state.Charge,
+    messageText => 'Invalid trade fee',
+    MessageSource => 'DimTrade'
+  ) as Fee,
+  CHECK_VALUE(
+    latest_state.Commision,
+    latest_state.Commision is null OR (latest_state.Commision < (latest_state.Quantity * latest_state.BidPrice)),
+    'T_ID = {TradeID}, T_COMM = {Commision}',
+    TradeID,
+    latest_state.Commision,
+    messageText => 'Invalid trade commission',
+    MessageSource => 'DimTrade'
+  ) AS Commision,
   latest_state.Tax,
   FirstOccurance.BatchID
 FROM trade_latest tl

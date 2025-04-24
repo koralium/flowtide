@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.Files;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using Stowage;
@@ -31,7 +32,14 @@ namespace FlowtideDotNet.TpcDI.Extensions
                 {
                     "Batch1/CustomerMgmt.xml"
                 }),
-                XmlSchema = File.ReadAllText("customers.xsd")
+                XmlSchema = File.ReadAllText("customers.xsd"),
+                ExtraColumns = new List<FileExtraColumn>()
+                {
+                    new FileExtraColumn("BatchDate", new TimestampType(), (fileName, batchId, state) =>
+                    {
+                        return new TimestampTzValue(DateTimeOffset.Now);
+                    })
+                }
             });
 
             connectorManager.AddCsvFileSource("customers_incremental_raw", new CsvFileOptions()

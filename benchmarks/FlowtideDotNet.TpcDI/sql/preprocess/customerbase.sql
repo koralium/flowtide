@@ -38,7 +38,8 @@ SELECT
   c.Customer.TaxInfo.C_NAT_TX_ID as C_NAT_TX_ID,
   c.Customer.TaxInfo.C_LCL_TX_ID as C_LCL_TX_ID,
   c.ActionTS,
-  1 AS BatchID
+  1 AS BatchID,
+  c.BatchDate
 FROM CustomerMgmt c
 WHERE c.ActionType IN ('NEW', 'UPDCUST', 'INACT');
 
@@ -78,7 +79,8 @@ SELECT
   LAST_VALUE(C_LCL_TX_ID) IGNORE NULLS OVER (PARTITION BY CustomerID ORDER BY ActionTS) as C_LCL_TX_ID,
   ActionTS,
   floor_timestamp_day(ActionTS) AS EffectiveDate,
-  BatchID
+  BatchID,
+  BatchDate
 FROM customers_all_events;
 
 CREATE VIEW customers_incremental AS
@@ -119,7 +121,8 @@ SELECT
   C_LCL_TX_ID,
   ActionTS,
   floor_timestamp_day(ActionTS) AS EffectiveDate,
-  BatchID
+  BatchID,
+  ActionTS AS BatchDate
 FROM customers_incremental_raw;
 
 CREATE VIEW customers_all AS
@@ -182,7 +185,8 @@ SELECT
   ltr.TX_RATE AS LocalTaxRate,
   COALESCE(LEAD(EffectiveDate) OVER (PARTITION BY CustomerID ORDER BY EffectiveDate), CAST('9999-12-31' as TIMESTAMP)) AS EndDate,
   LEAD(EffectiveDate) OVER (PARTITION BY CustomerID ORDER BY EffectiveDate) IS NULL AS IsCurrent,
-  c.BatchID
+  c.BatchID,
+  c.BatchDate
 FROM customers_all c
 LEFT JOIN TaxRateView ntr
 ON C_NAT_TX_ID = ntr.TX_ID
