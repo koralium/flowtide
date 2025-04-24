@@ -25,10 +25,16 @@ namespace FlowtideDotNet.Core.Engine
         private static readonly ActivitySource _activitySource = new ActivitySource("FlowtideDotNet.CheckFailures");
         public void OnCheckFailure(ref readonly CheckFailureNotification notification)
         {
+            var formattedMessage = notification.Message;
+            for (int i = 0; i < notification.Tags.Length; i++)
+            {
+                formattedMessage = formattedMessage.Replace($"{{{notification.Tags[i].Key}}}", notification.Tags[i].Value?.ToString() ?? "null", StringComparison.OrdinalIgnoreCase);
+            }
+
             var activity = _activitySource.StartActivity("CheckFailure", ActivityKind.Internal);
             if (activity != null)
             {
-                activity.DisplayName = $"Check failed with message: {notification.Message}";
+                activity.DisplayName = formattedMessage;
                 activity.SetTag("Message", notification.Message);
                 foreach (var tag in notification.Tags)
                 {
