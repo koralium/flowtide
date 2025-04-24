@@ -18,10 +18,11 @@ using FlowtideDotNet.Storage.Utils;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.FileCache
 {
-    internal class FileCache : IDisposable
+    internal class FileCache : IDisposable, IFileCache
     {
         private struct FreePage : IComparable<FreePage>
         {
@@ -274,7 +275,7 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
-        public void FreeAll()
+        public void FreeAll(IEnumerable<long> keysToFree)
         {
             lock (m_lock)
             {
@@ -424,11 +425,11 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
-        public T Read<T>(long pageKey, IStateSerializer<T> serializer)
+        public ValueTask<T> Read<T>(long pageKey, IStateSerializer<T> serializer)
             where T : ICacheObject
         {
             var memory = Read(pageKey);
-            return serializer.Deserialize(memory, memory.Length);
+            return ValueTask.FromResult(serializer.Deserialize(memory, memory.Length));
         }
 
         /// <summary>

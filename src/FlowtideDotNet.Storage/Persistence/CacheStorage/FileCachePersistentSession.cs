@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
             where T : ICacheObject
         {
-            return ValueTask.FromResult(fileCache.Read(key, serializer));
+            return fileCache.Read(key, serializer);
         }
 
         public virtual Task Write(long key, SerializableObject value)
