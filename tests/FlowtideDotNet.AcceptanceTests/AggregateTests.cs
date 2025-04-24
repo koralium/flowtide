@@ -214,7 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, min(orderkey)
                 FROM orders
                 GROUP BY userkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             await Crash();
@@ -385,7 +385,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
                 FROM orders
                 GROUP BY userkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             await Crash();
@@ -423,7 +423,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, min_by(Orderdate, orderkey)
                 FROM orders
                 GROUP BY userkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             await Crash();
