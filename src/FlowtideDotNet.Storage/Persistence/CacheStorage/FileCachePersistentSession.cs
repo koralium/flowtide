@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public ValueTask<ReadOnlyMemory<byte>> Read(long key)
         {
-            return ValueTask.FromResult(fileCache.Read(key));
+            return fileCache.Read(key);
         }
 
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)

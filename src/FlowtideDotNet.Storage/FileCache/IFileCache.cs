@@ -21,13 +21,23 @@ namespace FlowtideDotNet.Storage.FileCache
 {
     public interface IFileCache : IDisposable
     {
+        /// <summary>
+        /// Called by eviction threads to write a page to the file cache.
+        /// This is sync because it is called from a thread pool thread and requires locking of the object.
+        /// </summary>
+        /// <param name="id"></param>
+        /// <param name="serializableObject"></param>
         void Write(long id, SerializableObject serializableObject);
 
-        ReadOnlyMemory<byte> Read(long pageKey);
+        ValueTask<ReadOnlyMemory<byte>> Read(long pageKey);
 
         ValueTask<T> Read<T>(long pageKey, IStateSerializer<T> serializer)
             where T : ICacheObject;
 
+        /// <summary>
+        /// Called when a state client wants to free/remove a page from the file cache.
+        /// </summary>
+        /// <param name="pageKey"></param>
         void Free(in long pageKey);
 
         /// <summary>
@@ -38,8 +48,15 @@ namespace FlowtideDotNet.Storage.FileCache
         /// <param name="keys"></param>
         void FreeAll(IEnumerable<long> keys);
 
+        /// <summary>
+        /// Called at the end of an eviction of a state client
+        /// </summary>
         void Flush();
 
+        /// <summary>
+        /// Called when the stream has not received any data for a while.
+        /// Allows a file cache to remove any temporary allocations.
+        /// </summary>
         void ClearTemporaryAllocations();
     }
 }

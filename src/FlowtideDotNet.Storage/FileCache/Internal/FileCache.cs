@@ -428,8 +428,13 @@ namespace FlowtideDotNet.Storage.FileCache
         public ValueTask<T> Read<T>(long pageKey, IStateSerializer<T> serializer)
             where T : ICacheObject
         {
-            var memory = Read(pageKey);
+            var memory = ReadSync(pageKey);
             return ValueTask.FromResult(serializer.Deserialize(memory, memory.Length));
+        }
+
+        public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey)
+        {
+            return ValueTask.FromResult(ReadSync(pageKey));
         }
 
         /// <summary>
@@ -438,7 +443,7 @@ namespace FlowtideDotNet.Storage.FileCache
         /// <param name="pageKey"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public ReadOnlyMemory<byte> Read(long pageKey)
+        public ReadOnlyMemory<byte> ReadSync(long pageKey)
         {
             IFileCacheWriter? segmentWriter = default;
             long position = 0;

@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
                 {
-                    var bytes = m_fileCache.Read(kv.Key);
+                    var bytes = await m_fileCache.Read(kv.Key);
 
                     // Write to persistence
                     await session.Write(kv.Key, new SerializableObject(bytes));

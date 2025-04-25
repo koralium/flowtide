@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
         {
             if (m_fileCache.Exists(key))
             {
-                value = m_fileCache.Read(key);
+                value = m_fileCache.ReadSync(key);
                 return true;
             }
             value = default;
