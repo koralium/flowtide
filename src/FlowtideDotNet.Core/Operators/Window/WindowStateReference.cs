@@ -86,11 +86,13 @@ namespace FlowtideDotNet.Core.Operators.Window
 
             if (isUpdate)
             {
+                Updated = true;
                 _addOutputRow.AddOutputRow(_columnRowReference.Value, temporaryStorage, -1);
                 _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
             if (isNew)
             {
+                Updated = true;
                 windowValue.valueContainer._previousValueSent.Set(windowValue.index);
                 _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
