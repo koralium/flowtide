@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -29,8 +30,12 @@ namespace FlowtideDotNet.Core.Operators.Window
         private readonly List<int> _partitionColumnIndices;
 
         public int start;
+        public int partitionStart;
         public int end;
         public bool noMatch = false;
+
+        internal IColumnComparer<ColumnRowReference>? _sortComparer;
+        internal ColumnRowReference _sortValue;
 
         public WindowPartitionStartSearchComparer(List<int> partitionColumnIndices)
         {
@@ -65,14 +70,30 @@ namespace FlowtideDotNet.Core.Operators.Window
                 if (low < 0)
                 {
                     start = low;
+                    partitionStart = start;
                     noMatch = true;
                     return low;
                 }
                 else
                 {
                     index = low;
+                    partitionStart = start;
                     start = low;
                     end = high;
+                }
+            }
+            if (_sortComparer != null)
+            {
+                var (low, high) = keyContainer.Data.FindBoundries(_sortValue, start, end, _sortComparer);
+                if (low < 0)
+                {
+                    start = low;
+                    return low;
+                }
+                else
+                {
+                    start = low;
+                    index = low;
                 }
             }
 

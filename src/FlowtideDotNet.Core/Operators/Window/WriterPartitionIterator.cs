@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using System;
@@ -39,7 +40,8 @@ namespace FlowtideDotNet.Core.Operators.Window
             IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator, 
             List<int> partitionColumns, 
             IWindowAddOutputRow? addOutputRow,
-            int functionsCount)
+            int functionsCount,
+            IColumnComparer<ColumnRowReference>? sortComparer)
         {
             this.iterator = iterator;
             _addOutputRow = addOutputRow;
@@ -47,6 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             _tmpValueArray = new IDataValue[functionsCount];
             _windowStateReference = new WindowStateReference(addOutputRow);
             searchComparer = new WindowPartitionStartSearchComparer(partitionColumns);
+            searchComparer._sortComparer = sortComparer;
         }
 
         /// <summary>
@@ -54,9 +57,10 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// </summary>
         /// <param name="partitionValue"></param>
         /// <returns></returns>
-        public ValueTask Reset(ColumnRowReference partitionValue)
+        public ValueTask Reset(ColumnRowReference partitionValue, ColumnRowReference minOrderByValues)
         {
             this.partitionRow = partitionValue;
+            searchComparer._sortValue = minOrderByValues;
             return iterator.Seek(partitionRow, searchComparer);
         }
 

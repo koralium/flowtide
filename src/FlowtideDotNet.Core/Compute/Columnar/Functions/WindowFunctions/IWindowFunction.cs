@@ -31,6 +31,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 
         ValueTask NewPartition(ColumnRowReference partitionValues);
 
+        //ValueTask NewPartitionFromMinValue(ColumnRowReference partitionValues, ColumnRowReference minValue);
+
         ValueTask EndPartition(ColumnRowReference partitionValues);
 
         ValueTask<IDataValue> ComputeRow(KeyValuePair<ColumnRowReference, WindowStateReference> row, long partitionRowIndex);

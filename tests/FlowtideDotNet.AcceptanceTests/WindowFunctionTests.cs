@@ -1446,6 +1446,11 @@ namespace FlowtideDotNet.AcceptanceTests
                 });
 
             AssertCurrentDataEqual(expected);
+
+            GenerateData(10);
+
+
+            await WaitForUpdate();
         }
 
         [Fact]

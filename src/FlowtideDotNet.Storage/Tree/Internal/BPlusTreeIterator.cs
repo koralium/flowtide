@@ -98,6 +98,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int index;
         private readonly Enumerator enumerator;
 
+        LeafNode<K, V, TKeyContainer, TValueContainer>? IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>.CurrentPage => leafNode;
+
+        int IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>.CurrentIndex => index;
+
         public BPlusTreeIterator(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             this.tree = tree;
@@ -232,6 +236,35 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 throw new NotSupportedException();
             }
+        }
+
+        /// <summary>
+        /// Moves the iterator to the previous page.
+        /// Used by some window functions to find the start of their window when starting at the min changed value in a partition.
+        /// </summary>
+        /// <returns></returns>
+        ValueTask<bool> IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>.MoveToPreviousPage()
+        {
+            Debug.Assert(leafNode != null);
+            if (leafNode.previous > 0)
+            {
+                var getNodeTask = tree.m_stateClient.GetValue(leafNode.previous);
+                if (!getNodeTask.IsCompletedSuccessfully)
+                {
+                    return MoveToPreviousPage_Slow(getNodeTask);
+                }
+                leafNode = getNodeTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>;
+                index = leafNode!.keys.Count - 1;
+                return ValueTask.FromResult(true);
+            }
+            return ValueTask.FromResult(false);
+        }
+
+        private async ValueTask<bool> MoveToPreviousPage_Slow(ValueTask<IBPlusTreeNode?> getNodeTask)
+        {
+            leafNode = (await getNodeTask) as LeafNode<K, V, TKeyContainer, TValueContainer>;
+            index = leafNode!.keys.Count - 1;
+            return true;
         }
     }
 }

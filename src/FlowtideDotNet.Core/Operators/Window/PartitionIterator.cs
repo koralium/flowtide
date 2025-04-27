@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         private readonly WindowPartitionStartSearchComparer searchComparer;
         private readonly WindowStateReference _windowStateReference;
         private readonly IWindowAddOutputRow? _addOutputRow;
-
+        
         public PartitionIterator(IBPlusTreeIterator<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> iterator, List<int> partitionColumns, IWindowAddOutputRow? addOutputRow = default)
         {
             this.iterator = iterator;
@@ -48,6 +48,65 @@ namespace FlowtideDotNet.Core.Operators.Window
         {
             this.partitionRow = partitionValue;
             return iterator.Seek(partitionRow, searchComparer);
+        }
+
+        /// <summary>
+        /// Moves the iterator back X amount of rows
+        /// </summary>
+        /// <param name="rowCount"></param>
+        /// <returns></returns>
+        public async ValueTask MoveBackNumberOfRows(int rowCount)
+        {
+            // This is not correct, it needs to iterate back including weights
+            int weightIndex = 0;
+            if (searchComparer.partitionStart > 0)
+            {
+                for (int i = searchComparer.start; i >= searchComparer.partitionStart; i--)
+                {
+                    var weight = iterator.CurrentPage!.values._weights.Get(i);
+                    rowCount -= weight;
+                    if (rowCount <= 0)
+                    {
+                        searchComparer.start = i;
+                        weightIndex = Math.Abs(rowCount);
+                        break;
+                    }
+                }
+                return;
+            }
+
+            if (searchComparer.partitionStart > 0)
+            {
+                var newStart = searchComparer.start - rowCount;
+
+                if (newStart < searchComparer.partitionStart)
+                {
+                    newStart = searchComparer.partitionStart;
+                }
+                searchComparer.start = newStart;
+            }
+            else
+            {
+                if (searchComparer.start - rowCount < searchComparer.partitionStart)
+                {
+                    searchComparer.start = searchComparer.partitionStart;
+                }
+                else
+                {
+                    searchComparer.start -= rowCount;
+                }
+
+                // Check if there is any previous page
+                if (iterator.CurrentPage.previous > 0)
+                {
+                    await iterator.MoveToPreviousPage();
+
+                    //iterator.CurrentPage.keys.BinarySearch_data.FindBoundries(partitionRow, 0, iterator.CurrentPage.keys.Count - 1, );
+                    searchComparer.FindIndex(partitionRow, iterator.CurrentPage.keys!);
+
+                }
+            }
+
         }
 
         /// <summary>

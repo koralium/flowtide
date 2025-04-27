@@ -20,7 +20,6 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Diagnostics.CodeAnalysis;
@@ -28,7 +27,6 @@ using System.Diagnostics;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Core.Operators.Partition;
 namespace FlowtideDotNet.Core.Operators.Window
 {
     internal class WindowOperator : UnaryVertex<StreamEventBatch>
@@ -40,7 +38,7 @@ namespace FlowtideDotNet.Core.Operators.Window
         /// <summary>
         /// This tree contains partitions that have been updated.
         /// </summary>
-        private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBPlusTree<ColumnRowReference, ColumnRowReference, AggregateKeyStorageContainer, ColumnValueStorageContainer>? _temporaryTree;
         private List<int> _partitionColumns;
         private List<int> _otherColumns;
         private List<Action<EventBatchData, int, Column>> _partitionCalculateExpressions;
@@ -60,6 +58,13 @@ namespace FlowtideDotNet.Core.Operators.Window
         private ICounter<long>? _eventsOutCounter;
         private ICounter<long>? _eventsInCounter;
 
+        // Order by handling, to precompute the order by columns
+        // This is required to find the minimum value in the partition and save it
+        private List<int> _orderByColumns;
+        private List<Action<EventBatchData, int, Column>> _orderByCalculateExpressions;
+        private IColumnComparer<ColumnRowReference> _computedColumnsCompare;
+        private IColumnComparer<ColumnRowReference>? _computedSortComparer;
+
         public WindowOperator(ConsistentPartitionWindowRelation relation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _relation = relation;
@@ -68,8 +73,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             if (relation.OrderBy.Count > 0)
             {
                 _sortComparer = SortFieldCompareCompiler.CreateComparer(relation.OrderBy, functionsRegister);
+                _computedSortComparer = SortFieldCompareCompiler.CreateComparerAgainstComputedColumns(relation.OrderBy, functionsRegister);
             }
+
             CreatePartitionColumnExpressions(functionsRegister);
+            CreateSortColumnExpressions(functionsRegister);
 
             if (relation.EmitSet)
             {
@@ -133,6 +141,45 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
         }
 
+        [MemberNotNull(nameof(_orderByColumns), nameof(_orderByCalculateExpressions), nameof(_computedColumnsCompare))]
+        private void CreateSortColumnExpressions(IFunctionsRegister functionsRegister)
+        {
+            List<int> orderByColumns = new List<int>();
+            int extraColumnCounter = _relation.Input.OutputLength;
+            List<SortField> sortFields = new List<SortField>();
+            List<Action<EventBatchData, int, Column>> orderByCalculateExpressions = new List<Action<EventBatchData, int, Column>>();
+            int index = 0;
+            foreach (var sortField in _relation.OrderBy)
+            {
+                if (sortField.Expression is DirectFieldReference directFieldReference &&
+                    directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                {
+                    orderByColumns.Add(structReferenceSegment.Field);
+                }
+                else
+                {
+                    var exprFunc = ColumnProjectCompiler.Compile(sortField.Expression, functionsRegister);
+                    orderByCalculateExpressions.Add(exprFunc);
+                    orderByColumns.Add(extraColumnCounter++);
+                }
+                sortFields.Add(new SortField()
+                {
+                    Expression = new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment()
+                        {
+                            Field = index
+                        }
+                    },
+                    SortDirection = sortField.SortDirection
+                });
+                index++;
+            }
+            _orderByColumns = orderByColumns;
+            _orderByCalculateExpressions = orderByCalculateExpressions;
+            _computedColumnsCompare = SortFieldCompareCompiler.CreateComparer(sortFields, functionsRegister);
+        }
+
         public override string DisplayName => "WindowOperator";
 
         public override Task Compact()
@@ -172,8 +219,8 @@ namespace FlowtideDotNet.Core.Operators.Window
                 foreach (var partitionKv in partitionPage)
                 {
                     int rowIndex = 0;
-                    await _partitionIterator.Reset(partitionKv.Key);
-
+                    await _partitionIterator.Reset(partitionKv.Key, partitionKv.Value);
+                    
                     for (int w = 0; w < _windowFunctions.Length; w++)
                     {
                         await _windowFunctions[w].NewPartition(partitionKv.Key);
@@ -239,6 +286,29 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
             var eventBatchWithPartitionColumns = new EventBatchData(columns);
 
+            Column[] extraOrderByColumns = new Column[_orderByCalculateExpressions.Count];
+
+            for (int i = 0; i < extraOrderByColumns.Length; i++)
+            {
+                extraOrderByColumns[i] = new Column(MemoryAllocator);
+            }
+
+            IColumn[] orderByColumns = new IColumn[_relation.OrderBy.Count];
+
+            for (int i = 0; i < orderByColumns.Length; i++)
+            {
+                if (_orderByColumns[i] >= _relation.Input.OutputLength)
+                {
+                    orderByColumns[i] = extraOrderByColumns[_orderByColumns[i] - _relation.Input.OutputLength];
+                }
+                else
+                {
+                    orderByColumns[i] = msg.Data.EventBatchData.Columns[_orderByColumns[i]];
+                }
+            }
+
+            var orderByBatch = new EventBatchData(orderByColumns);
+
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 // Calculate partition values that are more complex than simply a column value
@@ -247,10 +317,20 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     _partitionCalculateExpressions[k](msg.Data.EventBatchData, i, extraPartitionColumns[k]);
                 }
+                for (int k = 0; k < _orderByCalculateExpressions.Count; k++)
+                {
+                    _orderByCalculateExpressions[k](orderByBatch, i, extraOrderByColumns[k]);
+                }
 
                 var rowRef = new ColumnRowReference()
                 {
                     referenceBatch = eventBatchWithPartitionColumns,
+                    RowIndex = i
+                };
+
+                var orderByRef = new ColumnRowReference()
+                {
+                    referenceBatch = orderByBatch,
                     RowIndex = i
                 };
 
@@ -272,7 +352,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     weight = msg.Data.Weights[i],
                 };
-                    
+                
                 await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
                 {
                     if (exist)
@@ -294,10 +374,15 @@ namespace FlowtideDotNet.Core.Operators.Window
 
                 // Even if the row was deleted we still need to update the temporary tree
                 // Since rows that depend on this row will need to be updated
-                await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
+                await _temporaryTree.RMWNoResult(partitionRowRef, orderByRef, (input, current, exists) =>
                 {
                     if (exists)
                     {
+                        if (_computedColumnsCompare.Compare(input, current) < 0)
+                        {
+                            // If the value is smaller, return it instead
+                            return (input, GenericWriteOperation.Upsert);
+                        }
                         // If the partition already exists in the tree, no need to force a write on the page
                         return (current, GenericWriteOperation.None);
                     }
@@ -336,12 +421,12 @@ namespace FlowtideDotNet.Core.Operators.Window
             });
 
             _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
-                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, ColumnRowReference, AggregateKeyStorageContainer, ColumnValueStorageContainer>()
                 {
                     Comparer = new AggregateInsertComparer(_partitionColumns.Count),
                     KeySerializer = new AggregateKeySerializer(_partitionColumns.Count, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
-                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
+                    ValueSerializer = new ColumnValueSerializer(_orderByColumns.Count, MemoryAllocator),
                     UseByteBasedPageSizes = true
                 });
             
@@ -356,7 +441,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 await _windowFunctions[w].Initialize(_persistentTree, _partitionColumns, MemoryAllocator, stateManagerClient.GetChildManager(w.ToString()));
             }
 
-            _partitionIterator = new WriterPartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder, _windowFunctions.Length);
+            _partitionIterator = new WriterPartitionIterator(_persistentTree.CreateIterator(), _partitionColumns, _outputBuilder, _windowFunctions.Length, _computedSortComparer);
         }
     }
 }

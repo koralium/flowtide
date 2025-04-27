@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Tree.Internal;
+
 namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IAsyncEnumerable<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>, IDisposable
@@ -37,5 +39,11 @@ namespace FlowtideDotNet.Storage.Tree
         void Reset();
 
         void CloneSeekResultTo(IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> other);
+
+        internal LeafNode<K, V, TKeyContainer, TValueContainer>? CurrentPage { get; }
+
+        internal int CurrentIndex { get; }
+
+        internal ValueTask<bool> MoveToPreviousPage();
     }
 }
