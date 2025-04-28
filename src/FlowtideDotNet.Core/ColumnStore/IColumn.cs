@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -83,5 +84,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         Column Copy(IMemoryAllocator memoryAllocator);
 
         internal StructHeader? StructHeader { get; }
+
+        void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
     }
 }

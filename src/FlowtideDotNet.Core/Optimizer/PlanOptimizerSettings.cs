@@ -28,5 +28,7 @@ namespace FlowtideDotNet.Core.Optimizer
         /// Disabled by default, since its not well tested yet.
         /// </summary>
         public bool SimplifyProjection { get; set; } = true;
+
+        public int Parallelization { get; set; } = 1;
     }
 }

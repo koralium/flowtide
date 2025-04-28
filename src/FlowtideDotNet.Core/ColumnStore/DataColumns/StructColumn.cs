@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -586,6 +587,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].AddToHash(index, child, hashAlgorithm);
+            }
         }
     }
 }
