@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
@@ -47,6 +48,13 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
 
             if (parallelCount < 2 || (consistentPartitionWindowRelation.PartitionBy.Count < 1))
             {
+                consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+                return consistentPartitionWindowRelation;
+            }
+
+            if (consistentPartitionWindowRelation.WindowFunctions.Any(x => x.ExtensionUri == FunctionsAggregateGeneric.Uri && x.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
+            {
+                // Surrogate key is not supported in parallelization
                 consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
                 return consistentPartitionWindowRelation;
             }
@@ -123,6 +131,15 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             Debug.Assert(_plan != null);
             if (parallelCount < 2 || (aggregateRelation.Groupings == null || aggregateRelation.Groupings.Count < 1))
             {
+                aggregateRelation.Input = Visit(aggregateRelation.Input, state);
+                return aggregateRelation;
+            }
+
+            if (aggregateRelation.Measures != null &&
+                aggregateRelation.Measures.Any(x => x.Measure.ExtensionUri == FunctionsAggregateGeneric.Uri &&
+                    x.Measure.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
+            {
+                // Surrogate key is not supported in parallelization
                 aggregateRelation.Input = Visit(aggregateRelation.Input, state);
                 return aggregateRelation;
             }

@@ -29,6 +29,6 @@ namespace FlowtideDotNet.Core.Optimizer
         /// </summary>
         public bool SimplifyProjection { get; set; } = true;
 
-        public int MergeJoinParallelization { get; set; } = 8;
+        public int Parallelization { get; set; } = 1;
     }
 }

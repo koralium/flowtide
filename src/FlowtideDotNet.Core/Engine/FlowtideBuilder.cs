@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
@@ -53,11 +54,11 @@ namespace FlowtideDotNet.Core.Engine
 
         public IFunctionsRegister FunctionsRegister => _functionsRegister;
 
-        public FlowtideBuilder AddPlan(Plan plan, bool optimize = true)
+        public FlowtideBuilder AddPlan(Plan plan, bool optimize = true, PlanOptimizerSettings? planOptimizerSettings = default)
         {
             if (optimize)
             {
-                plan = Optimizer.PlanOptimizer.Optimize(plan);
+                plan = Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
             }
 
             _plan = plan;

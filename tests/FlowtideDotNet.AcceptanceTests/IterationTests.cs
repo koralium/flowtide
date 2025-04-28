@@ -158,7 +158,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT userKey, firstName, lastName, managerKey, ManagerFirstName, level
             FROM user_manager_cte", planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings() 
             {
-                MergeJoinParallelization = 2
+                Parallelization = 2
             });
             await WaitForUpdate();
 
