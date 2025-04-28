@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -60,6 +61,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitReferenceStructValue(ref this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            column.AddToHash(index, default, hashAlgorithm);
         }
 
         public void CopyToContainer(DataValueContainer container)

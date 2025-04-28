@@ -13,6 +13,9 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Diagnostics;
+using System.IO.Hashing;
+using System.Linq;
+using System.Reflection.Metadata.Ecma335;
 using System.Text;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -94,6 +97,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public static int CompareIgnoreCase(in FlxString v1, in FlxString v2)
         {
             return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(v1.Span, v2.Span);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_utf8.Span);
         }
     }
 }

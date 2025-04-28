@@ -14,6 +14,12 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.IO.Hashing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -61,6 +67,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitMapValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = 0; i < keyValuePairs.Count; i++)
+            {
+                keyValuePairs[i].Key.AddToHash(hashAlgorithm);
+                keyValuePairs[i].Value.AddToHash(hashAlgorithm);
+            }
         }
 
         public void CopyToContainer(DataValueContainer container)

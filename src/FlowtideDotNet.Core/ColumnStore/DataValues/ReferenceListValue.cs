@@ -13,6 +13,11 @@
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -92,6 +97,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitReferenceListValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = start; i < end; i++)
+            {
+                column.GetValueAt(i, default).AddToHash(hashAlgorithm);
+            }
         }
     }
 }

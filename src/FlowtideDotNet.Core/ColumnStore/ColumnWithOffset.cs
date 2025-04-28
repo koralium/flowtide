@@ -14,9 +14,11 @@ using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.IO.Hashing;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -190,6 +192,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
             throw new NotSupportedException();
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var offset = offsets[index];
+            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            {
+                hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                return;
+            }
+            innerColumn.AddToHash(offset, child, hashAlgorithm);
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

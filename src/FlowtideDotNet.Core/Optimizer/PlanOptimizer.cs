@@ -65,6 +65,11 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             EmitPushdown.EmitPushdown.Optimize(plan);
+
+            if (settings.Parallelization > 1)
+            {
+                plan = MergeJoinParallelize.ParallelizeOptimizer.Optimize(plan, settings.Parallelization);
+            }
             return plan;
         }
     }

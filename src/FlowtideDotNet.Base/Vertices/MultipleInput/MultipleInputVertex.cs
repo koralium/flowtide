@@ -35,6 +35,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private ILockingEvent?[]? _targetInCheckpoint;
         private ILockingEvent[]? _lastSeenCheckpointEvents;
         private readonly object _targetCheckpointLock;
+        private Guid?[]? _targetLockingPrepare;
+        private bool[]? _expectsLockingPrepare;
 
         private IReadOnlySet<string>[]? _targetWatermarkNames;
         private Watermark[]? _targetWatermarks;
@@ -182,6 +184,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
 
             _targetInCheckpoint = new ILockingEvent[targetCount];
+            _targetLockingPrepare = new Guid?[targetCount];
+            _expectsLockingPrepare = new bool[targetCount];
             _targetWatermarks = new Watermark[targetCount];
             _targetSentDataSinceLastWatermark = new bool[targetCount];
             _targetSentWatermark = new bool[targetCount];
@@ -237,13 +241,24 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private IAsyncEnumerable<IStreamEvent> HandleLockingEventPrepare(int targetId, LockingEventPrepare lockingEventPrepare)
         {
             Debug.Assert(_targetInCheckpoint != null);
+            Debug.Assert(_targetLockingPrepare != null);
+            Debug.Assert(_expectsLockingPrepare != null);
             // Set that this operator is in an iteration. This helps watermarks output.
             _isInIteration = true;
+
+            _targetLockingPrepare[targetId] = lockingEventPrepare.Id;
+
+            if (lockingEventPrepare.IsInitEvent)
+            {
+                _expectsLockingPrepare[targetId] = true;
+            }
+
             // Check that all other inputs are waiting for checkpoint.
             bool allInCheckpoint = true;
             for (int i = 0; i < _targetInCheckpoint.Length; i++)
             {
-                if (i == targetId)
+                // Check if the target sent in a locking event prepare, if it did, it will not send a checkpoint event
+                if (_targetLockingPrepare[i] != null)
                 {
                     continue;
                 }
@@ -256,6 +271,22 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 lockingEventPrepare.OtherInputsNotInCheckpoint = true;
             }
+            
+           
+            if (!lockingEventPrepare.IsInitEvent)
+            {
+                // If it is not an init event, only one locking event prepare should be sent.
+                // So this code makes sure that the last one is sent.
+                // Check if we are still waiting for any locking event prepare, if so, skip sending this message
+                for (int i = 0; i < _targetLockingPrepare.Length; i++)
+                {
+                    if (_expectsLockingPrepare[i] && (_targetLockingPrepare[i] != lockingEventPrepare.Id))
+                    {
+                        return EmptyAsyncEnumerable<IStreamEvent>.Instance;
+                    }
+                }
+            }
+
             return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
         }
 
@@ -359,6 +390,13 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
         {
+            Debug.Assert(_targetLockingPrepare != null);
+            // Reset all targets that was in the locking prepare state
+            for (int i = 0; i < _targetLockingPrepare.Length; i++)
+            {
+                _targetLockingPrepare[i] = default;
+            }
+
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
                 _currentTime = checkpointEvent.NewTime;

@@ -44,7 +44,6 @@ builder.Services.AddFlowtideStream("test")
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
     connectorManager.AddConsoleSink("*");
-    //connectorManager.AddSink(new DummyWriteFactory("*"));
 })
 .AddStorage(b =>
 {
