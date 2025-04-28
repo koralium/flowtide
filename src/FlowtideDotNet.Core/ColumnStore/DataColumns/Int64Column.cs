@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -40,6 +41,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _data!.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Int64;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public Int64Column()
         {

@@ -214,7 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     userkey, min(orderkey)
                 FROM orders
                 GROUP BY userkey
-                ");
+                ", ignoreSameDataCheck: true);
             await WaitForUpdate();
 
             await Crash();
@@ -312,6 +312,173 @@ namespace FlowtideDotNet.AcceptanceTests
                 { "userkey", x.UserKey },
                 { "company", x.CompanyId! }
             }).ToList() } });
+        }
+
+        [Fact]
+        public async Task ListAggWithNamedStructAndUpdates()
+        {
+            GenerateData(1000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(named_struct('userkey', userkey, 'company', u.companyId))
+                FROM users u
+                ");
+            await WaitForUpdate();
+            
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            Users[0].CompanyId = "newCompany";
+            AddOrUpdateUser(Users[0]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+
+            DeleteUser(Users[10]);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.OrderBy(x => x.UserKey).Select(x => new { userkey = x.UserKey, company = x.CompanyId }).ToList() } });
+        }
+
+        [Fact]
+        public async Task TestSurrogateKeyInt64()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                surrogate_key_int64() as key,
+                userkey
+            FROM users
+            GROUP BY userkey
+            ");
+
+            await WaitForUpdate();
+
+            long counter = 0;
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                return new
+                {
+                    key = counter++,
+                    x.UserKey
+                };
+            }));
+        }
+
+        [Fact]
+        public async Task MinAggregateWithFilterAndGroup()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
+                FROM orders
+                GROUP BY userkey
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var minSequence = x.Where(x => x.OrderKey % 2 == 0).ToList();
+                    int? output = null;
+                    if (minSequence.Count > 0)
+                    {
+                        output = minSequence.Min(y => y.OrderKey);
+                    }
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MinVal = output
+                    };
+                })
+            );
+        }
+
+        [Fact]
+        public async Task MinByAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, min_by(Orderdate, orderkey)
+                FROM orders
+                GROUP BY userkey
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var outputrow = x.Min(y => y.OrderKey);
+                    var order = x.First(x => x.OrderKey == outputrow);
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MinVal = order.Orderdate
+                    };
+                })
+            );
+        }
+
+        [Fact]
+        public async Task MaxByAggregate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max_by(Orderdate, orderkey)
+                FROM orders
+                GROUP BY userkey
+                ");
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var outputrow = x.Max(y => y.OrderKey);
+                    var order = x.First(x => x.OrderKey == outputrow);
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MaxVal = order.Orderdate
+                    };
+                })
+            );
         }
     }
 }

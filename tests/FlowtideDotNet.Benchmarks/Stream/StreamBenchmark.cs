@@ -162,5 +162,53 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             StreamGraphMetadata.SaveGraphData(nameof(ListAggWithMapAggregation), _stream!.GetDiagnosticsGraph());
         }
+
+        [Benchmark]
+        public async Task WindowSum()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT sum(u.doublevalue) OVER(PARTITION BY CompanyId ORDER BY UserKey) FROM users u
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
+
+        [IterationCleanup(Target = nameof(WindowSum))]
+        public void AfterWindowSum()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(WindowSum), _stream!.GetDiagnosticsGraph());
+        }
+
+        [Benchmark]
+        public async Task ListAggWithStructAggregation()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT 
+            p.ProjectKey,
+            list_agg(named_struct(
+              'userkey',
+              u.userkey,
+              'firstName',
+              u.firstName,
+              'lastName',
+              u.lastName,
+              'active',
+              u.active
+            )) FROM projects p
+            LEFT JOIN projectmembers pm
+            ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
+            LEFT JOIN users u
+            ON pm.userkey = u.userkey
+            GROUP BY p.ProjectKey
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
+
+        [IterationCleanup(Target = nameof(ListAggWithStructAggregation))]
+        public void AfterListAggWithStructAggregation()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(ListAggWithStructAggregation), _stream!.GetDiagnosticsGraph());
+        }
     }
 }

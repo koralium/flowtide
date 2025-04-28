@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using System.Buffers;
 using System.Buffers.Binary;
+using ZstdSharp;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
@@ -43,6 +44,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return serializationEstimation;
         }
 
+        public SerializationEstimation GetSerializationEstimation(IDataColumn[] dataColumns)
+        {
+            SerializationEstimation serializationEstimation = new SerializationEstimation();
+
+            for (int i = 0; i < dataColumns.Length; i++)
+            {
+                var estimate = dataColumns[i].GetSerializationEstimate();
+                serializationEstimation.fieldNodeCount += estimate.fieldNodeCount;
+                serializationEstimation.bodyLength += estimate.bodyLength;
+                serializationEstimation.bufferCount += estimate.bufferCount;
+            }
+            return serializationEstimation;
+        }
+
         public int GetEstimatedBufferSize(SerializationEstimation serializationEstimation)
         {
             var overhead = (200 + (serializationEstimation.fieldNodeCount * 100)) * 2;
@@ -60,6 +75,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var size = GetEstimatedBufferSize(estimation);
             var buffer = bufferWriter.GetSpan(size);
             var writtenData = SerializeEventBatch(buffer, estimation, eventBatchData, count, compressor);
+            bufferWriter.Advance(writtenData);
+        }
+
+        /// <summary>
+        /// Serializes an array of data columns to an IBufferWriter
+        /// </summary>
+        /// <param name="bufferWriter"></param>
+        /// <param name="dataColumns"></param>
+        /// <param name="count"></param>
+        /// <param name="compressor"></param>
+        public void SerializeDataColumns(IBufferWriter<byte> bufferWriter, IDataColumn[] dataColumns, int count, IBatchCompressor? compressor = default)
+        {
+            var estimation = GetSerializationEstimation(dataColumns);
+            var size = GetEstimatedBufferSize(estimation);
+            var buffer = bufferWriter.GetSpan(size);
+            var writtenData = SerializeDataColumns(buffer, estimation, dataColumns, count, compressor);
             bufferWriter.Advance(writtenData);
         }
 
@@ -89,6 +120,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return schemaSpan.Length + recordBatchHeader.Length + writtenDataLength;
         }
 
+        public int SerializeDataColumns(
+            Span<byte> destination,
+            SerializationEstimation serializationEstimation,
+            IDataColumn[] dataColumns,
+            int count,
+            IBatchCompressor? compressor = default)
+        {
+            var schemaSpan = SerializeSchemaHeader(destination, dataColumns, serializationEstimation);
+            var recordBatchHeader = SerializeRecordBatchHeader(destination.Slice(schemaSpan.Length), dataColumns, count, serializationEstimation, compressor != null);
+
+            // Get the buffer span from the record batch to update lengths and offsets
+            var writtenDataLength = SerializeRecordBatchData(destination.Slice(schemaSpan.Length + recordBatchHeader.Length), recordBatchHeader, dataColumns, compressor);
+
+            return schemaSpan.Length + recordBatchHeader.Length + writtenDataLength;
+        }
+
         public int SerializeRecordBatchData(Span<byte> destination, Span<byte> recordBatchHeader, EventBatchData eventBatchData, IBatchCompressor? compressor = default)
         {
             ReadOnlySpan<byte> readOnlyHeaderSpan = recordBatchHeader;
@@ -97,6 +144,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var bufferSpan = recordBatchHeader.Slice(recordBatch.BuffersStartIndex, recordBatch.BuffersLength * 16);
 
             var writtenDataLength = SerializeBufferData(destination, bufferSpan, eventBatchData, compressor);
+
+            // Write new body length since compression can have reduced it, but only if there is data, otherwise this value will not be written in the flatbuffer table
+            if (writtenDataLength != 0)
+            {
+                BinaryPrimitives.WriteInt64LittleEndian(recordBatchHeader.Slice((int)message.BodyLengthIndex), writtenDataLength);
+            }
+
+            return writtenDataLength;
+        }
+
+        public int SerializeRecordBatchData(Span<byte> destination, Span<byte> recordBatchHeader, IDataColumn[] dataColumns, IBatchCompressor? compressor = default)
+        {
+            ReadOnlySpan<byte> readOnlyHeaderSpan = recordBatchHeader;
+            var message = MessageStruct.ReadMessage(in readOnlyHeaderSpan);
+            var recordBatch = message.RecordBatch();
+            var bufferSpan = recordBatchHeader.Slice(recordBatch.BuffersStartIndex, recordBatch.BuffersLength * 16);
+
+            var writtenDataLength = SerializeBufferData(destination, bufferSpan, dataColumns, compressor);
 
             // Write new body length since compression can have reduced it, but only if there is data, otherwise this value will not be written in the flatbuffer table
             if (writtenDataLength != 0)
@@ -122,11 +187,34 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return arrowDataWriter.BodyLength;
         }
 
+        private int SerializeBufferData(Span<byte> destinationSpan, Span<byte> bufferSpan, IDataColumn[] dataColumns, IBatchCompressor? compressor = default)
+        {
+            var arrowDataWriter = new ArrowDataWriter(destinationSpan, bufferSpan, compressor);
+            for (int i = 0; i < dataColumns.Length; i++)
+            {
+                if (compressor != null)
+                {
+                    // Notify compressor that we changed column, this allows it to change dictionaries if needed/in use
+                    compressor.ColumnChange(i);
+                }
+                dataColumns[i].WriteDataToBuffer(ref arrowDataWriter);
+            }
+            return arrowDataWriter.BodyLength;
+        }
+
         public void SerializeRecordBatchHeader(IBufferWriter<byte> bufferWriter, EventBatchData eventBatchData, int count, SerializationEstimation serializationEstimation)
         {
             var overhead = 200 + (serializationEstimation.fieldNodeCount * 100) + (serializationEstimation.bufferCount * 16);
             var span = bufferWriter.GetSpan(overhead);
             var recordBatchSpan = SerializeRecordBatchHeader(span, eventBatchData, count, serializationEstimation, false);
+            bufferWriter.Advance(recordBatchSpan.Length);
+        }
+
+        public void SerializeRecordBatchHeader(IBufferWriter<byte> bufferWriter, IDataColumn[] dataColumns, int count, SerializationEstimation serializationEstimation)
+        {
+            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100) + (serializationEstimation.bufferCount * 16);
+            var span = bufferWriter.GetSpan(overhead);
+            var recordBatchSpan = SerializeRecordBatchHeader(span, dataColumns, count, serializationEstimation, false);
             bufferWriter.Advance(recordBatchSpan.Length);
         }
 
@@ -188,6 +276,64 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return recordBatchSpan;
         }
 
+        public Span<byte> SerializeRecordBatchHeader(
+            Span<byte> destination,
+            IDataColumn[] dataColumns,
+            int count,
+            SerializationEstimation serializationEstimation,
+            bool compressed)
+        {
+            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100) + (serializationEstimation.bufferCount * 16);
+
+            if (destination.Length < overhead)
+            {
+                throw new ArgumentException("Destination span is too small");
+            }
+
+            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
+            {
+                vtable = new int[serializationEstimation.fieldNodeCount * 2];
+                vtables = new int[serializationEstimation.fieldNodeCount * 2];
+                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
+            }
+
+            ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
+
+            arrowSerializer.RecordBatchStartNodesVector(serializationEstimation.fieldNodeCount);
+            for (int i = dataColumns.Length - 1; i >= 0; i--)
+            {
+                dataColumns[i].AddFieldNodes(ref arrowSerializer, 0);
+            }
+            var nodesPointer = arrowSerializer.EndVector();
+
+            // Allocates the memory for the entire vector, then forward iteration is used to add the buffers since their offset must be added
+            // Which is much easier to calculate in forward mode
+            arrowSerializer.RecordBatchStartBuffersVectorForward(serializationEstimation.bufferCount);
+
+            for (int i = 0; i < dataColumns.Length; i++)
+            {
+                dataColumns[i].AddBuffers(ref arrowSerializer);
+            }
+
+            var buffersPointer = arrowSerializer.EndVector();
+
+            int compressionOffset = 0;
+            if (compressed)
+            {
+                compressionOffset = arrowSerializer.CreateBodyCompression(CompressionType.ZSTD, BodyCompressionMethod.BUFFER);
+            }
+
+            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer, compressionOffset);
+
+            var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, arrowSerializer.BufferBodyLength);
+
+            arrowSerializer.Finish(messagePointer);
+            var padding = arrowSerializer.WriteMessageLengthAndPadding();
+            var recordBatchSpan = arrowSerializer.CopyToStart(padding);
+
+            return recordBatchSpan;
+        }
+
         /// <summary>
         /// Serialize the schema to a buffer writer
         /// </summary>
@@ -199,6 +345,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             var overhead = 200 + (serializationEstimation.fieldNodeCount * 100);
             var span = bufferWriter.GetSpan(overhead);
             var resultSpan = SerializeSchemaHeader(span, eventBatchData, serializationEstimation);
+            bufferWriter.Advance(resultSpan.Length);
+        }
+
+        public void SerializeSchemaHeader(IBufferWriter<byte> bufferWriter, IDataColumn[] dataColumns, SerializationEstimation serializationEstimation)
+        {
+            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100);
+            var span = bufferWriter.GetSpan(overhead);
+            var resultSpan = SerializeSchemaHeader(span, dataColumns, serializationEstimation);
             bufferWriter.Advance(resultSpan.Length);
         }
 
@@ -230,6 +384,45 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
 
             var fieldsPointer = arrowSerializer.SchemaCreateFieldsVector(stack.Slice(0, eventBatchData.Columns.Count));
+
+            var schemaPointer = arrowSerializer.CreateSchema(0, fieldsPointer);
+
+            var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.Schema, schemaPointer);
+
+            arrowSerializer.Finish(messagePointer);
+            var schemaPadding = arrowSerializer.WriteMessageLengthAndPadding();
+            var resultSpan = arrowSerializer.CopyToStart(schemaPadding);
+            return resultSpan;
+        }
+
+        public Span<byte> SerializeSchemaHeader(Span<byte> destination, IDataColumn[] dataColumns, SerializationEstimation serializationEstimation)
+        {
+            var overhead = 200 + (serializationEstimation.fieldNodeCount * 100);
+
+            if (destination.Length < overhead)
+            {
+                throw new ArgumentException("Destination span is too small");
+            }
+
+            if ((serializationEstimation.fieldNodeCount * 2) > vtable.Length)
+            {
+                vtable = new int[serializationEstimation.fieldNodeCount * 2];
+                vtables = new int[serializationEstimation.fieldNodeCount * 2];
+                stackPointers = new int[serializationEstimation.fieldNodeCount * 2];
+            }
+
+            ArrowSerializer arrowSerializer = new ArrowSerializer(destination, vtable, vtables);
+
+            var stack = stackPointers.AsSpan();
+            var childrenStack = stack.Slice(dataColumns.Length);
+
+            var emptyStringPos = arrowSerializer.CreateEmptyString();
+            for (int i = 0; i < dataColumns.Length; i++)
+            {
+                stack[i] = dataColumns[i].CreateSchemaField(ref arrowSerializer, emptyStringPos, childrenStack);
+            }
+
+            var fieldsPointer = arrowSerializer.SchemaCreateFieldsVector(stack.Slice(0, dataColumns.Length));
 
             var schemaPointer = arrowSerializer.CreateSchema(0, fieldsPointer);
 

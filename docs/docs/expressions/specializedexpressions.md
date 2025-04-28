@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Specialized Expressions
@@ -132,6 +132,20 @@ SELECT map(col2, col1) FROM ...
 ```
 
 The keys will be converted into string. A null value will result in 'null' as the key.
+
+### Named Struct
+
+Allows the creation of a named struct object type. Struct is a fixed schema data type with a predefined set of named fields. Each field has a defined order, making it ideal for structured and predictable data.
+
+There is a limit of a maximum of 127 different types in a union column, which means you cannot have endlessly different struct types in the same column. If dynamic properties are required, a map is a better choice.
+
+The keys must be string literals when creating the struct.
+
+#### SQL Usage
+
+```sql
+SELECT named_struct('key1', value1, 'key2', value2) FROM ...
+```
 
 ## If Expression
 

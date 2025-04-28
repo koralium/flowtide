@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -645,6 +646,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public int Count => _data?.Count ?? 0;
 
         public ArrowTypeId Type => ArrowTypeId.Int64;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         [MemberNotNull(nameof(_data))]
         private void IncreaseSize(in long value)

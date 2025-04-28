@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Reflection;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -26,6 +27,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         private readonly string streamName;
         private readonly IServiceCollection services;
         private readonly List<Action<IServiceProvider, FlowtideBuilder>> _customOptions;
+        private string? _streamVersion;
+        private bool _useHashPlanAsVersion = false;
 
         public FlowtideDIBuilder(string streamName, IServiceCollection services)
         {
@@ -97,11 +100,19 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             }
 
             var plan = planProvider.GetPlan();
-
             var streamBuilder = new FlowtideBuilder(streamName)
                 .AddConnectorManager(connectorManager)
                 .AddPlan(plan)
                 .WithStateOptions(stateManager);
+
+            if (_useHashPlanAsVersion)
+            {
+                streamBuilder.SetHashPlanAsVersion();
+            }
+            else if (!string.IsNullOrWhiteSpace(_streamVersion))
+            {
+                streamBuilder.SetVersion(_streamVersion);
+            }
 
             if (pauseMonitor != null)
             {
@@ -128,6 +139,24 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             _customOptions.Add(options);
             return this;
         }
-    }
 
+        public IFlowtideDIBuilder AddVersioningFromAssembly()
+        {
+            _streamVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+            return this;
+        }
+
+        public IFlowtideDIBuilder AddVersioningFromString(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _streamVersion = version;
+            return this;
+        }
+
+        public IFlowtideDIBuilder AddVersioningFromPlanHash()
+        {
+            _useHashPlanAsVersion = true;
+            return this;
+        }
+    }
 }

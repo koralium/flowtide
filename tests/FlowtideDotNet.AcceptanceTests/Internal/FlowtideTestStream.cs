@@ -177,6 +177,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default)
         {
             if (stateSerializeOptions == null)
@@ -249,6 +250,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
                     }
                 });
+
+            if (checkFailureListener != null)
+            {
+                flowtideBuilder.WithCheckFailureListener(checkFailureListener);
+            }
+
             var stream = flowtideBuilder.Build();
             _stream = stream;
             return Task.CompletedTask;

@@ -189,5 +189,47 @@ namespace FlowtideDotNet.AcceptanceTests
                 new {list = new List<object>(){ 2, "a", "c" }}
             });
         }
+
+        [Fact]
+        public async Task ListSortAscendingNullLast()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_sort_asc_null_last(list(orderkey, userkey))
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                list = (new List<int>() { x.OrderKey, x.UserKey }).OrderBy(x => x).ToList()
+            } );
+
+            AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task ListFirstDifference()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_first_difference(list(orderkey, userkey), list(orderkey, 5)) as val
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                val = x.UserKey
+            });
+
+            AssertCurrentDataEqual(expectedList);
+        }
     }
 }

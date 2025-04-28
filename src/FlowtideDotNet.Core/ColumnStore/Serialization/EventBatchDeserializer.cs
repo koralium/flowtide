@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
@@ -175,6 +176,78 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new EventBatchDeserializeResult(new EventBatchData(columns), (int)recordBatchHeader.Length);
         }
 
+        public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data)
+        {
+            if (!_schemaRead)
+            {
+                ReadSchemaFromSequence(ref data);
+                _schemaRead = true;
+            }
+
+            ReadRecordBatchHeaderFromSequence(ref data);
+
+            var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);
+
+            var headerType = message.HeaderType;
+
+            if (headerType != MessageHeader.Schema)
+            {
+                throw new Exception("Expecting schema message type as the first message");
+            }
+
+            var schema = new SchemaStruct(_schemaBytes, message.HeaderPosition());
+            var fieldsLength = schema.FieldsLength;
+
+            var recordBatchMessage = MessageStruct.GetRootAsMessage(ref _recordBatchHeaderBytes, 0);
+            var recordBatchHeader = new RecordBatchStruct(_recordBatchHeaderBytes, recordBatchMessage.HeaderPosition());
+
+            if (recordBatchHeader.HasCompression)
+            {
+                var compressionInfo = recordBatchHeader.Compression;
+                if (compressionInfo.Codec != CompressionType.ZSTD)
+                {
+                    throw new NotSupportedException("Only zstd compression is supported at this time");
+                }
+                if (compressionInfo.Method != BodyCompressionMethod.BUFFER)
+                {
+                    throw new NotSupportedException("Only buffer compression method is supported at this time");
+                }
+                isCompressed = true;
+            }
+
+            bufferStart = recordBatchHeader.BuffersStartIndex;
+            IDataColumn[] columns = new IDataColumn[fieldsLength];
+            for (int i = 0; i < fieldsLength; i++)
+            {
+                var field = new FieldStruct(_schemaBytes, schema.FieldPosition(i));
+                if (decompressor != null)
+                {
+                    decompressor.ColumnChange(i);
+                }
+                var fieldNode = ReadNextFieldNode(in recordBatchHeader);
+                var dataColumnResult = DeserializeDataColumn(ref data, in field, in recordBatchHeader, (int)fieldNode.Length);
+                columns[i] = dataColumnResult.dataColumn;
+            }
+
+            if (readDataIndex < recordBatchMessage.BodyLength)
+            {
+                // Padding at the end of the record batch, advance past the padding
+                var padding = recordBatchMessage.BodyLength - readDataIndex;
+                data.Advance(padding);
+                readDataIndex += (int)padding;
+            }
+            if (readDataIndex > recordBatchMessage.BodyLength)
+            {
+                throw new Exception("Read past the end of the record batch");
+            }
+            if (fieldNodeIndex < recordBatchHeader.NodesLength)
+            {
+                throw new Exception("Not all field nodes were read");
+            }
+
+            return new DataColumnsDeserializeResult(columns, (int)recordBatchHeader.Length);
+        }
+
         private FieldNodeStruct ReadNextFieldNode(ref readonly RecordBatchStruct recordBatchStruct)
         {
             var fieldNode = recordBatchStruct.Nodes(fieldNodeIndex);
@@ -258,6 +331,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     return new DataColumnResult(DeserializeMapColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Map);
                 case ArrowType.Union:
                     return new DataColumnResult(DeserializeUnionColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Union);
+                case ArrowType.Struct_:
+                    return new DataColumnResult(DeserializeStructColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Struct);
                 default:
                     throw new NotImplementedException(fieldStruct.TypeType.ToString());
             }
@@ -524,6 +599,29 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 return new StringColumn(memoryAllocator);
             }
             return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
+        }
+
+        private StructColumn DeserializeStructColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
+            ref readonly RecordBatchStruct recordBatchStruct,
+            int length)
+        {
+            var childLength = fieldStruct.ChildrenLength;
+
+            Column[] children = new Column[childLength];
+
+            // This array might be able to be improved
+            string[] fieldNames = new string[childLength];
+            for (int i = 0; i < childLength; i++)
+            {
+                var field = fieldStruct.Children(i);
+                fieldNames[i] = Encoding.UTF8.GetString(field.GetNameBytes());
+                children[i] = DeserializeColumn(ref data, ref field, in recordBatchStruct);
+            }
+
+            StructHeader structHeader = StructHeader.Create(fieldNames);
+            return new StructColumn(structHeader, children, length);
         }
 
         private void ExceptEmptyBuffer(ref SequenceReader<byte> data)

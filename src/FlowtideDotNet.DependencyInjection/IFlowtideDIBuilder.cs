@@ -30,5 +30,21 @@ namespace FlowtideDotNet.DependencyInjection
         IFlowtideDIBuilder AddStorage(Action<IFlowtideStorageBuilder> storageOptions);
 
         IFlowtideDIBuilder AddCustomOptions(Action<IServiceProvider, FlowtideBuilder> options);
+
+        /// <summary>
+        /// Sets the current entry assembly version as the stream version. A new version is created if the assembly version changes.
+        /// </summary>
+        IFlowtideDIBuilder AddVersioningFromAssembly();
+
+        /// <summary>
+        /// Sets a custom string as the stream version. A new version is created if the string changes.
+        /// </summary>
+        /// <param name="version"></param>
+        IFlowtideDIBuilder AddVersioningFromString(string version);
+
+        /// <summary>
+        /// Sets the plan hash as the stream version. A new version is created if the plan changes.
+        /// </summary>
+        IFlowtideDIBuilder AddVersioningFromPlanHash();
     }
 }

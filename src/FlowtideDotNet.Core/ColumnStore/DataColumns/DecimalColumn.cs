@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
@@ -40,6 +41,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _values.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Decimal128;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public DecimalColumn(IMemoryAllocator memoryAllocator)
         {

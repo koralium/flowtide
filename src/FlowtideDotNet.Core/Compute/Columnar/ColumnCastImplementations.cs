@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
 
@@ -263,7 +264,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                         return result;
                     }
                 case ArrowTypeId.String:
-                    if (decimal.TryParse(value.AsString.ToString(), out var decimalValue))
+                    if (decimal.TryParse(value.AsString.ToString(), CultureInfo.InvariantCulture, out var decimalValue))
                     {
                         result._type = ArrowTypeId.Decimal128;
                         result._decimalValue = new DecimalValue(decimalValue);

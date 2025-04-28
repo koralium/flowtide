@@ -46,6 +46,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.Map;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public MapColumn(IMemoryAllocator memoryAllocator)
         {
             _keyColumn = Column.Create(memoryAllocator);

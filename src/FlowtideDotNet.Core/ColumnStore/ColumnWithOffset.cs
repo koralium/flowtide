@@ -50,6 +50,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         IDataColumn IColumn.DataColumn => innerColumn.DataColumn;
 
+        StructHeader? IColumn.StructHeader => innerColumn.StructHeader;
+
         public void Add<T>(in T value) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not support add.");

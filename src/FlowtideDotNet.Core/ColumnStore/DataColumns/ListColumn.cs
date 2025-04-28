@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -20,6 +21,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
+using System.Diagnostics;
 using System.IO.Hashing;
 using System.Text.Json;
 
@@ -34,6 +36,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.List;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {
@@ -256,6 +260,55 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                 _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
             }
+        }
+
+        public int GetListLength(in int index)
+        {
+            Debug.Assert(index < Count);
+            return _offsets.Get(index + 1) - _offsets.Get(index);
+        }
+
+        public void AppendToList<T>(in int index, in T value) where T : IDataValue
+        {
+            Debug.Assert(index < Count);
+            var endOffset = _offsets.Get(index + 1);
+
+            _internalColumn.InsertAt(endOffset, value);
+            _offsets.Update(index + 1, endOffset + 1, 1);
+        }
+
+        public void UpdateListElement(in int index, in int listIndex, in IDataValue value)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.UpdateAt(startOffset + listIndex, value);
+        }
+
+        public void RemoveListElement(in int index, in int listIndex)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.RemoveAt(startOffset + listIndex);
+            _offsets.Update(index + 1, endOffset - 1, -1);
+        }
+
+        public IDataValue GetListElementValue(in int index, in int listIndex)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            return _internalColumn.GetValueAt(startOffset + listIndex, default);
+        }
+
+        public void GetListElementValue(in int index, in int listIndex, DataValueContainer dataValueContainer)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.GetValueAt(startOffset + listIndex, dataValueContainer, default);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)

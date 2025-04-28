@@ -48,11 +48,21 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             double[] oldValues = new double[indexDistance + 1];
             int index = 0;
             var divisorInSeconds = ((double)rate_length) / 1000;
+            bool initialYield = false;
             await foreach (var val in valueIterator)
             {
                 oldValues[index % (indexDistance + 1)] = val.value;
 
-                if (index >= indexDistance)
+                if (!initialYield)
+                {
+                    // Only yield the first value if it is above the start timestamp, since there is no history then and history should be treated as 0 when calculating rate.
+                    if (val.timestamp >= startTimestamp)
+                    {
+                        yield return new MetricResult((val.value - oldValues[(Math.Abs(index - indexDistance)) % (indexDistance + 1)]) / divisorInSeconds, val.timestamp);
+                    }
+                    initialYield = true;
+                }
+                else if (index >= indexDistance)
                 {
                     yield return new MetricResult((val.value - oldValues[(index - indexDistance) % (indexDistance + 1)]) / divisorInSeconds, val.timestamp);
                 }

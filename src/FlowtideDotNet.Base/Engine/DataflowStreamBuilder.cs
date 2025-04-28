@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -30,6 +31,7 @@ namespace FlowtideDotNet.Base.Engine
         private StreamState? _state;
         private IStateHandler? _stateHandler;
         private readonly string _streamName;
+        private string _version = "";
         private IStreamScheduler? _streamScheduler;
         private StateManagerOptions? _stateManagerOptions;
         private ILoggerFactory? _loggerFactory;
@@ -37,6 +39,9 @@ namespace FlowtideDotNet.Base.Engine
         private readonly DataflowStreamOptions _dataflowStreamOptions;
         private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
         private readonly StreamNotificationReceiver _streamNotificationReceiver;
+
+        internal StreamNotificationReceiver StreamNotificationReceiver => _streamNotificationReceiver;
+        internal ILoggerFactory? LoggerFactory => _loggerFactory;
 
         public DataflowStreamBuilder(string streamName)
         {
@@ -96,9 +101,9 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
-        public DataflowStreamBuilder SetVersionInformation(long streamVersion, string hash)
+        public DataflowStreamBuilder SetVersionInformation(string hash, string version)
         {
-            _streamVersionInformation = new StreamVersionInformation(streamVersion, hash);
+            _streamVersionInformation = new StreamVersionInformation(hash, version);
             return this;
         }
 
@@ -132,9 +137,22 @@ namespace FlowtideDotNet.Base.Engine
             return this;
         }
 
+        public DataflowStreamBuilder AddCheckFailureListener(ICheckFailureListener listener)
+        {
+            _streamNotificationReceiver.AddCheckFailureListener(listener);
+            return this;
+        }
+
         public DataflowStreamBuilder WithPauseMonitor(IOptionsMonitor<FlowtidePauseOptions> pauseMonitor)
         {
             _pauseMonitor = pauseMonitor;
+            return this;
+        }
+
+        public DataflowStreamBuilder SetVersion(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _version = version;
             return this;
         }
 
@@ -155,6 +173,7 @@ namespace FlowtideDotNet.Base.Engine
 
             var streamContext = new StreamContext(
                 _streamName,
+                _version,
                 _propagatorBlocks,
                 _ingressBlocks,
                 _egressBlocks,

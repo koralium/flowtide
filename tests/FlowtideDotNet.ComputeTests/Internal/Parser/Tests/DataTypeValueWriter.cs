@@ -20,7 +20,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
     {
         public static IDataValue WriteDataValue(string value, string dataType)
         {
-            if (value == "Null")
+            if (value.Equals("Null", StringComparison.OrdinalIgnoreCase))
             {
                 return NullValue.Instance;
             }

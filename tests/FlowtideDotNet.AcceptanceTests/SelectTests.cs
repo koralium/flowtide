@@ -276,5 +276,50 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(new[] { new { hex = new byte[] { 84, 79, 32, 65 } } });
         }
+
+        [Fact]
+        public async Task SelectWithNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct('firstName', firstName, 'lastName', lastName) AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { firstName = x.FirstName, lastName = x.LastName } }));
+        }
+
+        [Fact]
+        public async Task SelectSubPropertyFromNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW testview AS
+                SELECT 
+                    named_struct('firstName', firstName, 'lastName', lastName) AS name
+                FROM users;
+
+                INSERT INTO output
+                SELECT name.firstName FROM testview;");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
+        public async Task SelectWithEmptyNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct() AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { } }));
+        }
     }
 }

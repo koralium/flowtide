@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         long AsLong { get; }
 
-        FlxString AsString { get; }
+        StringValue AsString { get; }
 
         bool AsBool { get; }
 
@@ -45,6 +45,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         bool IsNull { get; }
 
         TimestampTzValue AsTimestamp { get; }
+
+        IStructValue AsStruct { get; }
 
         void CopyToContainer(DataValueContainer container);
 

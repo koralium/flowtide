@@ -38,6 +38,8 @@ namespace FlowtideDotNet.Core.Operators.Read
     {
         public const string DeltaLoadTriggerName = "delta_load";
         public const string FullLoadTriggerName = "full_load";
+        private readonly string _deltaloadWithTableTriggerName;
+        private readonly string _fullLoadWithTableTriggerName;
 
         private IObjectState<bool>? _initialSent;
         private readonly ReadRelation _readRelation;
@@ -59,6 +61,8 @@ namespace FlowtideDotNet.Core.Operators.Read
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
             this._readRelation = readRelation;
+            _deltaloadWithTableTriggerName = $"{DeltaLoadTriggerName}_{readRelation.NamedTable.DotSeperated}";
+            _fullLoadWithTableTriggerName = $"{FullLoadTriggerName}_{readRelation.NamedTable.DotSeperated}";
 
             if (readRelation.Filter != null)
             {
@@ -73,6 +77,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         public override Task OnTrigger(string triggerName, object? state)
         {
+            if (triggerName == _deltaloadWithTableTriggerName)
+            {
+                triggerName = DeltaLoadTriggerName;
+            }
+            else if (triggerName == _fullLoadWithTableTriggerName)
+            {
+                triggerName = FullLoadTriggerName;
+            }
             switch (triggerName)
             {
                 case DeltaLoadTriggerName:
@@ -345,7 +357,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                                     deleteBatchKeyOffsets.Add(input.RowIndex);
                                     for (int k = 0; k < _otherColumns.Count; k++)
                                     {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                        var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
+                                        deleteBatchColumns[k].Add(value);
                                     }
                                     return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                                 }
@@ -433,6 +446,12 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
         }
 
+        protected ValueTask<(bool found, ColumnRowReference value)> LookupRowValue(ColumnRowReference rowKeyReference)
+        {
+            Debug.Assert(_persistentTree != null);
+            return _persistentTree.GetValue(in rowKeyReference);
+        }
+
         protected async Task DoFullLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_fullLoadTempTree != null);
@@ -442,6 +461,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_initialSent != null);
 
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
@@ -470,7 +490,13 @@ namespace FlowtideDotNet.Core.Operators.Read
                         throw new NotSupportedException("Full load does not support deletions");
                     }
                     var columnRef = new ColumnRowReference() { referenceBatch = columnReadEvent.BatchData.EventBatchData, RowIndex = i };
-                    await _fullLoadTempTree.Upsert(columnRef, columnRef);
+
+                    // Full load temp tree is only used to calculate deltas between full loads
+                    // Initial time there is no requirement to save it
+                    if (_initialSent.Value)
+                    {
+                        await _fullLoadTempTree.Upsert(columnRef, columnRef);
+                    }
 
                     await _persistentTree.RMWNoResult(columnRef, columnRef, (input, current, exists) =>
                     {
@@ -574,47 +600,52 @@ namespace FlowtideDotNet.Core.Operators.Read
                 columnReadEvent.BatchData.Iterations.Dispose();
             }
 
-            using var tmpIterator = _fullLoadTempTree.CreateIterator();
-            using var persistentIterator = _persistentTree.CreateIterator();
-            await tmpIterator.SeekFirst();
-            await persistentIterator.SeekFirst();
-
-            var tmpEnumerator = IteratePerRow(tmpIterator).GetAsyncEnumerator();
-            var persistentEnumerator = IteratePerRow(persistentIterator).GetAsyncEnumerator();
-
-            var hasNew = await tmpEnumerator.MoveNextAsync();
-            var hasOld = await persistentEnumerator.MoveNextAsync();
-
-            // Go through both trees and find deletions
-            while (hasNew || hasOld)
+            // We only compute delta between full loads after the initial batch
+            // The initial batch does not have any existing data
+            if (_initialSent.Value)
             {
-                int comparison = hasNew && hasOld ? CompareKeys(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+                using var tmpIterator = _fullLoadTempTree.CreateIterator();
+                using var persistentIterator = _persistentTree.CreateIterator();
+                await tmpIterator.SeekFirst();
+                await persistentIterator.SeekFirst();
 
-                // If there is no more old data, then we are done
-                if (!hasOld)
+                var tmpEnumerator = IteratePerRow(tmpIterator).GetAsyncEnumerator();
+                var persistentEnumerator = IteratePerRow(persistentIterator).GetAsyncEnumerator();
+
+                var hasNew = await tmpEnumerator.MoveNextAsync();
+                var hasOld = await persistentEnumerator.MoveNextAsync();
+
+                // Go through both trees and find deletions
+                while (hasNew || hasOld)
                 {
-                    break;
+                    int comparison = hasNew && hasOld ? CompareKeys(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+
+                    // If there is no more old data, then we are done
+                    if (!hasOld)
+                    {
+                        break;
+                    }
+                    if (hasNew && comparison < 0)
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                    }
+                    else if (!hasNew || comparison > 0)
+                    {
+                        // Deletion
+                        await _deleteTree.Upsert(persistentEnumerator.Current, 1);
+                        hasOld = await persistentEnumerator.MoveNextAsync();
+                    }
+                    else
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                        hasOld = await persistentEnumerator.MoveNextAsync();
+                    }
                 }
-                if (hasNew && comparison < 0)
-                {
-                    hasNew = await tmpEnumerator.MoveNextAsync();
-                }
-                else if (!hasNew || comparison > 0)
-                {
-                    // Deletion
-                    await _deleteTree.Upsert(persistentEnumerator.Current, 1);
-                    hasOld = await persistentEnumerator.MoveNextAsync();
-                }
-                else
-                {
-                    hasNew = await tmpEnumerator.MoveNextAsync();
-                    hasOld = await persistentEnumerator.MoveNextAsync();
-                }
+
+                await _fullLoadTempTree.Clear();
+
+                sentData |= await OutputDeletedRowsFromFullLoad(output);
             }
-
-            await _fullLoadTempTree.Clear();
-
-            sentData |= await OutputDeletedRowsFromFullLoad(output);
 
             if (sentData && lastWatermark == -1)
             {
@@ -762,11 +793,13 @@ namespace FlowtideDotNet.Core.Operators.Read
                 _initialSent.Value = true;
             }
 
-            await RegisterTrigger(DeltaLoadTriggerName, TimeSpan.FromMilliseconds(1));
+            await RegisterTrigger(DeltaLoadTriggerName, DeltaLoadInterval);
             await RegisterTrigger(FullLoadTriggerName, FullLoadInterval);
+            await RegisterTrigger(_deltaloadWithTableTriggerName);
+            await RegisterTrigger(_fullLoadWithTableTriggerName);
         }
 
-        protected virtual TimeSpan? DeltaLoadInterval { get; set; } = TimeSpan.FromSeconds(1);
+        protected virtual TimeSpan? DeltaLoadInterval { get; set; }
 
         protected virtual TimeSpan? FullLoadInterval { get; set; }
 

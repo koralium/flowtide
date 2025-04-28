@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using MongoDB.Bson;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
@@ -70,6 +71,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     return ToBsonArray(value);
                 case ArrowTypeId.Map:
                     return ToBsonDocument(value.AsMap);
+                case ArrowTypeId.Struct:
+                    return ToBsonDocumentStruct(value.AsStruct);
                 default:
                     throw new NotImplementedException(value.Type.ToString());
             }
@@ -98,6 +101,19 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     throw new InvalidOperationException("Map key must be a string for mongodb");
                 }
                 doc.Add(kv.Key.AsString.ToString(), ValueToBson(kv.Value));
+            }
+            return doc;
+        }
+
+        private static BsonValue ToBsonDocumentStruct<T>(T map)
+            where T : IStructValue
+        {
+            BsonDocument doc = new BsonDocument();
+            for (int i = 0; i < map.Header.Count; i++)
+            {
+                var key = map.Header.GetColumnName(i);
+                var value = map.GetAt(i);
+                doc.Add(key, ValueToBson(value));
             }
             return doc;
         }

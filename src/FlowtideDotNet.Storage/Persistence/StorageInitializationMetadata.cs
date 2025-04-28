@@ -16,9 +16,12 @@ namespace FlowtideDotNet.Storage.Persistence
     {
         public string StreamName { get; }
 
-        public StorageInitializationMetadata(string streamName)
+        public StreamVersionInformation? StreamVersion { get;  }
+
+        public StorageInitializationMetadata(string streamName, StreamVersionInformation? streamVersion = null)
         {
             StreamName = streamName;
+            StreamVersion = streamVersion;
         }
     }
 }

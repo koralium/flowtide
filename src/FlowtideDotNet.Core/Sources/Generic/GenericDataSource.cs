@@ -11,11 +11,15 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Sources.Generic
 {
     public abstract class GenericDataSourceAsync<T> where T : class
     {
+        private Func<string, ValueTask<T?>>? _lookupRowFunc;
+
         /// <summary>
         /// Fetches all objects from the data source
         /// </summary>
@@ -31,6 +35,37 @@ namespace FlowtideDotNet.Core.Sources.Generic
         public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
         {
             yield break;
+        }
+
+        internal void SetLookupRowFunc(Func<string, ValueTask<T?>> lookupRowFunc)
+        {
+            _lookupRowFunc = lookupRowFunc;
+        }
+
+        public virtual Task Initialize(ReadRelation readRelation, IStateManagerClient stateManagerClient)
+        {
+            return Task.CompletedTask;
+        }
+
+        public virtual Task Checkpoint()
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Looks up a rows value in the state by key.
+        /// This only contains values for the properties that are used in the stream.
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException">Thrown if the lookup function has not yet been initialized</exception>
+        protected ValueTask<T?> LookupRow(string key)
+        {
+            if (_lookupRowFunc == null)
+            {
+                throw new InvalidOperationException("LookupRow is not supported, or has not yet been initialized");
+            }
+            return _lookupRowFunc(key);
         }
 
         /// <summary> 

@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Diagnostics;
+using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -44,7 +45,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNan, typeof(BuiltInComparisonFunctions), nameof(IsNanImplementation));
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
-                (scalarFunction, parametersInfo, visitor) =>
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     var lastArg = visitor.Visit(scalarFunction.Arguments[scalarFunction.Arguments.Count - 1], parametersInfo);
 
@@ -68,7 +69,92 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     return expr;
                 });
 
+            functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Greatest,
+                (scalarFunction, parametersInfo, visitor, functionServices) =>
+                {
+                    if (scalarFunction.Arguments.Count < 2)
+                    {
+                        throw new InvalidOperationException("Greatest requires a minimum of two arguments.");
+                    }
 
+                    // Implements the following logic:
+                    // maxValue = a;
+                    // For each other argument
+                    // var b = GetValue;
+                    // var compareResult = b > a;
+                    // if (compareResult.IsNull)
+                    // {          
+                    //   return null;
+                    // }
+                    // if (compareResult.AsBool)
+                    // {
+                    //   maxValue = b;
+                    // }
+                    // return maxValue;
+
+                    var expr = visitor.Visit(scalarFunction.Arguments[0], parametersInfo);
+
+                    if (expr == null)
+                    {
+                        throw new InvalidOperationException("Could not compile greatest function");
+                    }
+
+                    var tmpVar = Expression.Variable(typeof(IDataValue), "greaterThanTmp");
+                    var resultTmpVar = Expression.Variable(typeof(IDataValue), "valueTmp");
+                    var maxTmpVar = Expression.Variable(typeof(IDataValue), "maxTmp");
+
+                    var initialAssign = Expression.Assign(maxTmpVar, expr);
+
+                    var method = typeof(BuiltInComparisonFunctions).GetMethod(nameof(GreaterThanImplementation), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                    
+                    if (method == null)
+                    {
+                        throw new InvalidOperationException("Could not find GreaterThanImplementation method");
+                    }
+                    
+                    DataValueContainer nullContainer = new DataValueContainer();
+                    nullContainer._type = ArrowTypeId.Null;
+                    var nullConstant = Expression.Constant(nullContainer);
+
+                    var returnTarget = Expression.Label(typeof(IDataValue));
+                    var nullValueReturn = Expression.Return(returnTarget, nullConstant);
+                    var returnLabel = Expression.Label(returnTarget, maxTmpVar);
+
+                    List<Expression> blockExpressions = [initialAssign];
+                    for (int i = 1; i < scalarFunction.Arguments.Count; i++)
+                    {
+                        var argResult = visitor.Visit(scalarFunction.Arguments[i], parametersInfo);
+
+                        if (argResult == null)
+                        {
+                            throw new InvalidOperationException("Could not compile greatest function");
+                        }
+
+                        var assignArgumentValue = Expression.Assign(resultTmpVar, argResult);
+                        blockExpressions.Add(assignArgumentValue);
+                        DataValueContainer returnVal = new DataValueContainer();
+                        var genericMethod = method.MakeGenericMethod(resultTmpVar.Type, maxTmpVar.Type);
+                        var callGreaterThan = Expression.Call(genericMethod, resultTmpVar, maxTmpVar, Expression.Constant(returnVal));
+                        var assignOp = Expression.Assign(tmpVar, callGreaterThan);
+
+                        blockExpressions.Add(assignOp);
+
+                        var typeField = Expression.PropertyOrField(tmpVar, "Type");
+                        var typeIsNullCheck = Expression.Equal(typeField, Expression.Constant(ArrowTypeId.Null));
+                        var nullCheck = Expression.IfThen(typeIsNullCheck, nullValueReturn);
+
+                        blockExpressions.Add(nullCheck);
+                        var asBoolField = Expression.PropertyOrField(tmpVar, "AsBool");
+
+                        var assignNewMax = Expression.Assign(maxTmpVar, resultTmpVar);
+                        var greaterThanCheck = Expression.IfThen(asBoolField, assignNewMax);
+
+                        blockExpressions.Add(greaterThanCheck);
+                    }
+                    blockExpressions.Add(returnLabel);
+                    var block = Expression.Block(typeof(IDataValue), new[] { tmpVar, resultTmpVar, maxTmpVar }, blockExpressions);
+                    return block;
+                });
         }
 
         private static IDataValue EqualImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)

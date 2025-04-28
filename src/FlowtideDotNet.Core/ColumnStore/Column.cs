@@ -127,6 +127,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId Type => _type;
         IDataColumn IColumn.DataColumn => _dataColumn!;
 
+        internal StructHeader StructHeader => _dataColumn!.StructHeader;
+
+        StructHeader? IColumn.StructHeader => StructHeader;
+
         public IDataValue this[int index] => GetValueAt(index, default);
 
         /// <summary>
@@ -139,7 +143,21 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _validityList.Count;
         }
 
-        private IDataColumn CreateArray(in ArrowTypeId type)
+        private IDataColumn CreateArray<T>(in T value)
+            where T : IDataValue
+        {
+            var type = value.Type;
+            Debug.Assert(_memoryAllocator != null);
+            switch (type)
+            {
+                case ArrowTypeId.Struct:
+                    return new StructColumn(value.AsStruct.Header, _memoryAllocator);
+                default:
+                    return CreateArrayByType(type);
+            }
+        }
+
+        private IDataColumn CreateArrayByType(in ArrowTypeId type)
         {
             Debug.Assert(_memoryAllocator != null);
             switch (type)
@@ -169,15 +187,29 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
         }
 
+        private bool CompareValueType<T>(in T value)
+            where T : IDataValue
+        {
+            if (value.Type != _type)
+            {
+                return false;
+            }
+            if (_type == ArrowTypeId.Struct)
+            {
+                return StructHeader.Equals(value.AsStruct.Header);
+            }
+            return true;
+        }
+
         public void Add<T>(in T value)
             where T : IDataValue
         {
             Debug.Assert(_validityList != null);
-            if (value.Type != _type)
+            if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
                 {
-                    _dataColumn = CreateArray(value.Type);
+                    _dataColumn = CreateArray(value);
                     _type = value.Type;
 
                     // Add null values as undefined values to the array.
@@ -248,6 +280,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
+                _validityList.Clear();
                 _validityList.InsertTrueInRange(0, Count);
             }
         }
@@ -269,11 +302,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             where T : IDataValue
         {
             Debug.Assert(_validityList != null);
-            if (value.Type != _type)
+            if (!CompareValueType(value))
             {
                 if (_type == ArrowTypeId.Null)
                 {
-                    _dataColumn = CreateArray(value.Type);
+                    _dataColumn = CreateArray(value);
                     _type = value.Type;
 
                     // Add null values as undefined values to the array.
@@ -364,7 +397,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 if (_type == ArrowTypeId.Null)
                 {
-                    _dataColumn = CreateArray(value.Type);
+                    _dataColumn = CreateArray(value);
                     _type = value.Type;
                     for (var i = 0; i < _nullCounter; i++)
                     {
@@ -372,14 +405,31 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     _validityList.Unset(Count - 1);
                 }
-                _dataColumn!.Update<T>(index, value);
-
-                // Set to not null
-                if (_nullCounter > 0 &&
-                    !_validityList.Get(index))
+                if (!CompareValueType(value))
                 {
-                    _validityList.Set(index);
-                    _nullCounter--;
+                    var unionColumn = ConvertToUnion();
+                    _type = ArrowTypeId.Union;
+                    var previousColumn = _dataColumn;
+                    _dataColumn = unionColumn;
+                    if (previousColumn != null)
+                    {
+                        previousColumn.Dispose();
+                    }
+                    _validityList.Clear();
+                    _nullCounter = 0;
+                    _dataColumn.Update<T>(index, value);
+                }
+                else
+                {
+                    _dataColumn!.Update<T>(index, value);
+
+                    // Set to not null
+                    if (_nullCounter > 0 &&
+                        !_validityList.Get(index))
+                    {
+                        _validityList.Set(index);
+                        _nullCounter--;
+                    }
                 }
             }
         }
@@ -470,6 +520,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             Debug.Assert(_validityList != null);
+
             if (_nullCounter > 0)
             {
                 if (_type == ArrowTypeId.Null)
@@ -483,7 +534,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return;
                 }
             }
-            _dataColumn!.GetValueAt(in index, in dataValueContainer, child);
+
+            Debug.Assert(_dataColumn != null, $"{nameof(_dataColumn)} is null");
+            _dataColumn.GetValueAt(in index, in dataValueContainer, child);
         }
 
         public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)
@@ -693,7 +746,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             else if (_type == ArrowTypeId.Null)
             {
                 CheckNullInitialization();
-                _dataColumn = CreateArray(ArrowTypeId.List);
+                _dataColumn = CreateArray(ListValue.Empty);
                 _type = ArrowTypeId.List;
 
                 // Add null values as undefined values to the array.
@@ -736,7 +789,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             else if (_type == ArrowTypeId.Null)
             {
                 CheckNullInitialization();
-                _dataColumn = CreateArray(ArrowTypeId.List);
+                _dataColumn = CreateArray(ListValue.Empty);
                 _type = ArrowTypeId.List;
 
                 // Add null values as undefined values to the array.
@@ -793,11 +846,51 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
         }
 
+        private bool CompareOtherColumnType(Column otherColumn)
+        {
+            if (_type != otherColumn.Type)
+            {
+                return false;
+            }
+            if (_type == ArrowTypeId.Struct)
+            {
+                return StructHeader.Equals(otherColumn.StructHeader);
+            }
+            return true;
+        }
+
+        public void InsertNullRange(int index, int count)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                _nullCounter += count;
+                return;
+            }
+            if (_nullCounter > 0)
+            {
+                Debug.Assert(_validityList != null);
+                _validityList.InsertFalseInRange(index, count);
+                _nullCounter += count;
+            }
+            else
+            {
+                Debug.Assert(_validityList != null);
+                CheckNullInitialization();
+                _validityList.InsertFalseInRange(index, count);
+                _nullCounter += count;
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.InsertNullRange(index, count);
+            }
+        }
+
         public void InsertRangeFrom(int index, IColumn otherColumn, int start, int count)
         {
             if (otherColumn is Column column)
             {
-                if (_type == otherColumn.Type)
+                
+                if (CompareOtherColumnType(column))
                 {
                     if (_type == ArrowTypeId.Null)
                     {
@@ -855,7 +948,20 @@ namespace FlowtideDotNet.Core.ColumnStore
                     if (_type == ArrowTypeId.Null)
                     {
                         Debug.Assert(_validityList != null);
-                        _dataColumn = CreateArray(otherColumn.Type);
+                        if (otherColumn.Type == ArrowTypeId.Struct)
+                        {
+                            if (otherColumn.StructHeader == null)
+                            {
+                                throw new InvalidOperationException("Struct header is null, cannot create struct column.");
+                            }
+                            Debug.Assert(_memoryAllocator != null);
+                            _dataColumn = new StructColumn(otherColumn.StructHeader.Value, _memoryAllocator);
+                        }
+                        else
+                        {
+                            _dataColumn = CreateArrayByType(otherColumn.Type);
+                        }
+                        
                         _type = otherColumn.Type;
 
                         if (_type == ArrowTypeId.Union)

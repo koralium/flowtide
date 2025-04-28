@@ -62,6 +62,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Timestamp;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public int Add<T>(in T value) where T : IDataValue
         {
             var index = _values.Count;

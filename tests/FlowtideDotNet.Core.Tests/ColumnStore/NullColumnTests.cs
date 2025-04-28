@@ -86,6 +86,31 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void TestValidityListInitialization()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance);
+
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+
+            // Init validity list
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(1));
+            column.Add(new Int64Value(1));
+
+            column.RemoveAt(0); // Remove null
+            column.RemoveAt(0); // Remove null
+            column.RemoveAt(0); // Remove int
+            column.RemoveAt(0); // Remove int
+
+            column.Add(NullValue.Instance); // Add null again
+
+            var count = column.GetValidityListCount();
+
+            Assert.Equal(2, count);
+        }
+
+        [Fact]
         public void TestAddToHash()
         {
             NullColumn column = new NullColumn();

@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal IListValue? _listValue;
         internal IMapValue? _mapValue;
         internal TimestampTzValue _timestampValue;
+        internal IStructValue? _structValue;
         internal ArrowTypeId _type;
 
 
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => _int64Value.AsLong;
 
-        public FlxString AsString => _stringValue.AsString;
+        public StringValue AsString => _stringValue;
 
         public bool AsBool => _boolValue.AsBool;
 
@@ -62,6 +63,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => _type == ArrowTypeId.Null;
 
         public TimestampTzValue AsTimestamp => _timestampValue;
+
+        public IStructValue AsStruct => _structValue!;
 
         public void Accept(in DataValueVisitor visitor)
         {
@@ -119,6 +122,20 @@ namespace FlowtideDotNet.Core.ColumnStore
                         throw new System.InvalidOperationException($"Unknown map type: {_mapValue!.GetType()}");
                     }
                     break;
+                case ArrowTypeId.Struct:
+                    if (_structValue is StructValue structVal)
+                    {
+                        visitor.VisitStructValue(ref structVal);
+                    }
+                    else if (_structValue is ReferenceStructValue refStructVal)
+                    {
+                        visitor.VisitReferenceStructValue(ref refStructVal);
+                    }
+                    else
+                    {
+                        throw new System.InvalidOperationException($"Unknown struct type: {_structValue!.GetType()}");
+                    }
+                    break;
                 default:
                     throw new System.InvalidOperationException($"Unknown type: {Type}");
             }
@@ -173,6 +190,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._decimalValue = _decimalValue;
             container._listValue = _listValue;
             container._mapValue = _mapValue;
+            container._structValue = _structValue;
             container._timestampValue = _timestampValue;
         }
     }

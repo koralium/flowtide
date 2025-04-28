@@ -25,18 +25,13 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
     public class SqlServerSourceFactory : AbstractConnectorSourceFactory, IConnectorTableProviderFactory
     {
-        private readonly Func<string> _connectionStringFunc;
-        private readonly Func<ReadRelation, IReadOnlyList<string>>? customTableNameFunc;
+        private readonly SqlServerSourceOptions _options;
         private readonly SqlServerTableProvider _tableProvider;
 
-        public SqlServerSourceFactory(
-            Func<string> connectionStringFunc,
-            Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
-            bool useDatabaseDefinedInConnectionStringOnly = false)
+        public SqlServerSourceFactory(SqlServerSourceOptions options)
         {
-            this._connectionStringFunc = connectionStringFunc;
-            this.customTableNameFunc = tableNameTransform;
-            _tableProvider = new SqlServerTableProvider(connectionStringFunc, useDatabaseDefinedInConnectionStringOnly);
+            _options = options;
+            _tableProvider = new SqlServerTableProvider(options.ConnectionStringFunc, options.UseDatabaseDefinedInConnectionStringOnly);
         }
 
         /// <summary>
@@ -45,7 +40,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         /// <returns></returns>
         private async Task<HashSet<string>> LoadAvailableTablesList()
         {
-            using var conn = new SqlConnection(_connectionStringFunc());
+            using var conn = new SqlConnection(_options.ConnectionStringFunc());
             conn.Open();
             var tableNamesList = await SqlServerUtils.GetFullTableNames(conn);
             return tableNamesList.ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -53,7 +48,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+            var tableName = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
             return _tableProvider.TryGetTableInformation(tableName, out _);
         }
 
@@ -64,19 +59,13 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+            var tableName = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
 
             string fullName = string.Join(".", tableName);
 
-            using var conn = new SqlConnection(_connectionStringFunc());
+            using var conn = new SqlConnection(_options.ConnectionStringFunc());
             conn.Open();
             var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
-
-            var isChangeTrackingEnabled = SqlServerUtils.IsChangeTrackingEnabled(conn, fullName).GetAwaiter().GetResult();
-            if (!isChangeTrackingEnabled)
-            {
-                throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
-            }
 
             List<int> pkIndices = new List<int>();
             foreach (var pk in primaryKeys)
@@ -94,21 +83,88 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 }
             }
 
-            return new NormalizationRelation()
-            {
-                Input = readRelation,
-                Filter = readRelation.Filter,
-                KeyIndex = pkIndices,
-                Emit = readRelation.Emit
-            };
+            return readRelation;
         }
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            var tableName = customTableNameFunc?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+            var options = InitializeOperatorOptions(readRelation).GetAwaiter().GetResult();
+            if (options.PartitionMetadata != null)
+            {
+                return new PartitionedTableDataSource(options, readRelation, functionsRegister, dataflowBlockOptions);
+            }
+            else
+            {
+                return new ColumnSqlServerBatchDataSource(options, readRelation, functionsRegister, dataflowBlockOptions);
+            }
+        }
+
+        private async Task<SqlServerSourceOptions> InitializeOperatorOptions(ReadRelation readRelation)
+        {
+            var tableName = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
 
             string fullName = string.Join(".", tableName);
-            return new ColumnSqlServerDataSource(_connectionStringFunc, fullName, readRelation, dataflowBlockOptions);
+            using var connection = new SqlConnection(_options.ConnectionStringFunc());
+            await connection.OpenAsync();
+
+            var options = new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = _options.ConnectionStringFunc,
+                TableNameTransform = _options.TableNameTransform,
+                UseDatabaseDefinedInConnectionStringOnly = _options.UseDatabaseDefinedInConnectionStringOnly,
+                EnableFullReload = _options.EnableFullReload,
+                AllowFullReloadOnTablesWithoutChangeTracking = _options.AllowFullReloadOnTablesWithoutChangeTracking,
+                FullLoadMaxRowCount = _options.FullLoadMaxRowCount,
+                FullReloadInterval = _options.FullReloadInterval,
+                ChangeTrackingInterval = _options.ChangeTrackingInterval,
+            };
+
+            var isChangeTrackingEnabled = await SqlServerUtils.IsChangeTrackingEnabled(connection, fullName);
+
+            options.PartitionMetadata = await SqlServerUtils.GetPartitionMetadata(connection, readRelation);
+
+            if (!isChangeTrackingEnabled)
+            {
+                options.IsChangeTrackingEnabled = false;
+                options.IsView = await SqlServerUtils.IsView(connection, fullName);
+
+                if (options.EnableFullReload)
+                {
+                    if (!options.IsView && !options.AllowFullReloadOnTablesWithoutChangeTracking)
+                    {
+                        throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'. {nameof(options.EnableFullReload)} or {nameof(options.AllowFullReloadOnTablesWithoutChangeTracking)} must be set to true.");
+                    }
+
+                    if (!options.FullReloadInterval.HasValue)
+                    {
+                        throw new InvalidOperationException($"{nameof(_options.FullReloadInterval)} must be set when {nameof(options.EnableFullReload)} is enabled.");
+                    }
+
+                    if (options.FullLoadMaxRowCount.HasValue)
+                    {
+                        var count = SqlServerUtils.GetRowCount(connection, fullName).GetAwaiter().GetResult();
+                        var max = options.FullLoadMaxRowCount;
+                        if (count < 0 || count > max)
+                        {
+                            throw new InvalidOperationException($"Row count of view {fullName} is too large, max allowed rows according to {nameof(options.FullLoadMaxRowCount)} is {max:0,0} rows (actual: {count:0,0}).");
+                        }
+                    }
+                }
+                else if (options.IsView)
+                {
+                    throw new InvalidOperationException($"{nameof(options.EnableFullReload)} must be enabled on the source to read from view.");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
+                }
+            }
+            else if (!options.ChangeTrackingInterval.HasValue)
+            {
+                options.ChangeTrackingInterval = TimeSpan.FromSeconds(1);
+            }
+
+            return options;
         }
     }
 }

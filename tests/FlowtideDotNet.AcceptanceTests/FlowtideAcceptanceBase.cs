@@ -13,6 +13,7 @@
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
@@ -47,7 +48,8 @@ namespace FlowtideDotNet.AcceptanceTests
             StateSerializeOptions? stateSerializeOptions = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
-            PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, planOptimizerSettings);
+            ICheckFailureListener? failureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();

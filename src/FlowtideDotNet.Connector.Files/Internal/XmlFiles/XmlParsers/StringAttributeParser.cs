@@ -10,20 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Engine.Internal
+using FlowtideDotNet.Core.ColumnStore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+
+namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
 {
-    internal class StreamVersionInformation
+    internal class StringAttributeParser : IFlowtideXmlParser
     {
-        public StreamVersionInformation(long version, string hash)
+        public ValueTask<IDataValue> Parse(XmlReader reader)
         {
-            Version = version;
-            Hash = hash;
+            return ValueTask.FromResult<IDataValue>(new StringValue(reader.Value));
         }
-
-        public long Version { get; }
-
-        public string Hash { get; }
-
-
     }
 }

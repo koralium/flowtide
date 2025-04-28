@@ -12,6 +12,7 @@
 
 using System.Runtime.CompilerServices;
 
+[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Base.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.SqlServer.Tests")]

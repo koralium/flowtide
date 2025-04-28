@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -92,6 +92,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void CopyToContainer(DataValueContainer container)
         {
             container._timestampValue = this;
+            container._type = ArrowTypeId.Timestamp;
         }
 
         public DateTimeOffset ToDateTimeOffset()
@@ -112,6 +113,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         }
 
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
+
+        public IStructValue AsStruct => throw new NotSupportedException();
 
         public override string ToString()
         {

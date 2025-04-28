@@ -22,6 +22,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
     public struct ListValue : IListValue
     {
+        public static readonly ListValue Empty = new ListValue();
+
         private readonly IReadOnlyList<IDataValue> dataValues;
 
         public ListValue(IReadOnlyList<IDataValue> dataValues)
@@ -40,7 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -57,6 +59,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public IStructValue AsStruct => throw new NotSupportedException();
 
         public void Accept(in DataValueVisitor visitor)
         {

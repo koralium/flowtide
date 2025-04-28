@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var funcType = sqlFunctionRegister.GetFunctionType(function.Name);
             bool containsAggregate = false;
-            if (funcType == FunctionType.Aggregate)
+            if (funcType == FunctionType.Aggregate && function.Over == null)
             {
                 _aggregateFunctions.Add(function);
                 containsAggregate = true;
