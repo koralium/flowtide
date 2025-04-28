@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         long AsLong { get; }
 
-        FlxString AsString { get; }
+        StringValue AsString { get; }
 
         bool AsBool { get; }
 
