@@ -10,16 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.FunctionExtensions
+namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    public static class FunctionsDatetime
-    {
-        public const string Uri = "/functions_datetime.yaml";
-        public const string Strftime = "strftime";
-        public const string GetTimestamp = "gettimestamp";
-        public const string FloorTimestampDay = "floor_timestamp_day";
-        public const string ParseTimestamp = "parse_timestamp";
-        public const string Extract = "extract";
-        public const string Format = "format";
-    }
+    public sealed record PartitionMetadata(string PartitionScheme, string PartitionFunction, string PartitionColumn, string TableName, string SchemeName, byte PartitionOrdinal);
 }

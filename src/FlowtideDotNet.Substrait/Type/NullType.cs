@@ -10,16 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.FunctionExtensions
+namespace FlowtideDotNet.Substrait.Type
 {
-    public static class FunctionsDatetime
+    public class NullType : SubstraitBaseType
     {
-        public const string Uri = "/functions_datetime.yaml";
-        public const string Strftime = "strftime";
-        public const string GetTimestamp = "gettimestamp";
-        public const string FloorTimestampDay = "floor_timestamp_day";
-        public const string ParseTimestamp = "parse_timestamp";
-        public const string Extract = "extract";
-        public const string Format = "format";
+        public static readonly NullType Instance = new NullType();
+
+        public override SubstraitType Type => SubstraitType.Null;
     }
 }
