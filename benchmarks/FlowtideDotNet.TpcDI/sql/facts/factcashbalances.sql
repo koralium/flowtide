@@ -22,7 +22,7 @@ CREATE VIEW FactCashBalancesView AS
 SELECT
   da.SK_CustomerID,
   da.SK_AccountID,
-  CAST(strftime(cb.TransactionDate, '%Y%m%d') as INT) as SK_DateID,
+  CAST(timestamp_format(cb.TransactionDate, 'yyyyMMdd') as INT) as SK_DateID,
   cb.Cash,
   cb.BatchID
 FROM cashbalances cb

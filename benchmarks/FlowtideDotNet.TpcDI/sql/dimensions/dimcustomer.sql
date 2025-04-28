@@ -42,7 +42,7 @@ SELECT
   p.MarketingNameplate,
   c.BatchID
 FROM CustomerHistory c
-LEFT JOIN ProspectView p
+LEFT JOIN Prospect_for_customers_view p
 ON 
 	UPPER(p.FirstName) = UPPER(c.FirstName) AND
 	UPPER(p.LastName) = UPPER(c.LastName) AND
