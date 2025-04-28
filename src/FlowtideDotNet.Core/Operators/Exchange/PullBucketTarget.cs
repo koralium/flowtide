@@ -204,5 +204,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
             
         }
+
+        public void NewBatch(EventBatchWeighted weightedBatch)
+        {
+        }
     }
 }

@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal interface IExchangeTarget
     {
+        void NewBatch(EventBatchWeighted weightedBatch);
         ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
 
         Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator);

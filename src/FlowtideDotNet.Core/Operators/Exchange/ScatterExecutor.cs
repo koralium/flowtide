@@ -167,6 +167,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Debug.Assert(_hashFunction != null);
+            foreach(var target in _targets)
+            {
+                target.NewBatch(data.Data);
+            }
             for (int i = 0; i < data.Data.Count; i++)
             {
                 var hash = _hashFunction(data.Data.EventBatchData, i);
