@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Optimizer
 
             if (settings.MergeJoinParallelization > 1)
             {
-                plan = MergeJoinParallelize.MergeJoinParallelize.Optimize(plan, settings.MergeJoinParallelization);
+                plan = MergeJoinParallelize.ParallelizeOptimizer.Optimize(plan, settings.MergeJoinParallelization);
             }
             return plan;
         }

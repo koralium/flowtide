@@ -20,13 +20,13 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
 {
-    internal static class MergeJoinParallelize
+    internal static class ParallelizeOptimizer
     {
         private static readonly object _emptyObject = new object();
 
         public static Plan Optimize(Plan plan, int parallelCount)
         {
-            var visitor = new MergeJoinparallelizeVisitor(parallelCount);
+            var visitor = new ParallelizeVisitor(parallelCount);
             visitor.VisitPlan(plan);
             return plan;
         }

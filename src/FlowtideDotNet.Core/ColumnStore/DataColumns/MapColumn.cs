@@ -590,7 +590,23 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
-            var (startOffset, endOffset) = GetOffsets(index);
+            var (startOffset, endOffset) = GetOffsets(in index);
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+                    
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
+                    if (keyLocationStart < 0)
+                    {
+                        hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                        return;
+                    }
+                    _valueColumn.AddToHash(keyLocationStart, child.Child, hashAlgorithm);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
 
             for (int i = startOffset; i < endOffset; i++)
             {
