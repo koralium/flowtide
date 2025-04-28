@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore.Json;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -28,7 +29,7 @@ using System.Text.RegularExpressions;
 using static SqlParser.Ast.MatchRecognizeSymbol;
 using static SqlParser.Ast.Partition;
 
-namespace FlowtideDotNet.Core.Compute.Columnar.Functions
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
 {
     internal static class BuiltInStringFunctions
     {
@@ -89,7 +90,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     Debug.Assert(toStringMethod != null);
                     var genericMethod = toStringMethod.MakeGenericMethod(expr.Type, start.Type, length.Type);
                     var resultContainer = Expression.Constant(new DataValueContainer());
-                    return System.Linq.Expressions.Expression.Call(genericMethod, expr, start, length, resultContainer);
+                    return Expression.Call(genericMethod, expr, start, length, resultContainer);
                 });
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
@@ -102,37 +103,37 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         ignoreNulls = true;
                     }
 
-                    List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
+                    List<Expression> expressions = new List<Expression>();
                     var stringBuilder = new StringBuilder();
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
-                    var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    var toStringMethod = typeof(StringValue).GetMethod("ToString", new System.Type[] { });
                     Debug.Assert(appendMethod != null);
                     Debug.Assert(toStringMethod != null);
 
-                    var stringBuilderConstant = System.Linq.Expressions.Expression.Constant(stringBuilder);
+                    var stringBuilderConstant = Expression.Constant(stringBuilder);
 
                     DataValueContainer nullContainer = new DataValueContainer();
                     nullContainer._type = ArrowTypeId.Null;
-                    var nullConstant = System.Linq.Expressions.Expression.Constant(nullContainer);
+                    var nullConstant = Expression.Constant(nullContainer);
 
                     DataValueContainer temporaryContainer = new DataValueContainer();
-                    var temporaryVariable = System.Linq.Expressions.Expression.Constant(temporaryContainer);
+                    var temporaryVariable = Expression.Constant(temporaryContainer);
 
-                    var returnTarget = System.Linq.Expressions.Expression.Label(typeof(IDataValue));
+                    var returnTarget = Expression.Label(typeof(IDataValue));
 
-                    var stringBuilderToStringExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "ToString", new System.Type[] { });
+                    var stringBuilderToStringExpr = Expression.Call(stringBuilderConstant, "ToString", new System.Type[] { });
 
 
-                    var newStringValueExpr = System.Linq.Expressions.Expression.New(typeof(StringValue).GetConstructor(new System.Type[] { typeof(string) })!, stringBuilderToStringExpr);
-                    var castToIDataValue = System.Linq.Expressions.Expression.Convert(newStringValueExpr, typeof(IDataValue));
-                    var returnLabel = System.Linq.Expressions.Expression.Label(returnTarget, castToIDataValue);
+                    var newStringValueExpr = Expression.New(typeof(StringValue).GetConstructor(new System.Type[] { typeof(string) })!, stringBuilderToStringExpr);
+                    var castToIDataValue = Expression.Convert(newStringValueExpr, typeof(IDataValue));
+                    var returnLabel = Expression.Label(returnTarget, castToIDataValue);
 
-                    var nullValueReturn = System.Linq.Expressions.Expression.Return(returnTarget, nullConstant);
+                    var nullValueReturn = Expression.Return(returnTarget, nullConstant);
 
-                    List<System.Linq.Expressions.Expression> blockExpressions = new List<System.Linq.Expressions.Expression>();
+                    List<Expression> blockExpressions = new List<Expression>();
 
-                    var stringBuilderClearExpr = System.Linq.Expressions.Expression.Call(stringBuilderConstant, "Clear", new System.Type[] { });
+                    var stringBuilderClearExpr = Expression.Call(stringBuilderConstant, "Clear", new System.Type[] { });
 
                     // Start with clearing the string builder
                     blockExpressions.Add(stringBuilderClearExpr);
@@ -140,31 +141,31 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     foreach (var expr in func.Arguments)
                     {
                         var v = visitor.Visit(expr, parameters)!;
-                        var typeField = System.Linq.Expressions.Expression.PropertyOrField(v, "Type");
-                        var typeIsNullCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.Null));
-                        var typeIsStringCheck = System.Linq.Expressions.Expression.Equal(typeField, System.Linq.Expressions.Expression.Constant(ArrowTypeId.String));
+                        var typeField = Expression.PropertyOrField(v, "Type");
+                        var typeIsNullCheck = Expression.Equal(typeField, Expression.Constant(ArrowTypeId.Null));
+                        var typeIsStringCheck = Expression.Equal(typeField, Expression.Constant(ArrowTypeId.String));
 
-                        var asStringField = System.Linq.Expressions.Expression.PropertyOrField(v, "AsString");
-                        var toStringCall = System.Linq.Expressions.Expression.Call(asStringField, toStringMethod);
+                        var asStringField = Expression.PropertyOrField(v, "AsString");
+                        var toStringCall = Expression.Call(asStringField, toStringMethod);
                         var castToString = ColumnCastImplementations.CallCastToString(v, temporaryVariable);
-                        var asStringFromCastToString = System.Linq.Expressions.Expression.PropertyOrField(castToString, "AsString");
-                        var toStringFromCastToString = System.Linq.Expressions.Expression.Call(asStringFromCastToString, toStringMethod);
-                        var appendLine = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
-                        var appendLineCastedToString = System.Linq.Expressions.Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
-                        var checkIfString = System.Linq.Expressions.Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
-                        System.Linq.Expressions.Expression? nullCheck = default;
+                        var asStringFromCastToString = Expression.PropertyOrField(castToString, "AsString");
+                        var toStringFromCastToString = Expression.Call(asStringFromCastToString, toStringMethod);
+                        var appendLine = Expression.Call(stringBuilderConstant, appendMethod, toStringCall);
+                        var appendLineCastedToString = Expression.Call(stringBuilderConstant, appendMethod, toStringFromCastToString);
+                        var checkIfString = Expression.IfThenElse(typeIsStringCheck, appendLine, appendLineCastedToString);
+                        Expression? nullCheck = default;
                         if (ignoreNulls)
                         {
-                            nullCheck = System.Linq.Expressions.Expression.IfThen(typeIsStringCheck, checkIfString);
+                            nullCheck = Expression.IfThen(typeIsStringCheck, checkIfString);
                         }
                         else
                         {
-                            nullCheck = System.Linq.Expressions.Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
+                            nullCheck = Expression.IfThenElse(typeIsNullCheck, nullValueReturn, checkIfString);
                         }
                         blockExpressions.Add(nullCheck);
                     }
                     blockExpressions.Add(returnLabel);
-                    var blockExpression = System.Linq.Expressions.Expression.Block(blockExpressions);
+                    var blockExpression = Expression.Block(blockExpressions);
 
 
                     return blockExpression;
@@ -201,7 +202,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 var genericMethod = toStringMethod.MakeGenericMethod(expr.Type);
                 var jsonWriterConstant = Expression.Constant(new DataValueJsonWriter());
                 var resultContainer = Expression.Constant(new DataValueContainer());
-                return System.Linq.Expressions.Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
+                return Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
             });
 
             functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
@@ -327,11 +328,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T2 : IDataValue
             where T3 : IDataValue
         {
-            if (!SubstringTryGetParameters(value, start, length, out var str, out var startInt, out var lengthInt))
+            if (value.Type != ArrowTypeId.String)
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
+            if (start.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (length.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var startInt = (int)start.AsLong;
+            var lengthInt = (int)length.AsLong;
+            var strVal = value.AsString;
+            var str = strVal.Span;
 
             if (startInt > str.Length)
             {
@@ -347,9 +362,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 lengthInt = Math.Min(lengthInt, str.Length - startInt + 1);
             }
+
+            var reader = new Utf8GraphemeReader(str);
+
+            int index = 0;
+            int startByteIndex = -1;
+            int endByteIndex = str.Length;
+
+            while (reader.MoveNext())
+            {
+                if (index == startInt - 1)
+                    startByteIndex = reader.CurrentStart;
+                if (index == startInt - 1 + lengthInt)
+                {
+                    endByteIndex = reader.CurrentStart;
+                    break;
+                }
+
+                index++;
+            }
+
+            if (startByteIndex == -1)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var slice = strVal.Memory.Slice(startByteIndex, endByteIndex - startByteIndex);
             result._type = ArrowTypeId.String;
-            var stringInfo = new StringInfo(str);
-            result._stringValue = new StringValue(stringInfo.SubstringByTextElements(startInt - 1, lengthInt));
+            result._stringValue = new StringValue(slice);
             return result;
         }
 
@@ -390,9 +431,33 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
+            var valueStr = value.AsString;
+            var span = valueStr.Span;
+            int start = 0;
+            int end = span.Length - 1;
+
+
+            while (start <= end && IsAsciiWhiteSpace(in span[start]))
+            {
+                start++;
+            }
+
+            // Find first non-whitespace from the end
+            while (end >= start && IsAsciiWhiteSpace(in span[end]))
+            {
+                end--;
+            }
+
+
             result._type = ArrowTypeId.String;
-            result._stringValue = new StringValue(value.AsString.ToString().Trim());
+            result._stringValue = new StringValue(valueStr.Memory.Slice(start, end - start + 1));
             return result;
+        }
+
+        private static bool IsAsciiWhiteSpace(ref readonly byte b)
+        {
+            // ' ', '\t', '\n', '\r'
+            return b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D;
         }
 
         /// <summary>
@@ -842,7 +907,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 }
             }
 
-               
+
         }
 
         private static IDataValue FromJsonImplementation_error_handling__ERROR<T1>(in T1 val)

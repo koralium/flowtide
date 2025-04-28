@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => value;
 

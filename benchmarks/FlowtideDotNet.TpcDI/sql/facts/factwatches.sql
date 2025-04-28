@@ -2,40 +2,45 @@
 CREATE VIEW watchhistory_read AS
 SELECT * FROM watchhistory_raw;
 
-
--- temporary parellalism to help with performance
-CREATE VIEW watches_aggregate1 AS
+CREATE VIEW watches_window_func_1 AS
 SELECT
-W_C_ID,
-W_S_SYMB,
--- take the latest date a watch was placed, if the same symbol is watched again 
-max(W_DTS) FILTER(WHERE W_ACTION = 'ACTV') as date_placed,
-max(W_DTS) FILTER(WHERE W_ACTION = 'CNCL') as date_canceled,
-min(BatchID) as BatchID
+  W_C_ID,
+  W_S_SYMB,
+  LAST_VALUE(W_DTS) OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as date_placed,
+  CASE 
+	WHEN W_ACTION = 'CNCL' THEN W_DTS
+	ELSE NULL
+  END as date_canceled,
+  BatchID,
+  ROW_NUMBER() OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC) as rn
 FROM watchhistory_read
-WHERE W_C_ID % 2 = 0
-GROUP BY W_C_ID, W_S_SYMB;
+WHERE W_C_ID % 2 = 0;
 
-CREATE VIEW watches_aggregate2 AS
+CREATE VIEW watches_window_func_2 AS
 SELECT
-W_C_ID,
-W_S_SYMB,
--- take the latest date a watch was placed, if the same symbol is watched again 
-max(W_DTS) FILTER(WHERE W_ACTION = 'ACTV') as date_placed,
-max(W_DTS) FILTER(WHERE W_ACTION = 'CNCL') as date_canceled,
-min(BatchID) as BatchID
+  W_C_ID,
+  W_S_SYMB,
+  LAST_VALUE(W_DTS) OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as date_placed,
+  CASE 
+	WHEN W_ACTION = 'CNCL' THEN W_DTS
+	ELSE NULL
+  END as date_canceled,
+  BatchID,
+  ROW_NUMBER() OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC) as rn
 FROM watchhistory_read
-WHERE W_C_ID % 2 = 1
-GROUP BY W_C_ID, W_S_SYMB;
+WHERE W_C_ID % 2 = 1;
+
 
 CREATE VIEW watches_aggregate AS
 SELECT
 *
-FROM watches_aggregate1
+FROM watches_window_func_1
+WHERE rn = 1
 UNION ALL
 SELECT
 *
-FROM watches_aggregate2;
+FROM watches_window_func_2
+WHERE rn = 1;
 
 CREATE VIEW watches_single_row AS
 SELECT

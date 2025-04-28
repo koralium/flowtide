@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => new FlxString(_utf8.Span);
+        public StringValue AsString => this;
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -45,6 +45,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
         public IStructValue AsStruct => throw new NotSupportedException();
+
+        public ReadOnlySpan<byte> Span => _utf8.Span;
+
+        public ReadOnlyMemory<byte> Memory => _utf8;
 
         public StringValue(byte[] utf8)
         {
@@ -75,6 +79,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitStringValue(in this);
+        }
+
+        public int CompareTo(in StringValue other)
+        {
+            return Compare(this, other);
+        }
+
+        public static int Compare(in StringValue v1, in StringValue v2)
+        {
+            return v1.Span.SequenceCompareTo(v2.Span);
+        }
+
+        public static int CompareIgnoreCase(in FlxString v1, in FlxString v2)
+        {
+            return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(v1.Span, v2.Span);
         }
     }
 }
