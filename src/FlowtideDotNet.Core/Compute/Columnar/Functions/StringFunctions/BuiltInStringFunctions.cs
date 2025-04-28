@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore.Json;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.StringAgg;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
@@ -84,19 +85,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                         }
                     }
 
-                    //if (methodName == nameof(Substring) && 
-                    //start.NodeType == ExpressionType.Constant &&
-                    //length.NodeType == ExpressionType.Constant)
-                    //{
-                    //    if (((ConstantExpression)start).Value is Int64Value startVal &&
-                    //    ((ConstantExpression)length).Value is Int64Value endVal)
-                    //    {
-                    //        methodName = nameof(SubstringFast);
-                    //        start = Expression.Constant((int)startVal.AsLong);
-                    //        length = Expression.Constant((int)endVal.AsLong);
-                    //    }
-                    //}
-
 
                     MethodInfo? toStringMethod = typeof(BuiltInStringFunctions).GetMethod(methodName, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
                     Debug.Assert(toStringMethod != null);
@@ -119,7 +107,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                     var stringBuilder = new StringBuilder();
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });
-                    var toStringMethod = typeof(FlxString).GetMethod("ToString", new System.Type[] { });
+                    var toStringMethod = typeof(StringValue).GetMethod("ToString", new System.Type[] { });
                     Debug.Assert(appendMethod != null);
                     Debug.Assert(toStringMethod != null);
 
@@ -357,7 +345,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
             }
             var startInt = (int)start.AsLong;
             var lengthInt = (int)length.AsLong;
-            var str = value.AsString.Span;
+            var strVal = value.AsString;
+            var str = strVal.Span;
 
             if (startInt > str.Length)
             {
@@ -399,9 +388,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                 return result;
             }
 
-            var slice = str.Slice(startByteIndex, endByteIndex - startByteIndex);
+            var slice = strVal.Memory.Slice(startByteIndex, endByteIndex - startByteIndex);
             result._type = ArrowTypeId.String;
-            result._stringValue = new StringValue(slice.ToArray());
+            result._stringValue = new StringValue(slice);
             return result;
         }
 
@@ -442,9 +431,33 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                 return result;
             }
 
+            var valueStr = value.AsString;
+            var span = valueStr.Span;
+            int start = 0;
+            int end = span.Length - 1;
+
+
+            while (start <= end && IsAsciiWhiteSpace(in span[start]))
+            {
+                start++;
+            }
+
+            // Find first non-whitespace from the end
+            while (end >= start && IsAsciiWhiteSpace(in span[end]))
+            {
+                end--;
+            }
+
+
             result._type = ArrowTypeId.String;
-            result._stringValue = new StringValue(value.AsString.ToString().Trim());
+            result._stringValue = new StringValue(valueStr.Memory.Slice(start, end - start + 1));
             return result;
+        }
+
+        private static bool IsAsciiWhiteSpace(ref readonly byte b)
+        {
+            // ' ', '\t', '\n', '\r'
+            return b == 0x20 || b == 0x09 || b == 0x0A || b == 0x0D;
         }
 
         /// <summary>

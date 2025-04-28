@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
                     var createSpan = Expression.New(createSpanCtor, staticArray);
 
                     var notificationReceiverMethod = typeof(ICheckNotificationReceiver).GetMethod(nameof(ICheckNotificationReceiver.OnCheckFailure), BindingFlags.Public | BindingFlags.Instance);
-                    var flxStringToStringMethod = typeof(FlxString).GetMethod(nameof(FlxString.ToString), BindingFlags.Public | BindingFlags.Instance);
+                    var flxStringToStringMethod = typeof(StringValue).GetMethod(nameof(StringValue.ToString), BindingFlags.Public | BindingFlags.Instance);
                     var messageAsStringProp = checkMessage.Type.GetProperty(nameof(IDataValue.AsString));
 
                     if (notificationReceiverMethod == null)
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
                     }
                     if (flxStringToStringMethod == null)
                     {
-                        throw new InvalidOperationException("FlxString.ToString method not found");
+                        throw new InvalidOperationException("StringValue.ToString method not found");
                     }
                     if (messageAsStringProp == null)
                     {
@@ -257,7 +257,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
                     var createSpan = Expression.New(createSpanCtor, staticArray);
 
                     var notificationReceiverMethod = typeof(ICheckNotificationReceiver).GetMethod(nameof(ICheckNotificationReceiver.OnCheckFailure), BindingFlags.Public | BindingFlags.Instance);
-                    var flxStringToStringMethod = typeof(FlxString).GetMethod(nameof(FlxString.ToString), BindingFlags.Public | BindingFlags.Instance);
+                    var flxStringToStringMethod = typeof(StringValue).GetMethod(nameof(StringValue.ToString), BindingFlags.Public | BindingFlags.Instance);
                     var messageAsStringProp = checkMessage.Type.GetProperty(nameof(IDataValue.AsString));
 
                     if (notificationReceiverMethod == null)
@@ -266,7 +266,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
                     }
                     if (flxStringToStringMethod == null)
                     {
-                        throw new InvalidOperationException("FlxString.ToString method not found");
+                        throw new InvalidOperationException("StringValue.ToString method not found");
                     }
                     if (messageAsStringProp == null)
                     {
