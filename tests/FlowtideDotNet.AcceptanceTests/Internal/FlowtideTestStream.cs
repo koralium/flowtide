@@ -268,9 +268,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, planOptimizerSettings);   
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings);   
             await _stream!.StartAsync();
         }
 

@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Hashing;
 using System.Text;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
@@ -205,6 +206,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitStructValue(ref this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = 0; i < _columnValues.Length; i++)
+            {
+                _columnValues[i].AddToHash(hashAlgorithm);
+            }
         }
     }
 }
