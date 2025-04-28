@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => _int64Value.AsLong;
 
-        public FlxString AsString => _stringValue.AsString;
+        public StringValue AsString => _stringValue;
 
         public bool AsBool => _boolValue.AsBool;
 
