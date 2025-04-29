@@ -18,6 +18,11 @@ using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -80,6 +85,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
 
         IDataColumn Copy(IMemoryAllocator memoryAllocator);
+
+        void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
 

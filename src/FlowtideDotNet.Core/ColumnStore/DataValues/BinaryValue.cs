@@ -12,6 +12,10 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
+using System;
+using System.Collections.Generic;
+using System.IO.Hashing;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 
@@ -29,7 +33,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -52,6 +56,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitBinaryValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_bytes.Span);
         }
 
         public void CopyToContainer(DataValueContainer container)

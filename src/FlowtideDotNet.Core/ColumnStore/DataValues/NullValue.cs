@@ -10,8 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Diagnostics;
+using System.IO.Hashing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
@@ -23,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -46,6 +51,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitNullValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(ByteArrayUtils.nullBytes);
         }
 
         public void CopyToContainer(DataValueContainer container)
