@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 return timestamp.ToDateTimeOffset().DateTime;
             }
 
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to datetime");
         }
 
         public SubstraitBaseType GetSubstraitType()

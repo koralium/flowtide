@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return new Memory<byte>(value.AsBinary.ToArray());
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to Memory<byte>");
         }
 
         public SubstraitBaseType GetSubstraitType()

@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return value.AsBool;
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to string");
         }
 
         public SubstraitBaseType GetSubstraitType()

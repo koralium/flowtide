@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return value.AsDouble;
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to double");
         }
 
         public SubstraitBaseType GetSubstraitType()

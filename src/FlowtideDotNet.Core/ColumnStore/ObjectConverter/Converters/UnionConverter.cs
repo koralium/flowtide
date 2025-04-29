@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 case ArrowTypeId.Struct:
                     return GetConverter(typeof(Dictionary<string, object>)).Deserialize(value);
                 default:
-                    throw new NotImplementedException();
+                    throw new NotImplementedException($"Can not deserialize {value.Type} to object");
             }
         }
 
