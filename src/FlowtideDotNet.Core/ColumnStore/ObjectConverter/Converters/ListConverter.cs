@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotImplementedException($"Can not deserialize {value.Type} to list");
             }
         }
 

@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 return dictionary;
             }
 
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to dictionary");
         }
 
         public SubstraitBaseType GetSubstraitType()
