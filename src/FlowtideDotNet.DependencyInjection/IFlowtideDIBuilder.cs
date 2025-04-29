@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Optimizer;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FlowtideDotNet.DependencyInjection
@@ -46,5 +47,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// Sets the plan hash as the stream version. A new version is created if the plan changes.
         /// </summary>
         IFlowtideDIBuilder AddVersioningFromPlanHash();
+
+        IFlowtideDIBuilder SetOptimizerSettings(PlanOptimizerSettings planOptimizerSettings);
     }
 }

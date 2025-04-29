@@ -25,6 +25,10 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Diagnostics;
+using System.IO.Hashing;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -233,6 +237,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new DecimalColumn(_values.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            var decimalSpan = MemoryMarshal.Cast<byte, decimal>(buffer);
+            decimalSpan[0] = _values[index];
+            hashAlgorithm.Append(buffer);
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

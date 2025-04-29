@@ -22,6 +22,9 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Collections;
 using System.Diagnostics;
+using System.IO.Hashing;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -277,6 +280,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (_nullCounter == 0)
             {
+                _validityList.Clear();
                 _validityList.InsertTrueInRange(0, Count);
             }
         }
@@ -1071,6 +1075,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         public Column Copy(IMemoryAllocator memoryAllocator)
         {
             return new Column(_nullCounter, _dataColumn?.Copy(memoryAllocator), _validityList!.Copy(memoryAllocator), _type, memoryAllocator);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Debug.Assert(_validityList != null);
+            if (_nullCounter > 0)
+            {
+                if (_type == ArrowTypeId.Null || !_validityList.Get(index))
+                {
+                    hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                    return;
+                }
+            }
+            _dataColumn!.AddToHash(index, child, hashAlgorithm);
         }
 
         internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

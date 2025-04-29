@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
@@ -26,7 +27,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
-    internal static class SqlServerUtils
+    internal static partial class SqlServerUtils
     {
         public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
@@ -514,6 +515,46 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
 
             return stringBuilder.ToString();
+        }
+
+        public static string CreateInitialPartitionedSelectStatement(ReadRelation readRelation, PartitionMetadata partitionMetadata, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
+        {
+            var stringBuilder = new StringBuilder();
+            var cols = string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]"));
+            var table = string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]"));
+
+            stringBuilder.AppendLine($"SELECT {cols}");
+            stringBuilder.AppendLine($"FROM {table}");
+
+            string? filters = filter;
+            if (includePkParameters)
+            {
+                var pkFilters = GetInitialLoadWhereStatement(primaryKeys);
+
+                if (filters != null)
+                {
+                    filters = $"({filters}) AND ({pkFilters})";
+                }
+                else
+                {
+                    filters = pkFilters;
+                }
+            }
+
+            if (filters != null)
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId AND {filters}");
+            }
+            else
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId");
+            }
+
+            stringBuilder.AppendLine($"ORDER BY {string.Join(", ", primaryKeys)}");
+            stringBuilder.AppendLine($"OFFSET 0 ROWS FETCH NEXT {batchSize} ROWS ONLY");
+
+            return stringBuilder.ToString();
+
         }
 
         public static string CreateInitialSelectStatement(ReadRelation readRelation, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
@@ -1107,6 +1148,81 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
+        public static async Task<IEnumerable<int>> GetPartitionIds(SqlConnection connection, ReadRelation relation)
+        {
+            var schema = relation.NamedTable.Names[1];
+            var tableName = relation.NamedTable.Names[2];
+
+            var cmd = @"SELECT 
+                    p.partition_number AS partition_id
+                FROM sys.partitions p
+                JOIN sys.tables t ON p.object_id = t.object_id
+                JOIN sys.indexes i ON p.object_id = i.object_id AND p.index_id = i.index_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE t.name = @tableName
+                  AND i.index_id < 2
+                  AND s.name = @schema
+                ORDER BY partition_id;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static async Task<PartitionMetadata?> GetPartitionMetadata(SqlConnection connection, ReadRelation relation)
+        {
+            GetSchemaAndName(relation, out var schema, out var tableName);
+
+            var cmd = @"SELECT
+                    ps.name AS partition_scheme,
+                    pf.name AS partition_function,
+                    c.name AS partition_column,
+                    t.name AS table_name,
+                    s.name AS schema_name,
+                  ic.partition_ordinal
+                FROM sys.indexes i  
+                JOIN sys.partition_schemes ps ON i.data_space_id = ps.data_space_id
+                JOIN sys.partition_functions pf ON ps.function_id = pf.function_id
+                JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                JOIN sys.tables t ON i.object_id = t.object_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE i.index_id < 2 -- clustered index or heap
+                  AND t.name = @tableName
+                  AND s.name = @schema
+                  AND ic.partition_ordinal = 1;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+
+                return new PartitionMetadata(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetByte(5));
+            }
+
+            return null;
+        }
+
         public static List<Func<EventBatchData, int, object?>> GetColumnsToDataTableValueMaps(List<DbColumn> columns, DataValueContainer dataValueContainer)
         {
             List<Func<EventBatchData, int, object?>> output = new List<Func<EventBatchData, int, object?>>();
@@ -1665,6 +1781,29 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             command.CommandText = $@"SELECT COUNT(*) FROM [{db}].[{schema}].[{table}]";
             var count = await command.ExecuteScalarAsync();
             return (int?)count ?? -1;
+        }
+
+        private static void GetSchemaAndName(ReadRelation relation, out string schema, out string tableName)
+        {
+            if (relation.NamedTable.Names.Count > 3)
+            {
+                throw new InvalidOperationException("Incorrect number of sql table name parts");
+            }
+            else if (relation.NamedTable.Names.Count == 3)
+            {
+                schema = relation.NamedTable.Names[1];
+                tableName = relation.NamedTable.Names[2];
+            }
+            else if (relation.NamedTable.Names.Count == 2)
+            {
+                schema = relation.NamedTable.Names[0];
+                tableName = relation.NamedTable.Names[1];
+            }
+            else
+            {
+                schema = "dbo";
+                tableName = relation.NamedTable.Names[0];
+            }
         }
     }
 }

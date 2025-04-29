@@ -20,6 +20,8 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
@@ -69,7 +71,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
-        public int CachePageCount { get; set; } = 1000;
+        public int CachePageCount { get; set; } = 100_000;
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -168,14 +170,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task StartStream(
+        public Task CreateStream(
             string sql,
             int parallelism = 1,
             StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
-            ICheckFailureListener? checkFailureListener = default)
+            ICheckFailureListener? checkFailureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -188,7 +191,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             SetupConnectorManager();
-
             foreach (var tableProvider in _connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
@@ -217,7 +219,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
-            plan = Core.Optimizer.PlanOptimizer.Optimize(plan);
+            plan = Core.Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
 
             var emitValidationVisitor = new EmitLengthValidatorVisitor();
             foreach (var relation in plan.Relations)
@@ -256,7 +258,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var stream = flowtideBuilder.Build();
             _stream = stream;
-            await _stream.StartAsync();
+            return Task.CompletedTask;
+        }
+
+        public async Task StartStream(
+            string sql, 
+            int parallelism = 1, 
+            StateSerializeOptions? stateSerializeOptions = default, 
+            TimeSpan? timestampInterval = default,
+            int pageSize = 1024,
+            bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default)
+        {
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings);   
+            await _stream!.StartAsync();
         }
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)

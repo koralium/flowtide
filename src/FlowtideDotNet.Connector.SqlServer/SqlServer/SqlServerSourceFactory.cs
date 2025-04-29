@@ -67,48 +67,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             conn.Open();
             var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
 
-            var isChangeTrackingEnabled = SqlServerUtils.IsChangeTrackingEnabled(conn, fullName).GetAwaiter().GetResult();
-            if (!isChangeTrackingEnabled)
-            {
-                _options.IsChangeTrackingEnabled = false;
-                _options.IsView = SqlServerUtils.IsView(conn, fullName).GetAwaiter().GetResult();
-
-                if (_options.EnableFullReload)
-                {
-                    if (!_options.IsView && !_options.AllowFullReloadOnTablesWithoutChangeTracking)
-                    {
-                        throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'. {nameof(_options.EnableFullReload)} or {nameof(_options.AllowFullReloadOnTablesWithoutChangeTracking)} must be set to true.");
-                    }
-
-                    if (!_options.FullReloadInterval.HasValue)
-                    {
-                        throw new InvalidOperationException($"{nameof(_options.FullReloadInterval)} must be set when {nameof(_options.EnableFullReload)} is enabled.");
-                    }
-
-                    if (_options.FullLoadMaxRowCount.HasValue)
-                    {
-                        var count = SqlServerUtils.GetRowCount(conn, fullName).GetAwaiter().GetResult();
-                        var max = _options.FullLoadMaxRowCount;
-                        if (count < 0 || count > max)
-                        {
-                            throw new InvalidOperationException($"Row count of view {fullName} is too large, max allowed rows according to {nameof(_options.FullLoadMaxRowCount)} is {max:0,0} rows (actual: {count:0,0}).");
-                        }
-                    }
-                }
-                else if (_options.IsView)
-                {
-                    throw new InvalidOperationException($"{nameof(_options.EnableFullReload)} must be enabled on the source to read from view.");
-                }
-                else
-                {
-                    throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
-                }
-            }
-            else if (!_options.ChangeTrackingInterval.HasValue)
-            {
-                _options.ChangeTrackingInterval = TimeSpan.FromSeconds(1);
-            }
-
             List<int> pkIndices = new List<int>();
             foreach (var pk in primaryKeys)
             {
@@ -130,7 +88,83 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new ColumnSqlServerBatchDataSource(_options, readRelation, functionsRegister, dataflowBlockOptions);
+            var options = InitializeOperatorOptions(readRelation).GetAwaiter().GetResult();
+            if (options.PartitionMetadata != null)
+            {
+                return new PartitionedTableDataSource(options, readRelation, functionsRegister, dataflowBlockOptions);
+            }
+            else
+            {
+                return new ColumnSqlServerBatchDataSource(options, readRelation, functionsRegister, dataflowBlockOptions);
+            }
+        }
+
+        private async Task<SqlServerSourceOptions> InitializeOperatorOptions(ReadRelation readRelation)
+        {
+            var tableName = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
+
+            string fullName = string.Join(".", tableName);
+            using var connection = new SqlConnection(_options.ConnectionStringFunc());
+            await connection.OpenAsync();
+
+            var options = new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = _options.ConnectionStringFunc,
+                TableNameTransform = _options.TableNameTransform,
+                UseDatabaseDefinedInConnectionStringOnly = _options.UseDatabaseDefinedInConnectionStringOnly,
+                EnableFullReload = _options.EnableFullReload,
+                AllowFullReloadOnTablesWithoutChangeTracking = _options.AllowFullReloadOnTablesWithoutChangeTracking,
+                FullLoadMaxRowCount = _options.FullLoadMaxRowCount,
+                FullReloadInterval = _options.FullReloadInterval,
+                ChangeTrackingInterval = _options.ChangeTrackingInterval,
+            };
+
+            var isChangeTrackingEnabled = await SqlServerUtils.IsChangeTrackingEnabled(connection, fullName);
+
+            options.PartitionMetadata = await SqlServerUtils.GetPartitionMetadata(connection, readRelation);
+
+            if (!isChangeTrackingEnabled)
+            {
+                options.IsChangeTrackingEnabled = false;
+                options.IsView = await SqlServerUtils.IsView(connection, fullName);
+
+                if (options.EnableFullReload)
+                {
+                    if (!options.IsView && !options.AllowFullReloadOnTablesWithoutChangeTracking)
+                    {
+                        throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'. {nameof(options.EnableFullReload)} or {nameof(options.AllowFullReloadOnTablesWithoutChangeTracking)} must be set to true.");
+                    }
+
+                    if (!options.FullReloadInterval.HasValue)
+                    {
+                        throw new InvalidOperationException($"{nameof(_options.FullReloadInterval)} must be set when {nameof(options.EnableFullReload)} is enabled.");
+                    }
+
+                    if (options.FullLoadMaxRowCount.HasValue)
+                    {
+                        var count = SqlServerUtils.GetRowCount(connection, fullName).GetAwaiter().GetResult();
+                        var max = options.FullLoadMaxRowCount;
+                        if (count < 0 || count > max)
+                        {
+                            throw new InvalidOperationException($"Row count of view {fullName} is too large, max allowed rows according to {nameof(options.FullLoadMaxRowCount)} is {max:0,0} rows (actual: {count:0,0}).");
+                        }
+                    }
+                }
+                else if (options.IsView)
+                {
+                    throw new InvalidOperationException($"{nameof(options.EnableFullReload)} must be enabled on the source to read from view.");
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Change tracking must be enabled on table '{fullName}'");
+                }
+            }
+            else if (!options.ChangeTrackingInterval.HasValue)
+            {
+                options.ChangeTrackingInterval = TimeSpan.FromSeconds(1);
+            }
+
+            return options;
         }
     }
 }

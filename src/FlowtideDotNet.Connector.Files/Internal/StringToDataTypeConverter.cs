@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -104,7 +105,7 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         }
                         else
                         {
-                            if (decimal.TryParse(s, out decimal d))
+                            if (decimal.TryParse(s, CultureInfo.InvariantCulture, out decimal d))
                             {
                                 c.Add(new DecimalValue(d));
                             }
@@ -155,7 +156,7 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         }
                         else
                         {
-                            if (double.TryParse(s, out double d))
+                            if (double.TryParse(s, CultureInfo.InvariantCulture, out double d))
                             {
                                 c.Add(new DoubleValue(d));
                             }

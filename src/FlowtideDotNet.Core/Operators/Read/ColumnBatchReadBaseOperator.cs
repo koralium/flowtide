@@ -38,6 +38,8 @@ namespace FlowtideDotNet.Core.Operators.Read
     {
         public const string DeltaLoadTriggerName = "delta_load";
         public const string FullLoadTriggerName = "full_load";
+        private readonly string _deltaloadWithTableTriggerName;
+        private readonly string _fullLoadWithTableTriggerName;
 
         private IObjectState<bool>? _initialSent;
         private readonly ReadRelation _readRelation;
@@ -59,6 +61,8 @@ namespace FlowtideDotNet.Core.Operators.Read
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
             this._readRelation = readRelation;
+            _deltaloadWithTableTriggerName = $"{DeltaLoadTriggerName}_{readRelation.NamedTable.DotSeperated}";
+            _fullLoadWithTableTriggerName = $"{FullLoadTriggerName}_{readRelation.NamedTable.DotSeperated}";
 
             if (readRelation.Filter != null)
             {
@@ -73,6 +77,14 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         public override Task OnTrigger(string triggerName, object? state)
         {
+            if (triggerName == _deltaloadWithTableTriggerName)
+            {
+                triggerName = DeltaLoadTriggerName;
+            }
+            else if (triggerName == _fullLoadWithTableTriggerName)
+            {
+                triggerName = FullLoadTriggerName;
+            }
             switch (triggerName)
             {
                 case DeltaLoadTriggerName:
@@ -783,6 +795,8 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             await RegisterTrigger(DeltaLoadTriggerName, DeltaLoadInterval);
             await RegisterTrigger(FullLoadTriggerName, FullLoadInterval);
+            await RegisterTrigger(_deltaloadWithTableTriggerName);
+            await RegisterTrigger(_fullLoadWithTableTriggerName);
         }
 
         protected virtual TimeSpan? DeltaLoadInterval { get; set; }

@@ -387,8 +387,8 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                             await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                             weights = new PrimitiveList<int>(MemoryAllocator);
                             iterations = new PrimitiveList<uint>(MemoryAllocator);
-                            columns = new Column[_emitList.Length];
-                            for (int i = 0; i < _emitList.Length; i++)
+                            columns = new Column[_readRelation.BaseSchema.Names.Count];
+                            for (int i = 0; i < _readRelation.BaseSchema.Names.Count; i++)
                             {
                                 columns[i] = Column.Create(MemoryAllocator);
                             }

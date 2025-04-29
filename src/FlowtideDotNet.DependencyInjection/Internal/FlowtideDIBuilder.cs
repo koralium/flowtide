@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.DependencyInjection.Exceptions;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         private readonly List<Action<IServiceProvider, FlowtideBuilder>> _customOptions;
         private string? _streamVersion;
         private bool _useHashPlanAsVersion = false;
+        private PlanOptimizerSettings? _planOptimizerSettings;
 
         public FlowtideDIBuilder(string streamName, IServiceCollection services)
         {
@@ -102,7 +104,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var plan = planProvider.GetPlan();
             var streamBuilder = new FlowtideBuilder(streamName)
                 .AddConnectorManager(connectorManager)
-                .AddPlan(plan)
+                .AddPlan(plan, planOptimizerSettings: _planOptimizerSettings)
                 .WithStateOptions(stateManager);
 
             if (_useHashPlanAsVersion)
@@ -156,6 +158,12 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         public IFlowtideDIBuilder AddVersioningFromPlanHash()
         {
             _useHashPlanAsVersion = true;
+            return this;
+        }
+
+        public IFlowtideDIBuilder SetOptimizerSettings(PlanOptimizerSettings planOptimizerSettings)
+        {
+            _planOptimizerSettings = planOptimizerSettings;
             return this;
         }
     }
