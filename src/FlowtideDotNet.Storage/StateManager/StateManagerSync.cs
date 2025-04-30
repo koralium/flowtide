@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -71,6 +72,7 @@ namespace FlowtideDotNet.Storage.StateManager
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
         private FileCacheOptions? m_fileCacheOptions;
+        private IFileCacheFactory? m_fileCacheFactory;
         private bool disposedValue;
 
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
@@ -140,6 +142,7 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 DirectoryPath = "./data/tempFiles"
             };
+            m_fileCacheFactory = options.FileCacheFactory ?? new DefaultFileCacheFactory(m_fileCacheOptions);
         }
 
         internal long GetNewPageId()
@@ -314,6 +317,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(m_fileCacheOptions != null);
+            Debug.Assert(m_fileCacheFactory != null);
 
             Monitor.Enter(m_lock);
             if (_stateClients.TryGetValue(client, out var cachedClient))
@@ -328,7 +332,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -341,7 +345,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -360,7 +364,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheOptions, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }

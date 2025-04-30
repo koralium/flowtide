@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 return (float)value.AsDouble;
             }
 
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to float");
         }
 
         public SubstraitBaseType GetSubstraitType()

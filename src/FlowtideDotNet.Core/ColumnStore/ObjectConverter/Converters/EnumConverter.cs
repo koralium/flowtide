@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return Enum.ToObject(enumType, value.AsLong);
             }
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to enum");
         }
 
         public SubstraitBaseType GetSubstraitType()

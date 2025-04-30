@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 return new ReadOnlyMemory<byte>(value.AsBinary.ToArray());
             }
 
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to ReadOnlyMemory");
         }
 
         public SubstraitBaseType GetSubstraitType()

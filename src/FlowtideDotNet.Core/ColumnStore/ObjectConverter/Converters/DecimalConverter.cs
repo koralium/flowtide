@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                 return value.AsDecimal;
             }
 
-            throw new NotImplementedException();
+            throw new NotImplementedException($"Can not deserialize {value.Type} to decimal");
         }
 
         public SubstraitBaseType GetSubstraitType()
