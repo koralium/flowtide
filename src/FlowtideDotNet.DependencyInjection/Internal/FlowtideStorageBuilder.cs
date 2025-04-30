@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,19 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             return this;
         }
 
+        public IFlowtideStorageBuilder SetFileCacheFactory(IFileCacheFactory fileCacheFactory)
+        {
+            services.AddKeyedSingleton(name, fileCacheFactory);
+            return this;
+        }
+
+        public IFlowtideStorageBuilder SetFileCacheFactory<TFileCacheFactory>()
+            where TFileCacheFactory : class, IFileCacheFactory
+        {
+            services.AddKeyedSingleton<IFileCacheFactory, TFileCacheFactory>(name);
+            return this;
+        }
+
         public bool UseReadCache { get; set; }
 
         public long? MaxProcessMemory { get; set; }
@@ -64,6 +78,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
             var serializeOptions = serviceProvider.GetKeyedService<StateSerializeOptions>(name);
             var fileCacheOptions = serviceProvider.GetKeyedService<FileCacheOptions>(name);
+            var fileCacheFactory = serviceProvider.GetKeyedService<IFileCacheFactory>(name);
 
             if (MaxProcessMemory == null && MaxPageCount == null)
             {
@@ -84,7 +99,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 TemporaryStorageOptions = fileCacheOptions,
                 MaxProcessMemory = MaxProcessMemory ?? -1,
                 MinCachePageCount = MinPageCount,
-
+                FileCacheFactory = fileCacheFactory,
                 CachePageCount = MaxPageCount ?? 1000
             };
         }

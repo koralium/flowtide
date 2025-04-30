@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Exceptions;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Utils;
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly IMemoryAllocator memoryAllocator;
         private readonly Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
-        private readonly FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
+        private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
         private readonly Histogram<float>? m_persistenceReadMsHistogram;
         private readonly Histogram<float>? m_temporaryReadMsHistogram;
@@ -64,7 +65,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             StateClientMetadata<TMetadata> metadata,
             IPersistentStorageSession session,
             StateClientOptions<V> options,
-            FileCacheOptions fileCacheOptions,
+            IFileCacheFactory fileCacheFactory,
             Meter meter,
             bool useReadCache,
             int bplusTreePageSize,
@@ -81,7 +82,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.m_bplusTreePageSize = bplusTreePageSize;
             this.m_bplusTreePageSizeBytes = bplusTreePageSizeBytes;
             this.memoryAllocator = memoryAllocator;
-            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, name, memoryAllocator);
+            m_fileCache = fileCacheFactory.Create(name, memoryAllocator);
             m_modified = new Dictionary<long, int>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
@@ -186,7 +187,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
                 {
-                    var bytes = m_fileCache.Read(kv.Key);
+                    var bytes = await m_fileCache.Read(kv.Key);
 
                     // Write to persistence
                     await session.Write(kv.Key, new SerializableObject(bytes));
@@ -215,12 +216,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
             newPages = 0;
 
-            m_modified.Clear();
             if (!useReadCache)
             {
-                m_fileCache.FreeAll();
+                m_fileCache.FreeAll(m_modified.Keys);
                 m_fileCacheVersion.Clear();
             }
+            m_modified.Clear();
 
             await WriteMetadata();
             await session.Commit();
@@ -269,7 +270,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public ValueTask<V?> GetValue(in long key)
         {
-            Debug.Assert(options.ValueSerializer != null);
             lock (m_lock)
             {
                 var modLookup = key % _lookupTable.Length;
@@ -300,24 +300,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 // Read from temporary file storage
                 if (m_fileCacheVersion.ContainsKey(key))
                 {
-                    var sw = ValueStopwatch.StartNew();
-                    var value = m_fileCache.Read<V>(key, options.ValueSerializer);
-                    if (!value.TryRent())
-                    {
-                        throw new InvalidOperationException("Could not rent value when fetched from storage.");
-                    }
-                    stateManager.AddOrUpdate(key, value, this);
-
-                    if (m_temporaryReadMsHistogram != null)
-                    {
-                        m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
-                    }
-
-                    return ValueTask.FromResult<V?>(value);
+                    return GetValue_FromCache(key);
                 }
                 // Read from persistent store
                 return GetValue_Persistent(key);
             }
+        }
+
+        private async ValueTask<V?> GetValue_FromCache(long key)
+        {
+            Debug.Assert(options.ValueSerializer != null);
+            var sw = ValueStopwatch.StartNew();
+            var value = await m_fileCache.Read<V>(key, options.ValueSerializer);
+            if (!value.TryRent())
+            {
+                throw new InvalidOperationException("Could not rent value when fetched from storage.");
+            }
+            stateManager.AddOrUpdate(key, value, this);
+
+            if (m_temporaryReadMsHistogram != null)
+            {
+                m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+            }
+
+            return value;
         }
 
         private async ValueTask<V?> GetValue_Persistent(long key)
@@ -384,8 +390,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     _lookupTable[i].Value = default;
                     _lookupTable[i].Key = 0;
                 }
+                m_fileCache.FreeAll(m_modified.Keys);
                 m_modified.Clear();
-                m_fileCache.FreeAll();
                 m_fileCacheVersion.Clear();
             }
             if (clearMetadata || !metadata.CommitedOnce)

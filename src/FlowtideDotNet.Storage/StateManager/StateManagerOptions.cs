@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FASTER.core;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence;
 
 namespace FlowtideDotNet.Storage.StateManager
@@ -47,7 +48,12 @@ namespace FlowtideDotNet.Storage.StateManager
         [Obsolete]
         public INamedDeviceFactory? TemporaryStorageFactory { get; set; }
 
+        /// <summary>
+        /// Used if file cache factory is not set, with the default file cache
+        /// </summary>
         public FileCacheOptions? TemporaryStorageOptions { get; set; }
+
+        public IFileCacheFactory? FileCacheFactory { get; set; }
 
         [Obsolete]
         public bool RemoveOutdatedCheckpoints { get; set; } = true;
