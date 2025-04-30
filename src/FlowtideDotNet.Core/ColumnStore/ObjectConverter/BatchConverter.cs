@@ -237,7 +237,16 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             for (int i = 0; i < properties.Count; i++)
             {
                 var property = properties[i];
-                var value = converters[i].Deserialize(columns[i].GetValueAt(index, default));
+                object? value = default;
+                try
+                {
+                    value = converters[i].Deserialize(columns[i].GetValueAt(index, default));
+                }
+                catch(Exception e)
+                {
+                    throw new InvalidOperationException($"Could not deserialize property {property.Name}, Check inner exception for type details", e);
+                }
+                
 
                 if (property.SetFunc == null)
                 {
