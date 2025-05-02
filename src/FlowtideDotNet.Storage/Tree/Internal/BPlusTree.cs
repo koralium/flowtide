@@ -207,5 +207,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
             m_stateClient.AddOrUpdate(rootId, root);
         }
+
+        public IBplusTreeUpdater<K, V, TKeyContainer, TValueContainer> CreateUpdater()
+        {
+            return new BPlusTreeUpdater<K, V, TKeyContainer, TValueContainer>(this);
+        }
     }
 }

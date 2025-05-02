@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator();
 
+        IBplusTreeUpdater<K, V, TKeyContainer, TValueContainer> CreateUpdater();
+
         /// <summary>
         /// For debugging purposes only
         /// </summary>

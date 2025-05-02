@@ -36,11 +36,13 @@ namespace FlowtideDotNet.Core.Operators.Window
         private readonly ConsistentPartitionWindowRelation _relation;
         private IColumnComparer<ColumnRowReference>? _sortComparer;
         private IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _persistentTree;
+        private IBplusTreeUpdater<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer> _persistUpdater;
 
         /// <summary>
         /// This tree contains partitions that have been updated.
         /// </summary>
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBplusTreeUpdater<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>> _temporaryUpdater;
         private List<int> _partitionColumns;
         private List<int> _otherColumns;
         private List<Action<EventBatchData, int, Column>> _partitionCalculateExpressions;
@@ -272,37 +274,69 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     weight = msg.Data.Weights[i],
                 };
-                    
-                await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
+
+                await _persistUpdater.Seek(rowRef);
+
+                if (_persistUpdater.Found)
                 {
-                    if (exist)
+                    var current = _persistUpdater.CurrentPage.values.Get(_persistUpdater.CurrentIndex);
+                    current.weight = current.weight + msg.Data.Weights[i];
+                    if (current.weight == 0)
                     {
-                        current.weight += input.weight;
-
-                        if (current.weight == 0)
-                        {
-                            _outputBuilder.AddDeleteToOutput(rowRef, current);
-                            // Must output the entire row here and the previous value
-                            return (current, GenericWriteOperation.Delete);
-                        }
-
-                        return (current, GenericWriteOperation.Upsert);
+                        // If the weight is 0, we need to delete the row
+                        _outputBuilder.AddDeleteToOutput(rowRef, current);
+                        // Must output the entire row here and the previous value
+                        _persistUpdater.CurrentPage.DeleteAt(_persistUpdater.CurrentIndex);
                     }
+                    else
+                    {
+                        _persistUpdater.CurrentPage.values.Update(_persistUpdater.CurrentIndex, current);
+                    }
+                }
+                else
+                {
+                    _persistUpdater.CurrentPage.InsertAt(rowRef, windowValue, _persistUpdater.CurrentIndex);
+                }
+                await _persistUpdater.SavePage();
 
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                //await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
+                //{
+                //    if (exist)
+                //    {
+                //        current.weight += input.weight;
+
+                //        if (current.weight == 0)
+                //        {
+                //            _outputBuilder.AddDeleteToOutput(rowRef, current);
+                //            // Must output the entire row here and the previous value
+                //            return (current, GenericWriteOperation.Delete);
+                //        }
+
+                //        return (current, GenericWriteOperation.Upsert);
+                //    }
+
+                //    return (input, GenericWriteOperation.Upsert);
+                //});
+
+                await _temporaryUpdater.Seek(partitionRowRef);
+
+                if (!_temporaryUpdater.Found)
+                {
+                    _temporaryUpdater.CurrentPage.InsertAt(partitionRowRef, 1, _temporaryUpdater.CurrentIndex);
+                }
+                await _temporaryUpdater.SavePage();
 
                 // Even if the row was deleted we still need to update the temporary tree
                 // Since rows that depend on this row will need to be updated
-                await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
-                {
-                    if (exists)
-                    {
-                        // If the partition already exists in the tree, no need to force a write on the page
-                        return (current, GenericWriteOperation.None);
-                    }
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                //await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
+                //{
+                //    if (exists)
+                //    {
+                //        // If the partition already exists in the tree, no need to force a write on the page
+                //        return (current, GenericWriteOperation.None);
+                //    }
+                //    return (input, GenericWriteOperation.Upsert);
+                //});
 
                 if (_outputBuilder.Count >= 100)
                 {
@@ -335,6 +369,8 @@ namespace FlowtideDotNet.Core.Operators.Window
                 UseByteBasedPageSizes = true
             });
 
+            _persistUpdater = _persistentTree.CreateUpdater();
+
             _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -344,7 +380,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     UseByteBasedPageSizes = true
                 });
-            
+            _temporaryUpdater = _temporaryTree.CreateUpdater();
 
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
             _partitionBatch = new EventBatchData(_partitionBatchColumns);
