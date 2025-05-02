@@ -81,24 +81,11 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 // Only fields from left is used
                 if (visitor.fieldInLeft && !visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
-                    
-                    //joinRelation.Left = new FilterRelation()
-                    //{
-                    //    Condition = joinRelation.Expression!,
-                    //    Input = joinRelation.Left
-                    //};
-                    //joinRelation.Expression = new BoolLiteral() { Value = true };
                     leftPushdowns.Add(new BoolLiteral() { Value = true });
                 }
                 // Only field in right is used
                 else if (!visitor.fieldInLeft && visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
-                    //joinRelation.Right = new FilterRelation()
-                    //{
-                    //    Condition = joinRelation.Expression!,
-                    //    Input = joinRelation.Right
-                    //};
-                    //joinRelation.Expression = new BoolLiteral() { Value = true };
                     rightPushdowns.Add(new BoolLiteral() { Value = true });
                 }
             }
@@ -107,8 +94,6 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 andFunctionScalar.ExtensionUri == FunctionsBoolean.Uri &&
                 andFunctionScalar.ExtensionName == FunctionsBoolean.And)
             {
-                //List<Expression> leftPushDown = new List<Expression>();
-                //List<Expression> rightPushDown = new List<Expression>();
                 for (int i = 0; i < andFunctionScalar.Arguments.Count; i++)
                 {
                     var expr = andFunctionScalar.Arguments[i];
