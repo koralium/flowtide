@@ -21,8 +21,8 @@ namespace FlowtideDotNet.Storage.SqlServer
     {
         private readonly SessionRepository _repo;
         private bool _disposedValue;
-        ArrayBufferWriter<byte> _bufferWriter = new ArrayBufferWriter<byte>();
-        private object _lock = new object();
+        private readonly ArrayBufferWriter<byte> _bufferWriter = new();
+        private readonly object _lock = new();
 
         internal SqlServerPersistentSession(SessionRepository repo)
         {
@@ -44,11 +44,11 @@ namespace FlowtideDotNet.Storage.SqlServer
             return await _repo.ReadAsync(key);
         }
 
-        public async ValueTask<T> Read<T>(long key, IStateSerializer<T> serializer)
+        public async ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
             where T : ICacheObject
         {
             var bytes = await _repo.ReadAsync(key);
-            return serializer.Deserialize(bytes, bytes.Length);
+            return stateSerializer.Deserialize(bytes, bytes.Length);
         }
 
         public Task Write(long key, SerializableObject value)
