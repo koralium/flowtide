@@ -86,9 +86,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             }
 
             cmd.CommandText = query;
-            connection.Open();
+            SqlServerStorageExtensionsHelpers.ExecutePipeline(connection.Open, Settings);
+            var reader = SqlServerStorageExtensionsHelpers.ExecutePipeline(cmd.ExecuteReader, Settings);
 
-            var reader = cmd.ExecuteReader();
             if (reader.Read())
             {
                 return reader.GetFieldValue<byte[]>(0);
