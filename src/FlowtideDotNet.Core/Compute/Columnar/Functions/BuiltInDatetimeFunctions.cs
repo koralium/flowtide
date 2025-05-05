@@ -230,7 +230,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
                     var componentExpr = visitor.Visit(componentArg, parameterInfo);
 
-
                     var genericMethod = method!.MakeGenericMethod(componentExpr!.Type, amountExpr.Type, valueExpr.Type);
 
                     System.Linq.Expressions.Expression[] parameters =
