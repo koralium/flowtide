@@ -766,7 +766,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             } while (year != lastYear);
 
 
-
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(weekNumber);
             return result;
