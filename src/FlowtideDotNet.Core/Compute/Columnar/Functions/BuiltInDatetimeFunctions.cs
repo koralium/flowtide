@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
 using System.Reflection;
+using static SqlParser.Ast.AlterRoleOperation;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -933,24 +934,43 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return call;
         }
 
-        internal static IDataValue TimestampAddYear<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+        private static bool TryGetAmountAndValue<T1, T2>(
+            T1 amount,
+            T2 value,
+            out long amountValue,
+            out DateTimeOffset datetime)
             where T1 : IDataValue
             where T2 : IDataValue
         {
             if (amount.Type != ArrowTypeId.Int64)
             {
-                result._type = ArrowTypeId.Null;
-                return result;
+                amountValue = 0;
+                datetime = default;
+                return false;
             }
 
             if (value.Type != ArrowTypeId.Timestamp)
             {
+                amountValue = 0;
+                datetime = default;
+                return false;
+            }
+
+            amountValue = amount.AsLong;
+            datetime = value.AsTimestamp.ToDateTimeOffset();
+            return true;
+        }
+
+        internal static IDataValue TimestampAddYear<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddYears((int)amount.AsLong);
+            var newDate = dt.AddYears((int)amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -960,18 +980,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddMonths((int)amount.AsLong * 3);
+            var newDate = dt.AddMonths((int)amountValue * 3);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -981,18 +995,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddMonths((int)amount.AsLong);
+            var newDate = dt.AddMonths((int)amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1002,18 +1010,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddDays(amount.AsLong * 7);
+            var newDate = dt.AddDays(amountValue * 7);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1023,20 +1025,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddDays(amount.AsLong);
+            var newDate = dt.AddDays(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1046,18 +1040,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddHours(amount.AsLong);
+            var newDate = dt.AddHours(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1067,18 +1055,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddMinutes(amount.AsLong);
+            var newDate = dt.AddMinutes(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1088,18 +1070,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddSeconds(amount.AsLong);
+            var newDate = dt.AddSeconds(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1109,18 +1085,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddMilliseconds(amount.AsLong);
+            var newDate = dt.AddMilliseconds(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
@@ -1130,23 +1100,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (amount.Type != ArrowTypeId.Int64)
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
             {
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            if (value.Type != ArrowTypeId.Timestamp)
-            {
-                result._type = ArrowTypeId.Null;
-                return result;
-            }
-            var dt = value.AsTimestamp.ToDateTimeOffset();
-            var newDate = dt.AddMicroseconds(amount.AsLong);
+            var newDate = dt.AddMicroseconds(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
             return result;
         }
-
-
     }
 }
