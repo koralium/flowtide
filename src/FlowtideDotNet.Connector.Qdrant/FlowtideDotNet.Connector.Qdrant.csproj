@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Polly.RateLimiting" Version="8.5.2" />
+		<PackageReference Include="Qdrant.Client" Version="1.14.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
+	</ItemGroup>
+
+</Project>
