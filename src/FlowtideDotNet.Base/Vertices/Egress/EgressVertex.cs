@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -40,6 +41,9 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private ILogger? _logger;
 
         private TaskCompletionSource? _pauseSource;
+
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
@@ -155,7 +159,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _targetBlock.Fault(exception);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -163,6 +167,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
