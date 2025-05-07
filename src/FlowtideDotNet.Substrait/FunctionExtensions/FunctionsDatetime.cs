@@ -21,5 +21,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string ParseTimestamp = "parse_timestamp";
         public const string Extract = "extract";
         public const string Format = "format";
+        public const string TimestampAdd = "timestamp_add";
     }
 }
