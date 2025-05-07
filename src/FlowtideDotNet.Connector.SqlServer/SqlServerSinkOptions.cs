@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.SqlServer
         /// <summary>
         /// If set, the sink writes data to the custom table and does not trigger any merge into to another table.
         /// For custom merge into logic with custom destination table you can use OnDataUploaded event to run any sql code.
-        /// When using a custom destination table, the metadata if its an upsert or delete is not sent, that can be
+        /// When using a custom destination table, the metadata if it's an upsert or delete is not sent, that can be
         /// added manually using ModifyRow.
         /// </summary>
         public string? CustomBulkCopyDestinationTable { get; set; }
