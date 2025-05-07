@@ -213,8 +213,12 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         var flowtidePayload = new List<string>
                         {
                             $"__{FlowtideMetadataPayloadKey}_id:{resourceId}",
-                            $"__{FlowtideMetadataPayloadKey}_chunk:{chunkIndex}",
                         };
+
+                        if (_chunker != null)
+                        {
+                            flowtidePayload.Add($"__{FlowtideMetadataPayloadKey}_chunk:{chunkIndex}");
+                        }
 
                         if (!string.IsNullOrWhiteSpace(StreamVersion?.Version))
                         {
