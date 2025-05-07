@@ -37,14 +37,14 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
             if (pk == -1)
             {
-                throw new InvalidOperationException($"Qdrant sink requires a primary key column named '{_options.IdColumnName}'. This can be configured by setting the {_options.IdColumnName} property.");
+                throw new NotSupportedException($"Qdrant sink requires a primary key column named '{_options.IdColumnName}'. This can be configured by setting the {nameof(_options.IdColumnName)} property.");
             }
 
             var vectorString = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("vector_string", StringComparison.OrdinalIgnoreCase));
 
             if (vectorString == -1)
             {
-                throw new InvalidOperationException($"Qdrant sink requires a column named '{_options.VectorStringColumnName}'. This can be configured by setting the {_options.VectorStringColumnName} property.");
+                throw new NotSupportedException($"Qdrant sink requires a column named '{_options.VectorStringColumnName}'. This can be configured by setting the {nameof(_options.VectorStringColumnName)} property.");
             }
 
             return true;
