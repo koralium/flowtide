@@ -258,10 +258,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 }
             }
 
+            // todo: handle errors, retry
+            // todo: split points into batches or upsert them earlier if they are above some limit?
             if (pointOperations.Count > 0)
             {
                 Logger.HandlingPoints(pointOperations.Count, StreamName);
-                // todo: split points into batches or upsert them earlier if they are above some limit?
                 await client.UpdateBatchAsync(_state.CollectionName, pointOperations, wait: _options.Wait, cancellationToken: cancellationToken);
             }
 
