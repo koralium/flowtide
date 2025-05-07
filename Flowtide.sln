@@ -115,6 +115,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Fi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant", "src\FlowtideDotNet.Connector.Qdrant\FlowtideDotNet.Connector.Qdrant.csproj", "{1E365C19-368D-46B4-8F62-10746EA785CC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant.Tests", "tests\FlowtideDotNet.Connector.Qdrant.Tests\FlowtideDotNet.Connector.Qdrant.Tests.csproj", "{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -333,6 +335,10 @@ Global
 		{1E365C19-368D-46B4-8F62-10746EA785CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1E365C19-368D-46B4-8F62-10746EA785CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1E365C19-368D-46B4-8F62-10746EA785CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -391,6 +397,7 @@ Global
 		{A270F762-2CBD-457F-AC9F-8A35A8BBB85F} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
 		{917F78B2-5478-4DEF-BD07-5A0758D388FF} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 		{1E365C19-368D-46B4-8F62-10746EA785CC} = {2E41A9E4-8F33-4708-81F2-1626EBEE6114}
+		{20501E8B-8645-4F64-BBF0-D21AC8C7D35C} = {16CED581-7A8D-4806-B6F6-C544D030CC95}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {314C9503-DE99-42AA-8FB0-E355C91986C4}
