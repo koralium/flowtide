@@ -1,5 +1,7 @@
 ﻿using FlowtideDotNet.Connector.Qdrant.Internal;
 using FlowtideDotNet.Core.Operators.Write;
+using Polly;
+using Polly.Retry;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
@@ -7,6 +9,21 @@ namespace FlowtideDotNet.Connector.Qdrant
 {
     public class QdrantSinkOptions
     {
+        public QdrantSinkOptions()
+        {
+            ResiliencePipeline = new ResiliencePipelineBuilder()
+                 .AddRetry(new RetryStrategyOptions
+                 {
+                     MaxRetryAttempts = 10,
+                     DelayGenerator = (args) =>
+                     {
+                         var seconds = args.AttemptNumber;
+                         return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromSeconds(seconds));
+                     }
+                 })
+                 .Build();
+        }
+
         public required QdrantChannel Channel { get; set; }
 
         /// <summary>
@@ -71,5 +88,7 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// Selected map properties will be added directly under payload and not under <see cref="QdrantPayloadDataPropertyName"/> when this is enabled
         /// </summary>
         public bool QdrantStoreMapsUnderOwnKey { get; init; }
+
+        public ResiliencePipeline ResiliencePipeline { get; set; }
     }
 }
