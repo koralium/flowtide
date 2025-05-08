@@ -33,14 +33,14 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         public override bool CanHandle(WriteRelation writeRelation)
         {
-            var pk = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("id", StringComparison.OrdinalIgnoreCase));
+            var pk = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(_options.IdColumnName, StringComparison.OrdinalIgnoreCase));
 
             if (pk == -1)
             {
                 throw new NotSupportedException($"Qdrant sink requires a primary key column named '{_options.IdColumnName}'. This can be configured by setting the {nameof(_options.IdColumnName)} property.");
             }
 
-            var vectorString = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("vector_string", StringComparison.OrdinalIgnoreCase));
+            var vectorString = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(_options.VectorStringColumnName, StringComparison.OrdinalIgnoreCase));
 
             if (vectorString == -1)
             {
