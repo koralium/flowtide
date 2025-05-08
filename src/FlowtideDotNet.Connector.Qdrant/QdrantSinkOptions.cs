@@ -39,6 +39,11 @@ namespace FlowtideDotNet.Connector.Qdrant
         public Func<QdrantSinkState, QdrantClient, Task>? OnInitialDataSent { get; init; }
 
         /// <summary>
+        /// Extra functionality that should run when changes have been sent to Qdrant.
+        /// </summary>
+        public Func<QdrantSinkState, QdrantClient, Task>? OnChangesDone { get; init; }
+
+        /// <summary>
         /// Wait on operations to qdrant, if set to false the operation will be done in the background and the result will not be awaited.
         /// </summary>
         public bool Wait { get; init; } = true;
