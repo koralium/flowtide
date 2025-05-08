@@ -1,4 +1,16 @@
-﻿using FlowtideDotNet.Connector.Qdrant.Internal;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Connector.Qdrant.Internal;
 using FlowtideDotNet.Core.Operators.Write;
 using Polly;
 using Polly.Retry;
@@ -7,6 +19,18 @@ using Qdrant.Client.Grpc;
 
 namespace FlowtideDotNet.Connector.Qdrant
 {
+    public enum QdrantPayloadUpdateMode
+    {
+        /// <summary>
+        /// Overwrite the payload with the new data. Old or custom added data will be lost.
+        /// </summary>
+        OverwritePayload,
+        /// <summary>
+        /// Sets the payload fields to the new data. Old or custom added data will be kept.
+        /// </summary>
+        SetPayload,
+    }
+
     public class QdrantSinkOptions
     {
         public QdrantSinkOptions()
@@ -24,6 +48,9 @@ namespace FlowtideDotNet.Connector.Qdrant
                  .Build();
         }
 
+        /// <summary>
+        /// todo: make this a func so we can allow fetching updates credentials etc
+        /// </summary>
         public required QdrantChannel Channel { get; set; }
 
         /// <summary>
@@ -89,6 +116,14 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// </summary>
         public bool QdrantStoreMapsUnderOwnKey { get; init; }
 
+        /// <summary>
+        /// The mode to use when updating the payload in Qdrant.
+        /// </summary>
+        public QdrantPayloadUpdateMode QdrantPayloadUpdateMode { get; set; } = QdrantPayloadUpdateMode.OverwritePayload;
+
+        /// <summary>
+        /// Resilience pipeline for operations against Qdrant, default retries 10 times incrementally
+        /// </summary>
         public ResiliencePipeline ResiliencePipeline { get; set; }
     }
 }

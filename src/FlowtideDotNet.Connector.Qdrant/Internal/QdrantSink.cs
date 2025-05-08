@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
         private int _vectorIndex = -1;
 
         private const string FlowtideMetadataPayloadKey = "flowtide";
+        private const int MaxNumberOfOperations = 1000;
 
         public QdrantSink(QdrantSinkOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions, IEmbeddingGenerator embeddingGenerator, IStringChunker? chunker) : base(options.ExecutionMode, writeRelation, executionDataflowBlockOptions)
         {
@@ -113,10 +114,17 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             var grpcClient = new QdrantGrpcClient(_options.Channel);
             var client = new QdrantClient(grpcClient);
 
-            var pointOperations = new List<PointsUpdateOperation>();
-
             var uuidPointsToDelete = new List<Guid>();
             var numPointsToDelete = new List<ulong>();
+
+            var upsertOperation = new PointsUpdateOperation
+            {
+                Upsert = new PointsUpdateOperation.Types.PointStructList
+                {
+
+                }
+            };
+            var pointOperations = new List<PointsUpdateOperation>();
 
             await foreach (var row in rows)
             {
@@ -172,8 +180,8 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         }
                     }
 
-                    var chunkIndex = 0;
 
+                    var chunkIndex = 0;
                     foreach (var chunk in chunks)
                     {
                         PointId pointId;
@@ -227,24 +235,21 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
                         newPoint.Payload.Add(FlowtideMetadataPayloadKey, flowtidePayload.ToArray());
 
+                        // vector is changed so upsert the whole point
                         if (updateVector)
                         {
                             newPoint.Vectors = await _embeddingGenerator.GenerateEmbeddingAsync(chunk, cancellationToken);
-                            var upsertOp = new PointsUpdateOperation
-                            {
-                                Upsert = new PointsUpdateOperation.Types.PointStructList
-                                {
-                                    Points = { newPoint },
-                                }
-                            };
-
-                            pointOperations.Add(upsertOp);
+                            upsertOperation.Upsert.Points.Add(newPoint);
                         }
+                        // no vector change, only update the payload
                         else
                         {
-                            var updateOp = new PointsUpdateOperation
+                            // each chunk gets its own operation as they contain chunk metadata information that are unique per chunk
+                            var setOperation = new PointsUpdateOperation();
+
+                            if (_options.QdrantPayloadUpdateMode == QdrantPayloadUpdateMode.SetPayload)
                             {
-                                OverwritePayload = new PointsUpdateOperation.Types.OverwritePayload
+                                setOperation.SetPayload = new PointsUpdateOperation.Types.SetPayload
                                 {
                                     PointsSelector = new PointsSelector
                                     {
@@ -254,10 +259,24 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                                         }
                                     },
                                     Payload = { newPoint.Payload }
-                                }
-                            };
+                                };
+                            }
+                            else
+                            {
+                                setOperation.OverwritePayload = new PointsUpdateOperation.Types.OverwritePayload
+                                {
+                                    PointsSelector = new PointsSelector
+                                    {
+                                        Points = new PointsIdsList
+                                        {
+                                            Ids = { pointId }
+                                        }
+                                    },
+                                    Payload = { newPoint.Payload }
+                                };
+                            }
 
-                            pointOperations.Add(updateOp);
+                            pointOperations.Add(setOperation);
                         }
 
                         chunkIndex++;
@@ -270,28 +289,41 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         numPointsToDelete.AddRange(points.Skip(chunks.Count).Where(s => s.Id.HasNum).Select(p => p.Id.Num));
                     }
                 }
+
+                //if (pointOperations.Count >= MaxNumberOfOperations || pointOperations.Sum(s => s.Upsert?.Points.Count) >= MaxNumberOfOperations)
+                //{
+                //    await HandleAndClearOperations(client, pointOperations, cancellationToken);
+                //}
+
+                //if (uuidPointsToDelete.Count >= MaxNumberOfOperations || numPointsToDelete.Count >= MaxNumberOfOperations)
+                //{
+                //    await HandleAndClearDeletes(client, uuidPointsToDelete, numPointsToDelete, cancellationToken);
+                //}
+
+                if (upsertOperation.Upsert.Points.Count >= MaxNumberOfOperations)
+                {
+                    pointOperations.Add(upsertOperation);
+                    await HandleAndClearOperations(client, pointOperations, cancellationToken);
+                    upsertOperation = new PointsUpdateOperation
+                    {
+                        Upsert = new PointsUpdateOperation.Types.PointStructList
+                        {
+                        }
+                    };
+                }
+                else if (pointOperations.Count >= MaxNumberOfOperations)
+                {
+                    await HandleAndClearOperations(client, pointOperations, cancellationToken);
+                }
             }
 
-            // todo: handle errors, retry
-            // todo: split points into batches or upsert them earlier if they are above some limit?
-            if (pointOperations.Count > 0)
+            if (upsertOperation.Upsert.Points.Count > 0)
             {
-                Logger.HandlingPoints(pointOperations.Count, StreamName);
-
-                var result = await client.UpdateBatchAsync(_state.CollectionName, pointOperations, wait: _options.Wait, cancellationToken: cancellationToken);
+                pointOperations.Add(upsertOperation);
             }
 
-            if (uuidPointsToDelete.Count > 0)
-            {
-                Logger.DeletingPoints(uuidPointsToDelete.Count, StreamName);
-                var result = await client.DeleteAsync(_state.CollectionName, uuidPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
-            }
-
-            if (numPointsToDelete.Count > 0)
-            {
-                Logger.DeletingPoints(numPointsToDelete.Count, StreamName);
-                var result = await client.DeleteAsync(_state.CollectionName, numPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
-            }
+            await HandleAndClearOperations(client, pointOperations, cancellationToken);
+            await HandleAndClearDeletes(client, uuidPointsToDelete, numPointsToDelete, cancellationToken);
 
             if (_options.OnChangesDone != null)
             {
@@ -301,23 +333,86 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             client.Dispose();
         }
 
+        private async Task HandleAndClearDeletes(QdrantClient client, List<Guid> uuidPointsToDelete, List<ulong> numPointsToDelete, CancellationToken cancellationToken)
+        {
+            if (uuidPointsToDelete.Count > 0)
+            {
+                Logger.DeletingPoints(uuidPointsToDelete.Count, StreamName);
+                var result = await client.DeleteAsync(_state.CollectionName, uuidPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken)
+                    .ExecutePipeline(_options.ResiliencePipeline);
+
+                if (result.Status != UpdateStatus.Completed && result.Status != UpdateStatus.Acknowledged)
+                {
+                    throw new InvalidOperationException($"Failed to delete points: {result.Status} on operation {result.OperationId}");
+                }
+            }
+
+            if (numPointsToDelete.Count > 0)
+            {
+                Logger.DeletingPoints(numPointsToDelete.Count, StreamName);
+                var result = await client.DeleteAsync(_state.CollectionName, numPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken)
+                    .ExecutePipeline(_options.ResiliencePipeline);
+
+                if (result.Status != UpdateStatus.Completed && result.Status != UpdateStatus.Acknowledged)
+                {
+                    throw new InvalidOperationException($"Failed to delete points: {result.Status} on operation {result.OperationId}");
+                }
+            }
+
+            uuidPointsToDelete.Clear();
+            numPointsToDelete.Clear();
+        }
+
+        private async Task HandleAndClearOperations(QdrantClient client, List<PointsUpdateOperation> pointOperations, CancellationToken cancellationToken)
+        {
+            if (pointOperations.Count > 0)
+            {
+                Logger.HandlingPoints(pointOperations.Count, StreamName);
+
+                var result = await client.UpdateBatchAsync(_state.CollectionName, pointOperations, wait: _options.Wait, cancellationToken: cancellationToken).ExecutePipeline(_options.ResiliencePipeline);
+
+                var exceptions = new List<Exception>();
+                foreach (var item in result)
+                {
+                    if (item.Status != UpdateStatus.Completed && item.Status != UpdateStatus.Acknowledged)
+                    {
+                        exceptions.Add(new InvalidOperationException($"Operation {item.OperationId} failed: {item.Status}"));
+                    }
+                }
+
+                if (exceptions.Count > 0)
+                {
+                    throw new AggregateException(exceptions);
+                }
+            }
+
+            foreach (var op in pointOperations)
+            {
+                op.ClearOperation();
+            }
+
+            pointOperations.Clear();
+        }
+
         private async Task<RepeatedField<RetrievedPoint>> ScrollPoints(QdrantClient client, string payloadIdKey, CancellationToken cancellationToken)
         {
             var scrollFilter = new Filter
             {
-            };
-
-            scrollFilter.Must.Add(new Condition
-            {
-                Field = new FieldCondition
+                Must =
                 {
-                    Key = "flowtide",
-                    Match = new Match
+                    new Condition
                     {
-                        Keyword = payloadIdKey
+                        Field = new FieldCondition
+                        {
+                            Key = FlowtideMetadataPayloadKey,
+                            Match = new Match
+                            {
+                                Keyword = payloadIdKey
+                            }
+                        },
                     }
-                },
-            });
+                }
+            };
 
             var searchResult = await client.ScrollAsync(_state.CollectionName, scrollFilter, cancellationToken: cancellationToken);
 
