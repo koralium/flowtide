@@ -232,18 +232,32 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             newPoint.Vectors = await _embeddingGenerator.GenerateEmbeddingAsync(chunk, cancellationToken);
                             var upsertOp = new PointsUpdateOperation
                             {
-                                Upsert = new PointsUpdateOperation.Types.PointStructList()
+                                Upsert = new PointsUpdateOperation.Types.PointStructList
+                                {
+                                    Points = { newPoint },
+                                }
                             };
 
-                            upsertOp.Upsert.Points.Add(newPoint);
                             pointOperations.Add(upsertOp);
-
                         }
                         else
                         {
-                            var updateOp = new PointsUpdateOperation();
-                            updateOp.SetPayload.PointsSelector.Points.Ids.Add(pointId);
-                            updateOp.SetPayload.Payload.Add(newPoint.Payload);
+                            var updateOp = new PointsUpdateOperation
+                            {
+                                OverwritePayload = new PointsUpdateOperation.Types.OverwritePayload
+                                {
+                                    PointsSelector = new PointsSelector
+                                    {
+                                        Points = new PointsIdsList
+                                        {
+                                            Ids = { pointId }
+                                        }
+                                    },
+                                    Payload = { newPoint.Payload }
+                                }
+                            };
+
+                            pointOperations.Add(updateOp);
                         }
 
                         chunkIndex++;
@@ -263,19 +277,25 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             if (pointOperations.Count > 0)
             {
                 Logger.HandlingPoints(pointOperations.Count, StreamName);
-                await client.UpdateBatchAsync(_state.CollectionName, pointOperations, wait: _options.Wait, cancellationToken: cancellationToken);
+
+                var result = await client.UpdateBatchAsync(_state.CollectionName, pointOperations, wait: _options.Wait, cancellationToken: cancellationToken);
             }
 
             if (uuidPointsToDelete.Count > 0)
             {
                 Logger.DeletingPoints(uuidPointsToDelete.Count, StreamName);
-                await client.DeleteAsync(_state.CollectionName, uuidPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
+                var result = await client.DeleteAsync(_state.CollectionName, uuidPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
             }
 
             if (numPointsToDelete.Count > 0)
             {
                 Logger.DeletingPoints(numPointsToDelete.Count, StreamName);
-                await client.DeleteAsync(_state.CollectionName, numPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
+                var result = await client.DeleteAsync(_state.CollectionName, numPointsToDelete, wait: _options.Wait, cancellationToken: cancellationToken);
+            }
+
+            if (_options.OnChangesDone != null)
+            {
+                await _options.OnChangesDone(_state, client);
             }
 
             client.Dispose();
