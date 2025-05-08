@@ -200,7 +200,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         };
 
                         var chunkPayload = new Struct(payloadData);
-                        if (_options.QdrantIncludeTextInPayload)
+                        if (_options.QdrantIncludeVectorTextInPayload)
                         {
                             chunkPayload.Fields.Add(_options.QdrantVectorTextPropertyName, chunk);
                         }

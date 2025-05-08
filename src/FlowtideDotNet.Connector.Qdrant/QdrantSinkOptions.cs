@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// If set to true the <see cref="VectorStringColumnName"/> will be added to the payload with the <see cref="QdrantVectorTextPropertyName"/>.
         /// If set to false it will not be included in the payload.
         /// </summary>
-        public bool QdrantIncludeTextInPayload { get; set; } = true;
+        public bool QdrantIncludeVectorTextInPayload { get; set; } = true;
 
         /// <summary>
         /// Selected map properties will be added directly under payload and not under <see cref="QdrantPayloadDataPropertyName"/> when this is enabled
