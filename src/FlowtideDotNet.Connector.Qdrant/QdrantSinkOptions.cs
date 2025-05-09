@@ -106,6 +106,11 @@ namespace FlowtideDotNet.Connector.Qdrant
         public bool QdrantStoreMapsUnderOwnKey { get; init; }
 
         /// <summary>
+        /// Selected list properties will added directly under payload and not under <see cref="QdrantPayloadDataPropertyName"/> when this is enabled
+        /// </summary>
+        public bool QdrantStoreListsUnderOwnKey { get; init; }
+
+        /// <summary>
         /// The mode to use when updating the payload in Qdrant.
         /// </summary>
         public QdrantPayloadUpdateMode QdrantPayloadUpdateMode { get; set; } = QdrantPayloadUpdateMode.OverwritePayload;
@@ -114,5 +119,10 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// Resilience pipeline for operations against Qdrant, default retries 10 times incrementally
         /// </summary>
         public ResiliencePipeline ResiliencePipeline { get; set; }
+
+        /// <summary>
+        /// The maximum number of operations to send in a batch to Qdrant.
+        /// </summary>
+        public int MaxNumberOfBatchOperations { get; set; } = 1000;
     }
 }

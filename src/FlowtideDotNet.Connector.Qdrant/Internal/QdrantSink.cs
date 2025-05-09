@@ -36,7 +36,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
         private int _vectorIndex = -1;
 
         private const string FlowtideMetadataPayloadKey = "flowtide";
-        private const int MaxNumberOfOperations = 1000;
 
         public QdrantSink(QdrantSinkOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions, IEmbeddingGenerator embeddingGenerator, IStringChunker? chunker) : base(options.ExecutionMode, writeRelation, executionDataflowBlockOptions)
         {
@@ -181,6 +180,10 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             {
                                 basePoint.Payload.Add(_writeRelation.TableSchema.Names[i], value);
                             }
+                            else if (dataValue.Type == ArrowTypeId.List && _options.QdrantStoreListsUnderOwnKey)
+                            {
+                                basePoint.Payload.Add(_writeRelation.TableSchema.Names[i], value);
+                            }
                             else
                             {
                                 payloadData.Fields.Add(_writeRelation.TableSchema.Names[i], value);
@@ -233,6 +236,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             $"__{FlowtideMetadataPayloadKey}_id:{resourceId}",
                         };
 
+                        // todo: always add this and use it for ordering? Should it be on its own property?
                         if (_chunker != null)
                         {
                             flowtidePayload.Add($"__{FlowtideMetadataPayloadKey}_chunk:{chunkIndex}");
@@ -317,8 +321,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                     }
                 }
 
-
-                if (upsertOperation.Upsert.Points.Count >= MaxNumberOfOperations)
+                if (upsertOperation.Upsert.Points.Count >= _options.MaxNumberOfBatchOperations)
                 {
                     pointOperations.Add(upsertOperation);
                     await HandleAndClearOperations(client, pointOperations, cancellationToken);
@@ -329,7 +332,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         }
                     };
                 }
-                else if (updateVectorOperation.UpdateVectors.Points.Count >= MaxNumberOfOperations)
+                else if (updateVectorOperation.UpdateVectors.Points.Count >= _options.MaxNumberOfBatchOperations)
                 {
                     pointOperations.Add(updateVectorOperation);
                     await HandleAndClearOperations(client, pointOperations, cancellationToken);
@@ -341,7 +344,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         }
                     };
                 }
-                else if (pointOperations.Count >= MaxNumberOfOperations)
+                else if (pointOperations.Count >= _options.MaxNumberOfBatchOperations)
                 {
                     await HandleAndClearOperations(client, pointOperations, cancellationToken);
                 }
@@ -471,13 +474,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                     return new Value() { NullValue = new NullValue() };
                 case ArrowTypeId.Boolean:
                     return new Value() { BoolValue = value.AsBool };
-                case ArrowTypeId.UInt8:
-                case ArrowTypeId.Int8:
-                case ArrowTypeId.UInt16:
-                case ArrowTypeId.Int16:
-                case ArrowTypeId.UInt32:
-                case ArrowTypeId.Int32:
-                case ArrowTypeId.UInt64:
                 case ArrowTypeId.Int64:
                     return new Value() { IntegerValue = value.AsLong };
                 case ArrowTypeId.HalfFloat:
@@ -522,11 +518,28 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
                         return new Value() { StructValue = s };
                     }
+                case ArrowTypeId.List:
+                    {
+                        var listVal = value.AsList;
+                        var list = new ListValue();
+                        for (int i = 0; i < listVal.Count; i++)
+                        {
+                            list.Values.Add(GetValue(listVal.GetAt(i)));
+                        }
+
+                        return new Value { ListValue = list };
+                    }
+                case ArrowTypeId.UInt8:
+                case ArrowTypeId.Int8:
+                case ArrowTypeId.UInt16:
+                case ArrowTypeId.Int16:
+                case ArrowTypeId.UInt32:
+                case ArrowTypeId.Int32:
+                case ArrowTypeId.UInt64:
                 case ArrowTypeId.Union:
                 case ArrowTypeId.Interval:
                 case ArrowTypeId.FixedSizedBinary:
                 case ArrowTypeId.Binary:
-                case ArrowTypeId.List:
                 case ArrowTypeId.FixedSizeList:
                 case ArrowTypeId.Duration:
                 case ArrowTypeId.RecordBatch:
