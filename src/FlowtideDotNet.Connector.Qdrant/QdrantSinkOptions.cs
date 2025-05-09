@@ -19,17 +19,6 @@ using Qdrant.Client.Grpc;
 
 namespace FlowtideDotNet.Connector.Qdrant
 {
-    public enum QdrantPayloadUpdateMode
-    {
-        /// <summary>
-        /// Overwrite the payload with the new data. Old or custom added data will be lost.
-        /// </summary>
-        OverwritePayload,
-        /// <summary>
-        /// Sets the payload fields to the new data. Old or custom added data will be kept.
-        /// </summary>
-        SetPayload,
-    }
 
     public class QdrantSinkOptions
     {
