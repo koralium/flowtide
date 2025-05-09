@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             {
                 Channel = _qdrantFixture.Channel,
                 CollectionName = name,
-                Wait = wait
+                Wait = wait,
             };
 
             await CreateCollection(name);
@@ -572,14 +572,14 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
         }
 
         [Fact]
-        public async Task TestInsertWithMapsUnderOwnKey()
+        public async Task TestInsertWithListUnderOwnKey()
         {
-            var name = nameof(TestInsertWithMapsUnderOwnKey);
+            var name = nameof(TestInsertWithListUnderOwnKey);
             var options = new QdrantSinkOptions
             {
                 Channel = _qdrantFixture.Channel,
                 CollectionName = name,
-                QdrantStoreMapsUnderOwnKey = true
+                QdrantStoreListsUnderOwnKey = true
             };
 
             await CreateCollection(name);
@@ -591,26 +591,24 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             stream.Generate(numberOfProjects);
 
             await stream.StartStream(@"
-                INSERT INTO output
+                INSERT INTO qdrant
                 SELECT 
                     projectKey AS id,
                     name AS vector_string,
-                    map('key1', 'b', 'key2', 'd') AS extra_info
+                    list('key1', 'key2', 'd', 0) AS my_list
                 FROM projects
             ");
 
             var scroll = await WaitForScrollWithPoints(name);
             var point = scroll.Result[0];
-            var mapData = point.Payload.First(s => s.Key == "extra_info");
+            var listPayload = point.Payload.First(s => s.Key == "my_list");
 
             Assert.NotNull(scroll);
             Assert.NotEmpty(scroll.Result);
             Assert.Equal(numberOfProjects, scroll.Result.Count);
-            Assert.Equal(2, mapData.Value.StructValue.Fields.Count);
-            Assert.Equal("b", mapData.Value.StructValue.Fields.First(s => s.Key == "key1").Value.StringValue);
-            Assert.Equal("d", mapData.Value.StructValue.Fields.First(s => s.Key == "key2").Value.StringValue);
+            Assert.NotNull(listPayload.Value.ListValue);
+            Assert.NotEmpty(listPayload.Value.ListValue.Values);
         }
-
 
         [Fact]
         public async Task TestInsertWithStructUnderOwnKey()
@@ -650,6 +648,46 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             Assert.Equal(2, structData.Value.StructValue.Fields.Count);
             Assert.Equal("b", structData.Value.StructValue.Fields.First(s => s.Key == "key1").Value.StringValue);
             Assert.Equal("d", structData.Value.StructValue.Fields.First(s => s.Key == "key2").Value.StringValue);
+        }
+
+        [Fact]
+        public async Task TestInsertWithMapsUnderOwnKey()
+        {
+            var name = nameof(TestInsertWithMapsUnderOwnKey);
+            var options = new QdrantSinkOptions
+            {
+                Channel = _qdrantFixture.Channel,
+                CollectionName = name,
+                QdrantStoreMapsUnderOwnKey = true
+            };
+
+            await CreateCollection(name);
+
+            var stream = new QdrantSinkStream(name, options, _generator, null);
+
+            var numberOfProjects = 1;
+
+            stream.Generate(numberOfProjects);
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    projectKey AS id,
+                    name AS vector_string,
+                    map('key1', 'b', 'key2', 'd') AS extra_info
+                FROM projects
+            ");
+
+            var scroll = await WaitForScrollWithPoints(name);
+            var point = scroll.Result[0];
+            var mapData = point.Payload.First(s => s.Key == "extra_info");
+
+            Assert.NotNull(scroll);
+            Assert.NotEmpty(scroll.Result);
+            Assert.Equal(numberOfProjects, scroll.Result.Count);
+            Assert.Equal(2, mapData.Value.StructValue.Fields.Count);
+            Assert.Equal("b", mapData.Value.StructValue.Fields.First(s => s.Key == "key1").Value.StringValue);
+            Assert.Equal("d", mapData.Value.StructValue.Fields.First(s => s.Key == "key2").Value.StringValue);
         }
 
         [Fact]
