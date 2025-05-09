@@ -329,6 +329,210 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
         }
 
         [Fact]
+        public async Task TestSetPayloadKeepsCustomProperties()
+        {
+            var name = nameof(TestSetPayloadKeepsCustomProperties);
+            var options = new QdrantSinkOptions
+            {
+                Channel = _qdrantFixture.Channel,
+                CollectionName = name,
+                QdrantPayloadUpdateMode = QdrantPayloadUpdateMode.SetPayload
+            };
+
+            await CreateCollection(name);
+
+            var stream = new QdrantSinkStream(name, options, _generator, null);
+
+            var project = new Project
+            {
+                CompanyId = "1",
+                Name = "ProjectA",
+                ProjectNumber = "a",
+                ProjectKey = 1
+            };
+
+            stream.AddOrUpdateProject(project);
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    projectKey AS id,
+                    'abc' as vector_string,
+                    name as project_name
+                FROM projects
+            ");
+
+            var scroll = await WaitForScrollWithPoints(name);
+            var point = scroll.Result[0];
+
+            var client = _qdrantFixture.GetClient();
+            var result = await client.SetPayloadAsync(name,
+                new Dictionary<string, Value>
+                {
+                    { "my_extra_field", "my_value" }
+                },
+                ids: [Guid.Parse(point.Id.Uuid)]);
+
+
+            Assert.Equal(UpdateStatus.Completed, result.Status);
+
+            project.Name = "updated_name";
+            stream.AddOrUpdateProject(project);
+            scroll = await WaitForScrollWithPoints(
+                name,
+                waitUntilPayloadCondition: HasProjectName,
+                onDelay: stream.SchedulerTick);
+
+            point = scroll.Result[0];
+
+            Assert.NotNull(scroll);
+            Assert.NotEmpty(scroll.Result);
+            Assert.Equal("my_value", point.Payload.First(s => s.Key == "my_extra_field").Value.StringValue);
+
+            bool HasProjectName(KeyValuePair<string, Value> payload)
+            {
+                return payload.Key == options.QdrantPayloadDataPropertyName
+                    && payload.Value.StructValue != null
+                    && payload.Value.StructValue.Fields.Any(s =>
+                        s.Key == "project_name"
+                        && (s.Value.StringValue == project.Name)
+                    );
+            }
+        }
+
+        [Fact]
+        public async Task OverwritePayloadRemovesCustomProperties()
+        {
+            var name = nameof(OverwritePayloadRemovesCustomProperties);
+            var options = new QdrantSinkOptions
+            {
+                Channel = _qdrantFixture.Channel,
+                CollectionName = name,
+                QdrantPayloadUpdateMode = QdrantPayloadUpdateMode.OverwritePayload
+            };
+
+            await CreateCollection(name);
+
+            var stream = new QdrantSinkStream(name, options, _generator, null);
+
+            var project = new Project
+            {
+                CompanyId = "1",
+                Name = "ProjectA",
+                ProjectNumber = "a",
+                ProjectKey = 1
+            };
+
+            stream.AddOrUpdateProject(project);
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    projectKey AS id,
+                    'abc' as vector_string,
+                    name as project_name
+                FROM projects
+            ");
+
+            var scroll = await WaitForScrollWithPoints(name);
+            var point = scroll.Result[0];
+
+            var client = _qdrantFixture.GetClient();
+            var result = await client.SetPayloadAsync(name,
+                new Dictionary<string, Value>
+                {
+                    { "my_extra_field", "my_value" }
+                },
+                ids: [Guid.Parse(point.Id.Uuid)]);
+
+
+            Assert.Equal(UpdateStatus.Completed, result.Status);
+
+            project.Name = "updated_name";
+            stream.AddOrUpdateProject(project);
+
+            scroll = await WaitForScrollWithPoints(
+                name,
+                waitUntilPayloadCondition: HasProjectName,
+                onDelay: stream.SchedulerTick);
+
+            point = scroll.Result[0];
+
+            Assert.NotNull(scroll);
+            Assert.NotEmpty(scroll.Result);
+            Assert.DoesNotContain(point.Payload, s => s.Key == "my_extra_field");
+
+            bool HasProjectName(KeyValuePair<string, Value> payload)
+            {
+                return payload.Key == options.QdrantPayloadDataPropertyName
+                    && payload.Value.StructValue != null
+                    && payload.Value.StructValue.Fields.Any(s =>
+                        s.Key == "project_name"
+                        && (s.Value.StringValue == project.Name)
+                    );
+            }
+        }
+
+        [Fact]
+        public async Task TestUpdateVector()
+        {
+            var name = nameof(TestUpdateVector);
+            var options = new QdrantSinkOptions
+            {
+                Channel = _qdrantFixture.Channel,
+                CollectionName = name,
+            };
+
+            await CreateCollection(name);
+
+            var stream = new QdrantSinkStream(name, options, _generator, null);
+
+            var project = new Project
+            {
+                CompanyId = "1",
+                Name = "Project 1",
+                ProjectNumber = "abc-1",
+                ProjectKey = 999
+            };
+
+            stream.AddOrUpdateProject(project);
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    projectKey AS id,
+                    name as vector_string
+                FROM projects
+            ");
+
+            var initialScroll = await WaitForScrollWithPoints(name, withVector: true);
+            var initialPoint = initialScroll.Result[0];
+
+            project.Name = "updated_project";
+            stream.AddOrUpdateProject(project);
+
+            var updatedScroll = await WaitForScrollWithPoints(
+                name,
+                withVector: true,
+                waitUntilPayloadCondition: HasVectorText,
+                onDelay: stream.SchedulerTick);
+            var updatedPoint = updatedScroll.Result[0];
+
+            Assert.NotNull(updatedScroll);
+            Assert.NotEqual(updatedPoint.Vectors, initialPoint.Vectors);
+
+            bool HasVectorText(KeyValuePair<string, Value> payload)
+            {
+                return payload.Key == options.QdrantPayloadDataPropertyName
+                    && payload.Value.StructValue != null
+                    && payload.Value.StructValue.Fields.Any(s =>
+                        s.Key == options.QdrantVectorTextPropertyName
+                        && s.Value.StringValue == project.Name
+                    );
+            }
+        }
+
+        [Fact]
         public async Task TestDelete()
         {
             var name = nameof(TestDelete);
@@ -405,6 +609,47 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             Assert.Equal(2, mapData.Value.StructValue.Fields.Count);
             Assert.Equal("b", mapData.Value.StructValue.Fields.First(s => s.Key == "key1").Value.StringValue);
             Assert.Equal("d", mapData.Value.StructValue.Fields.First(s => s.Key == "key2").Value.StringValue);
+        }
+
+
+        [Fact]
+        public async Task TestInsertWithStructUnderOwnKey()
+        {
+            var name = nameof(TestInsertWithStructUnderOwnKey);
+            var options = new QdrantSinkOptions
+            {
+                Channel = _qdrantFixture.Channel,
+                CollectionName = name,
+                QdrantStoreMapsUnderOwnKey = true
+            };
+
+            await CreateCollection(name);
+
+            var stream = new QdrantSinkStream(name, options, _generator, null);
+
+            var numberOfProjects = 1;
+
+            stream.Generate(numberOfProjects);
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT 
+                    projectKey AS id,
+                    name AS vector_string,
+                    named_struct('key1', 'b', 'key2', 'd') AS extra_info
+                FROM projects
+            ");
+
+            var scroll = await WaitForScrollWithPoints(name);
+            var point = scroll.Result[0];
+            var structData = point.Payload.First(s => s.Key == "extra_info");
+
+            Assert.NotNull(scroll);
+            Assert.NotEmpty(scroll.Result);
+            Assert.Equal(numberOfProjects, scroll.Result.Count);
+            Assert.Equal(2, structData.Value.StructValue.Fields.Count);
+            Assert.Equal("b", structData.Value.StructValue.Fields.First(s => s.Key == "key1").Value.StringValue);
+            Assert.Equal("d", structData.Value.StructValue.Fields.First(s => s.Key == "key2").Value.StringValue);
         }
 
         [Fact]
@@ -1033,6 +1278,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             int timeoutSeconds = 5,
             Func<Task>? onDelay = null,
             bool withPayload = true,
+            bool withVector = false,
             Filter? filter = null)
         {
             var client = _qdrantFixture.GetClient();
@@ -1050,7 +1296,9 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
                     payloadSelector: new WithPayloadSelector
                     {
                         Enable = withPayload
-                    });
+                    },
+                    vectorsSelector: withVector
+                    );
 
                 if (waitUntilPayloadCondition != null)
                 {
