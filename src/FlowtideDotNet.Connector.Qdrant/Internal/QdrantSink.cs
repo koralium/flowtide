@@ -124,6 +124,14 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
                 }
             };
+            var updateVectorOperation = new PointsUpdateOperation
+            {
+                UpdateVectors = new PointsUpdateOperation.Types.UpdateVectors
+                {
+                    Points = { }
+                }
+            };
+
             var pointOperations = new List<PointsUpdateOperation>();
 
             await foreach (var row in rows)
@@ -169,7 +177,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             var dataValue = row.EventBatchData.Columns[i].GetValueAt(row.Index, default);
                             var value = GetValue(dataValue);
 
-                            if (dataValue.Type == ArrowTypeId.Map && _options.QdrantStoreMapsUnderOwnKey)
+                            if ((dataValue.Type == ArrowTypeId.Map || dataValue.Type == ArrowTypeId.Struct) && _options.QdrantStoreMapsUnderOwnKey)
                             {
                                 basePoint.Payload.Add(_writeRelation.TableSchema.Names[i], value);
                             }
@@ -180,17 +188,19 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         }
                     }
 
-
                     var chunkIndex = 0;
                     foreach (var chunk in chunks)
                     {
                         PointId pointId;
                         bool updateVector = true;
+                        bool isNewPoint = true;
                         if (points.Count > chunkIndex)
                         {
+                            isNewPoint = false;
                             var existingPoint = points[chunkIndex];
                             pointId = existingPoint.Id;
                             var a = existingPoint.Payload.FirstOrDefault(s => s.Key == _options.QdrantPayloadDataPropertyName);
+
                             if (a.Value.StructValue != null)
                             {
                                 var textField = a.Value.StructValue.Fields.FirstOrDefault(s => s.Key == _options.QdrantVectorTextPropertyName);
@@ -235,21 +245,38 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
                         newPoint.Payload.Add(FlowtideMetadataPayloadKey, flowtidePayload.ToArray());
 
-                        // vector is changed so upsert the whole point
-                        if (updateVector)
+                        // point is new
+                        if (isNewPoint)
                         {
+                            if (!updateVector)
+                            {
+                                throw new InvalidOperationException("Point is new but update vector is false.");
+                            }
+
                             newPoint.Vectors = await _embeddingGenerator.GenerateEmbeddingAsync(chunk, cancellationToken);
                             upsertOperation.Upsert.Points.Add(newPoint);
                         }
-                        // no vector change, only update the payload
+                        // point is an existing point so update
                         else
                         {
                             // each chunk gets its own operation as they contain chunk metadata information that are unique per chunk
-                            var setOperation = new PointsUpdateOperation();
 
+                            if (updateVector)
+                            {
+                                newPoint.Vectors = await _embeddingGenerator.GenerateEmbeddingAsync(chunk, cancellationToken);
+                                updateVectorOperation.UpdateVectors.Points.Add(new PointVectors
+                                {
+                                    Id = pointId,
+                                    Vectors = newPoint.Vectors
+                                });
+                            }
+
+                            var operation = new PointsUpdateOperation();
+
+                            // todo: compare point data and see if we need to update the payload?
                             if (_options.QdrantPayloadUpdateMode == QdrantPayloadUpdateMode.SetPayload)
                             {
-                                setOperation.SetPayload = new PointsUpdateOperation.Types.SetPayload
+                                operation.SetPayload = new PointsUpdateOperation.Types.SetPayload
                                 {
                                     PointsSelector = new PointsSelector
                                     {
@@ -263,7 +290,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             }
                             else
                             {
-                                setOperation.OverwritePayload = new PointsUpdateOperation.Types.OverwritePayload
+                                operation.OverwritePayload = new PointsUpdateOperation.Types.OverwritePayload
                                 {
                                     PointsSelector = new PointsSelector
                                     {
@@ -276,7 +303,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                                 };
                             }
 
-                            pointOperations.Add(setOperation);
+                            pointOperations.Add(operation);
                         }
 
                         chunkIndex++;
@@ -290,15 +317,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                     }
                 }
 
-                //if (pointOperations.Count >= MaxNumberOfOperations || pointOperations.Sum(s => s.Upsert?.Points.Count) >= MaxNumberOfOperations)
-                //{
-                //    await HandleAndClearOperations(client, pointOperations, cancellationToken);
-                //}
-
-                //if (uuidPointsToDelete.Count >= MaxNumberOfOperations || numPointsToDelete.Count >= MaxNumberOfOperations)
-                //{
-                //    await HandleAndClearDeletes(client, uuidPointsToDelete, numPointsToDelete, cancellationToken);
-                //}
 
                 if (upsertOperation.Upsert.Points.Count >= MaxNumberOfOperations)
                 {
@@ -311,6 +329,18 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                         }
                     };
                 }
+                else if (updateVectorOperation.UpdateVectors.Points.Count >= MaxNumberOfOperations)
+                {
+                    pointOperations.Add(updateVectorOperation);
+                    await HandleAndClearOperations(client, pointOperations, cancellationToken);
+                    updateVectorOperation = new PointsUpdateOperation
+                    {
+                        UpdateVectors = new PointsUpdateOperation.Types.UpdateVectors
+                        {
+                            Points = { }
+                        }
+                    };
+                }
                 else if (pointOperations.Count >= MaxNumberOfOperations)
                 {
                     await HandleAndClearOperations(client, pointOperations, cancellationToken);
@@ -320,6 +350,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             if (upsertOperation.Upsert.Points.Count > 0)
             {
                 pointOperations.Add(upsertOperation);
+            }
+
+            if (updateVectorOperation.UpdateVectors.Points.Count > 0)
+            {
+                pointOperations.Add(updateVectorOperation);
             }
 
             await HandleAndClearOperations(client, pointOperations, cancellationToken);
@@ -411,10 +446,14 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             }
                         },
                     }
-                }
+                },
             };
 
-            var searchResult = await client.ScrollAsync(_state.CollectionName, scrollFilter, cancellationToken: cancellationToken);
+            var searchResult = await client.ScrollAsync(
+                _state.CollectionName,
+                filter: scrollFilter,
+                limit: 1000, // todo: this might not be enough for very large payloads, or with very small chunks
+                cancellationToken: cancellationToken);
 
             return searchResult.Result;
         }
@@ -455,20 +494,34 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 case ArrowTypeId.Time64:
                     return value.ToString() ?? "";
                 case ArrowTypeId.Dictionary:
-                case ArrowTypeId.Struct:
                 case ArrowTypeId.Map:
-                    var mapVal = value.AsMap;
-                    var length = mapVal.GetLength();
-
-                    var s = new Struct();
-                    for (int i = 0; i < length; i++)
                     {
-                        var key = mapVal.GetKeyAt(i);
-                        var val = mapVal.GetValueAt(i);
-                        s.Fields.Add(key.ToString(), GetValue(val, depth++));
-                    }
+                        var mapVal = value.AsMap;
+                        var length = mapVal.GetLength();
 
-                    return new Value() { StructValue = s };
+                        var s = new Struct();
+                        for (int i = 0; i < length; i++)
+                        {
+                            var key = mapVal.GetKeyAt(i);
+                            var val = mapVal.GetValueAt(i);
+                            s.Fields.Add(key.ToString(), GetValue(val, depth++));
+                        }
+
+                        return new Value() { StructValue = s };
+                    }
+                case ArrowTypeId.Struct:
+                    {
+                        var structVal = value.AsStruct;
+
+                        var s = new Struct();
+                        for (int i = 0; i < structVal.Header.Count; i++)
+                        {
+                            var key = structVal.Header.GetColumnName(i);
+                            s.Fields.Add(key, GetValue(structVal.GetAt(i), depth++));
+                        }
+
+                        return new Value() { StructValue = s };
+                    }
                 case ArrowTypeId.Union:
                 case ArrowTypeId.Interval:
                 case ArrowTypeId.FixedSizedBinary:
