@@ -236,7 +236,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                             $"__{FlowtideMetadataPayloadKey}_id:{resourceId}",
                         };
 
-                        // todo: always add this and use it for ordering? Should it be on its own property?
                         if (_chunker != null)
                         {
                             flowtidePayload.Add($"__{FlowtideMetadataPayloadKey}_chunk:{chunkIndex}");
@@ -277,7 +276,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
                             var operation = new PointsUpdateOperation();
 
-                            // todo: compare point data and see if we need to update the payload?
                             if (_options.QdrantPayloadUpdateMode == QdrantPayloadUpdateMode.SetPayload)
                             {
                                 operation.SetPayload = new PointsUpdateOperation.Types.SetPayload
