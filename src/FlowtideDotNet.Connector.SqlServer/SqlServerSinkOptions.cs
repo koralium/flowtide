@@ -10,7 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
+using Microsoft.Data.SqlClient;
+using System.Data;
 
 namespace FlowtideDotNet.Connector.SqlServer
 {
@@ -30,5 +33,31 @@ namespace FlowtideDotNet.Connector.SqlServer
         public bool UseDatabaseDefinedInConnectionStringOnly { get; set; }
 
         public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
+
+        /// <summary>
+        /// If set, the sink writes data to the custom table and does not trigger any merge into to another table.
+        /// For custom merge into logic with custom destination table you can use OnDataUploaded event to run any sql code.
+        /// When using a custom destination table, the metadata if it's an upsert or delete is not sent, that can be
+        /// added manually using ModifyRow.
+        /// </summary>
+        public string? CustomBulkCopyDestinationTable { get; set; }
+
+        /// <summary>
+        /// Allows adding extra columns to the data table that will be bulk uploaded
+        /// </summary>
+        public Func<DataTable, ValueTask>? OnDataTableCreation { get; set; }
+
+        /// <summary>
+        /// Allows modifying a data row adding extra metadata columns if required.
+        /// First argument is the actual data row, the second is if it is a deletion row, third is the watermark, fourth is the checkpointId.
+        /// The last argument is if this is the initial data upload.
+        /// </summary>
+        public Action<DataRow, bool, Watermark, long, bool>? ModifyRow { get; set; }
+
+        /// <summary>
+        /// Called when all data in a batch has been uploaded.
+        /// First argument is the sql connection, second the watermark, third the checkpointId, fourth if it is the initial data upload or not.
+        /// </summary>
+        public Func<SqlConnection, Watermark, long, bool, ValueTask>? OnDataUploaded { get; set; }
     }
 }
