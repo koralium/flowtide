@@ -34,7 +34,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         public OpenAiEmbeddingsGenerator(OpenAiEmbeddingOptions options)
         {
-            // todo: retry?
             _options = options;
         }
 
@@ -45,7 +44,9 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
             var body = new StringContent($$"""{"input": "{{text}}" }""", Encoding.UTF8, "application/json");
 
-            var result = await client.PostAsync(_options.UrlFunc(), body, cancellationToken);
+            var result = await client
+                .PostAsync(_options.UrlFunc(), body, cancellationToken)
+                .ExecutePipeline(_options.ResiliencePipeline);
 
             result.EnsureSuccessStatusCode();
             var response = await result.Content.ReadFromJsonAsync<EmbeddingResponseRoot>(_serializerOptions, cancellationToken: cancellationToken);
