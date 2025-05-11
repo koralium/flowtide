@@ -93,5 +93,89 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var childNode = await task;
             return await SearchLeafNodeForRead_AfterTask(key, childNode!, searchComparer);
         }
+
+        public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative(in K key, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        {
+            Debug.Assert(m_stateClient.Metadata != null);
+
+            long pageId = m_stateClient.Metadata.Root;
+
+            while (true)
+            {
+                var getPageTask = m_stateClient.GetValue(pageId);
+
+                if (!getPageTask.IsCompleted)
+                {
+                    // Do slow here, fully async
+                    return SearchRootIterative_Slow(getPageTask, key, searchComparer);
+                    throw new NotImplementedException();
+                }
+                var node = getPageTask.Result;
+                if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
+                {
+                    return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(leaf);
+                }
+                else if (node is InternalNode<K, V, TKeyContainer> parentNode)
+                {
+                    var index = searchComparer.FindIndex(key, parentNode.keys);
+                    if (index < 0)
+                    {
+                        index = ~index;
+                    }
+                    pageId = parentNode.children[index];
+                    parentNode.Return();
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+            }
+        }
+
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative_Slow(ValueTask<IBPlusTreeNode?> getNodeTask, K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        {
+            var fetchedNode = await getNodeTask;
+
+            if (fetchedNode is LeafNode<K, V, TKeyContainer, TValueContainer> foundLeaf)
+            {
+                return foundLeaf;
+            }
+            else if (fetchedNode is InternalNode<K, V, TKeyContainer> foundParentNode)
+            {
+                var foundIndex = searchComparer.FindIndex(key, foundParentNode.keys);
+                if (foundIndex < 0)
+                {
+                    foundIndex = ~foundIndex;
+                }
+                var pageId = foundParentNode.children[foundIndex];
+                foundParentNode.Return();
+
+                while (true)
+                {
+                    var node = await m_stateClient.GetValue(pageId);
+                    if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
+                    {
+                        return leaf;
+                    }
+                    else if (node is InternalNode<K, V, TKeyContainer> parentNode)
+                    {
+                        var index = searchComparer.FindIndex(key, parentNode.keys);
+                        if (index < 0)
+                        {
+                            index = ~index;
+                        }
+                        pageId = parentNode.children[index];
+                        parentNode.Return();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
+                }
+            }
+            throw new NotImplementedException();
+        }
+
+
     }
 }

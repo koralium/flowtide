@@ -23,13 +23,23 @@ namespace FlowtideDotNet.Storage.Tree
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
+        //LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
 
         int CurrentIndex { get; }
 
         bool Found { get; }
 
-        ValueTask Seek(K key, IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
+        ValueTask Seek(in K key, IBplusTreeComparer<K, TKeyContainer>? searchComparer = null);
+
+        public K GetKey();
+
+        public V GetValue();
+
+        ValueTask Delete();
+
+        ValueTask Upsert(in K key, in V value);
+
+        ValueTask Commit();
 
         ValueTask SavePage();
     }

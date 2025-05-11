@@ -11,10 +11,12 @@
 // limitations under the License.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -27,18 +29,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private LeafNode<K, V, TKeyContainer, TValueContainer>? _leafNode;
         private int _index;
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> _tree;
+        private bool _writtenAtPage = false;
+
         public BPlusTreeUpdater(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             _tree = tree;
         }
 
-        public LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => _leafNode ?? throw new Exception();
+        private LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => _leafNode ?? throw new Exception();
 
         public int CurrentIndex => _index;
 
         public bool Found { get; private set; }
 
-        public ValueTask Seek(K key, IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
+        public ValueTask Seek(in K key, IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
         {
             var comparer = searchComparer == null ? _tree.m_keyComparer : searchComparer;
 
@@ -50,14 +54,27 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     result = ~result;
                     Found = false;
                 }
+                else
+                {
+                    Found = true;
+                }
                 if (result > 0 && (_leafNode.keys.Count > result || _leafNode.next == 0))
                 {
                     _index = result;
-                    Found = true;
                     return ValueTask.CompletedTask;
                 }
                 else
                 {
+                    if (_writtenAtPage)
+                    {
+                        var savePageTask = SavePage();
+                        if (!savePageTask.IsCompleted)
+                        {
+                            return Seek_SavePageSlow(savePageTask, key, comparer);
+                        }
+                    }
+
+                    _writtenAtPage = false;
                     _leafNode.Return();
                     _leafNode = null;
                 }
@@ -72,6 +89,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             _leafNode = searchTask.Result;
             return AfterSeekTask(key, comparer);
+        }
+
+        private async ValueTask Seek_SavePageSlow(ValueTask savePageTask, K key, IBplusTreeComparer<K, TKeyContainer> comparer)
+        {
+            await savePageTask;
+
+            _writtenAtPage = false;
+            _leafNode!.Return();
+            _leafNode = null;
+
+            _leafNode = await _tree.SearchRoot(key, comparer);
+            await AfterSeekTask(key, comparer);
         }
 
         private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> task, K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
@@ -98,11 +127,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return ValueTask.CompletedTask;
         }
 
+
+
         public ValueTask SavePage()
         {
             Debug.Assert(_leafNode != null);
             var byteSize = _leafNode.GetByteSize();
-            if (_leafNode.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
+            _writtenAtPage = false;
+
+            // check if the leaf node is too small or too big, then force an update over the entire tree
+            if ((_leafNode.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize) ||
+                (byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
             {
                 _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
                 // Force a traversion of the tree to ensure that size is looked at for splits.
@@ -135,6 +170,70 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask WaitForNotFull()
         {
             await _tree.m_stateClient.WaitForNotFullAsync();
+        }
+
+        public K GetKey()
+        {
+            return _leafNode!.keys.Get(_index);
+        }
+
+        public V GetValue()
+        {
+            return _leafNode!.values.Get(_index);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ValueTask Upsert(in K key, in V value)
+        {
+            CurrentPage.EnterWriteLock();
+            if (Found)
+            {
+                CurrentPage!.values.Update(_index, value);
+            }
+            else
+            {
+                CurrentPage.keys.Insert(_index, key);
+                CurrentPage.values.Insert(_index, value);
+            }
+            CurrentPage.ExitWriteLock();
+            _writtenAtPage = true;
+
+            var byteSize = CurrentPage.GetByteSize();
+
+            if (CurrentPage.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
+            {
+                return SavePage();
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask Delete()
+        {
+            if (!Found)
+            {
+                throw new InvalidOperationException("Key not found in the current page.");
+            }
+            _leafNode!.DeleteAt(_index);
+            _writtenAtPage = true;
+
+            var byteSize = CurrentPage.GetByteSize();
+
+            if ((byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
+            {
+                return SavePage();
+            }
+
+            return ValueTask.CompletedTask;
+        }
+
+        public async ValueTask Commit()
+        {
+            if (_leafNode != null && _writtenAtPage)
+            {
+                await SavePage();
+            }
+            _leafNode = null;
+            _writtenAtPage = false;
         }
     }
 }

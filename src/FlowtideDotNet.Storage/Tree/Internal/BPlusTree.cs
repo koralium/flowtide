@@ -23,9 +23,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
-        private int minSize;
+        internal int minSize;
         private bool m_isByteBased;
-        private int byteMinSize;
+        internal int byteMinSize;
         private bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)

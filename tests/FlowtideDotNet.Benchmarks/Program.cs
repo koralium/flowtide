@@ -11,5 +11,10 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Running;
+using FlowtideDotNet.Benchmarks.Stream;
 
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var stream = new StreamBenchmark();
+stream.IterationSetup();
+await stream.InnerJoin();
+
+//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

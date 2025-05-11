@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         // These constants exist only to have a minimum size so there will be a sufficent fanout.
         // This must be atleast 2x larger than minpagesize
         private const int minPageSizeBeforeSplit = 16;
-        private const int minPageSize = 4;
+        internal const int minPageSize = 4;
         private const int minPageSizeAfterSplit = 8;
 
         public ValueTask<GenericWriteOperation> GenericWriteByteBased(ref readonly K key, ref readonly V? value, ref readonly GenericWriteFunction<V> function)
