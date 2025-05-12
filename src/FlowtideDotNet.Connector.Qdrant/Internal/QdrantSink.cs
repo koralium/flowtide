@@ -345,6 +345,10 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 {
                     await HandleAndClearOperations(client, pointOperations, cancellationToken);
                 }
+                else if (uuidPointsToDelete.Count >= _options.MaxNumberOfBatchOperations || numPointsToDelete.Count >= _options.MaxNumberOfBatchOperations)
+                {
+                    await HandleAndClearDeletes(client, uuidPointsToDelete, numPointsToDelete, cancellationToken);
+                }
             }
 
             if (upsertOperation.Upsert.Points.Count > 0)
