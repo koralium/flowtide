@@ -24,6 +24,7 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         private readonly NormalizationRelation _normalizationRelation;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
+        private IBplusTreeUpdater<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage> _updater;
         private readonly List<int> _keyColumns;
         private readonly List<int> _otherColumns;
         private readonly Func<EventBatchData, int, bool>? _filter;
@@ -101,7 +103,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             allOutput!.WriteLine("Checkpoint");
             await allOutput!.FlushAsync();
 #endif
-
+            await _updater!.Commit();
             await _tree!.Commit();
         }
 
@@ -251,37 +253,41 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             PrimitiveList<int> deleteBatchKeyOffsets,
             List<IColumn> deleteBatchColumns)
         {
-            var (operation, _) = await _tree!.RMW(
-                    in columnRef,
-                    in columnRef,
-                    (input, current, found) =>
+            Debug.Assert(_updater != null);
+
+            await _updater.Seek(in columnRef);
+
+            bool updated = false;
+            if (_updater.Found)
+            {
+                var current = _updater.GetValue();
+                for (int i = 0; i < _otherColumns.Count; i++)
+                {
+                    var compareResult = DataValueComparer.Instance.Compare(
+                    columnRef.referenceBatch.Columns[_otherColumns[i]].GetValueAt(columnRef.RowIndex, default),
+                        current.referenceBatch.Columns[i].GetValueAt(current.RowIndex, default));
+
+                    if (compareResult != 0)
                     {
-                        if (found)
+                        // Did not match, add the current to the delete batch
+                        deleteBatchKeyOffsets.Add(columnRef.RowIndex);
+                        for (int k = 0; k < _otherColumns.Count; k++)
                         {
-                            // Compare here
-                            for (int i = 0; i < _otherColumns.Count; i++)
-                            {
-                                var compareResult = DataValueComparer.Instance.Compare(
-                                    input.referenceBatch.Columns[_otherColumns[i]].GetValueAt(input.RowIndex, default),
-                                    current.referenceBatch.Columns[i].GetValueAt(current.RowIndex, default));
-
-                                if (compareResult != 0)
-                                {
-                                    // Did not match, add the current to the delete batch
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                                    }
-                                    return (input, GenericWriteOperation.Upsert);
-                                }
-                            }
-                            return (current, GenericWriteOperation.None);
+                            deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                         }
-                        return (input, GenericWriteOperation.Upsert);
-                    });
+                        await _updater.Upsert(columnRef, columnRef);
+                        updated = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                await _updater.Upsert(columnRef, columnRef);
+                updated = true;
+            }
 
-            if (operation == GenericWriteOperation.Upsert)
+            if (updated)
             {
                 toEmitOffsets.Add(index);
                 weights.Add(1);
@@ -324,6 +330,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator
                 });
+            _updater = _tree.CreateUpdater();
         }
     }
 }
