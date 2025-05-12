@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// Optional minimum size of the token chunk, will merge chunk with the previous chunk if the size is below this.
         /// Note that this merge will also occur if the chunk is below the <see cref="TokenChunkOverlap"/>.
         /// </summary>
-        public int? MinTokenCunkSize { get; set; }
+        public int? MinTokenChunkSize { get; set; }
 
         /// <summary>
         /// When chunking each chunk will overlap by this many tokens.

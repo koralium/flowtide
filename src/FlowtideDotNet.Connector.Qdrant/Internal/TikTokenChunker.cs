@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 var subTokens = tokens.Skip(index).Take(count);
                 var chunkText = tokenizer.Decode(subTokens);
 
-                var tooShort = chunkText.Length < _options.MinTokenCunkSize;
+                var tooShort = chunkText.Length < _options.MinTokenChunkSize;
 
                 // If the remaining tokens result in a short chunk, merge with previous
                 if ((tooShort || remaining <= _options.TokenChunkOverlap) && chunks.Count > 0)
