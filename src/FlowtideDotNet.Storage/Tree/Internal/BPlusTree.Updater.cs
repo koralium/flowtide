@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         byteSize = internalNode.GetByteSize();
 
                         if (
-                           (byteSize > m_stateClient.Metadata!.PageSizeBytes && internalNode.keys.Count >= minPageSizeBeforeSplit) ||
+                           (byteSize > m_stateClient.Metadata!.PageSizeBytes && internalNode.keys.Count > minPageSizeBeforeSplit) ||
                            (byteSize <= byteMinSize || internalNode.keys.Count < minPageSize))
                         {
                             if (i < 0)

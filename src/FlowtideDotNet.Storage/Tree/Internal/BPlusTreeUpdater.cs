@@ -139,41 +139,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             //var byteSize = _leafNode.GetByteSize();
             _writtenAtPage = false;
             return _tree.SavePage(_leafNode, _nodePath);
-            // check if the leaf node is too small or too big, then force an update over the entire tree
-            //if ((_leafNode.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize) ||
-            //    (byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
-            //{
-            //    _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
-            //    // Force a traversion of the tree to ensure that size is looked at for splits.
-            //    var traverseTask = _tree.RMWNoResult(_leafNode.keys.Get(0), default, (input, current, found) =>
-            //    {
-            //        return (default, GenericWriteOperation.None);
-            //    });
-            //    if (!traverseTask.IsCompletedSuccessfully)
-            //    {
-            //        return WaitForTraverseTask(traverseTask);
-            //    }
-            //}
-            //else
-            //{
-            //    var isFull = _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
-            //    if (isFull)
-            //    {
-            //        return WaitForNotFull();
-            //    }
-            //}
-
-            //return ValueTask.CompletedTask;
-        }
-
-        private async ValueTask WaitForTraverseTask(ValueTask<GenericWriteOperation> traverseTask)
-        {
-            await traverseTask;
-        }
-
-        private async ValueTask WaitForNotFull()
-        {
-            await _tree.m_stateClient.WaitForNotFullAsync();
         }
 
         public K GetKey()
