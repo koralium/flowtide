@@ -17,6 +17,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
     public class FakeEmbeddingsGenerator : IEmbeddingGenerator
     {
         public int Size { get; set; } = 4;
+
+        public void Dispose()
+        {
+        }
+
         public ValueTask<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             return new ValueTask<float[]>(
