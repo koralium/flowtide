@@ -1193,6 +1193,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 throw new InvalidOperationException($"check_true must have at least two arguments, and not be '*'");
             });
+
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
         }
 
         private static void RegisterSingleVariableAggregateFunction(
@@ -1374,7 +1376,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
             string extensionUri,
-            string extensionName)
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
             sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1399,19 +1402,25 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
                 argList.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3)
                 {
-                    var argExpr = visitor.Visit(funcExpr.Expression, emitData).Expr;
-                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData).Expr;
-                    var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData).Expr;
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+                    var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData);
 
-                    // For now, anytype is returned
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (typeFunc != null)
+                    {
+                        returnType = typeFunc(argExpr.Type, argExpr2.Type, argExpr3.Type);
+                    }
+
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
                             ExtensionUri = extensionUri,
                             ExtensionName = extensionName,
-                            Arguments = new List<Expressions.Expression>() { argExpr, argExpr2, argExpr3 }
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr, argExpr3.Expr }
                         },
-                        new AnyType()
+                        returnType
                         );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
