@@ -14,6 +14,18 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
+    internal struct BPlusTreeNodeIndex
+    {
+        public long NodeId;
+        public int ChildIndex;
+
+        public BPlusTreeNodeIndex(long nodeId, int childIndex)
+        {
+            this.NodeId = nodeId;
+            this.ChildIndex = childIndex;
+        }
+    }
+    
     internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
@@ -94,7 +106,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return await SearchLeafNodeForRead_AfterTask(key, childNode!, searchComparer);
         }
 
-        public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative(in K key, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        public ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative(
+            in K key, 
+            in IBplusTreeComparer<K, TKeyContainer> searchComparer,
+            List<BPlusTreeNodeIndex> nodePath)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
@@ -107,12 +122,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (!getPageTask.IsCompleted)
                 {
                     // Do slow here, fully async
-                    return SearchRootIterative_Slow(getPageTask, key, searchComparer);
+                    return SearchRootIterative_Slow(getPageTask, key, searchComparer, nodePath);
                     throw new NotImplementedException();
                 }
                 var node = getPageTask.Result;
                 if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
                 {
+                    nodePath.Add(new BPlusTreeNodeIndex(leaf.Id, -1));
                     return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(leaf);
                 }
                 else if (node is InternalNode<K, V, TKeyContainer> parentNode)
@@ -122,6 +138,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         index = ~index;
                     }
+                    nodePath.Add(new BPlusTreeNodeIndex(parentNode.Id, index));
                     pageId = parentNode.children[index];
                     parentNode.Return();
                 }
@@ -132,12 +149,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative_Slow(ValueTask<IBPlusTreeNode?> getNodeTask, K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
+        private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRootIterative_Slow(
+            ValueTask<IBPlusTreeNode?> getNodeTask, 
+            K key, 
+            IBplusTreeComparer<K, TKeyContainer> searchComparer,
+            List<BPlusTreeNodeIndex> nodePath)
         {
             var fetchedNode = await getNodeTask;
 
             if (fetchedNode is LeafNode<K, V, TKeyContainer, TValueContainer> foundLeaf)
             {
+                nodePath.Add(new BPlusTreeNodeIndex(foundLeaf.Id, -1));
                 return foundLeaf;
             }
             else if (fetchedNode is InternalNode<K, V, TKeyContainer> foundParentNode)
@@ -147,6 +169,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     foundIndex = ~foundIndex;
                 }
+                nodePath.Add(new BPlusTreeNodeIndex(foundParentNode.Id, foundIndex));
                 var pageId = foundParentNode.children[foundIndex];
                 foundParentNode.Return();
 
@@ -155,6 +178,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     var node = await m_stateClient.GetValue(pageId);
                     if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
                     {
+                        nodePath.Add(new BPlusTreeNodeIndex(leaf.Id, -1));
                         return leaf;
                     }
                     else if (node is InternalNode<K, V, TKeyContainer> parentNode)
@@ -164,6 +188,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         {
                             index = ~index;
                         }
+                        nodePath.Add(new BPlusTreeNodeIndex(parentNode.Id, index));
                         pageId = parentNode.children[index];
                         parentNode.Return();
                     }

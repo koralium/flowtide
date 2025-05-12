@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 enumerator.leafNode = null;
             }
             var comparer = searchComparer == null ? tree.m_keyComparer : searchComparer;
-            var searchTask = tree.SearchRootIterative(key, comparer);
+            var searchTask = tree.SearchRoot(key, comparer);
             if (!searchTask.IsCompleted)
             {
                 return Seek_Slow(searchTask, key, comparer);

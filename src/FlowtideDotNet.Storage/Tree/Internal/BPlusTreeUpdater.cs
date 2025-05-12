@@ -30,10 +30,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int _index;
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> _tree;
         private bool _writtenAtPage = false;
+        private List<BPlusTreeNodeIndex> _nodePath;
 
         public BPlusTreeUpdater(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             _tree = tree;
+            _nodePath = new List<BPlusTreeNodeIndex>();
         }
 
         private LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => _leafNode ?? throw new Exception();
@@ -80,7 +82,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
             }
 
-            var searchTask = _tree.SearchRoot(key, comparer);
+            _nodePath.Clear();
+            var searchTask = _tree.SearchRootIterative(key, comparer, _nodePath);
 
             if (!searchTask.IsCompleted)
             {
@@ -99,7 +102,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _leafNode!.Return();
             _leafNode = null;
 
-            _leafNode = await _tree.SearchRoot(key, comparer);
+            _nodePath.Clear();
+            _leafNode = await _tree.SearchRootIterative(key, comparer, _nodePath);
             await AfterSeekTask(key, comparer);
         }
 
@@ -132,34 +136,34 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public ValueTask SavePage()
         {
             Debug.Assert(_leafNode != null);
-            var byteSize = _leafNode.GetByteSize();
+            //var byteSize = _leafNode.GetByteSize();
             _writtenAtPage = false;
-
+            return _tree.SavePage(_leafNode, _nodePath);
             // check if the leaf node is too small or too big, then force an update over the entire tree
-            if ((_leafNode.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize) ||
-                (byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
-            {
-                _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
-                // Force a traversion of the tree to ensure that size is looked at for splits.
-                var traverseTask = _tree.RMWNoResult(_leafNode.keys.Get(0), default, (input, current, found) =>
-                {
-                    return (default, GenericWriteOperation.None);
-                });
-                if (!traverseTask.IsCompletedSuccessfully)
-                {
-                    return WaitForTraverseTask(traverseTask);
-                }
-            }
-            else
-            {
-                var isFull = _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
-                if (isFull)
-                {
-                    return WaitForNotFull();
-                }
-            }
+            //if ((_leafNode.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize) ||
+            //    (byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
+            //{
+            //    _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
+            //    // Force a traversion of the tree to ensure that size is looked at for splits.
+            //    var traverseTask = _tree.RMWNoResult(_leafNode.keys.Get(0), default, (input, current, found) =>
+            //    {
+            //        return (default, GenericWriteOperation.None);
+            //    });
+            //    if (!traverseTask.IsCompletedSuccessfully)
+            //    {
+            //        return WaitForTraverseTask(traverseTask);
+            //    }
+            //}
+            //else
+            //{
+            //    var isFull = _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
+            //    if (isFull)
+            //    {
+            //        return WaitForNotFull();
+            //    }
+            //}
 
-            return ValueTask.CompletedTask;
+            //return ValueTask.CompletedTask;
         }
 
         private async ValueTask WaitForTraverseTask(ValueTask<GenericWriteOperation> traverseTask)
