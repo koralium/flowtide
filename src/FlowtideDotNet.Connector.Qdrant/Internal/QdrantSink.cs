@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             _state.StreamVersion = StreamVersion;
             if (_options.OnInitialize != null)
             {
-                var grpcClient = new QdrantGrpcClient(_options.Channel);
+                var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
                 var client = new QdrantClient(grpcClient);
                 await _options.OnInitialize(_state, client);
                 client.Dispose();
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
         {
             if (_options.OnInitialDataSent != null)
             {
-                var grpcClient = new QdrantGrpcClient(_options.Channel);
+                var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
                 var client = new QdrantClient(grpcClient);
                 await _options.OnInitialDataSent(_state, client);
                 client.Dispose();
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         private async Task HandleChanges(IAsyncEnumerable<ColumnWriteOperation> rows, CancellationToken cancellationToken)
         {
-            var grpcClient = new QdrantGrpcClient(_options.Channel);
+            var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
             var client = new QdrantClient(grpcClient);
 
             var uuidPointsToDelete = new List<Guid>();

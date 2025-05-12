@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestInsert) + wait;
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 Wait = wait,
             };
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestInsert) + count;
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestBigInsertAndUpdate) + count;
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -194,7 +194,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestUpdateWithChangedRow) + qdrantPayloadUpdateMode;
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantPayloadUpdateMode = qdrantPayloadUpdateMode
             };
@@ -263,7 +263,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestUpdateWithMultipleChangedRows) + qdrantPayloadUpdateMode;
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantPayloadUpdateMode = qdrantPayloadUpdateMode
             };
@@ -334,7 +334,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestSetPayloadKeepsCustomProperties);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantPayloadUpdateMode = QdrantPayloadUpdateMode.SetPayload
             };
@@ -406,7 +406,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(OverwritePayloadRemovesCustomProperties);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantPayloadUpdateMode = QdrantPayloadUpdateMode.OverwritePayload
             };
@@ -479,7 +479,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestUpdateVector);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -538,7 +538,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestDelete);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -577,7 +577,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestInsertWithListUnderOwnKey);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantStoreListsUnderOwnKey = true
             };
@@ -616,7 +616,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestInsertWithStructUnderOwnKey);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantStoreMapsUnderOwnKey = true
             };
@@ -656,7 +656,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(TestInsertWithMapsUnderOwnKey);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantStoreMapsUnderOwnKey = true
             };
@@ -696,7 +696,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(CustomPayloadDataName);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantPayloadDataPropertyName = "my_stuff",
             };
@@ -732,7 +732,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(CustomIdColumnName);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 IdColumnName = "my_id",
             };
@@ -766,7 +766,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(CustomVectorStringColumnName);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 VectorStringColumnName = "my_vector_string",
             };
@@ -801,7 +801,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(ExcludeTextInPayload);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantIncludeVectorTextInPayload = false
             };
@@ -839,7 +839,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(CustomVectorTextPropertyName);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 QdrantVectorTextPropertyName = "my_vector_text",
             };
@@ -879,7 +879,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 OnInitialize = (state, client) =>
                 {
@@ -916,7 +916,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 OnInitialize = async (state, client) =>
                 {
@@ -963,7 +963,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 OnInitialize = (state, client) =>
                 {
@@ -1017,7 +1017,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 OnInitialDataSent = (state, client) =>
                 {
@@ -1057,7 +1057,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
                 OnChangesDone = (state, client) =>
                 {
@@ -1095,7 +1095,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(AllPointsGetSamePayloadFromChunking);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -1134,7 +1134,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(AllChunkPointsAreDeleted);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -1172,7 +1172,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(OldExtraChunksAreRemovedOnUpdate);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -1216,7 +1216,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var name = nameof(VersionIsAddedToFlowtidePayload);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = name,
             };
 
@@ -1254,7 +1254,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var collection = nameof(MissingIdPropertyFromPlanThrows);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = collection
             };
 
@@ -1280,7 +1280,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
             var collection = nameof(MissingVectorStringFromPlanThrows);
             var options = new QdrantSinkOptions
             {
-                Channel = _qdrantFixture.Channel,
+                QdrantChannelFunc = _qdrantFixture.ChannelFunc,
                 CollectionName = collection
             };
 

@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
     public class QdrantFixture : IAsyncLifetime
     {
         public QdrantChannel Channel { get; private set; } = null!;
+        public Func<QdrantChannel> ChannelFunc => () => Channel;
         public QdrantContainer Container { get; private set; } = null!;
 
         public QdrantClient GetClient()
