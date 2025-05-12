@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Connector.Qdrant.Internal
 {
-    public interface IEmbeddingGenerator
+    public interface IEmbeddingGenerator : IDisposable
     {
         ValueTask<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default);
     }

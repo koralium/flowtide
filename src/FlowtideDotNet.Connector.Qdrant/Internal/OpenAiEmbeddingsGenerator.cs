@@ -18,12 +18,6 @@ using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.Qdrant.Internal
 {
-    /// <summary>
-    /// Todo: how to register this, options? factory func in options?
-    /// other type of factory?
-    /// 
-    /// Can we get a http client factory into this?
-    /// </summary>
     public class OpenAiEmbeddingsGenerator : IEmbeddingGenerator
     {
         private readonly OpenAiEmbeddingOptions _options;
@@ -32,20 +26,20 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             PropertyNameCaseInsensitive = true
         };
 
+        private readonly HttpClient _client;
+
         public OpenAiEmbeddingsGenerator(OpenAiEmbeddingOptions options)
         {
             _options = options;
+            _client = new HttpClient();
         }
 
         public async ValueTask<float[]> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
-            var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("api-key", _options.ApiKeyFunc());
+            var message = GetRequestMessage(text);
 
-            var body = new StringContent($$"""{"input": "{{text}}" }""", Encoding.UTF8, "application/json");
-
-            var result = await client
-                .PostAsync(_options.UrlFunc(), body, cancellationToken)
+            var result = await _client
+                .SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ExecutePipeline(_options.ResiliencePipeline);
 
             result.EnsureSuccessStatusCode();
@@ -57,14 +51,30 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             return response.Data[0].Embedding;
         }
 
+        private HttpRequestMessage GetRequestMessage(string text)
+        {
+            var request = new HttpRequestMessage(HttpMethod.Post, _options.UrlFunc());
+            request.Headers.Add("api-key", _options.ApiKeyFunc());
+            var body = new StringContent($$"""{"input": "{{text}}" }""", Encoding.UTF8, "application/json");
+            request.Content = body;
+            return request;
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            _client.Dispose();
+        }
+
         internal sealed class EmbeddingResponseRoot
         {
             public required EmbeddingData[] Data { get; set; }
             public required string Model { get; set; }
-            /// <summary>
-            /// todo: Usage might be a nice metric to expose?
-            /// could also be useful to use ensure we are below the limit of the model
-            /// </summary>
             public required Usage Usage { get; set; }
         }
 

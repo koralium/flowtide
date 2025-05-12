@@ -545,5 +545,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                     throw new NotImplementedException($"Value of type '{value.Type}' is not supported");
             }
         }
+
+        public override ValueTask DisposeAsync()
+        {
+            _embeddingGenerator.Dispose();
+            return base.DisposeAsync();
+        }
     }
 }
