@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         private DataTable? m_dataTable;
         private SqlBulkCopy? m_sqlBulkCopy;
         private SqlCommand? m_mergeIntoCommand;
-        private Action<DataTable, bool, EventBatchData, int>? m_mapRowFunc;
+        private Action<DataRow, bool, EventBatchData, int>? m_mapRowFunc;
 
         public ColumnSqlServerSink(
             SqlServerSinkOptions sqlServerSinkOptions,
@@ -47,7 +47,15 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             this.m_sqlServerSinkOptions = sqlServerSinkOptions;
             this.m_writeRelation = writeRelation;
             m_dataValueContainer = new DataValueContainer();
-            m_tmpTableName = GetTmpTableName();
+
+            if (sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
+            {
+                m_tmpTableName = sqlServerSinkOptions.CustomBulkCopyDestinationTable;
+            }
+            else
+            {
+                m_tmpTableName = GetTmpTableName();
+            }
         }
 
         internal string GetTmpTableName()
@@ -111,10 +119,13 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 primaryKeyIndices.Add(index);
             }
             m_primaryKeys = primaryKeyIndices;
-            await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
 
             m_dataTable = new DataTable();
-            m_dataTable.Columns.Add("md_operation");
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null)
+            {
+                m_dataTable.Columns.Add("md_operation");
+            }
+            
             foreach (var column in dbSchema)
             {
                 if (column.DataType == typeof(decimal))
@@ -141,14 +152,23 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 }
             }
 
-            m_mapRowFunc = SqlServerUtils.GetDataRowFromColumnsFunc(dbSchema, m_primaryKeys, m_dataValueContainer);
-            var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
+            if (m_sqlServerSinkOptions.OnDataTableCreation != null)
+            {
+                await m_sqlServerSinkOptions.OnDataTableCreation(m_dataTable);
+            }
+
+            m_mapRowFunc = SqlServerUtils.GetDataRowFromColumnsFunc(dbSchema, m_primaryKeys, m_dataValueContainer, m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null);
             m_sqlBulkCopy = new SqlBulkCopy(m_connection);
             m_sqlBulkCopy.DestinationTableName = m_tmpTableName;
 
-            m_mergeIntoCommand = m_connection.CreateCommand();
-            m_mergeIntoCommand.CommandText = mergeIntoStatement;
-            await m_mergeIntoCommand.PrepareAsync();
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null)
+            {
+                await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
+                m_mergeIntoCommand = m_connection.CreateCommand();
+                var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
+                m_mergeIntoCommand.CommandText = mergeIntoStatement;
+                await m_mergeIntoCommand.PrepareAsync();
+            }   
         }
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
@@ -162,18 +182,28 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Debug.Assert(m_dataTable != null);
             Debug.Assert(m_mapRowFunc != null);
             Debug.Assert(m_sqlBulkCopy != null);
-            Debug.Assert(m_mergeIntoCommand != null);
-
+            Debug.Assert(m_connection != null);
+            
             Logger.StartingDatabaseUpdate(StreamName, Name);
-
+            
             await foreach (var row in rows)
             {
-                m_mapRowFunc(m_dataTable, row.IsDeleted, row.EventBatchData, row.Index);
+                var dataRow = m_dataTable.NewRow();
+                m_mapRowFunc(dataRow, row.IsDeleted, row.EventBatchData, row.Index);
+                if (m_sqlServerSinkOptions.ModifyRow != null)
+                {
+                    m_sqlServerSinkOptions.ModifyRow(dataRow, row.IsDeleted, watermark, CurrentCheckpointId, isInitialData);
+                }
+                m_dataTable.Rows.Add(dataRow);
 
                 if (m_dataTable.Rows.Count > 1_000)
                 {
                     await m_sqlBulkCopy.WriteToServerAsync(m_dataTable);
-                    await m_mergeIntoCommand.ExecuteNonQueryAsync();
+
+                    if (m_mergeIntoCommand != null)
+                    {
+                        await m_mergeIntoCommand.ExecuteNonQueryAsync();
+                    }
 
                     m_dataTable.Rows.Clear();
                 }
@@ -181,10 +211,20 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             if (m_dataTable.Rows.Count > 0)
             {
                 await m_sqlBulkCopy.WriteToServerAsync(m_dataTable);
-                await m_mergeIntoCommand.ExecuteNonQueryAsync();
+
+                if (m_mergeIntoCommand != null)
+                {
+                    await m_mergeIntoCommand.ExecuteNonQueryAsync();
+                }
 
                 m_dataTable.Rows.Clear();
             }
+
+            if (m_sqlServerSinkOptions.OnDataUploaded != null)
+            {
+                await m_sqlServerSinkOptions.OnDataUploaded(m_connection, watermark, CurrentCheckpointId, isInitialData);
+            }
+
             Logger.DatabaseUpdateComplete(StreamName, Name);
         }
     }

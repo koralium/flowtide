@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public abstract string DisplayName { get; }
 
+        public long CurrentCheckpointId { get; private set; }
+
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
         protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
@@ -123,6 +125,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
+            CurrentCheckpointId = checkpointEvent.CheckpointTime;
             await OnCheckpoint(checkpointEvent.CheckpointTime);
         }
 
@@ -168,6 +171,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _metrics = vertexHandler.Metrics;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _streamVersion = streamVersionInformation;
+            CurrentCheckpointId = newTime;
 
             Metrics.CreateObservableGauge("busy", () =>
             {

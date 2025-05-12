@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Connector.Qdrant
         public int MaxRequestsPerMinute { get; init; } = 900;
 
         /// <summary>
-        /// Resilience pipeline used to communincate with the OpenAI API.
+        /// Resilience pipeline used to communicate with the OpenAI API.
         /// The default pipeline includes a retry strategy and a rate limiter.
         ///<para />
         ///<see cref="MaxRequestsPerMinute"/> is used to configure the rate limiter.
