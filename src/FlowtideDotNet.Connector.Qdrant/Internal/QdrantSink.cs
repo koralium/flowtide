@@ -75,10 +75,9 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             _state.StreamVersion = StreamVersion;
             if (_options.OnInitialize != null)
             {
-                var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
-                var client = new QdrantClient(grpcClient);
+                using var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
+                using var client = new QdrantClient(grpcClient);
                 await _options.OnInitialize(_state, client);
-                client.Dispose();
             }
         }
 
@@ -86,8 +85,8 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
         {
             if (_options.OnInitialDataSent != null)
             {
-                var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
-                var client = new QdrantClient(grpcClient);
+                using var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
+                using var client = new QdrantClient(grpcClient);
                 await _options.OnInitialDataSent(_state, client);
                 client.Dispose();
             }
@@ -110,8 +109,8 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         private async Task HandleChanges(IAsyncEnumerable<ColumnWriteOperation> rows, CancellationToken cancellationToken)
         {
-            var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
-            var client = new QdrantClient(grpcClient);
+            using var grpcClient = new QdrantGrpcClient(_options.QdrantChannelFunc());
+            using var client = new QdrantClient(grpcClient);
 
             var uuidPointsToDelete = new List<Guid>();
             var numPointsToDelete = new List<ulong>();
@@ -365,8 +364,6 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             {
                 await _options.OnChangesDone(_state, client);
             }
-
-            client.Dispose();
         }
 
         private async Task HandleAndClearDeletes(QdrantClient client, List<Guid> uuidPointsToDelete, List<ulong> numPointsToDelete, CancellationToken cancellationToken)
