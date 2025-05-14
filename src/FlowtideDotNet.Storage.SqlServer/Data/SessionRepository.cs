@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
             DebugWriter!.DumpObj(pages);
 #endif
-            foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var set)))
+            foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var _)))
             {
                 ManagedPages.Remove(page.PageId);
             }

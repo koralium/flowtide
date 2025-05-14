@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             Debug.Assert(_storageRepository != null, "Stream repository should be initialized");
 
             using var connection = new SqlConnection(_settings.ConnectionStringFunc());
-            await connection.OpenAsync();
+            await connection.OpenAsync().ExecutePipeline(_settings);
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
             try
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Storage.SqlServer
                 // increment the version
                 _stream.IncrementVersion();
 
-                await transaction.CommitAsync();
+                await transaction.CommitAsync().ExecutePipeline(_settings);
 
                 // todo: this can be done before transaction commit as there's an exception/restart if commit fails?
                 if (repoAndDeletedPages.Count > 0)
@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync().ExecutePipeline(_settings);
                 throw;
             }
         }
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             // todo: We might not actually need to do anything on compact as it's already done in checkpoint?
             Debug.Assert(_storageRepository != null, "Stream repository should be initialized");
             using var connection = new SqlConnection(_settings.ConnectionStringFunc());
-            await connection.OpenAsync();
+            await connection.OpenAsync().ExecutePipeline(_settings);
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
             try
@@ -108,11 +108,11 @@ namespace FlowtideDotNet.Storage.SqlServer
 
                 await _storageRepository.DeleteOldVersionsInDbAsync(transaction);
                 await _storageRepository.DeleteOldVersionsInDbFromPagesAsync(deletedPages, transaction);
-                await transaction.CommitAsync();
+                await transaction.CommitAsync().ExecutePipeline(_settings);
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync().ExecutePipeline(_settings);
                 throw;
             }
         }
@@ -149,25 +149,25 @@ namespace FlowtideDotNet.Storage.SqlServer
 
             foreach (var repo in _sessionRepositories)
             {
-                await repo.ClearLocalAndWaitForBackgroundTasks();
+                await repo.ClearLocalAndWaitForBackgroundTasks().ExecutePipeline(_settings);
             }
 
             using var connection = new SqlConnection(_settings.ConnectionStringFunc());
-            await connection.OpenAsync();
+            await connection.OpenAsync().ExecutePipeline(_settings);
             using var transaction = (SqlTransaction)await connection.BeginTransactionAsync();
 
             try
             {
                 await _storageRepository.DeleteUnsuccessfulVersionsAsync(transaction);
                 await _storageRepository.DeleteOldVersionsInDbAsync(transaction);
-                await transaction.CommitAsync();
+                await transaction.CommitAsync().ExecutePipeline(_settings);
 #if DEBUG_WRITE
                 _debugWriter.WriteMessage($"Initialize->transaction.CommitAsync");
 #endif
             }
             catch
             {
-                await transaction.RollbackAsync();
+                await transaction.RollbackAsync().ExecutePipeline(_settings);
 #if DEBUG_WRITE
                 _debugWriter.WriteMessage($"Initialize->transaction.RollbackAsync");
 #endif

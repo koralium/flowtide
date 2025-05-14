@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
 using System.Reflection;
+using static SqlParser.Ast.AlterRoleOperation;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -97,7 +98,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(ExtractImplementation), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
 
                     var componentExpr = visitor.Visit(componentArg, parameterInfo);
-                    
+
 
                     var genericMethod = method!.MakeGenericMethod(componentExpr!.Type, valueExpr!.Type);
 
@@ -165,6 +166,81 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     }
 
                     return System.Linq.Expressions.Expression.Call(method, [valueExpr, formatExpr, memoryConstant, resultConstant]);
+                });
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd,
+                (function, parameterInfo, visitor, functionServices) =>
+                {
+                    if (function.Arguments.Count != 3)
+                    {
+                        throw new InvalidOperationException("Timestamp_add function must have three arguments");
+                    }
+
+                    var componentArg = function.Arguments[0];
+                    var amountArg = function.Arguments[1];
+                    var valueArg = function.Arguments[2];
+
+                    var amountExpr = visitor.Visit(amountArg, parameterInfo);
+
+                    if (amountExpr == null)
+                    {
+                        throw new InvalidOperationException("Amount argument could not be compiled for timestamp_add");
+                    }
+
+                    var valueExpr = visitor.Visit(valueArg, parameterInfo);
+
+                    if (valueExpr == null)
+                    {
+                        throw new InvalidOperationException("Value argument could not be compiled for timestamp_add");
+                    }
+
+                    if (componentArg is StringLiteral stringLiteral)
+                    {
+                        // If the component is hard-coded we can directly find the correct function
+                        var component = stringLiteral.Value.ToUpper();
+
+                        switch (component)
+                        {
+                            case "YEAR":
+                                return CallTimestampAddFunction(nameof(TimestampAddYear), amountExpr, valueExpr);
+                            case "QUARTER":
+                                return CallTimestampAddFunction(nameof(TimestampAddQuarter), amountExpr, valueExpr);
+                            case "MONTH":
+                                return CallTimestampAddFunction(nameof(TimestampAddMonth), amountExpr, valueExpr);
+                            case "WEEK":
+                                return CallTimestampAddFunction(nameof(TimestampAddWeek), amountExpr, valueExpr);
+                            case "DAY":
+                                return CallTimestampAddFunction(nameof(TimestampAddDays), amountExpr, valueExpr);    
+                            case "HOUR":
+                                return CallTimestampAddFunction(nameof(TimestampAddHours), amountExpr, valueExpr);
+                            case "MINUTE":
+                                return CallTimestampAddFunction(nameof(TimestampAddMinutes), amountExpr, valueExpr);
+                            case "SECOND":
+                                return CallTimestampAddFunction(nameof(TimestampAddSeconds), amountExpr, valueExpr);
+                            case "MILLISECOND":
+                                return CallTimestampAddFunction(nameof(TimestampAddMilliseconds), amountExpr, valueExpr);
+                            case "MICROSECOND":
+                                return CallTimestampAddFunction(nameof(TimestampAddMicroseconds), amountExpr, valueExpr);
+                            default:
+                                throw new InvalidOperationException($"Unknown component {component} for timestamp_add function");
+                        }
+                    }
+
+                    var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(TimestampAdd), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                    var componentExpr = visitor.Visit(componentArg, parameterInfo);
+
+                    var genericMethod = method!.MakeGenericMethod(componentExpr!.Type, amountExpr.Type, valueExpr.Type);
+
+                    System.Linq.Expressions.Expression[] parameters =
+                    [
+                        componentExpr,
+                        amountExpr,
+                        valueExpr,
+                        System.Linq.Expressions.Expression.Constant(new DataValueContainer()),
+                    ];
+                    var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+                    return call;
                 });
         }
 
@@ -687,8 +763,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 weekNumber = (int)((dt - firstSunday).TotalDays / 7) + 1;
 
             } while (year != lastYear);
-            
-            
+
 
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(weekNumber);
@@ -775,6 +850,263 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
+        }
+
+        internal static IDataValue TimestampAdd<T1, T2, T3>(T1 component, T2 amount, T3 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (component.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var componentStr = component.AsString;
+
+            if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("YEAR"u8) == 0)
+            {
+                return TimestampAddYear(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("QUARTER"u8) == 0)
+            {
+                return TimestampAddQuarter(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MONTH"u8) == 0)
+            {
+                return TimestampAddMonth(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("WEEK"u8) == 0)
+            {
+                return TimestampAddWeek(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("DAY"u8) == 0)
+            {
+                return TimestampAddDays(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("HOUR"u8) == 0)
+            {
+                return TimestampAddHours(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MINUTE"u8) == 0)
+            {
+                return TimestampAddMinutes(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("SECOND"u8) == 0)
+            {
+                return TimestampAddSeconds(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MILLISECOND"u8) == 0)
+            {
+                return TimestampAddMilliseconds(amount, value, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MICROSECOND"u8) == 0)
+            {
+                return TimestampAddMicroseconds(amount, value, result);
+            }
+
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        private static System.Linq.Expressions.Expression CallTimestampAddFunction(string methodName, System.Linq.Expressions.Expression amountExpr, System.Linq.Expressions.Expression valueExpr)
+        {
+            var method = typeof(BuiltInDatetimeFunctions).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException($"Method {methodName} not found");
+            }
+
+            var genericMethod = method!.MakeGenericMethod(amountExpr.Type, valueExpr.Type);
+
+            System.Linq.Expressions.Expression[] parameters = [amountExpr, valueExpr, System.Linq.Expressions.Expression.Constant(new DataValueContainer())];
+
+            var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+            return call;
+        }
+
+        private static bool TryGetAmountAndValue<T1, T2>(
+            T1 amount,
+            T2 value,
+            out long amountValue,
+            out DateTimeOffset datetime)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (amount.Type != ArrowTypeId.Int64)
+            {
+                amountValue = 0;
+                datetime = default;
+                return false;
+            }
+
+            if (value.Type != ArrowTypeId.Timestamp)
+            {
+                amountValue = 0;
+                datetime = default;
+                return false;
+            }
+
+            amountValue = amount.AsLong;
+            datetime = value.AsTimestamp.ToDateTimeOffset();
+            return true;
+        }
+
+        internal static IDataValue TimestampAddYear<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddYears((int)amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddQuarter<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddMonths((int)amountValue * 3);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddMonth<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddMonths((int)amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddWeek<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddDays(amountValue * 7);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddDays<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddDays(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddHours<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddHours(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddMinutes<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddMinutes(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddSeconds<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddSeconds(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddMilliseconds<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddMilliseconds(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        internal static IDataValue TimestampAddMicroseconds<T1, T2>(T1 amount, T2 value, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetAmountAndValue(amount, value, out var amountValue, out var dt))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            var newDate = dt.AddMicroseconds(amountValue);
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(newDate);
+            return result;
         }
     }
 }

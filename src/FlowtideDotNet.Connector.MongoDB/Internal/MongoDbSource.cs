@@ -345,6 +345,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 }
             }
 
+            if (!this.DeltaLoadInterval.HasValue)
+            {
+                this.DeltaLoadInterval = _options.FullReloadIntervalForNonReplicaSets;
+            }
+
             if (!res.TryGetValue("localTime", out var timestamp))
             {
                 throw new NotSupportedException("MongoDB source requires localTime field to be selected.");

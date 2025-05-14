@@ -227,5 +227,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
                 );
         }
+
+        [Fact]
+        public async Task TimestampAdd()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                timestamp_add('DAY', 1, Orderdate) as days
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    days = o.Orderdate.AddDays(1)
+                })
+            );
+        }
     }
 }

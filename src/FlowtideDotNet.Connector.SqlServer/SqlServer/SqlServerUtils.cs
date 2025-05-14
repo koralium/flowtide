@@ -1008,21 +1008,24 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
-        public static Action<DataTable, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
+        public static Action<DataRow, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
             IReadOnlyCollection<DbColumn> columns,
             IReadOnlyList<int> primaryKeys,
-            DataValueContainer dataValueContainer)
+            DataValueContainer dataValueContainer,
+            bool includeOperation)
         {
             var columnList = columns.ToList();
             var mapFuncs = GetColumnsToDataTableValueMaps(columnList, dataValueContainer);
             var columnNames = columnList.Select(x => x.ColumnName).ToList();
-            return (table, isDeleted, batch, index) =>
+            return (row, isDeleted, batch, index) =>
             {
-                var row = table.NewRow();
-
                 if (isDeleted)
                 {
-                    row["md_operation"] = "D";
+                    if (includeOperation)
+                    {
+                        row["md_operation"] = "D";
+                    }
+                    
                     // Set only primaryKeys
                     for (int i = 0; i < columnNames.Count; i++)
                     {
@@ -1035,11 +1038,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             row[columnNames[i]] = DBNull.Value;
                         }
                     }
-                    table.Rows.Add(row);
                     return;
                 }
 
-                row["md_operation"] = "I";
+                if (includeOperation)
+                {
+                    row["md_operation"] = "I";
+                }
+                
                 for (int i = 0; i < columnNames.Count; i++)
                 {
                     var val = mapFuncs[i](batch, index);
@@ -1052,7 +1058,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         row[columnNames[i]] = val;
                     }
                 }
-                table.Rows.Add(row);
             };
         }
 
