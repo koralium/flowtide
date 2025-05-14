@@ -52,7 +52,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _tree;
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeIterator;
+        private IBplusTreeUpdater<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeUpdater;
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBplusTreeUpdater<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeUpdater;
 
 #if DEBUG_WRITE
         private StreamWriter? allInput;
@@ -127,8 +129,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_treeUpdater != null);
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
+            await _treeUpdater.Commit();
             await _tree.Commit();
 
 #if DEBUG_WRITE
@@ -167,6 +171,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_temporaryStateBatch != null);
             Debug.Assert(m_groupValues != null);
+            Debug.Assert(_temporaryTreeUpdater != null);
 
 #if DEBUG_WRITE
             allInput!.WriteLine("Watermark");
@@ -460,6 +465,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
 
                 await _temporaryTree.Clear();
+                _temporaryTreeUpdater.ClearCache();
             }
             yield break;
         }
@@ -474,6 +480,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_groupValuesBatch != null);
             Debug.Assert(m_temporaryStateBatch != null);
+            Debug.Assert(_temporaryTreeUpdater != null);
+            Debug.Assert(_treeUpdater != null);
 
             for (int i = 0; i < m_groupValues.Length; i++)
             {
@@ -497,6 +505,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
             _eventsProcessed.Add(data.Count);
 
+            var comparer = new AggregateSearchComparer(m_groupValues.Length);
+
             for (int i = 0; i < data.Count; i++)
             {
                 var groupIndex = i;
@@ -508,24 +518,21 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         groupExpressions[k](data.EventBatchData, i, m_groupValues[k]);
                     }
 
-                    await _temporaryTree.RMWNoResult(new ColumnRowReference()
+                    var temporaryTreeKey = new ColumnRowReference()
                     {
                         referenceBatch = m_groupValuesBatch,
                         RowIndex = groupIndex
-                    }, default, (_, current, exist) =>
+                    };
+
+                    await _temporaryTreeUpdater.Seek(in temporaryTreeKey);
+
+                    if (!_temporaryTreeUpdater.Found)
                     {
-                        if (exist)
-                        {
-                            return (1, GenericWriteOperation.None);
-                        }
-                        else
-                        {
-                            return (1, GenericWriteOperation.Upsert);
-                        }
-                    });
+                        await _temporaryTreeUpdater.Upsert(in temporaryTreeKey, 1);
+                    }
                 }
 
-                var comparer = new AggregateSearchComparer(m_groupValues.Length);
+
                 await _treeIterator.Seek(new ColumnRowReference()
                 {
                     referenceBatch = m_groupValuesBatch,
@@ -568,7 +575,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 }
                 else
                 {
-
                     // No match, a new row must be added to the tree.
                     int temporaryStateIndex = 0;
                     if (m_measures.Count > 0)
@@ -584,7 +590,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             {
                                 continue;
                             }
-                            
+
                             await m_measures[k].Compute(new ColumnRowReference()
                             {
                                 referenceBatch = m_groupValuesBatch,
@@ -599,12 +605,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         }
                     }
 
-
-                    await _tree.Upsert(new ColumnRowReference()
+                    var rowRef = new ColumnRowReference()
                     {
                         referenceBatch = m_groupValuesBatch,
                         RowIndex = groupIndex
-                    }, new ColumnAggregateStateReference()
+                    };
+
+                    await _treeUpdater.Seek(in rowRef);
+
+                    await _treeUpdater.Upsert(rowRef, new ColumnAggregateStateReference()
                     {
                         referenceBatch = m_temporaryStateBatch,
                         RowIndex = temporaryStateIndex,
@@ -710,6 +719,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     MemoryAllocator = MemoryAllocator
                 });
             _treeIterator = _tree.CreateIterator();
+            _treeUpdater = _tree.CreateUpdater();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -719,6 +729,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator
                 });
+            _temporaryTreeUpdater = _temporaryTree.CreateUpdater();
             await _temporaryTree.Clear();
         }
     }

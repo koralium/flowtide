@@ -204,5 +204,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _leafNode = null;
             _writtenAtPage = false;
         }
+
+        public void ClearCache()
+        {
+            if (_leafNode != null)
+            {
+                _leafNode.Return();
+            }
+            _leafNode = null;
+            _writtenAtPage = false;
+            _index = -1;
+        }
     }
 }

@@ -42,5 +42,7 @@ namespace FlowtideDotNet.Storage.Tree
         ValueTask Commit();
 
         ValueTask SavePage();
+
+        void ClearCache();
     }
 }
