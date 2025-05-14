@@ -30,7 +30,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             var byteSize = leafNode.GetByteSize();
 
-            if (byteSize > m_stateClient.Metadata!.PageSizeBytes && leafNode.keys.Count >= minPageSizeBeforeSplit)
+            if (byteSize > m_stateClient.Metadata!.PageSizeBytes && leafNode.keys.Count >= minPageSizeBeforeSplit ||
+                (byteSize <= byteMinSize || leafNode.keys.Count < minPageSize))
             {
                 return SavePageLeaf(leafNode, nodePath, byteSize);
             }

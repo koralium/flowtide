@@ -151,7 +151,23 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(_leafNode != null);
             _writtenAtPage = false;
-            return _tree.SavePage(_leafNode, _nodePath);
+
+            var byteSize = _leafNode.GetByteSize();
+
+            if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes)
+            {
+                return SavePageSlow();
+            }
+            _tree.m_stateClient.AddOrUpdate(_leafNode.Id, _leafNode);
+            return ValueTask.CompletedTask;
+        }
+
+        private async ValueTask SavePageSlow()
+        {
+            Debug.Assert(_leafNode != null);
+            await _tree.SavePage(_leafNode!, _nodePath);
+            _leafNode.Return();
+            _leafNode = null;
         }
 
         public K GetKey()
@@ -189,7 +205,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 throw new InvalidOperationException("Key not found in the current page.");
             }
+            CurrentPage.EnterWriteLock();
             _leafNode!.DeleteAt(_index);
+            CurrentPage.ExitWriteLock();
             _writtenAtPage = true;
 
             var byteSize = CurrentPage.GetByteSize();
