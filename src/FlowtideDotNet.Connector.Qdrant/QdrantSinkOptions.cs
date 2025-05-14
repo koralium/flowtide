@@ -123,5 +123,11 @@ namespace FlowtideDotNet.Connector.Qdrant
         /// The maximum number of operations to send in a batch to Qdrant.
         /// </summary>
         public int MaxNumberOfBatchOperations { get; set; } = 1000;
+
+        /// <summary>
+        /// The max allowed depth for map or named_structs.
+        /// Default is 64.
+        /// </summary>
+        public int MaxDepth { get; set; } = 64;
     }
 }

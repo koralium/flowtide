@@ -87,6 +87,7 @@ Options for the sink:
 | QdrantPayloadUpdateMode         |   true   | OverWritePayload | `Set` or `overwrite` the payload when updating a point. `Set` will keep any property not handled by the `flowtide` stream, `overwrite` will remove any such property. |
 | ResiliencePipeline              |   true   |  Incremental retries | Resilience pipeline for requests against Qdrant. By default an incremental retry strategy that retries 10 times. |
 | MaxNumberOfBatchOperations      |   true   |  1000         | The max number of operations before the batch should be sent to Qdrant. |
+| MaxDepth      |   true   |  64         | The max depth of selected `map` and `named_struct` columns |
 
 ### Example updating alias on initialize
 

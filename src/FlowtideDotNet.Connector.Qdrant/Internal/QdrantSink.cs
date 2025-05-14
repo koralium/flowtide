@@ -460,11 +460,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
             return searchResult.Result;
         }
 
-        private static Value GetValue(IDataValue value, int depth = 0)
+        private Value GetValue(IDataValue value, int depth = 0)
         {
-            if (depth > 5)
+            if (depth > _options.MaxDepth)
             {
-                throw new InvalidOperationException("Recursion depth exceeded");
+                throw new InvalidOperationException($"Recursion depth exceeded ({depth})");
             }
 
             switch (value.Type)
