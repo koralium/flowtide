@@ -552,7 +552,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 );
 
                 INSERT INTO subfolder.createstruct
-                SELECT userKey, map('firstName', firstName, 'lastName', lastName) as struct FROM users
+                SELECT userKey, named_struct('firstName', firstName, 'lastName', lastName) as struct FROM users
             ");
 
             await WaitForVersion(storage, "subfolder/createstruct", stream, 0);

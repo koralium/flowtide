@@ -92,10 +92,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public override IArrowEncoder VisitStructType(StructType type)
         {
             var encoders = new List<IArrowEncoder>();
-            List<IDataValue> propertyNames = new List<IDataValue>();
+            List<string> propertyNames = new List<string>();
             foreach (var field in type.Fields)
             {
-                propertyNames.Add(new StringValue(field.Name));
+                propertyNames.Add(field.Name);
                 encoders.Add(Visit(field.Type));
             }
             return new StructEncoder(encoders, propertyNames);
