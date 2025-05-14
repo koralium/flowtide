@@ -38,7 +38,6 @@ namespace FlowtideDotNet.Connector.Qdrant
         }
 
         /// <summary>
-        /// todo: make this a func so we can allow fetching updates credentials etc
         /// </summary>
         public required Func<QdrantChannel> QdrantChannelFunc { get; set; }
 
