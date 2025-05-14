@@ -135,25 +135,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 return;
             }
 
-            var mapValue = value.AsMap;
-
-            _nullBitmap.Append(true);
-            var length = mapValue.GetLength();
-
-            for (int i = 0; i < length; i++)
+            if (value.Type == ArrowTypeId.Map)
             {
-                var key = mapValue.GetKeyAt(i);
-                var keyString = key.AsString.ToString();
-                var val = mapValue.GetValueAt(i);
+                var mapValue = value.AsMap;
 
-                if (propertyWriters[i].Key == keyString)
+                _nullBitmap.Append(true);
+                var length = mapValue.GetLength();
+
+                for (int i = 0; i < length; i++)
                 {
-                    propertyWriters[i].Value.WriteValue(val);
+                    var key = mapValue.GetKeyAt(i);
+                    var keyString = key.AsString.ToString();
+                    var val = mapValue.GetValueAt(i);
+
+                    if (propertyWriters[i].Key == keyString)
+                    {
+                        propertyWriters[i].Value.WriteValue(val);
+                    }
+                    else
+                    {
+                        propertyWriters[i].Value.WriteNull();
+                    }
                 }
-                else
+            }
+            else if (value.Type == ArrowTypeId.Struct)
+            {
+                var structValue = value.AsStruct;
+
+                _nullBitmap.Append(true);
+
+                var length = structValue.Header.Count;
+                for (int i = 0; i < length; i++)
                 {
-                    propertyWriters[i].Value.WriteNull();
+                    var key = structValue.Header.GetColumnName(i);
+                    var val = structValue.GetAt(i);
+                    if (propertyWriters[i].Key == key)
+                    {
+                        propertyWriters[i].Value.WriteValue(val);
+                    }
+                    else
+                    {
+                        propertyWriters[i].Value.WriteNull();
+                    }
                 }
+            }
+            else
+            {
+                throw new NotImplementedException($"StructWriter does not support type {value.Type}");
             }
         }
     }

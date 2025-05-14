@@ -420,11 +420,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             stream.AssertCurrentDataEqual(new[]
             {
-                new { v = new Dictionary<string, object>(){ { "bool", false }, { "float64", 1.0f } } },
-                new { v = new Dictionary<string, object>(){ { "bool", false }, { "float64", 3.0f } } },
-                new { v = new Dictionary<string, object>(){ { "bool", true }, { "float64", 0.0f } } },
-                new { v = new Dictionary<string, object>(){ { "bool", true }, { "float64", 2.0f } } },
-                new { v = new Dictionary<string, object>(){ { "bool", true }, { "float64", 4.0f } } },
+                new { v = new { float64 = 1.0f, @bool = false } },
+                new { v = new { float64 = 3.0f, @bool = false } },
+                new { v = new { float64 = 0.0f, @bool = true } },
+                new { v = new { float64 = 2.0f, @bool = true } },
+                new { v = new { float64 = 4.0f, @bool = true } },
             });
         }
 
