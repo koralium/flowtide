@@ -50,6 +50,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             if (_leafNode != null)
             {
+                _leafNode.Return();
+                var getNodeTask = _tree.m_stateClient.GetValue(_leafNode.Id);
+                if (!getNodeTask.IsCompleted)
+                {
+                    return Seek_FetchLeafNodeSlow(getNodeTask, key, comparer);
+                }
+                _leafNode = (getNodeTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 var result = comparer.FindIndex(key, _leafNode.keys);
                 if (result < 0)
                 {
@@ -67,17 +74,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
-                    if (_writtenAtPage)
-                    {
-                        var savePageTask = SavePage();
-                        if (!savePageTask.IsCompleted)
-                        {
-                            return Seek_SavePageSlow(savePageTask, key, comparer);
-                        }
-                    }
-
                     _writtenAtPage = false;
-                    _leafNode.Return();
                     _leafNode = null;
                 }
             }
@@ -94,16 +91,33 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return AfterSeekTask(key, comparer);
         }
 
-        private async ValueTask Seek_SavePageSlow(ValueTask savePageTask, K key, IBplusTreeComparer<K, TKeyContainer> comparer)
+        private async ValueTask Seek_FetchLeafNodeSlow(ValueTask<IBPlusTreeNode?> getNodeTask, K key, IBplusTreeComparer<K, TKeyContainer> comparer)
         {
-            await savePageTask;
-
-            _writtenAtPage = false;
-            _leafNode!.Return();
-            _leafNode = null;
+            _leafNode = ((await getNodeTask) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
+            var result = comparer.FindIndex(key, _leafNode.keys);
+            if (result < 0)
+            {
+                result = ~result;
+                Found = false;
+            }
+            else
+            {
+                Found = true;
+            }
+            if (result > 0 && (_leafNode.keys.Count > result || _leafNode.next == 0))
+            {
+                _index = result;
+                return;
+            }
+            else
+            {
+                _writtenAtPage = false;
+                _leafNode = null;
+            }
 
             _nodePath.Clear();
             _leafNode = await _tree.SearchRootIterative(key, comparer, _nodePath);
+
             await AfterSeekTask(key, comparer);
         }
 
@@ -136,7 +150,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public ValueTask SavePage()
         {
             Debug.Assert(_leafNode != null);
-            //var byteSize = _leafNode.GetByteSize();
             _writtenAtPage = false;
             return _tree.SavePage(_leafNode, _nodePath);
         }
@@ -167,13 +180,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             CurrentPage.ExitWriteLock();
             _writtenAtPage = true;
 
-            var byteSize = CurrentPage.GetByteSize();
-
-            if (CurrentPage.keys.Count > 0 && _tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
-            {
-                return SavePage();
-            }
-            return ValueTask.CompletedTask;
+            return SavePage();
         }
 
         public ValueTask Delete()
@@ -187,12 +194,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var byteSize = CurrentPage.GetByteSize();
 
-            if ((byteSize <= _tree.byteMinSize || _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize))
-            {
-                return SavePage();
-            }
-
-            return ValueTask.CompletedTask;
+            return SavePage();
         }
 
         public async ValueTask Commit()

@@ -116,19 +116,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (enumerator.leafNode != null)
             {
                 // Check if we can use the current leaf node directly
-                var i = comparer.FindIndex(key, enumerator.leafNode.keys);
-                if (i < 0)
-                {
-                    i = ~i;
-                }
+                //var i = comparer.FindIndex(key, enumerator.leafNode.keys);
+                //if (i < 0)
+                //{
+                //    i = ~i;
+                //}
 
-                if ((i > 0 && (i < enumerator.leafNode.keys.Count || enumerator.leafNode.next == 0)))
-                {
-                    index = i;
-                    enumerator.leafNode.TryRent();
-                    enumerator.Reset(enumerator.leafNode, index);
-                    return ValueTask.CompletedTask;
-                }
+                //if ((i > 0 && (i < enumerator.leafNode.keys.Count || enumerator.leafNode.next == 0)))
+                //{
+                //    index = i;
+                //    enumerator.leafNode.TryRent();
+                //    enumerator.Reset(enumerator.leafNode, index);
+                //    return ValueTask.CompletedTask;
+                //}
 
                 // Return previous rented node
                 enumerator.leafNode.Return();
