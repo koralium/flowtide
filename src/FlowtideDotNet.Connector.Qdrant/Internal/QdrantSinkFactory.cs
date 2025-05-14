@@ -33,6 +33,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         public override bool CanHandle(WriteRelation writeRelation)
         {
+            if (!base.CanHandle(writeRelation))
+            {
+                return false;
+            }
+
             var pk = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(_options.IdColumnName, StringComparison.OrdinalIgnoreCase));
 
             if (pk == -1)
