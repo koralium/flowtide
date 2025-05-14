@@ -81,9 +81,9 @@ Options for the sink:
 | Wait                            |   false  |     true      | Wait for calls against Qdrant to complete before continuing.                    |
 | QdrantVectorTextPropertyName    |   true   |     text      | The property name that should be used for the vectorized string in the payload  |
 | QdrantPayloadDataPropertyName   |   true   |     data      | Under which key metadata should be added to in the Qdrant collection. This will contain information like `last_update` and which embedding generator was used.  |
-| QdrantIncludeVectorTextInPayload|   false  |     true      | If the vectorized string should be stored in the payload or not.                 |
-| QdrantStoreMapsUnderOwnKey      |   false  |     false     | If set to true any selected `map` or `named_struct` will be added under its own key in the payload | 
-| QdrantStoreListsUnderOwnKey     |   false  |     true      | If true any selected `list` will be added under its own key in the payload.      |
+| QdrantIncludeVectorTextInPayload|   true   |     true      | If the vectorized string should be stored in the payload or not.                 |
+| QdrantStoreMapsUnderOwnKey      |   true   |     false     | If set to true any selected `map` or `named_struct` will be added under its own key in the payload | 
+| QdrantStoreListsUnderOwnKey     |   true   |     false     | If true any selected `list` will be added under its own key in the payload.      |
 | QdrantPayloadUpdateMode         |   true   | OverWritePayload | `Set` or `overwrite` the payload when updating a point. `Set` will keep any property not handled by the `flowtide` stream, `overwrite` will remove any such property. |
 | ResiliencePipeline              |   true   |  Incremental retries | Resilience pipeline for requests against Qdrant. By default an incremental retry strategy that retries 10 times. |
 | MaxNumberOfBatchOperations      |   true   |  1000         | The max number of operations before the batch should be sent to Qdrant. |
