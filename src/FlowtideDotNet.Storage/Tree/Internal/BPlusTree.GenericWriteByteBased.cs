@@ -288,7 +288,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
         private ValueTask<GenericWriteOperation> GenericWriteRoot_AfterInternalByteBased(
-            ref readonly GenericWriteOperation result,
+            in GenericWriteOperation result,
             ref readonly InternalNode<K, V, TKeyContainer> internalNode
             )
         {
@@ -343,7 +343,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             ref readonly InternalNode<K, V, TKeyContainer> internalNode,
             ref readonly InternalNode<K, V, TKeyContainer> parentNode,
             ref readonly int index,
-            ref readonly GenericWriteOperation result
+            in GenericWriteOperation result
             )
         {
             Debug.Assert(m_stateClient.Metadata != null);
@@ -556,7 +556,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             ref readonly LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
             ref readonly InternalNode<K, V, TKeyContainer> parentNode,
             ref readonly int index,
-            ref readonly GenericWriteOperation result
+            in GenericWriteOperation result
             )
         {
             Debug.Assert(m_stateClient.Metadata != null);
@@ -638,7 +638,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             ref readonly LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
             ref readonly InternalNode<K, V, TKeyContainer> parentNode,
             ref readonly int index,
-            ref readonly GenericWriteOperation result
+            in GenericWriteOperation result
             )
         {
             Debug.Assert(m_stateClient.Metadata != null);

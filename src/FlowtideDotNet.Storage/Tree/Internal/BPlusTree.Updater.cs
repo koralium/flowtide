@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         {
                             if (i < 0)
                             {
-                                await GenericWriteRoot_AfterInternalByteBased(GenericWriteOperation.Upsert, internalNode);
+                                await GenericWriteRoot_AfterInternalByteBased(GenericWriteOperation.Upsert, in internalNode);
                             }
                             else
                             {

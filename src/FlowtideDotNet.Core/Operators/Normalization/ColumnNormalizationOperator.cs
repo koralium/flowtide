@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         private readonly NormalizationRelation _normalizationRelation;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _tree;
-        private IBplusTreeUpdater<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage> _updater;
+        private IBplusTreeUpdater<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _updater;
         private readonly List<int> _keyColumns;
         private readonly List<int> _otherColumns;
         private readonly Func<EventBatchData, int, bool>? _filter;
