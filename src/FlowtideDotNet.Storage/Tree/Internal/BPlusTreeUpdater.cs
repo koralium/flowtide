@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _nodePath = new List<BPlusTreeNodeIndex>();
         }
 
-        private LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => _leafNode ?? throw new Exception();
+        public LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => _leafNode ?? throw new Exception();
 
         public int CurrentIndex => _index;
 
@@ -74,6 +74,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else
                 {
+                    //_leafNode.Return();
                     _writtenAtPage = false;
                     _leafNode = null;
                 }
@@ -154,7 +155,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var byteSize = _leafNode.GetByteSize();
 
-            if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes)
+            if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes || 
+                byteSize < _tree.byteMinSize || 
+                _leafNode.keys.Count < BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSize)
             {
                 return SavePageSlow();
             }
@@ -166,7 +169,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(_leafNode != null);
             await _tree.SavePage(_leafNode!, _nodePath);
-            _leafNode.Return();
             _leafNode = null;
         }
 
@@ -180,7 +182,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _leafNode!.values.Get(_index);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ValueTask Upsert(in K key, in V value)
         {
             CurrentPage.EnterWriteLock();

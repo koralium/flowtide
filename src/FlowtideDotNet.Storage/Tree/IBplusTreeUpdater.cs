@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.Tree
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        //LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
+        LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
 
         int CurrentIndex { get; }
 

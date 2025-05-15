@@ -115,28 +115,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             if (enumerator.leafNode != null)
             {
-                // Check if we can use the current leaf node directly
-                enumerator.leafNode.Return();
-                var getNodeTask = tree.m_stateClient.GetValue(enumerator.leafNode.Id);
-                if (!getNodeTask.IsCompleted)
-                {
-                    return Seek_FetchLeafNodeSlow(getNodeTask, key, comparer);
-                }
-                enumerator.leafNode = (getNodeTask.Result as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
-                var i = comparer.FindIndex(key, enumerator.leafNode.keys);
-                if (i < 0)
-                {
-                    i = ~i;
-                }
-
-                if ((i > 0 && (i < enumerator.leafNode.keys.Count || enumerator.leafNode.next == 0)))
-                {
-                    index = i;
-                    enumerator.leafNode.TryRent();
-                    enumerator.Reset(enumerator.leafNode, index);
-                    return ValueTask.CompletedTask;
-                }
-
                 // Return previous rented node
                 enumerator.leafNode.Return();
                 enumerator.leafNode = null;
@@ -149,31 +127,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             leafNode = searchTask.Result;
             return AfterSeekTask(key, comparer);
-        }
-
-        private async ValueTask Seek_FetchLeafNodeSlow(ValueTask<IBPlusTreeNode?> getNodeTask, K key, IBplusTreeComparer<K, TKeyContainer> comparer)
-        {
-            enumerator.leafNode = ((await getNodeTask) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
-            var i = comparer.FindIndex(key, enumerator.leafNode.keys);
-            if (i < 0)
-            {
-                i = ~i;
-            }
-
-            if ((i > 0 && (i < enumerator.leafNode.keys.Count || enumerator.leafNode.next == 0)))
-            {
-                index = i;
-                enumerator.leafNode.TryRent();
-                enumerator.Reset(enumerator.leafNode, index);
-                return;
-            }
-
-            // Return previous rented node
-            enumerator.leafNode.Return();
-            enumerator.leafNode = null;
-
-            leafNode = await tree.SearchRoot(key, comparer);
-            await AfterSeekTask(key, comparer);
         }
 
         private async ValueTask Seek_Slow(ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> task, K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)

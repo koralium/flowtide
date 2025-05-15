@@ -38,6 +38,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             else
             {
                 m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                leafNode.Return();
             }
             return ValueTask.CompletedTask;
         }
@@ -67,6 +68,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
 
+                    leafNode.Return();
+
                     if (m_usePreviousPointer && newNode.next != 0)
                     {
                         await UpdateRightPrevious(GenericWriteOperation.Upsert, newNode, isFull, false);
@@ -77,6 +80,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         await GenericWrite_SlowUpsert(GenericWriteOperation.Upsert, m_stateClient.WaitForNotFullAsync());
                         return;
                     }
+                }
+                else
+                {
+                    // No split required, just update the root node
+                    m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
+                    leafNode.Return();
                 }
             }
             else
@@ -146,6 +155,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
+                leafNode.Return();
                 if (m_usePreviousPointer && newNode.next != 0)
                 {
                     return UpdateRightPrevious(GenericWriteOperation.Upsert, newNode, isFull, false);

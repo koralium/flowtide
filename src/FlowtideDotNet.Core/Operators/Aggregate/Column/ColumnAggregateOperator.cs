@@ -532,46 +532,43 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                 }
 
-
-                await _treeIterator.Seek(new ColumnRowReference()
+                var columnRef = new ColumnRowReference()
                 {
                     referenceBatch = m_groupValuesBatch,
                     RowIndex = groupIndex
-                }, comparer);
+                };
 
-                if (!comparer.noMatch)
+                await _treeUpdater.Seek(columnRef);
+
+                if (_treeUpdater.Found)
                 {
-                    var enumerator = _treeIterator.GetAsyncEnumerator();
-                    if (await enumerator.MoveNextAsync())
+                    var page = _treeUpdater.CurrentPage;
+                    var index = _treeUpdater.CurrentIndex;
+
+                    var state = _treeUpdater.GetValue();
+
+                    if (m_measures.Count > 0)
                     {
-                        var page = enumerator.Current;
-                        var index = comparer.start;
-
-                        var state = page.Values.Get(index);
-
-                        if (m_measures.Count > 0)
+                        for (int k = 0; k < m_measures.Count; k++)
                         {
-                            for (int k = 0; k < m_measures.Count; k++)
+                            var stateColumn = page.values._eventBatch.Columns[k];
+                            if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
                             {
-                                var stateColumn = page.Values._eventBatch.Columns[k]; //.Get(index);
-                                if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
-                                {
-                                    continue;
-                                }
-                                await m_measures[k].Compute(new ColumnRowReference()
-                                {
-                                    referenceBatch = m_groupValuesBatch,
-                                    RowIndex = groupIndex
-                                }, data.EventBatchData, i, new ColumnReference(stateColumn, index, page), msg.Data.Weights.Get(i));
+                                continue;
                             }
+                            await m_measures[k].Compute(new ColumnRowReference()
+                            {
+                                referenceBatch = m_groupValuesBatch,
+                                RowIndex = groupIndex
+                            }, data.EventBatchData, i, new ColumnReference(stateColumn, index, page), msg.Data.Weights.Get(i));
                         }
-
-                        page.EnterWriteLock();
-                        var currentWeight = page.Values._weights.Get(index);
-                        page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
-                        page.ExitWriteLock();
-                        await page.SavePage(true);
                     }
+
+                    page.EnterWriteLock();
+                    var currentWeight = page.values._weights.Get(index);
+                    page.values._weights.Update(index, state.weight + msg.Data.Weights.Get(i));
+                    page.ExitWriteLock();
+                    await _treeUpdater.SavePage();
                 }
                 else
                 {
@@ -605,15 +602,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         }
                     }
 
-                    var rowRef = new ColumnRowReference()
-                    {
-                        referenceBatch = m_groupValuesBatch,
-                        RowIndex = groupIndex
-                    };
-
-                    await _treeUpdater.Seek(in rowRef);
-
-                    await _treeUpdater.Upsert(rowRef, new ColumnAggregateStateReference()
+                    await _treeUpdater.Upsert(columnRef, new ColumnAggregateStateReference()
                     {
                         referenceBatch = m_temporaryStateBatch,
                         RowIndex = temporaryStateIndex,
