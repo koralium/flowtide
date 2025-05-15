@@ -307,6 +307,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_persistentTreeUpdater != null);
 
             await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
             {
@@ -332,52 +333,59 @@ namespace FlowtideDotNet.Core.Operators.Read
                         if (weight < 0)
                         {
                             // Delete operation
-                            await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
+                            await _persistentTreeUpdater.Seek(in rowReference);
+
+                            if (_persistentTreeUpdater.Found)
                             {
-                                if (exists)
+                                var current = _persistentTreeUpdater.GetValue();
+                                deleteBatchKeyOffsets.Add(rowReference.RowIndex);
+                                for (int k = 0; k < _otherColumns.Count; k++)
                                 {
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                                    }
-                                    return (current, GenericWriteOperation.Delete);
+                                    deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                 }
-                                return (input, GenericWriteOperation.None);
-                            });
+                                await _persistentTreeUpdater.Delete();
+                            }
                         }
                         else if (weight > 0)
                         {
-                            await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
+                            await _persistentTreeUpdater.Seek(in rowReference);
+
+                            if (_persistentTreeUpdater.Found)
                             {
-                                if (exists)
-                                {
-                                    bool updated = false;
-                                    if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
-                                    {
-                                        weights.Add(1);
-                                        iterations.Add(0);
-                                        toEmitOffsets.Add(input.RowIndex);
-                                        updated = true;
-                                    }
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
-                                        deleteBatchColumns[k].Add(value);
-                                    }
-                                    return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
-                                }
-                                // Does not exist
-                                if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                                var current = _persistentTreeUpdater.GetValue();
+                                bool updated = false;
+                                if (_filter == null || _filter(rowReference.referenceBatch, rowReference.RowIndex))
                                 {
                                     weights.Add(1);
                                     iterations.Add(0);
-                                    toEmitOffsets.Add(input.RowIndex);
-                                    return (input, GenericWriteOperation.Upsert);
+                                    toEmitOffsets.Add(rowReference.RowIndex);
+                                    updated = true;
                                 }
-                                return (input, GenericWriteOperation.None);
-                            });
+                                deleteBatchKeyOffsets.Add(rowReference.RowIndex);
+                                for (int k = 0; k < _otherColumns.Count; k++)
+                                {
+                                    var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
+                                    deleteBatchColumns[k].Add(value);
+                                }
+                                if (updated)
+                                {
+                                    await _persistentTreeUpdater.Upsert(rowReference, rowReference);
+                                }
+                                else
+                                {
+                                    await _persistentTreeUpdater.Delete();
+                                }
+                            }
+                            else
+                            {
+                                if (_filter == null || _filter(rowReference.referenceBatch, rowReference.RowIndex))
+                                {
+                                    weights.Add(1);
+                                    iterations.Add(0);
+                                    toEmitOffsets.Add(rowReference.RowIndex);
+                                    await _persistentTreeUpdater.Upsert(rowReference, rowReference);
+                                }
+                            }
                         }
                     }
 
@@ -691,6 +699,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_deleteTreeTopersistentBatch != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_persistentTreeUpdater != null);
 
             bool sentData = false;
 
@@ -722,19 +731,18 @@ namespace FlowtideDotNet.Core.Operators.Read
                         RowIndex = kv.Key.RowIndex
                     };
                     // Go through the deletions and delete them from the persistent tree
-                    var operation = await _persistentTree.RMWNoResult(columnRef, default, (input, current, exists) =>
+                    var operation = GenericWriteOperation.None;
+                    await _persistentTreeUpdater.Seek(in columnRef);
+                    if (_persistentTreeUpdater.Found)
                     {
-                        if (exists)
+                        var current = _persistentTreeUpdater.GetValue();
+                        for (int k = 0; k < _otherColumns.Count; k++)
                         {
-                            // Output delete event
-                            for (int k = 0; k < _otherColumns.Count; k++)
-                            {
-                                deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                            }
-                            return (current, GenericWriteOperation.Delete);
+                            deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                         }
-                        return (current, GenericWriteOperation.None);
-                    });
+                        await _persistentTreeUpdater.Delete();
+                        operation = GenericWriteOperation.Delete;
+                    }
 
                     if (operation == GenericWriteOperation.Delete)
                     {
