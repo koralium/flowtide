@@ -26,6 +26,7 @@ using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
@@ -49,6 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private List<int>? _emitList;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _fullLoadTempTree;
         private IBPlusTree<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _persistentTree;
+        private IBplusTreeUpdater<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>? _persistentTreeUpdater;
         private IBPlusTree<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>? _deleteTree;
         private Task? _deltaLoadTask;
         private object _taskLock = new object();
@@ -214,6 +216,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
+            _persistentTreeUpdater = _persistentTree.CreateUpdater();
             _deleteTree = await stateManagerClient.GetOrCreateTree("delete",
                 new BPlusTreeOptions<ColumnRowReference, int, NormalizeKeyStorage, PrimitiveListValueContainer<int>>()
                 {
@@ -229,6 +232,9 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_initialSent != null);
+            Debug.Assert(_persistentTreeUpdater != null);
+
+            await _persistentTreeUpdater.Commit();
             await _persistentTree.Commit();
             await Checkpoint(checkpointTime).ConfigureAwait(false);
             await _initialSent.Commit();
@@ -301,6 +307,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_emitList != null);
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_persistentTreeUpdater != null);
 
             await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
             {
@@ -326,52 +333,59 @@ namespace FlowtideDotNet.Core.Operators.Read
                         if (weight < 0)
                         {
                             // Delete operation
-                            await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
+                            await _persistentTreeUpdater.Seek(in rowReference);
+
+                            if (_persistentTreeUpdater.Found)
                             {
-                                if (exists)
+                                var current = _persistentTreeUpdater.GetValue();
+                                deleteBatchKeyOffsets.Add(rowReference.RowIndex);
+                                for (int k = 0; k < _otherColumns.Count; k++)
                                 {
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                                    }
-                                    return (current, GenericWriteOperation.Delete);
+                                    deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                                 }
-                                return (input, GenericWriteOperation.None);
-                            });
+                                await _persistentTreeUpdater.Delete();
+                            }
                         }
                         else if (weight > 0)
                         {
-                            await _persistentTree.RMWNoResult(rowReference, rowReference, (input, current, exists) =>
+                            await _persistentTreeUpdater.Seek(in rowReference);
+
+                            if (_persistentTreeUpdater.Found)
                             {
-                                if (exists)
-                                {
-                                    bool updated = false;
-                                    if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
-                                    {
-                                        weights.Add(1);
-                                        iterations.Add(0);
-                                        toEmitOffsets.Add(input.RowIndex);
-                                        updated = true;
-                                    }
-                                    deleteBatchKeyOffsets.Add(input.RowIndex);
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
-                                        deleteBatchColumns[k].Add(value);
-                                    }
-                                    return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
-                                }
-                                // Does not exist
-                                if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                                var current = _persistentTreeUpdater.GetValue();
+                                bool updated = false;
+                                if (_filter == null || _filter(rowReference.referenceBatch, rowReference.RowIndex))
                                 {
                                     weights.Add(1);
                                     iterations.Add(0);
-                                    toEmitOffsets.Add(input.RowIndex);
-                                    return (input, GenericWriteOperation.Upsert);
+                                    toEmitOffsets.Add(rowReference.RowIndex);
+                                    updated = true;
                                 }
-                                return (input, GenericWriteOperation.None);
-                            });
+                                deleteBatchKeyOffsets.Add(rowReference.RowIndex);
+                                for (int k = 0; k < _otherColumns.Count; k++)
+                                {
+                                    var value = current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default);
+                                    deleteBatchColumns[k].Add(value);
+                                }
+                                if (updated)
+                                {
+                                    await _persistentTreeUpdater.Upsert(rowReference, rowReference);
+                                }
+                                else
+                                {
+                                    await _persistentTreeUpdater.Delete();
+                                }
+                            }
+                            else
+                            {
+                                if (_filter == null || _filter(rowReference.referenceBatch, rowReference.RowIndex))
+                                {
+                                    weights.Add(1);
+                                    iterations.Add(0);
+                                    toEmitOffsets.Add(rowReference.RowIndex);
+                                    await _persistentTreeUpdater.Upsert(rowReference, rowReference);
+                                }
+                            }
                         }
                     }
 
@@ -462,6 +476,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_primaryKeyColumns != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_initialSent != null);
+            Debug.Assert(_persistentTreeUpdater != null);
 
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
@@ -498,41 +513,47 @@ namespace FlowtideDotNet.Core.Operators.Read
                         await _fullLoadTempTree.Upsert(columnRef, columnRef);
                     }
 
-                    await _persistentTree.RMWNoResult(columnRef, columnRef, (input, current, exists) =>
+                    await _persistentTreeUpdater.Seek(columnRef);
+
+                    if (_persistentTreeUpdater.Found)
                     {
-                        if (exists)
+                        var current = _persistentTreeUpdater.GetValue();
+                        if (CompareRowReference(columnRef, current) != 0)
                         {
-                            // TODO: Check that the data has changed
-                            if (CompareRowReference(input, current) != 0)
+                            bool updated = false;
+                            if (_filter == null || _filter(columnRef.referenceBatch, columnRef.RowIndex))
                             {
-                                bool updated = false;
-                                if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
-                                {
-                                    weights.Add(1);
-                                    iterations.Add(0);
-                                    toEmitOffsets.Add(input.RowIndex);
-                                    updated = true;
-                                }
-
-                                deleteBatchKeyOffsets.Add(input.RowIndex);
-                                for (int k = 0; k < _otherColumns.Count; k++)
-                                {
-                                    deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                                }
-                                return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
+                                weights.Add(1);
+                                iterations.Add(0);
+                                toEmitOffsets.Add(columnRef.RowIndex);
+                                updated = true;
                             }
-                            return (input, GenericWriteOperation.None);
-                        }
 
-                        if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                            deleteBatchKeyOffsets.Add(columnRef.RowIndex);
+                            for (int k = 0; k < _otherColumns.Count; k++)
+                            {
+                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                            }
+                            if (updated)
+                            {
+                                await _persistentTreeUpdater.Upsert(columnRef, columnRef);
+                            }
+                            else
+                            {
+                                await _persistentTreeUpdater.Delete();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (_filter == null || _filter(columnRef.referenceBatch, columnRef.RowIndex))
                         {
                             weights.Add(1);
                             iterations.Add(0);
-                            toEmitOffsets.Add(input.RowIndex);
-                            return (input, GenericWriteOperation.Upsert);
+                            toEmitOffsets.Add(columnRef.RowIndex);
+                            await _persistentTreeUpdater.Upsert(columnRef, columnRef);
                         }
-                        return (input, GenericWriteOperation.None);
-                    });
+                    }
                 }
 
                 if (weights.Count > 0)
@@ -678,6 +699,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_deleteTreeTopersistentBatch != null);
             Debug.Assert(_emitList != null);
             Debug.Assert(_eventsCounter != null);
+            Debug.Assert(_persistentTreeUpdater != null);
 
             bool sentData = false;
 
@@ -709,19 +731,18 @@ namespace FlowtideDotNet.Core.Operators.Read
                         RowIndex = kv.Key.RowIndex
                     };
                     // Go through the deletions and delete them from the persistent tree
-                    var operation = await _persistentTree.RMWNoResult(columnRef, default, (input, current, exists) =>
+                    var operation = GenericWriteOperation.None;
+                    await _persistentTreeUpdater.Seek(in columnRef);
+                    if (_persistentTreeUpdater.Found)
                     {
-                        if (exists)
+                        var current = _persistentTreeUpdater.GetValue();
+                        for (int k = 0; k < _otherColumns.Count; k++)
                         {
-                            // Output delete event
-                            for (int k = 0; k < _otherColumns.Count; k++)
-                            {
-                                deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                            }
-                            return (current, GenericWriteOperation.Delete);
+                            deleteBatchColumns[_otherColumns[k]].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
                         }
-                        return (current, GenericWriteOperation.None);
-                    });
+                        await _persistentTreeUpdater.Delete();
+                        operation = GenericWriteOperation.Delete;
+                    }
 
                     if (operation == GenericWriteOperation.Delete)
                     {
