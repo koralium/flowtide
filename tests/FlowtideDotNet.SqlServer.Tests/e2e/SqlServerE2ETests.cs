@@ -640,7 +640,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 EnableFullReload = true,
                 FullReloadInterval = TimeSpan.FromSeconds(30),
                 FullLoadMaxRowCount = 1
-            });
+            }, default);
 
             var plan = $@"INSERT INTO [test-db].[dbo].[{destinationTableName}]
                 SELECT
@@ -650,6 +650,82 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(async () => await testStream.StartStream(plan));
             Assert.NotEmpty(exception.Message);
+        }
+
+        [Fact]
+        public async Task CustomDestinationTable()
+        {
+            var testName = nameof(CustomDestinationTable);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table6] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table6] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[testdest6] (
+                [id] [int]  PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL,
+                [my_column] nvarchar(10)
+            )");
+
+            // Insert some data
+            await _fixture.RunCommand(@"
+            INSERT INTO [test-db].[dbo].[test-table6] ([id], [created]) VALUES (1, '2024-01-03 00:00:00+01:00');
+            ");
+
+            SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                CustomBulkCopyDestinationTable = "testdest6",
+                OnDataTableCreation = (dataTable) =>
+                {
+                    dataTable.Columns.Add("my_column");
+                    return ValueTask.CompletedTask;
+                },
+                ModifyRow = (row, isDeleted, watermark, checkpointId, isInitialData) =>
+                {
+                    row["my_column"] = "val";
+                },
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData) =>
+                {
+                    using var cmd = connection.CreateCommand();
+                    cmd.CommandText = "UPDATE testdest6 SET my_column = 'val2' WHERE my_column = 'val'";
+                    cmd.ExecuteNonQuery();
+                    waitSemaphore.Release();
+                    return ValueTask.CompletedTask;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[testdest6]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table6]
+            ");
+
+            await waitSemaphore.WaitAsync();
+
+            var expectedDate = new DateTimeOffset(new DateTime(2024, 1, 3), TimeSpan.FromHours(1));
+
+            var result = await _fixture.ExecuteReader("SELECT [created], [my_column] from [test-db].[dbo].[testdest6] WHERE id = 1", (reader) =>
+            {
+                reader.Read();
+                return (reader.GetDateTimeOffset(0), reader.GetString(1));
+            });
+            Assert.Equal(expectedDate, result.Item1);
+            Assert.Equal("val2", result.Item2);
         }
     }
 }

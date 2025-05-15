@@ -78,6 +78,25 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.Gender == Entities.Gender.Female ? x.FirstName : x.LastName }));
         }
 
+        /// <summary>
+        /// Special case test where the case did not downcast correctly to IDataValue
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task SelectWithCaseStructWithNullElse()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    CASE WHEN Active = false THEN named_struct('id', FirstName) 
+                    ELSE NULL
+                    END AS name
+                FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.Active == false ? new { id = x.FirstName } : null }));
+        }
+
         [Fact]
         public async Task SelectWithCaseNoElse()
         {
