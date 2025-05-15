@@ -227,22 +227,19 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         private async Task Delete(ColumnRowReference columnRef, PrimitiveList<int> deleteBatchKeyOffsets, List<IColumn> deleteBatchColumns)
         {
-            var (operation, _) = await _tree!.RMW(
-                    in columnRef,
-                    in columnRef,
-                    (input, current, found) =>
-                    {
-                        if (found)
-                        {
-                            deleteBatchKeyOffsets.Add(input.RowIndex);
-                            for (int k = 0; k < _otherColumns.Count; k++)
-                            {
-                                deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
-                            }
-                            return (default, GenericWriteOperation.Delete);
-                        }
-                        return (default, GenericWriteOperation.None);
-                    });
+            Debug.Assert(_updater != null);
+            await _updater.Seek(in columnRef);
+
+            if (_updater.Found)
+            {
+                var current = _updater.GetValue();
+                deleteBatchKeyOffsets.Add(columnRef.RowIndex);
+                for (int k = 0; k < _otherColumns.Count; k++)
+                {
+                    deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                }
+                await _updater.Delete();
+            }
         }
 
         private async Task Upsert(
