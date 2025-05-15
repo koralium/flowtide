@@ -23,17 +23,10 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
     /// </summary>
     internal class JoinFilterPushdownVisitor : OptimizerBaseVisitor
     {
-        public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
+        private static void TestPushdownNotNull(JoinRelation joinRelation, Expression expression, List<Expression> leftPushdowns, List<Expression> rightPushdowns)
         {
-            // Check root expression
-            var visitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
-            visitor.Visit(joinRelation.Expression!, state);
-
-            List<Expression> leftPushdowns = new List<Expression>();
-            List<Expression> rightPushdowns = new List<Expression>();
-
             if ((joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Right) &&
-                MergeJoinFindVisitor.Check(joinRelation, joinRelation.Expression, out var leftKey, out var rightKey))
+                MergeJoinFindVisitor.Check(joinRelation, expression, out var leftKey, out var rightKey))
             {
                 if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right)
                 {
@@ -57,7 +50,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                         });
                     }
                 }
-                
+
                 if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left)
                 {
                     if (rightKey.ReferenceSegment is StructReferenceSegment rightStruct)
@@ -78,6 +71,30 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                             ExtensionUri = FunctionsComparison.Uri,
                             ExtensionName = FunctionsComparison.IsNotNull
                         });
+                    }
+                }
+            }
+        }
+
+        public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
+        {
+            // Check root expression
+            var visitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
+            visitor.Visit(joinRelation.Expression!, state);
+
+            List<Expression> leftPushdowns = new List<Expression>();
+            List<Expression> rightPushdowns = new List<Expression>();
+
+            if (joinRelation.Expression != null)
+            {
+                TestPushdownNotNull(joinRelation, joinRelation.Expression, leftPushdowns, rightPushdowns);
+
+                if (joinRelation.Expression is ScalarFunction scalarFunc &&
+                    scalarFunc.ExtensionUri == FunctionsBoolean.Uri && scalarFunc.ExtensionName == FunctionsBoolean.And)
+                {
+                    for (int i = 0; i < scalarFunc.Arguments.Count; i++)
+                    {
+                        TestPushdownNotNull(joinRelation, scalarFunc.Arguments[i], leftPushdowns, rightPushdowns);
                     }
                 }
             }
