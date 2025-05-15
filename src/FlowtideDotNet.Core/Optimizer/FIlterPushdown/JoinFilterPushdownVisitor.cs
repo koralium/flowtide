@@ -32,15 +32,17 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             List<Expression> leftPushdowns = new List<Expression>();
             List<Expression> rightPushdowns = new List<Expression>();
 
-            if (joinRelation.Type == JoinType.Inner &&
+            if ((joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Right) &&
                 MergeJoinFindVisitor.Check(joinRelation, joinRelation.Expression, out var leftKey, out var rightKey))
             {
-                if (leftKey.ReferenceSegment is StructReferenceSegment leftStruct)
+                if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right)
                 {
-                    leftPushdowns.Add(new ScalarFunction()
+                    if (leftKey.ReferenceSegment is StructReferenceSegment leftStruct)
                     {
-                        Arguments = new List<Expression>() 
-                        { 
+                        leftPushdowns.Add(new ScalarFunction()
+                        {
+                            Arguments = new List<Expression>()
+                        {
                             new DirectFieldReference()
                             {
                                 ReferenceSegment = new StructReferenceSegment()
@@ -50,16 +52,19 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                                 }
                             }
                         },
-                        ExtensionUri = FunctionsComparison.Uri,
-                        ExtensionName = FunctionsComparison.IsNotNull
-                    });
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsNotNull
+                        });
+                    }
                 }
                 
-                if (rightKey.ReferenceSegment is StructReferenceSegment rightStruct)
+                if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left)
                 {
-                    rightPushdowns.Add(new ScalarFunction()
+                    if (rightKey.ReferenceSegment is StructReferenceSegment rightStruct)
                     {
-                        Arguments = new List<Expression>()
+                        rightPushdowns.Add(new ScalarFunction()
+                        {
+                            Arguments = new List<Expression>()
                         {
                             new DirectFieldReference()
                             {
@@ -70,9 +75,10 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                                 }
                             }
                         },
-                        ExtensionUri = FunctionsComparison.Uri,
-                        ExtensionName = FunctionsComparison.IsNotNull
-                    });
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsNotNull
+                        });
+                    }
                 }
             }
 
