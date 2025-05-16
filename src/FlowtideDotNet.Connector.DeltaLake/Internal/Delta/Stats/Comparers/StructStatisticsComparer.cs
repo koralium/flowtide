@@ -37,46 +37,89 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
 
-            var mapVal = value.AsMap;
-            var mapLength = mapVal.GetLength();
-
-            int mapIndex = 0;
-            int propertyIndex = 0;
-
-            // Both lists are in sorted order, try and find matching keys
-            while (mapIndex < mapLength && propertyIndex < propertyComparers.Count)
+            if (value.Type == ArrowTypeId.Map)
             {
-                var mapKeyString = mapVal.GetKeyAt(mapIndex).AsString.ToString();
-                var comparerKey = propertyComparers[propertyIndex].Key;
+                var mapVal = value.AsMap;
+                var mapLength = mapVal.GetLength();
 
-                var compareResult = string.Compare(mapKeyString, comparerKey, StringComparison.OrdinalIgnoreCase);
+                int mapIndex = 0;
+                int propertyIndex = 0;
 
-                if (compareResult == 0)
+                // Both lists are in sorted order, try and find matching keys
+                while (mapIndex < mapLength && propertyIndex < propertyComparers.Count)
                 {
-                    var comparer = propertyComparers[propertyIndex].Value;
-                    var mapValue = mapVal.GetValueAt(mapIndex);
+                    var mapKeyString = mapVal.GetKeyAt(mapIndex).AsString.ToString();
+                    var comparerKey = propertyComparers[propertyIndex].Key;
 
-                    if (!comparer.IsInBetween(mapValue))
+                    var compareResult = string.Compare(mapKeyString, comparerKey, StringComparison.OrdinalIgnoreCase);
+
+                    if (compareResult == 0)
                     {
-                        return false;
+                        var comparer = propertyComparers[propertyIndex].Value;
+                        var mapValue = mapVal.GetValueAt(mapIndex);
+
+                        if (!comparer.IsInBetween(mapValue))
+                        {
+                            return false;
+                        }
+
+                        mapIndex++;
+                        propertyIndex++;
                     }
+                    else if (compareResult < 0)
+                    {
+                        // The map key is less than the comparer key, so we skip this map key
+                        mapIndex++;
+                    }
+                    else
+                    {
+                        // The map key is greater than the comparer key, so we skip this comparer key
+                        propertyIndex++;
+                    }
+                }
 
-                    mapIndex++;
-                    propertyIndex++;
-                }
-                else if (compareResult < 0)
-                {
-                    // The map key is less than the comparer key, so we skip this map key
-                    mapIndex++;
-                }
-                else
-                {
-                    // The map key is greater than the comparer key, so we skip this comparer key
-                    propertyIndex++;
-                }
+                return true;
             }
-
-            return true;
+            else if (value.Type == ArrowTypeId.Struct)
+            {
+                var structVal = value.AsStruct;
+                var structLength = structVal.Header.Count;
+                int structIndex = 0;
+                int propertyIndex = 0;
+                // Both lists are in sorted order, try and find matching keys
+                while (structIndex < structLength && propertyIndex < propertyComparers.Count)
+                {
+                    var structKeyString = structVal.Header.GetColumnName(structIndex);
+                    var comparerKey = propertyComparers[propertyIndex].Key;
+                    var compareResult = string.Compare(structKeyString, comparerKey, StringComparison.OrdinalIgnoreCase);
+                    if (compareResult == 0)
+                    {
+                        var comparer = propertyComparers[propertyIndex].Value;
+                        var structValue = structVal.GetAt(structIndex);
+                        if (!comparer.IsInBetween(structValue))
+                        {
+                            return false;
+                        }
+                        structIndex++;
+                        propertyIndex++;
+                    }
+                    else if (compareResult < 0)
+                    {
+                        // The map key is less than the comparer key, so we skip this map key
+                        structIndex++;
+                    }
+                    else
+                    {
+                        // The map key is greater than the comparer key, so we skip this comparer key
+                        propertyIndex++;
+                    }
+                }
+                return true;
+            }
+            else
+            {
+                throw new NotSupportedException($"Unsupported type: {value.Type} for struct statistics");
+            }
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)

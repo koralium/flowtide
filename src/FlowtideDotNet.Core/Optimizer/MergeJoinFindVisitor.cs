@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Optimizer
 {
     internal class MergeJoinFindVisitor : OptimizerBaseVisitor
     {
-        private bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
+        internal static bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
         {
             if (expression is ScalarFunction booleanComparison &&
                 booleanComparison.ExtensionUri == FunctionsComparison.Uri &&

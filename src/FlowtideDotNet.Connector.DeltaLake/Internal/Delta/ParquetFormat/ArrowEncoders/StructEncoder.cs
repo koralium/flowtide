@@ -20,15 +20,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
     internal class StructEncoder : IArrowEncoder
     {
         private readonly List<IArrowEncoder> _encoders;
-        private readonly List<IDataValue> _propertyNames;
+        private readonly StructHeader _structHeader;
         private StructArray? _array;
 
         public bool IsPartitionValueEncoder => false;
 
-        public StructEncoder(List<IArrowEncoder> encoders, List<IDataValue> propertyNames)
+        public StructEncoder(List<IArrowEncoder> encoders, IReadOnlyList<string> propertyNames)
         {
             this._encoders = encoders;
-            this._propertyNames = propertyNames;
+            _structHeader = StructHeader.Create(propertyNames.ToArray());
         }
         public void AddValue(int index, ref AddToColumnFunc func)
         {
@@ -44,16 +44,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowE
                 return;
             }
 
-            List<KeyValuePair<IDataValue, IDataValue>> result = new List<KeyValuePair<IDataValue, IDataValue>>();
+            IDataValue[] result = new IDataValue[_encoders.Count];
 
             for (int i = 0; i < _encoders.Count; i++)
             {
                 AddToColumnFunc innerFunc = new AddToColumnFunc();
                 _encoders[i].AddValue(index, ref innerFunc);
-                result.Add(new KeyValuePair<IDataValue, IDataValue>(_propertyNames[i], innerFunc.BoxedValue!));
+                result[i] = innerFunc.BoxedValue!;
             }
-
-            func.AddValue(new MapValue(result));
+            func.AddValue(new StructValue(_structHeader, result));
         }
 
         public void NewBatch(IArrowArray arrowArray)
