@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -49,6 +50,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
         private IMeter? _metrics;
+        private StreamVersionInformation? _streamVersion;
+
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
         private bool _isHealthy = true;
         private bool _sentLockingEvent;
@@ -392,13 +395,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             return _loopSource.Links.Union(_egressSource.Links);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {

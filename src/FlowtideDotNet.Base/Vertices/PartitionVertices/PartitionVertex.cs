@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
         private TaskCompletionSource? _pauseSource;
+        private StreamVersionInformation? _streamVersion;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
@@ -232,7 +236,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _name = operatorName;
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
@@ -240,6 +244,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
             _vertexHandler = vertexHandler;
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {

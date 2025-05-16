@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.dataflow;
+using FlowtideDotNet.Storage;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -112,7 +113,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _operatorName = operatorName;
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             throw new NotImplementedException();
         }

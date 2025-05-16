@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
 
                 _context._logger.InitializingEgressBlocks(_context.streamName);
@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
                 }
 
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         blockStateClient,
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler);
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
             }
             catch (Exception e)

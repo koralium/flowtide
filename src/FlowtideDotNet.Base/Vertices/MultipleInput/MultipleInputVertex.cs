@@ -15,6 +15,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -69,6 +70,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
@@ -271,8 +275,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 lockingEventPrepare.OtherInputsNotInCheckpoint = true;
             }
-            
-           
+
+
             if (!lockingEventPrepare.IsInitEvent)
             {
                 // If it is not an init event, only one locking event prepare should be sent.
@@ -582,13 +586,14 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return (_sourceBlock as ISourceBlock<IStreamEvent>).ReserveMessage(messageHeader, target);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {

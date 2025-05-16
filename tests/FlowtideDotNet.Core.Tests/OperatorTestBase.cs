@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests
             _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions(), new DebugLoggerProvider().CreateLogger("state"), statemanagermeter, "stream");
             await _stateManager.InitializeAsync();
             var vertexHandler = new VertexHandler("stream", "1", (time) => { }, (p1, p2, t) => Task.CompletedTask, metrics.GetOrCreateVertexMeter("1", () => ""), _stateManager.GetOrCreateClient("1"), new LoggerFactory(), new OperatorMemoryManager("sream", "op", new Meter("stream")));
-            await @operator.Initialize("1", 0, 0, vertexHandler);
+            await @operator.Initialize("1", 0, 0, vertexHandler, null);
         }
 
         public void ClearCache()

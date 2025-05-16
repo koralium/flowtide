@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         string DisplayName { get; }
 
-        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler);
+        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation);
 
         void CreateBlock();
 
