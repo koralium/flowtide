@@ -178,7 +178,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
-            PlanOptimizerSettings? planOptimizerSettings = default)
+            PlanOptimizerSettings? planOptimizerSettings = default,
+            string? version = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -251,6 +252,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                 });
 
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                flowtideBuilder.SetVersion(version);
+            }
+
             if (checkFailureListener != null)
             {
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
@@ -262,16 +268,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         }
 
         public async Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
-            PlanOptimizerSettings? planOptimizerSettings = default)
+            PlanOptimizerSettings? planOptimizerSettings = default,
+            string? version = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings);   
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version);
             await _stream!.StartAsync();
         }
 
