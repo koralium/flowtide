@@ -160,7 +160,6 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                     throw;
                 }
             }
-
         }
 
         private static int GetNormalSize(Random rand, int mean, int stdDev)
@@ -219,6 +218,71 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                 catch (Exception)
                 {
                     throw;
+                }
+            }
+        }
+
+        [Fact]
+        public async Task RandomOperationsWithUpdater()
+        {
+            List<int> insertedElements = new List<int>();
+            var tree = await Init("RandomOperations");
+            var updater = tree.CreateUpdater();
+            var rand = new Random(123);
+
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                try
+                {
+                    var operation = rand.Next(3);
+                    switch (operation)
+                    {
+                        case 0:
+                        case 1:
+                            var elementId = rand.Next(1_000_000);
+                            var ind = insertedElements.BinarySearch(elementId);
+                            if (ind < 0)
+                            {
+                                insertedElements.Insert(~ind, elementId);
+                            }
+                            await updater.Seek(new KeyValuePair<long, long>(elementId, 33000));
+                            await updater.Upsert(new KeyValuePair<long, long>(elementId, 33000), $"{elementId}");
+                            break;
+                        case 2:
+                            if (insertedElements.Count == 0)
+                            {
+                                continue;
+                            }
+                            var elementIndex = rand.Next(insertedElements.Count);
+                            var element = insertedElements[elementIndex];
+
+                            await updater.Seek(new KeyValuePair<long, long>(element, 33000));
+                            if (updater.Found)
+                            {
+                                await updater.Delete();
+                            }
+                            insertedElements.RemoveAt(elementIndex);
+                            break;
+                    }
+                }
+                catch (Exception)
+                {
+                    throw;
+                }
+            }
+
+            // assert
+            var it = tree.CreateIterator();
+            await it.SeekFirst();
+            var orderedInserted = insertedElements.OrderBy(x => x).ToList();
+
+            int count = 0;
+            await foreach (var page in it)
+            {
+                foreach (var kv in page)
+                {
+                    Assert.Equal(orderedInserted[count], kv.Key.Key);
+                    count++;
                 }
             }
         }
