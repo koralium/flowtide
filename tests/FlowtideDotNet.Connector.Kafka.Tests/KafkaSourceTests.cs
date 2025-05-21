@@ -34,7 +34,8 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             var jsonData = @"
                 {
                     ""firstName"": ""testFirst"",
-                    ""lastName"": ""testLast""  
+                    ""lastName"": ""testLast"",
+                    ""other"": ""hello""
                 }
             ";
 

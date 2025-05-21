@@ -15,13 +15,16 @@ using FlexBuffers;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Buffers;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
+using static SqlParser.Ast.MergeInsertKind;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
@@ -137,8 +140,15 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Debug.Assert(_consumer != null);
             Debug.Assert(_eventsProcessed != null);
 
-            List<RowEvent> rows = new List<RowEvent>();
             int waitTimeMs = 100;
+
+            IColumn[] columns = new IColumn[readRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
             bool inLock = false;
             while (!output.CancellationToken.IsCancellationRequested)
@@ -154,26 +164,40 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     _state.Value.PartitionOffsets[result.Partition.Value] = result.Offset.Value;
 
                     // Parse the result
-                    var ev = this._valueDeserializer.Deserialize(_keyDeserializer, result.Message.Value, result.Message.Key);
-                    rows.Add(ev);
+                    this._valueDeserializer.Deserialize(_keyDeserializer, result.Message.Value, result.Message.Key, columns, weights);
+                    iterations.Add(0);
+
                     // Wait at most 1ms between fetches, to make sure latency is as low as possible
                     waitTimeMs = 1;
-                    if (rows.Count > 100)
+                    if (weights.Count > 100)
                     {
-                        await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
-                        rows = new List<RowEvent>();
+                        _eventsProcessed.Add(weights.Count);
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        columns = new IColumn[readRelation.BaseSchema.Names.Count];
+                        for (int i = 0; i < columns.Length; i++)
+                        {
+                            columns[i] = Column.Create(MemoryAllocator);
+                        }
+
                         await SendWatermark(output);
-                        _eventsProcessed.Add(rows.Count);
                     }
                 }
                 else
                 {
-                    if (rows.Count > 0)
+                    if (weights.Count > 0)
                     {
-                        await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
-                        rows = new List<RowEvent>();
+                        _eventsProcessed.Add(weights.Count);
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        columns = new IColumn[readRelation.BaseSchema.Names.Count];
+                        for (int i = 0; i < columns.Length; i++)
+                        {
+                            columns[i] = Column.Create(MemoryAllocator);
+                        }
                         await SendWatermark(output);
-                        _eventsProcessed.Add(rows.Count);
                     }
                     if (inLock)
                     {
@@ -210,9 +234,16 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             Debug.Assert(_eventsProcessed != null);
 
             await output.EnterCheckpointLock();
-            Dictionary<int, long> beforeStartOffsets = KafkaReadClient.GetCurrentWatermarks(_consumer, _topicPartitions);
+            Dictionary<int, long> beforeStartOffsets = KafkaReadClient.GetCurrentWatermarks(_consumer, _topicPartitions, _state.Value.PartitionOffsets);
 
-            List<RowEvent> rows = new List<RowEvent>();
+            IColumn[] columns = new IColumn[readRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
             while (true)
             {
                 output.CancellationToken.ThrowIfCancellationRequested();
@@ -223,15 +254,22 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     _state.Value.PartitionOffsets[result.Partition.Value] = result.Offset.Value;
 
                     // Parse the result
-                    var ev = this._valueDeserializer.Deserialize(_keyDeserializer, result.Message.Value, result.Message.Key);
-                    rows.Add(ev);
+                    this._valueDeserializer.Deserialize(_keyDeserializer, result.Message.Value, result.Message.Key, columns, weights);
+                    iterations.Add(0);
                 }
 
-                if (result == null || rows.Count >= 100)
+                if (result == null || weights.Count >= 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
-                    rows = new List<RowEvent>();
-                    _eventsProcessed.Add(rows.Count);
+                    _eventsProcessed.Add(weights.Count);
+                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    columns = new IColumn[readRelation.BaseSchema.Names.Count];
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        columns[i] = Column.Create(MemoryAllocator);
+                    }
+                    
                     // Check offsets
                     bool offsetsReached = true;
                     foreach (var kv in beforeStartOffsets)
@@ -256,10 +294,19 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
             }
 
-            if (rows.Count > 0)
+            if (weights.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(rows, readRelation.OutputLength));
-                _eventsProcessed.Add(rows.Count);
+                _eventsProcessed.Add(weights.Count);
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+            }
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
             }
 
             // Send watermark
