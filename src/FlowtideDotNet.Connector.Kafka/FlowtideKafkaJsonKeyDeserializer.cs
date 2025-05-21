@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Json;
 using FlowtideDotNet.Core.Flexbuffer;
 using System.Text.Json;
 
@@ -29,6 +31,13 @@ namespace FlowtideDotNet.Connector.Kafka
             }
 
             return JsonSerializerUtils.JsonElementToValue(jsonDocument.RootElement);
+        }
+
+        public void Deserialize(byte[] bytes, IColumn column)
+        {
+            Utf8JsonReader utf8JsonReader = new Utf8JsonReader(bytes);
+
+            column.Add(DataValueJsonReader.Read(ref utf8JsonReader));
         }
     }
 }

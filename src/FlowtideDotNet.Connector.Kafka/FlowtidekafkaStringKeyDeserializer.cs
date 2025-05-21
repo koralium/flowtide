@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 using System.Text;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -20,6 +21,11 @@ namespace FlowtideDotNet.Connector.Kafka
         public FlxValue Deserialize(byte[] bytes)
         {
             return FlxValue.FromMemory(FlexBuffer.SingleValue(Encoding.UTF8.GetString(bytes)));
+        }
+
+        public void Deserialize(byte[] bytes, IColumn column)
+        {
+            column.Add(new StringValue(bytes));
         }
     }
 }
