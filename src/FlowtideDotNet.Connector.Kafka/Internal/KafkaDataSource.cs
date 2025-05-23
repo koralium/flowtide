@@ -24,7 +24,6 @@ using System.Buffers;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.MergeInsertKind;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
@@ -98,6 +97,9 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             var adminConf = new AdminClientConfig(flowtideKafkaOptions.ConsumerConfig);
 
+            var conf = flowtideKafkaOptions.ConsumerConfig;
+            _consumer = new ConsumerBuilder<byte[], byte[]>(conf).Build();
+
             var adminClient = new AdminClientBuilder(adminConf).Build();
             var metadata = adminClient.GetMetadata(topicName, TimeSpan.FromSeconds(10));
             HashSet<string> watermarkNames = new HashSet<string>();
@@ -109,6 +111,8 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 watermarkNames.Add(topicName + "_" + partition.PartitionId);
 
                 var topicPartition = new TopicPartition(topic.Topic, new Partition(partition.PartitionId));
+
+                var offsets = _consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
                 _topicPartitions.Add(topicPartition);
                 // Add the partition offset to the list of partitions to consume from
                 if (_state.Value.PartitionOffsets.TryGetValue(partition.PartitionId, out var offset))
@@ -117,13 +121,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
                 else
                 {
-                    topicPartitionOffsets.Add(new TopicPartitionOffset(topicPartition, new Offset(0)));
+                    topicPartitionOffsets.Add(new TopicPartitionOffset(topicPartition, new Offset(offsets.Low)));
                 }
             }
             _watermarkNames = watermarkNames;
-
-            var conf = flowtideKafkaOptions.ConsumerConfig;
-            _consumer = new ConsumerBuilder<byte[], byte[]>(conf).Build();
 
             _consumer.Assign(topicPartitionOffsets);
         }
@@ -159,8 +160,12 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
                 if (result != null)
                 {
-                    await output.EnterCheckpointLock();
-                    inLock = true;
+                    if (!inLock)
+                    {
+                        await output.EnterCheckpointLock();
+                        inLock = true;
+                    }
+                    
                     _state.Value.PartitionOffsets[result.Partition.Value] = result.Offset.Value;
 
                     // Parse the result
@@ -260,15 +265,19 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
                 if (result == null || weights.Count >= 100)
                 {
-                    _eventsProcessed.Add(weights.Count);
-                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-                    weights = new PrimitiveList<int>(MemoryAllocator);
-                    iterations = new PrimitiveList<uint>(MemoryAllocator);
-                    columns = new IColumn[readRelation.BaseSchema.Names.Count];
-                    for (int i = 0; i < columns.Length; i++)
+                    if (weights.Count > 0)
                     {
-                        columns[i] = Column.Create(MemoryAllocator);
+                        _eventsProcessed.Add(weights.Count);
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        columns = new IColumn[readRelation.BaseSchema.Names.Count];
+                        for (int i = 0; i < columns.Length; i++)
+                        {
+                            columns[i] = Column.Create(MemoryAllocator);
+                        }
                     }
+                    
                     
                     // Check offsets
                     bool offsetsReached = true;
