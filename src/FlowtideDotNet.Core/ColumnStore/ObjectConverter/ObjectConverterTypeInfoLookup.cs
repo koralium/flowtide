@@ -39,9 +39,16 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             var resolver = new DefaultJsonTypeInfoResolver();
             var typeInfo = resolver.GetTypeInfo(type, opt);
 
+            object? defaultValue = null;
+            if (typeInfo.Type.IsValueType)
+            {
+                defaultValue = Activator.CreateInstance(typeInfo.Type); // Create default value for value types
+            }
+
             if (typeInfo.Properties.Count == 0)
             {
-                return new ObjectConverterTypeInfo(type, ConvertKind(typeInfo.Kind), Array.Empty<ObjectConverterPropertyInfo>(), typeInfo.CreateObject);
+                
+                return new ObjectConverterTypeInfo(type, ConvertKind(typeInfo.Kind), Array.Empty<ObjectConverterPropertyInfo>(), typeInfo.CreateObject, defaultValue);
             }
             else
             {
@@ -51,7 +58,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                     properties.Add(new ObjectConverterPropertyInfo(property.Name, property.Get, property.Set, GetTypeInfo(property.PropertyType)));
                 }
 
-                return new ObjectConverterTypeInfo(type, ConvertKind(typeInfo.Kind), properties, typeInfo.CreateObject);
+                return new ObjectConverterTypeInfo(type, ConvertKind(typeInfo.Kind), properties, typeInfo.CreateObject, defaultValue);
             }
         }
     }

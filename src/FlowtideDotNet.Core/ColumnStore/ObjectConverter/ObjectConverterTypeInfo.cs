@@ -18,13 +18,15 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
         public ObjectTypeInfoKind TypeInfo { get; }
         public IReadOnlyList<ObjectConverterPropertyInfo> Properties { get; }
         public Func<object>? CreateObject { get; }
+        public object? DefaultValue { get; }
 
-        public ObjectConverterTypeInfo(Type type, ObjectTypeInfoKind typeInfo, IReadOnlyList<ObjectConverterPropertyInfo> properties, Func<object>? createObject)
+        public ObjectConverterTypeInfo(Type type, ObjectTypeInfoKind typeInfo, IReadOnlyList<ObjectConverterPropertyInfo> properties, Func<object>? createObject, object? defaultValue)
         {
             Type = type;
             TypeInfo = typeInfo;
             Properties = properties;
             CreateObject = createObject;
+            DefaultValue = defaultValue;
         }
     }
 }

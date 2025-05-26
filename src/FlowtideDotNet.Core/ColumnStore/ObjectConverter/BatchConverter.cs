@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             for (int i = 0; i < properties.Count; i++)
             {
                 var property = properties[i];
-                object? value = default;
+                object? value = property.TypeInfo.DefaultValue;
                 try
                 {
                     value = converters[i].Deserialize(columns[i].GetValueAt(index, default));
@@ -251,11 +251,6 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                 if (property.SetFunc == null)
                 {
                     throw new InvalidOperationException("Cannot deserialize object without a set function");
-                }
-
-                if (value == null && property.TypeInfo.Type.IsValueType)
-                {
-                    value = Activator.CreateInstance(property.TypeInfo.Type); // Create default value for value types
                 }
 
                 property.SetFunc(obj, value);
