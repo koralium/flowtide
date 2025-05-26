@@ -90,6 +90,33 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            if (otherColumn is MapColumn mapColumn)
+            {
+                var (startOffset, endOffset) = GetOffsets(thisIndex);
+                var (otherStart, otherEnd) = mapColumn.GetOffsets(otherIndex);
+                var length = endOffset - startOffset;
+                if (length != otherEnd - otherStart)
+                {
+                    return length - (otherEnd - otherStart);
+                }
+
+                for (int i = 0; i < length; i++)
+                {
+                    var otherKeyVal = mapColumn._keyColumn.GetValueAt(otherStart + i, default);
+                    var keyCompareVal = _keyColumn.CompareTo(startOffset + i, otherKeyVal, default);
+                    if (keyCompareVal != 0)
+                    {
+                        return keyCompareVal;
+                    }
+                    var otherValueVal = mapColumn._valueColumn.GetValueAt(otherStart + i, default);
+                    var valueCompareVal = _valueColumn.CompareTo(startOffset + i, otherValueVal, default);
+                    if (valueCompareVal != 0)
+                    {
+                        return valueCompareVal;
+                    }
+                }
+                return 0;
+            }
             throw new NotImplementedException();
         }
 
