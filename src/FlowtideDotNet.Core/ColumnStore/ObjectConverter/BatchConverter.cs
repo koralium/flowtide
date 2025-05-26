@@ -253,6 +253,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                     throw new InvalidOperationException("Cannot deserialize object without a set function");
                 }
 
+                if (value == null && property.TypeInfo.Type.IsValueType)
+                {
+                    value = Activator.CreateInstance(property.TypeInfo.Type); // Create default value for value types
+                }
+
                 property.SetFunc(obj, value);
             }
             return obj;
