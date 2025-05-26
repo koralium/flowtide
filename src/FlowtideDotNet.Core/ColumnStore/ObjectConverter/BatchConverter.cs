@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             for (int i = 0; i < properties.Count; i++)
             {
                 var property = properties[i];
-                object? value = default;
+                object? value = property.TypeInfo.DefaultValue;
                 try
                 {
                     value = converters[i].Deserialize(columns[i].GetValueAt(index, default));
