@@ -14,7 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
