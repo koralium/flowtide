@@ -8,6 +8,7 @@ sum((2.5, 0, 5.0, -2.5, -7.5)::fp32) = -2.5::fp64
 sum((2.5000007152557373046875, 7.0000007152557373046875, 0, 7.0000007152557373046875)::fp64) = 16.500002145767212::fp64
 sum((10, 10.3, 10.5)::dec) = 30.8::dec
 sum((10, -10.3, 10.5)::dec) = 10.2::dec
+sum((-10, -10.3)::dec) = -20.3::dec
 
 # floating_exception: Examples demonstrating exceptional floating point cases
 sum((1.5e+308, 1.5e+308, 1.5e+308)::fp64) = inf::fp64
