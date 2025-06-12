@@ -14,7 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System.ComponentModel.DataAnnotations;
 using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
@@ -96,7 +95,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                 }
                 else if (value.Type == ArrowTypeId.Decimal128)
                 {
-                    var decimalCount = currentState.AsLong + (value.AsDecimal * weight);
+                    var decimalCount = (decimal)currentState.AsLong + (value.AsDecimal * weight);
                     state.Update(new DecimalValue(decimalCount));
                 }
             }
