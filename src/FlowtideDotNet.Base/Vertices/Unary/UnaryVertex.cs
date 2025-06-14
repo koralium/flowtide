@@ -141,6 +141,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     return new AsyncEnumerableWithWait<IStreamEvent, IStreamEvent>(HandleWatermark(watermark), (s) => s, ShouldWait);
                 }
+                if (streamEvent is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    return Passthrough(initialDataDoneEvent);
+                }
 
                 throw new NotSupportedException();
             }, executionDataflowBlockOptions);

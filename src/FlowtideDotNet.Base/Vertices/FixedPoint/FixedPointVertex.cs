@@ -59,6 +59,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private bool singleReadSource;
         private TaskCompletionSource? _pauseSource;
         private IMemoryAllocator? _memoryAllocator;
+        private bool _recievedInitialLoadDoneEvent;
+
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
@@ -133,6 +135,15 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 output.Add(new KeyValuePair<int, IStreamEvent>(0, _latestWatermark));
                 _latestWatermark = null;
             }
+            else
+            {
+                if (_recievedInitialLoadDoneEvent)
+                {
+                    // If no watermark and we are in a checkpoint and we recieved an initial load done event, send it forward
+                    output.Add(new KeyValuePair<int, IStreamEvent>(0, new InitialDataDoneEvent()));
+                    _recievedInitialLoadDoneEvent = false;
+                }
+            }
 
             // Send out the checkpoint event out from the fixed point
             output.Add(new KeyValuePair<int, IStreamEvent>(0, ev));
@@ -182,6 +193,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public void CreateBlock()
         {
             singleReadSource = false;
+            _recievedInitialLoadDoneEvent = false;
 
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
@@ -322,6 +334,11 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 if (r.Value is Watermark watermark)
                 {
                     return HandleWatermark(r.Key, watermark);
+                }
+                if (r.Value is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    _recievedInitialLoadDoneEvent = true;
+                    return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
                 }
                 throw new NotSupportedException();
             }, new ExecutionDataflowBlockOptions()
