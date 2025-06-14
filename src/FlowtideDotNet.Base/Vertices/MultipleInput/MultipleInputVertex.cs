@@ -314,17 +314,12 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             Debug.Assert(_targetSentWatermark != null);
             Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
-            if (_initialWatermarkSent)
+            if (_initialWatermarkSent || _isInIteration)
             {
                 return EmptyAsyncEnumerable<IStreamEvent>.Instance;
             }
 
             _targetSentWatermark[targetId] = true;
-
-            if (_isInIteration)
-            {
-                return EmptyAsyncEnumerable<IStreamEvent>.Instance;
-            }
 
             for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
             {

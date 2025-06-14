@@ -137,11 +137,11 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             }
             else
             {
-                if (_recievedInitialLoadDoneEvent)
+                if (_receivedInitialLoadDoneEvent)
                 {
                     // If no watermark and we are in a checkpoint and we recieved an initial load done event, send it forward
                     output.Add(new KeyValuePair<int, IStreamEvent>(0, new InitialDataDoneEvent()));
-                    _recievedInitialLoadDoneEvent = false;
+                    _receivedInitialLoadDoneEvent = false;
                 }
             }
 
@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public void CreateBlock()
         {
             singleReadSource = false;
-            _recievedInitialLoadDoneEvent = false;
+            _receivedInitialLoadDoneEvent = false;
 
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 }
                 if (r.Value is InitialDataDoneEvent initialDataDoneEvent)
                 {
-                    _recievedInitialLoadDoneEvent = true;
+                    _receivedInitialLoadDoneEvent = true;
                     return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
                 }
                 throw new NotSupportedException();
