@@ -2127,7 +2127,7 @@ namespace FlowtideDotNet.Substrait.Tests
                     c2 any
                 );
 
-                SELECT c1, c2 FROM testtable WITH (WATERMKARK_OUTPUT_MODE = EVERY_BATCH)
+                SELECT c1, c2 FROM testtable WITH (WATERMARK_OUTPUT_MODE = EVERY_BATCH)
             ");
 
             var plan = builder.GetPlan();
@@ -2170,7 +2170,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             {
                                 Optimizations = new Hints.HintOptimizations()
                                 {
-                                    Properties = new Dictionary<string, string>(){ { "WATERMKARK_OUTPUT_MODE", "EVERY_BATCH" } }
+                                    Properties = new Dictionary<string, string>(){ { "WATERMARK_OUTPUT_MODE", "EVERY_BATCH" } }
                                 }
                             }
                         }
