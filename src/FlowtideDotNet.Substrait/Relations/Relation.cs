@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Hints;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Substrait.Relations
@@ -23,6 +24,9 @@ namespace FlowtideDotNet.Substrait.Relations
         public bool EmitSet => Emit != null;
 
         public abstract int OutputLength { get; }
+
+        public Hint Hint { get; set; } = new Hint();
+
 
         public abstract TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state);
 
@@ -40,6 +44,10 @@ namespace FlowtideDotNet.Substrait.Relations
                 }
                 if (Emit != null && other.Emit != null &&
                     !Emit.SequenceEqual(other.Emit))
+                {
+                    return false;
+                }
+                if (!Hint.Equals(other.Hint))
                 {
                     return false;
                 }
