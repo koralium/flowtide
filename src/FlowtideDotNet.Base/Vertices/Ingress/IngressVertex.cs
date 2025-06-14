@@ -304,6 +304,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 await SendInitial(output);
                 // Send event here that initial is completed
+                await output.SendEvent(new InitialDataDoneEvent());
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 
