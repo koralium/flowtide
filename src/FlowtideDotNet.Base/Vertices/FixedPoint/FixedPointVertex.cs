@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private bool singleReadSource;
         private TaskCompletionSource? _pauseSource;
         private IMemoryAllocator? _memoryAllocator;
-        private bool _recievedInitialLoadDoneEvent;
+        private bool _receivedInitialLoadDoneEvent;
 
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
