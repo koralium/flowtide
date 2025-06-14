@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
             }
 
-            if (keyIndex == -1)
+            if (keyIndex == -1 && !options.IsImmutable)
             {
                 readRelation.BaseSchema.Names.Add("_key");
 
@@ -54,6 +54,20 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
                 readRelation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
                 keyIndex = readRelation.BaseSchema.Names.Count - 1;
+            }
+
+            if (options.IsImmutable)
+            {
+                if (readRelation.Filter != null)
+                {
+                    return new FilterRelation()
+                    {
+                        Condition = readRelation.Filter,
+                        Input = readRelation,
+                        Emit = readRelation.Emit
+                    };
+                }
+                return readRelation;
             }
 
             return new NormalizationRelation()

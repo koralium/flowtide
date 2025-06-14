@@ -297,7 +297,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         dataValueContainer._type = ArrowTypeId.Null;
                         return;
                     }
-                    _columns[columnIndex].GetValueAt(in index, in dataValueContainer, child);
+                    _columns[columnIndex].GetValueAt(in index, in dataValueContainer, child.Child);
                     return;
                 }
                 else if (child is StructReferenceSegment structReferenceSegment)

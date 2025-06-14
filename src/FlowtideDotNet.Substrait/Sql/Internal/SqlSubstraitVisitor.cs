@@ -981,9 +981,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     if (IsTableFunction(join.Relation))
                     {
-                        return VisitTableFunctionJoin(join, parent);
+                        parent = VisitTableFunctionJoin(join, parent);
                     }
-                    parent = VisitJoin(join, parent, state);
+                    else
+                    {
+                        parent = VisitJoin(join, parent, state);
+                    }
                     Debug.Assert(parent != null);
                 }
             }

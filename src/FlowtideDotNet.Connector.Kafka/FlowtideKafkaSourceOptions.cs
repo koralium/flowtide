@@ -21,5 +21,7 @@ namespace FlowtideDotNet.Connector.Kafka
         public required IFlowtideKafkaKeyDeserializer KeyDeserializer { get; set; }
 
         public required IFlowtideKafkaDeserializer ValueDeserializer { get; set; }
+
+        public bool IsImmutable { get; set; } = false;
     }
 }
