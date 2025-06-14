@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Substrait.Hints
         {
             get
             {
-                return Alias != null &&
+                return Alias != null ||
                     Optimizations.Properties.Count > 0;
             }
         }
