@@ -12,6 +12,7 @@
 
 using CsvHelper;
 using CsvHelper.Configuration;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -267,7 +268,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             _lastLoadedFile.Value = deltaFileName;
             _batchNumber.Value = nextBatchId;
 
-            await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_batchNumber.Value)));
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
 
             output.ExitCheckpointLock();
@@ -427,7 +428,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
             
 
-            await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_batchNumber.Value)));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
             if (_fileOptions.DeltaGetNextFile != null)

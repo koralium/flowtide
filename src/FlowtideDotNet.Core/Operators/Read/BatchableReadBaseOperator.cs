@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -234,7 +235,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
             if (sentUpdates)
             {
-                await output.SendWatermark(new Base.Watermark(_watermarkName, maxWatermark));
+                await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(maxWatermark)));
             }
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
@@ -400,7 +401,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
             // Send the new max watermark
             _state.Value.LastWatermark = maxWatermark;
-            await output.SendWatermark(new Base.Watermark(_watermarkName, maxWatermark));
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(maxWatermark)));
 
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));

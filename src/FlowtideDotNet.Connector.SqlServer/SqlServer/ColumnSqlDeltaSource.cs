@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
@@ -225,7 +226,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     var eventBatchData = new EventBatchData(columns);
                     var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
                     Logger.ChangesFoundInTable(weights.Count, FullTableName, StreamName, Name);
-                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, State.Value.ChangeTrackingVersion));
+                    yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(State.Value.ChangeTrackingVersion)));
                     InitializeBatchCollections(out weights, out iterations, out columns);
                 }
             }
@@ -238,7 +239,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 var eventBatchData = new EventBatchData(columns);
                 var weightedBatch = new EventBatchWeighted(weights, iterations, eventBatchData);
                 Logger.ChangesFoundInTable(weights.Count, FullTableName, StreamName, Name);
-                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, State.Value.ChangeTrackingVersion));
+                yield return new DeltaReadEvent(weightedBatch, new Base.Watermark(ReadRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(State.Value.ChangeTrackingVersion)));
             }
             else
             {
