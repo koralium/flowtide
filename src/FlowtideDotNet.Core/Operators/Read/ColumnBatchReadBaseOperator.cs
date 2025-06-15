@@ -24,6 +24,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -57,6 +58,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private EventBatchData? _deleteTreeTopersistentBatch;
         private ICounter<long>? _eventsCounter;
         private bool _waitingForFullLoad;
+        private WatermarkOutputMode _watermarkOutputMode;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -68,6 +70,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 _filter = ColumnBooleanCompiler.Compile(readRelation.Filter, functionsRegister);
             }
+
         }
 
         public override Task DeleteAsync()
@@ -148,10 +151,32 @@ namespace FlowtideDotNet.Core.Operators.Read
             await DoFullLoad(output);
         }
 
+        private WatermarkOutputMode GetWatermarkOutputMode()
+        {
+            if (_readRelation.Hint.Optimizations.Properties.TryGetValue("WATERMARK_OUTPUT_MODE", out var mode))
+            {
+                switch (mode)
+                {
+                    case "AFTER_ALL_DATA":
+                        return WatermarkOutputMode.AFTER_ALL_DATA;
+                    case "ON_EACH_BATCH":
+                        return WatermarkOutputMode.ON_EACH_BATCH;
+                    default:
+                        Logger.LogWarning("Unknown watermark output mode: {mode}", mode);
+                        // Default to AFTER_ALL_DATA if the mode is unknown
+                        return WatermarkOutputMode.AFTER_ALL_DATA;
+                };
+            }
+            return WatermarkOutputMode.AFTER_ALL_DATA;
+        }
+
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
+
+            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, "WATERMARK_OUTPUT_MODE");
+            _watermarkOutputMode = GetWatermarkOutputMode();
 
             if (_eventsCounter == null)
             {
@@ -547,6 +572,12 @@ namespace FlowtideDotNet.Core.Operators.Read
                     _eventsCounter.Add(weights.Count);
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                     sentData = true;
+
+                    if (_watermarkOutputMode == WatermarkOutputMode.ON_EACH_BATCH && lastWatermark > 0)
+                    {
+                        // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
+                        await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
+                    }
                 }
                 else
                 {
