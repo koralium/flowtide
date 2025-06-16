@@ -18,9 +18,16 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
-    internal static class WatermarkSerializeFactory
+    public static class WatermarkSerializeFactory
     {
         private static Dictionary<int, IWatermarkSerializer> _serializers = new Dictionary<int, IWatermarkSerializer>();
+        private static object _addLock = new object();
+
+        static WatermarkSerializeFactory()
+        {
+            // Register default serializers here if needed
+            RegisterWatermarkType(1, new LongWatermarkValueSerializer());
+        }
 
         public static IWatermarkSerializer GetWatermarkSerializer(int typeId)
         {
@@ -31,13 +38,30 @@ namespace FlowtideDotNet.Base
             throw new KeyNotFoundException($"No serializer registered for type ID {typeId}.");
         }
 
+
+        public static bool TryRegisterWatermarkType(int typeId, IWatermarkSerializer serializer)
+        {
+            lock (_addLock)
+            {
+                if (_serializers.ContainsKey(typeId))
+                {
+                    return false; // Type ID already registered
+                }
+                _serializers[typeId] = serializer;
+                return true;
+            }
+        }
+
         public static void RegisterWatermarkType(int typeId, IWatermarkSerializer serializer)
         {
-            if (_serializers.ContainsKey(typeId))
+            lock (_addLock)
             {
-                throw new ArgumentException($"A serializer for type ID {typeId} is already registered.", nameof(typeId));
+                if (_serializers.ContainsKey(typeId))
+                {
+                    throw new ArgumentException($"A serializer for type ID {typeId} is already registered.", nameof(typeId));
+                }
+                _serializers[typeId] = serializer;
             }
-            _serializers[typeId] = serializer;
         }
     }
 }

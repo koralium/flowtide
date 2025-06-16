@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -28,6 +30,7 @@ namespace FlowtideDotNet.Base
         {
             Value = value;
         }
+
         public int CompareTo(IWatermarkValue? other)
         {
             if (other is LongWatermarkValue otherLong)
@@ -47,6 +50,32 @@ namespace FlowtideDotNet.Base
         public static LongWatermarkValue Create(long value)
         {
             return new LongWatermarkValue(value);
+        }
+    }
+
+    internal class LongWatermarkValueSerializer : IWatermarkSerializer
+    {
+        public IWatermarkValue Deserialize(ref SequenceReader<byte> reader)
+        {
+            if (!reader.TryReadLittleEndian(out long val))
+            {
+                throw new InvalidOperationException("Failed to read long value from the buffer.");
+            }
+            return new LongWatermarkValue(val);
+        }
+
+        public void Serialize(IWatermarkValue value, IBufferWriter<byte> writer)
+        {
+            if (value is LongWatermarkValue longWatermarkValue)
+            {
+                var span = writer.GetSpan(8);
+                BinaryPrimitives.WriteInt64LittleEndian(span, longWatermarkValue.Value);
+                writer.Advance(8);
+            }
+            else
+            {
+                throw new ArgumentException("Value must be of type LongWatermarkValue", nameof(value));
+            }
         }
     }
 }
