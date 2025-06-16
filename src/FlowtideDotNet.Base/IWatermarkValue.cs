@@ -23,15 +23,7 @@ namespace FlowtideDotNet.Base
         int TypeId { get; }
         public static IWatermarkValue? Min(IWatermarkValue? a, IWatermarkValue? b)
         {
-            if (a == null && b == null)
-            {
-                return null;
-            }
-            if (a == null)
-            {
-                return null;
-            }
-            if (b == null)
+            if (a == null || b == null)
             {
                 return null;
             }
