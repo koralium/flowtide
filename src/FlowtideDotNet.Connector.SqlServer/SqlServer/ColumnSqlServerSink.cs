@@ -173,16 +173,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                 for (int c = 0; c < m_dataTable.Columns.Count; c++)
                 {
-                    if (m_dataTable.Columns[c] is DataColumn dataColumn)
+                    var dataColumn = m_dataTable.Columns[c];
+                    if (columnIndexMap.TryGetValue(dataColumn.ColumnName, out int columnIndex))
                     {
-                        if (columnIndexMap.TryGetValue(dataColumn.ColumnName, out int columnIndex))
-                        {
-                            m_sqlBulkCopy.ColumnMappings.Add(c, columnIndex);
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_tmpTableName}'.");
-                        }
+                        m_sqlBulkCopy.ColumnMappings.Add(c, columnIndex);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_tmpTableName}'.");
                     }
                 }
             }
