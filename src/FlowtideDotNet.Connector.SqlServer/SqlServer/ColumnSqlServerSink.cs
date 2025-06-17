@@ -165,23 +165,21 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
             {
                 var columns = await SqlServerUtils.GetColumns(m_connection, m_tmpTableName);
+                var columnIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    columnIndexMap[columns[i]] = i;
+                }
 
                 for (int c = 0; c < m_dataTable.Columns.Count; c++)
                 {
                     if (m_dataTable.Columns[c] is DataColumn dataColumn)
                     {
-                        bool found = false;
-                        for (int i = 0; i < columns.Count; i++)
+                        if (columnIndexMap.TryGetValue(dataColumn.ColumnName, out int columnIndex))
                         {
-                            if (dataColumn.ColumnName.Equals(columns[i], StringComparison.OrdinalIgnoreCase))
-                            {
-                                found = true;
-                                m_sqlBulkCopy.ColumnMappings.Add(c, i);
-                                break;
-                            }
+                            m_sqlBulkCopy.ColumnMappings.Add(c, columnIndex);
                         }
-
-                        if (!found)
+                        else
                         {
                             throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_tmpTableName}'.");
                         }
