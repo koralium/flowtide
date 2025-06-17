@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
             {
-                var columns = await SqlServerUtils.GetColumns(m_connection, m_tmpTableName);
+                var columns = await SqlServerUtils.GetColumns(m_connection, m_sqlServerSinkOptions.CustomBulkCopyDestinationTable);
                 var columnIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 for (int i = 0; i < columns.Count; i++)
                 {
