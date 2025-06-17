@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     }
                     else
                     {
-                        throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_tmpTableName}'.");
+                        throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_sqlServerSinkOptions.CustomBulkCopyDestinationTable}'.");
                     }
                 }
             }
