@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
@@ -134,7 +135,7 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             _state.Value.LastSentTimestamp = currentTimestamp;
 
             // Set the watermark to the current timetamp
-            await output.SendWatermark(new Base.Watermark("__timestamp", DateTimeToTicks(currentTimestamp)));
+            await output.SendWatermark(new Base.Watermark("__timestamp", LongWatermarkValue.Create(DateTimeToTicks(currentTimestamp))));
 
             output.ExitCheckpointLock();
             // Schedule a checkpoint since data has changed

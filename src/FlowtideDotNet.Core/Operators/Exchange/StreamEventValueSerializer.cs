@@ -12,6 +12,7 @@
 
 using Apache.Arrow.Ipc;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -154,7 +155,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Failed to read watermark count");
             }
 
-            var watermarksBuilder = ImmutableDictionary.CreateBuilder<string, long>();
+            var watermarksBuilder = ImmutableDictionary.CreateBuilder<string, IWatermarkValue>();
             for (int i = 0; i < watermarkCount; i++)
             {
                 if (!reader.TryReadLittleEndian(out int keyLength))
@@ -166,12 +167,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 reader.Advance(keyLength);
                 var key = Encoding.UTF8.GetString(keyBytes);
 
-                if (!reader.TryReadLittleEndian(out long value))
+                if (!reader.TryReadLittleEndian(out int watermarkValueTypeId))
                 {
                     throw new InvalidOperationException("Failed to read value");
                 }
 
-                watermarksBuilder.Add(new KeyValuePair<string, long>(key, value));
+                var watermarkSerializer = WatermarkSerializeFactory.GetWatermarkSerializer(watermarkValueTypeId);
+                watermarksBuilder.Add(new KeyValuePair<string, IWatermarkValue>(key, watermarkSerializer.Deserialize(ref reader)));
             }
 
             return new Watermark(watermarksBuilder.ToImmutableDictionary(), startTime, sourceOperatorId);
@@ -300,12 +302,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             foreach (var wm in watermark.Watermarks)
             {
                 var keyLength = Encoding.UTF8.GetByteCount(wm.Key);
-                var spanLength = keyLength + 12;
+                var spanLength = keyLength + 8;
                 var span = writer.GetSpan(spanLength);
                 BinaryPrimitives.WriteInt32LittleEndian(span, keyLength);
                 Encoding.UTF8.GetBytes(wm.Key, span.Slice(4));
-                BinaryPrimitives.WriteInt64LittleEndian(span.Slice(4 + keyLength), wm.Value);
+                // Write the typeId of the watermark
+                BinaryPrimitives.WriteInt32LittleEndian(span.Slice(4 + keyLength), wm.Value.TypeId);
                 writer.Advance(spanLength);
+                WatermarkSerializeFactory.GetWatermarkSerializer(wm.Value.TypeId).Serialize(wm.Value, writer);
             }
         }
 

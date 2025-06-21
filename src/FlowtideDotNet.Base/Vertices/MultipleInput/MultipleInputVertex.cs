@@ -56,6 +56,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private CancellationTokenSource? tokenSource;
         private IMemoryAllocator? _memoryAllocator;
         private TaskCompletionSource? _pauseSource;
+        private bool _initialWatermarkSent;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -169,6 +170,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 {
                     return HandleWatermark(r.Key, watermark);
                 }
+                if (r.Value is InitialDataDoneEvent initialDataDone)
+                {
+                    return HandleInitialDataDoneEvent(r.Key, initialDataDone);
+                }
                 throw new NotSupportedException();
             }, executionDataflowBlockOptions);
 
@@ -193,6 +198,14 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             _targetWatermarks = new Watermark[targetCount];
             _targetSentDataSinceLastWatermark = new bool[targetCount];
             _targetSentWatermark = new bool[targetCount];
+            _initialWatermarkSent = false;
+
+            for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+            {
+                // We set this to true for the initial data, so all inputs have time to send their initial data before the first watermark is sent.
+                // If a target does not send any data, it will still send an InitialDataDoneEvent which will handle that input.
+                _targetSentDataSinceLastWatermark[i] = true;
+            }
 
             foreach (var t in _targetHolders)
             {
@@ -294,6 +307,54 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
         }
 
+        private IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
+        {
+            Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
+            Debug.Assert(_targetWatermarks != null, nameof(_targetWatermarks));
+            Debug.Assert(_targetSentWatermark != null);
+            Debug.Assert(_targetSentDataSinceLastWatermark != null);
+
+            if (_initialWatermarkSent || _isInIteration)
+            {
+                return EmptyAsyncEnumerable<IStreamEvent>.Instance;
+            }
+
+            _targetSentWatermark[targetId] = true;
+
+            for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+            {
+                if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
+                {
+                    return EmptyAsyncEnumerable<IStreamEvent>.Instance;
+                }
+            }
+            for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
+            {
+                _targetSentDataSinceLastWatermark[i] = false;
+                _targetSentWatermark[i] = false;
+            }
+
+            bool hasRecievedWatermark = false;
+
+            for(int i = 0; i < _targetWatermarks.Length; i++)
+            {
+                if (_targetWatermarks[i] != null)
+                {
+                    hasRecievedWatermark = true;
+                    break;
+                }
+            }
+            _initialWatermarkSent = true;
+
+            if (!hasRecievedWatermark || (_currentWatermark == null))
+            {
+                // If no watermark was sent, send an empty one
+                return new SingleAsyncEnumerable<IStreamEvent>(initialDataDoneEvent);
+            }
+
+            return new SingleAsyncEnumerable<IStreamEvent>(_currentWatermark);
+        }
+
         private async IAsyncEnumerable<IStreamEvent> HandleWatermark(int targetId, Watermark watermark)
         {
             Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
@@ -303,7 +364,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             if (_currentWatermark == null)
             {
-                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty, watermark.StartTime)
+                _currentWatermark = new Watermark(ImmutableDictionary<string, IWatermarkValue>.Empty, watermark.StartTime)
                 {
                     SourceOperatorId = watermark.SourceOperatorId
                 };
@@ -315,7 +376,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
-                long watermarkValue = kv.Value;
+                IWatermarkValue? watermarkValue = kv.Value;
                 for (int i = 0; i < _targetWatermarkNames.Length; i++)
                 {
                     // Check if any other target handles the same key
@@ -324,15 +385,15 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                         if (_targetWatermarks[i] != null &&
                             _targetWatermarks[i].Watermarks.TryGetValue(kv.Key, out var otherTargetOffset))
                         {
-                            watermarkValue = Math.Min(watermarkValue, otherTargetOffset);
+                            watermarkValue = IWatermarkValue.Min(watermarkValue, otherTargetOffset);
                         }
                         else
                         {
-                            watermarkValue = 0;
+                            watermarkValue = null;
                         }
                     }
                 }
-                if (watermarkValue > 0)
+                if (watermarkValue != null)
                 {
                     currentDict = currentDict.SetItem(kv.Key, watermarkValue);
                 }
@@ -376,6 +437,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     yield return new StreamMessage<T>(e, _currentTime);
                 }
                 _previousWatermark = _currentWatermark;
+                _initialWatermarkSent = true;
                 yield return _currentWatermark;
             }
         }
@@ -431,7 +493,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, -1)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, IWatermarkValue>(x, null!)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
 
 
                 return initWatermarksEvent;

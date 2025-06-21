@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.Sources.Configuration.Internal
                 _state.Value.JsonFormatted = jsonFormattedOptions;
                 _state.Value.Version++;
 
-                await output.SendWatermark(new Watermark(_watermarkName, _state.Value.Version));
+                await output.SendWatermark(new Watermark(_watermarkName, LongWatermarkValue.Create(_state.Value.Version)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             else if (!_state.Value.JsonFormatted.Equals(jsonFormattedOptions))
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.Sources.Configuration.Internal
                 _state.Value.Version++;
 
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-                await output.SendWatermark(new Watermark(_watermarkName, _state.Value.Version));
+                await output.SendWatermark(new Watermark(_watermarkName, LongWatermarkValue.Create(_state.Value.Version)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
         }

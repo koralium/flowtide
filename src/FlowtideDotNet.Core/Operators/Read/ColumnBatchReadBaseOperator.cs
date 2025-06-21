@@ -686,7 +686,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             if (lastWatermark >= 0 && sentData)
             {
-                await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
+                await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(lastWatermark)));
             }
 
             // Exit the checkpoint lock

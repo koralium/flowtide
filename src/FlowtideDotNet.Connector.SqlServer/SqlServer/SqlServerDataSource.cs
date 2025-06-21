@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
@@ -166,7 +167,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 _eventsProcessed.Add(result.Count);
                 Logger.ChangesFoundInTable(result.Count, _tableName, StreamName, Name);
                 await output.SendAsync(new StreamEventBatch(result, readRelation.OutputLength));
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.ChangeTrackingVersion)));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
 
@@ -347,7 +348,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 await allInput!.FlushAsync();
 #endif
                 // Send watermark information after all initial data has been loaded
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.ChangeTrackingVersion)));
 
                 output.ExitCheckpointLock();
                 // Schedule a checkpoint after all the data has been sent

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -209,7 +210,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
 
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
+                await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_batchNumber.Value)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             output.ExitCheckpointLock();
@@ -332,7 +333,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                 }
             }
 
-            await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_batchNumber.Value)));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
             if (_fileOptions.DeltaGetNextFiles != null)

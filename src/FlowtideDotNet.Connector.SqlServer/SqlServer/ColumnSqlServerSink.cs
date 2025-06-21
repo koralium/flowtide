@@ -161,6 +161,30 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             m_sqlBulkCopy = new SqlBulkCopy(m_connection);
             m_sqlBulkCopy.DestinationTableName = m_tmpTableName;
 
+
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
+            {
+                var columns = await SqlServerUtils.GetColumns(m_connection, m_sqlServerSinkOptions.CustomBulkCopyDestinationTable);
+                var columnIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    columnIndexMap[columns[i]] = i;
+                }
+
+                for (int c = 0; c < m_dataTable.Columns.Count; c++)
+                {
+                    var dataColumn = m_dataTable.Columns[c];
+                    if (columnIndexMap.TryGetValue(dataColumn.ColumnName, out int columnIndex))
+                    {
+                        m_sqlBulkCopy.ColumnMappings.Add(c, columnIndex);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_sqlServerSinkOptions.CustomBulkCopyDestinationTable}'.");
+                    }
+                }
+            }
+
             if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null)
             {
                 await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
@@ -199,7 +223,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 if (m_dataTable.Rows.Count > 1_000)
                 {
                     await m_sqlBulkCopy.WriteToServerAsync(m_dataTable);
-
+                    
                     if (m_mergeIntoCommand != null)
                     {
                         await m_mergeIntoCommand.ExecuteNonQueryAsync();

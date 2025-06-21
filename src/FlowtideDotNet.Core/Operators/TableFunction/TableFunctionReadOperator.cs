@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
@@ -115,7 +116,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                     await output.SendAsync(new StreamEventBatch(batch));
                 }
 
-                await output.SendWatermark(new Base.Watermark(Name, 1));
+                await output.SendWatermark(new Base.Watermark(Name, new LongWatermarkValue(1)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 _state.Value.HasSentInitial = true;
             }

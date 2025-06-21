@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -118,7 +119,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
 
@@ -205,6 +206,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (weights.Count > 0)
             {
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
             }
             else
             {
@@ -216,7 +218,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 }
             }
             _state.Value.LatestOffset = fetchedOffset;
-            await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
+            
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
