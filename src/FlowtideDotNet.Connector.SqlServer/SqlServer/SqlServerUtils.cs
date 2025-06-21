@@ -947,18 +947,34 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         public static async Task<List<string>> GetColumns(SqlConnection connection, string tableFullName)
         {
             var splitName = tableFullName.Split('.');
-            if (splitName.Length != 3)
+            string? db = null;
+            string? schema = null;
+            string? table = null;
+            if (splitName.Length == 3)
             {
-                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+                db = splitName[0];
+                schema = splitName[1];
+                table = splitName[2];
             }
-            var db = splitName[0];
-            var schema = splitName[1];
-            var table = splitName[2];
-            await connection.ChangeDatabaseAsync(db);
+            else if (splitName.Length == 2)
+            {
+                schema = splitName[0];
+                table = splitName[1];
+            }
+            else
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename or schema.tablename");
+            }
+            if (db != null)
+            {
+                await connection.ChangeDatabaseAsync(db);
+            }
+            
             var cmd = @"
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema
+            ORDER BY ORDINAL_POSITION";
             using var command = connection.CreateCommand();
             command.CommandText = cmd;
             command.Parameters.Add(new SqlParameter("tableName", table));

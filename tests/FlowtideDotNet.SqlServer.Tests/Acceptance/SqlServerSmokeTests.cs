@@ -241,7 +241,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 })
             }, 1), 0));
 
-            await sink.SendAsync(new Watermark("test", 1));
+            await sink.SendAsync(new Watermark("test", LongWatermarkValue.Create(1)));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 

@@ -304,6 +304,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         {
                             if (uploadTasks[i].IsCompleted)
                             {
+                                if (uploadTasks[i].IsFaulted)
+                                {
+                                    throw new InvalidOperationException($"Failed to upload changes: {uploadTasks[i].Exception?.Message}", uploadTasks[i].Exception);
+                                }
                                 lastToken = uploadTasks[i].Result;
                                 uploadTasks.RemoveAt(i);
                             }

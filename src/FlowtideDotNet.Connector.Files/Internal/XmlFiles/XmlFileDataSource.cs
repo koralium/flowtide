@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers;
 using FlowtideDotNet.Core;
@@ -276,7 +277,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
 
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(_watermarkName, _batchNumber.Value));
+                await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_batchNumber.Value)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             output.ExitCheckpointLock();
@@ -411,7 +412,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 }
             }
 
-            await output.SendWatermark(new Base.Watermark(_watermarkName, 1));
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(1)));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
 
             if (_fileOptions.DeltaGetNextFiles != null)

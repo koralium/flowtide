@@ -12,6 +12,7 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.Base;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -880,8 +881,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["orders"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["orders"]).Value);
             await Crash();
 
             GenerateData();
@@ -889,8 +890,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(2000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(2000, LastWatermark.Watermarks["orders"]);
+            Assert.Equal(2000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(2000, ((LongWatermarkValue)LastWatermark.Watermarks["orders"]).Value);
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
@@ -1131,25 +1132,25 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["users"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Null(LastWatermark.Watermarks["users"]);
+            Assert.Null(LastWatermark.Watermarks["projectmembers"]);
 
             GenerateUsers(1000);
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Null(LastWatermark.Watermarks["projectmembers"]);
 
             GenerateProjectMembers(1000);
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projectmembers"]).Value);
 
             var expected = from user in Users
                            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
