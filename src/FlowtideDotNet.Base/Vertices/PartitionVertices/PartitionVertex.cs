@@ -138,6 +138,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 {
                     return HandleWatermark(watermark);
                 }
+                if (x is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    return Broadcast(initialDataDoneEvent);
+                }
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
             _inputTargetBlock = _inputBlock;
@@ -183,6 +187,16 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         protected virtual Task OnWatermark(Watermark watermark)
         {
             return Task.CompletedTask;
+        }
+
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent e)
+        {
+            List<KeyValuePair<int, IStreamEvent>> output = new List<KeyValuePair<int, IStreamEvent>>();
+            for (int i = 0; i < targetNumber; i++)
+            {
+                output.Add(new KeyValuePair<int, IStreamEvent>(i, e));
+            }
+            return output.ToAsyncEnumerable();
         }
 
         private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
