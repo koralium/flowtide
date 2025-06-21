@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Decoders;
 using FlowtideDotNet.Core;
@@ -86,7 +87,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 if (await HandleDataRows(iterator, output))
                 {
                     _state.Value.WatermarkVersion++;
-                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.Value.WatermarkVersion));
+                    await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(_state.Value.WatermarkVersion)));
 
                     ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 }
@@ -209,7 +210,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
                 await HandleDataRows(iterator, output);
                 _state.Value.WatermarkVersion++;
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, _state.Value.WatermarkVersion));
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(_state.Value.WatermarkVersion)));
                 _state.Value.FetchedInitial = true;
             }
 

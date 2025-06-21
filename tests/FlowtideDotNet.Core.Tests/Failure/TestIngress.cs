@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
@@ -83,7 +84,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             {
                 streamEvent
             }, 3));
-            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", 1));
+            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", LongWatermarkValue.Create(1)));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("on_check", TimeSpan.FromSeconds(5));
             this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));

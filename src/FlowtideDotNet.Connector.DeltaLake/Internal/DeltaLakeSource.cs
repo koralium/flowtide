@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
@@ -118,7 +119,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             _hasCheckpointed = false;
             _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
-            await output.SendWatermark(new Base.Watermark(_tableName, _state.Value.CurrentVersion));
+            await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             output.ExitCheckpointLock();
         }
@@ -327,7 +328,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             _hasCheckpointed = false;
             _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
-            await output.SendWatermark(new Base.Watermark(_tableName, _state.Value.CurrentVersion));
+            await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             output.ExitCheckpointLock();
         }
@@ -485,7 +486,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
 
                 _state.Value.CurrentVersion = _table.Version;
-                await output.SendWatermark(new Base.Watermark(_tableName, _state.Value.CurrentVersion));
+                await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 output.ExitCheckpointLock();
             }

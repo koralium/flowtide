@@ -303,7 +303,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             if (_currentWatermark == null)
             {
-                _currentWatermark = new Watermark(ImmutableDictionary<string, long>.Empty, watermark.StartTime)
+                _currentWatermark = new Watermark(ImmutableDictionary<string, IWatermarkValue>.Empty, watermark.StartTime)
                 {
                     SourceOperatorId = watermark.SourceOperatorId
                 };
@@ -315,7 +315,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
-                long watermarkValue = kv.Value;
+                IWatermarkValue? watermarkValue = kv.Value;
                 for (int i = 0; i < _targetWatermarkNames.Length; i++)
                 {
                     // Check if any other target handles the same key
@@ -324,15 +324,15 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                         if (_targetWatermarks[i] != null &&
                             _targetWatermarks[i].Watermarks.TryGetValue(kv.Key, out var otherTargetOffset))
                         {
-                            watermarkValue = Math.Min(watermarkValue, otherTargetOffset);
+                            watermarkValue = IWatermarkValue.Min(watermarkValue, otherTargetOffset);
                         }
                         else
                         {
-                            watermarkValue = 0;
+                            watermarkValue = null;
                         }
                     }
                 }
-                if (watermarkValue > 0)
+                if (watermarkValue != null)
                 {
                     currentDict = currentDict.SetItem(kv.Key, watermarkValue);
                 }
@@ -431,7 +431,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, long>(x, -1)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, IWatermarkValue>(x, null!)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
 
 
                 return initWatermarksEvent;

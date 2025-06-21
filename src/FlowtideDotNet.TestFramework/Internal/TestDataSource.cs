@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
@@ -67,7 +68,7 @@ namespace FlowtideDotNet.TestFramework.Internal
             }
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(_tableName, _batchIndex));
+                await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_batchIndex)));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             
@@ -98,7 +99,7 @@ namespace FlowtideDotNet.TestFramework.Internal
                 _batchIndex++;
                 await output.SendAsync(new StreamEventBatch(batch));
             }
-            await output.SendWatermark(new Base.Watermark(_tableName, _batchIndex));
+            await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_batchIndex)));
             output.ExitCheckpointLock();
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             await RegisterTrigger(DeltaLoadName, TimeSpan.FromMilliseconds(100));
