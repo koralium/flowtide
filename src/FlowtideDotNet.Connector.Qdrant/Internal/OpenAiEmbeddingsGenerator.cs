@@ -13,10 +13,8 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using static Substrait.Protobuf.Expression.Types.ReferenceSegment.Types;
 
 namespace FlowtideDotNet.Connector.Qdrant.Internal
 {
@@ -44,7 +42,19 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 .SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ExecutePipeline(_options.ResiliencePipeline);
 
-            result.EnsureSuccessStatusCode();
+            if (!result.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var body = await result.Content.ReadAsStringAsync(cancellationToken);
+                    throw new OpenAiEmbeddingsGeneratorException(result.StatusCode, body);
+                }
+                catch (Exception ex)
+                {
+                    throw new OpenAiEmbeddingsGeneratorException(result.StatusCode, ex.Message);
+                }
+            }
+
             var response = await result.Content.ReadFromJsonAsync<EmbeddingResponseRoot>(_serializerOptions, cancellationToken: cancellationToken);
 
             Debug.Assert(response != null);
