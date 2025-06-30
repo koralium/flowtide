@@ -38,22 +38,32 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 var remaining = tokens.Count - index;
                 var count = Math.Min(_options.TokenChunkSize, remaining);
 
-                var subTokens = tokens.Skip(index).Take(count);
+                var subTokens = tokens.Skip(index).Take(count).ToList();
                 var chunkText = tokenizer.Decode(subTokens);
+
+                // Try to trim at the last whitespace (word boundary)
+                int lastSpace = chunkText.LastIndexOf(' ');
+                if (lastSpace > _options.MinTokenChunkSize / 2) // Ensure we're not trimming too much
+                {
+                    chunkText = chunkText[..lastSpace];
+                    // Re-encode trimmed text to get actual tokens we used
+                    subTokens = [.. tokenizer.EncodeToIds(chunkText)];
+                }
 
                 var tooShort = chunkText.Length < _options.MinTokenChunkSize;
 
-                // If the remaining tokens result in a short chunk, merge with previous
                 if ((tooShort || remaining <= _options.TokenChunkOverlap) && chunks.Count > 0)
                 {
-                    // Append to previous chunk
                     var lastChunkTokens = tokenizer.EncodeToIds(chunks[^1]);
                     chunks[^1] = tokenizer.Decode(lastChunkTokens.Concat(subTokens));
                     break;
                 }
 
                 chunks.Add(chunkText);
-                index += (_options.TokenChunkSize - _options.TokenChunkOverlap);
+                index += subTokens.Count;
+
+                // Handle overlap: move back by _tokenChunkOverlap tokens
+                index = Math.Max(0, index - _options.TokenChunkOverlap);
             }
 
             return ValueTask.FromResult<IReadOnlyList<string>>(chunks);
