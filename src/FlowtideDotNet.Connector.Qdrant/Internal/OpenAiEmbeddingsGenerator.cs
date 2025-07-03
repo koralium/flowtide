@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using System.Diagnostics;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -42,7 +42,19 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 .SendAsync(message, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
                 .ExecutePipeline(_options.ResiliencePipeline);
 
-            result.EnsureSuccessStatusCode();
+            if (!result.IsSuccessStatusCode)
+            {
+                try
+                {
+                    var body = await result.Content.ReadAsStringAsync(cancellationToken);
+                    throw new OpenAiEmbeddingsGeneratorException(result.StatusCode, body);
+                }
+                catch (Exception ex)
+                {
+                    throw new OpenAiEmbeddingsGeneratorException(result.StatusCode, ex.Message);
+                }
+            }
+
             var response = await result.Content.ReadFromJsonAsync<EmbeddingResponseRoot>(_serializerOptions, cancellationToken: cancellationToken);
 
             Debug.Assert(response != null);
@@ -55,7 +67,12 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
         {
             var request = new HttpRequestMessage(HttpMethod.Post, _options.UrlFunc());
             request.Headers.Add("api-key", _options.ApiKeyFunc());
-            var body = new StringContent($$"""{"input": "{{text}}" }""", Encoding.UTF8, "application/json");
+
+            var body = JsonContent.Create(new
+            {
+                input = text
+            }, new MediaTypeHeaderValue("application/json"));
+
             request.Content = body;
             return request;
         }
