@@ -968,7 +968,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             }
             else
             {
-                throw new InvalidOperationException("Table name must contain database.schema.tablename or schema.tablename");
+                throw new InvalidOperationException("Table name must be in one of the following formats: database.schema.tablename, schema.tablename, or tablename (defaulting to schema 'dbo').");
             }
             if (db != null)
             {
