@@ -961,6 +961,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 schema = splitName[0];
                 table = splitName[1];
             }
+            else if (splitName.Length == 1)
+            {
+                schema = "dbo";
+                table = splitName[0];
+            }
             else
             {
                 throw new InvalidOperationException("Table name must contain database.schema.tablename or schema.tablename");

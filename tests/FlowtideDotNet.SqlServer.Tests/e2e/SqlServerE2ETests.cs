@@ -727,5 +727,76 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             Assert.Equal(expectedDate, result.Item1);
             Assert.Equal("val2", result.Item2);
         }
+
+        [Fact]
+        public async Task TestWatermarkEachBatch()
+        {
+            var testName = nameof(CustomDestinationTable);
+
+
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[test-table7] (
+                [id] [int] primary key,
+                [created] [datetimeoffset] NOT NULL
+            )");
+            await _fixture.RunCommand("ALTER TABLE [test-db].[dbo].[test-table7] ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
+            await _fixture.RunCommand(@"
+            CREATE TABLE [test-db].[dbo].[testdest7] (
+                [id] [int]  PRIMARY KEY,
+                [created] [datetimeoffset] NOT NULL
+            )");
+
+            // Insert some data
+
+            for (int i = 0; i < 1_000; i++)
+            {
+                await _fixture.RunCommand($"INSERT INTO [test-db].[dbo].[test-table7] ([id], [created]) VALUES ({i}, '2024-01-03 00:00:00+01:00');");
+            }
+
+
+            int batchCount = 0;
+            SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+
+            var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString
+            }, new SqlServerSinkOptions()
+            {
+                ConnectionStringFunc = () => _fixture.ConnectionString,
+                ExecutionMode = Core.Operators.Write.ExecutionMode.OnWatermark,
+                OnDataUploaded = (connection, watermark, checkpointId, isInitialData) =>
+                {
+                    batchCount++;
+                    if (batchCount == 9)
+                    {
+                        waitSemaphore.Release();
+                    }
+                    
+                    return ValueTask.CompletedTask;
+                }
+            });
+            testStream.RegisterTableProviders((builder) =>
+            {
+                builder.AddSqlServerProvider(() => _fixture.ConnectionString);
+            });
+            await testStream.StartStream(@"
+                INSERT INTO [test-db].[dbo].[testdest7]
+                SELECT
+                    id,
+                    created
+                FROM [test-db].[dbo].[test-table7] WITH (WATERMARK_OUTPUT_MODE = ON_EACH_BATCH)
+            ");
+
+            await waitSemaphore.WaitAsync();
+
+            var expectedDate = new DateTimeOffset(new DateTime(2024, 1, 3), TimeSpan.FromHours(1));
+
+            var result = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[testdest7]", (reader) =>
+            {
+                reader.Read();
+                return reader.GetInt32(0);
+            });
+            Assert.Equal(1000, result);
+        }
     }
 }

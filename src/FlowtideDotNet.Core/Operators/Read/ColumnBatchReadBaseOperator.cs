@@ -477,6 +477,13 @@ namespace FlowtideDotNet.Core.Operators.Read
             return _persistentTree.GetValue(in rowKeyReference);
         }
 
+        private Watermark CreateWatermark(long watermarkValue, long batchId = 0)
+        {
+            var watermark = LongWatermarkValue.Create(watermarkValue);
+            watermark.BatchID = batchId;
+            return new Watermark(_readRelation.NamedTable.DotSeperated, watermark);
+        }
+
         protected async Task DoFullLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_fullLoadTempTree != null);
@@ -493,6 +500,8 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             long lastWatermark = -1;
             bool sentData = false;
+
+            long batchId = 0;
 
             await foreach (var columnReadEvent in FullLoad(output.CancellationToken))
             {
@@ -576,7 +585,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                     if (_watermarkOutputMode == WatermarkOutputMode.ON_EACH_BATCH && lastWatermark > 0)
                     {
                         // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
-                        await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, lastWatermark));
+                        await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
+                        batchId++;
                     }
                 }
                 else
@@ -686,7 +696,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             if (lastWatermark >= 0 && sentData)
             {
-                await output.SendWatermark(new Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(lastWatermark)));
+                await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
             }
 
             // Exit the checkpoint lock

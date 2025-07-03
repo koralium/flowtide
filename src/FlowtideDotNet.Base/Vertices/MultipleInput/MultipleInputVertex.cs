@@ -364,7 +364,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
             if (_currentWatermark == null)
             {
-                _currentWatermark = new Watermark(ImmutableDictionary<string, IWatermarkValue>.Empty, watermark.StartTime)
+                _currentWatermark = new Watermark(ImmutableDictionary<string, AbstractWatermarkValue>.Empty, watermark.StartTime)
                 {
                     SourceOperatorId = watermark.SourceOperatorId
                 };
@@ -376,7 +376,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             var currentDict = _currentWatermark.Watermarks;
             foreach (var kv in watermark.Watermarks)
             {
-                IWatermarkValue? watermarkValue = kv.Value;
+                AbstractWatermarkValue? watermarkValue = kv.Value;
                 for (int i = 0; i < _targetWatermarkNames.Length; i++)
                 {
                     // Check if any other target handles the same key
@@ -385,7 +385,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                         if (_targetWatermarks[i] != null &&
                             _targetWatermarks[i].Watermarks.TryGetValue(kv.Key, out var otherTargetOffset))
                         {
-                            watermarkValue = IWatermarkValue.Min(watermarkValue, otherTargetOffset);
+                            watermarkValue = AbstractWatermarkValue.Min(watermarkValue, otherTargetOffset);
                         }
                         else
                         {
@@ -493,7 +493,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                     }
                 }
                 _targetWatermarkNames = targetsWatermarks.ToArray();
-                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, IWatermarkValue>(x, null!)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
+                _currentWatermark = new Watermark(uniqueNames.Select(x => new KeyValuePair<string, AbstractWatermarkValue>(x, null!)).ToImmutableDictionary(), DateTimeOffset.UtcNow);
 
 
                 return initWatermarksEvent;

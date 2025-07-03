@@ -189,7 +189,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             Debug.Assert(m_state != null);
             Debug.Assert(m_state?.Value?.TypeTimestamps != null);
 
-            var builder = ImmutableDictionary.CreateBuilder<string, IWatermarkValue>();
+            var builder = ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
             foreach (var kv in m_state.Value.TypeTimestamps)
             {
                 builder.Add($"spicedb_{kv.Key}", LongWatermarkValue.Create(kv.Value));
