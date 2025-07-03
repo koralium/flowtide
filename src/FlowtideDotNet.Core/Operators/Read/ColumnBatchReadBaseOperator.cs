@@ -512,6 +512,8 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                 List<IColumn> deleteBatchColumns = new List<IColumn>();
 
+                lastWatermark = columnReadEvent.Watermark;
+
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
                     deleteBatchColumns.Add(Column.Create(MemoryAllocator));
@@ -582,7 +584,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                     sentData = true;
 
-                    if (_watermarkOutputMode == WatermarkOutputMode.ON_EACH_BATCH && lastWatermark > 0)
+                    if (_watermarkOutputMode == WatermarkOutputMode.ON_EACH_BATCH)
                     {
                         // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
                         await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
@@ -634,8 +636,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                 {
                     deleteBatchKeyOffsets.Dispose();
                 }
-
-                lastWatermark = columnReadEvent.Watermark;
 
                 columnReadEvent.BatchData.Weights.Dispose();
                 columnReadEvent.BatchData.Iterations.Dispose();

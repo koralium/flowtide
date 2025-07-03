@@ -731,7 +731,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         [Fact]
         public async Task TestWatermarkEachBatch()
         {
-            var testName = nameof(CustomDestinationTable);
+            var testName = nameof(TestWatermarkEachBatch);
 
 
             await _fixture.RunCommand(@"
@@ -756,6 +756,8 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
             int batchCount = 0;
             SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+            // 100 events per batch
+            int expectedBatchCount = 1000 / 100;
 
             var testStream = new SqlServerTestStream(testName, new SqlServerSourceOptions
             {
@@ -767,7 +769,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 OnDataUploaded = (connection, watermark, checkpointId, isInitialData) =>
                 {
                     batchCount++;
-                    if (batchCount == 9)
+                    if (batchCount == expectedBatchCount)
                     {
                         waitSemaphore.Release();
                     }

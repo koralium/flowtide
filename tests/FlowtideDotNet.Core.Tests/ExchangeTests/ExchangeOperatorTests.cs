@@ -142,7 +142,8 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             {
                 Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
             }
-
+            
+            // Index 2 will always be the watermark in this test
             var watermark = fetchData.OutEvents[2] as Watermark;
             Assert.NotNull(watermark);
 
