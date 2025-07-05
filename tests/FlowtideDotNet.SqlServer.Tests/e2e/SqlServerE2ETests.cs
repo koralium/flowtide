@@ -748,10 +748,14 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
             // Insert some data
 
+            var bulkInsertCommand = new StringBuilder("INSERT INTO [test-db].[dbo].[test-table7] ([id], [created]) VALUES ");
             for (int i = 0; i < 1_000; i++)
             {
-                await _fixture.RunCommand($"INSERT INTO [test-db].[dbo].[test-table7] ([id], [created]) VALUES ({i}, '2024-01-03 00:00:00+01:00');");
+                bulkInsertCommand.Append($"({i}, '2024-01-03 00:00:00+01:00'),");
             }
+            // Remove the trailing comma
+            bulkInsertCommand.Length--;
+            await _fixture.RunCommand(bulkInsertCommand.ToString());
 
 
             int batchCount = 0;
