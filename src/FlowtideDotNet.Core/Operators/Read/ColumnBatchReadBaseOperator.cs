@@ -151,9 +151,11 @@ namespace FlowtideDotNet.Core.Operators.Read
             await DoFullLoad(output);
         }
 
+        private const string WatermarkModeKey = "WATERMARK_OUTPUT_MODE";
+
         private WatermarkOutputMode GetWatermarkOutputMode()
         {
-            if (_readRelation.Hint.Optimizations.Properties.TryGetValue("WATERMARK_OUTPUT_MODE", out var mode))
+            if (_readRelation.Hint.Optimizations.Properties.TryGetValue(WatermarkModeKey, out var mode))
             {
                 switch (mode)
                 {
