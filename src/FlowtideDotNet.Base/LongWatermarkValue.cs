@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
-    public class LongWatermarkValue : AbstractWatermarkValue
+    public class LongWatermarkValue : AbstractWatermarkValue<LongWatermarkValue>
     {
         public override int TypeId => 1;
 
@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Base
             Value = value;
         }
 
-        public override int Compare(AbstractWatermarkValue? other)
+        public override int Compare(LongWatermarkValue? other)
         {
             if (other is LongWatermarkValue otherLong)
             {
@@ -45,6 +45,11 @@ namespace FlowtideDotNet.Base
             {
                 throw new ArgumentException("Cannot compare LongWatermarkValue with " + other.GetType().Name, nameof(other));
             }
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value, base.GetHashCode());
         }
 
         public static LongWatermarkValue Create(long value)

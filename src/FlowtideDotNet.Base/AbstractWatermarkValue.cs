@@ -18,6 +18,27 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
+    public abstract class AbstractWatermarkValue<T> : AbstractWatermarkValue
+    {
+        public override int Compare(AbstractWatermarkValue? other)
+        {
+            if (other is T otherValue)
+            {
+                return Compare(otherValue);
+            }
+            else if (other is null)
+            {
+                return 1; // This instance is greater than null
+            }
+            else
+            {
+                throw new ArgumentException($"Cannot compare {GetType().Name} with {other.GetType().Name}", nameof(other));
+            }
+        }
+
+        public abstract int Compare(T? other);
+    }
+
     public abstract class AbstractWatermarkValue : IComparable<AbstractWatermarkValue>
     {
         public abstract int TypeId { get; }
@@ -37,7 +58,7 @@ namespace FlowtideDotNet.Base
 
         public int CompareTo(AbstractWatermarkValue? other)
         {
-            if (other == null)
+            if (ReferenceEquals(other, null))
             {
                 return 1; // This instance is greater than null
             }
@@ -51,6 +72,65 @@ namespace FlowtideDotNet.Base
                 return result;
             }
             return BatchID.CompareTo(other.BatchID);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is AbstractWatermarkValue other)
+            {
+                if (this.TypeId != other.TypeId)
+                {
+                    return false; // Different types cannot be equal
+                }
+                return CompareTo(other) == 0;
+            }
+            return false;
+        }
+
+        public static bool operator ==(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            if (ReferenceEquals(left, right))
+            {
+                return true; // Both are the same instance or both are null
+            }
+            if (ReferenceEquals(left, null) || ReferenceEquals(right, null))
+            {
+                return false; // One is null, the other is not
+            }
+            // If both are not null, compare them
+            return left.CompareTo(right) == 0;
+        }
+
+        public override int GetHashCode()
+        {
+            // Typeid and batchId for hashcode, this will result in many collisions, but will give correct hash results
+            // Implementors of the abstraction need to provide its own hashcode for less collisions
+            return HashCode.Combine(TypeId, BatchID);
+        }
+
+        public static bool operator !=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            return !(left == right);
+        }
+
+        public static bool operator <(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            return ReferenceEquals(left, null) ? !ReferenceEquals(right, null) : left.CompareTo(right) < 0;
+        }
+
+        public static bool operator <=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            return ReferenceEquals(left, null) || left.CompareTo(right) <= 0;
+        }
+
+        public static bool operator >(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            return !ReferenceEquals(left, null) && left.CompareTo(right) > 0;
+        }
+
+        public static bool operator >=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)
+        {
+            return ReferenceEquals(left, null) ? ReferenceEquals(right, null) : left.CompareTo(right) >= 0;
         }
     }
 }
