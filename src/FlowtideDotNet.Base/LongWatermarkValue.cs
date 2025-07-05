@@ -20,9 +20,9 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base
 {
-    public class LongWatermarkValue : IWatermarkValue
+    public class LongWatermarkValue : AbstractWatermarkValue<LongWatermarkValue>
     {
-        public int TypeId => 1;
+        public override int TypeId => 1;
 
         public long Value { get; }
 
@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Base
             Value = value;
         }
 
-        public int CompareTo(IWatermarkValue? other)
+        public override int Compare(LongWatermarkValue? other)
         {
             if (other is LongWatermarkValue otherLong)
             {
@@ -47,6 +47,11 @@ namespace FlowtideDotNet.Base
             }
         }
 
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Value, base.GetHashCode());
+        }
+
         public static LongWatermarkValue Create(long value)
         {
             return new LongWatermarkValue(value);
@@ -55,7 +60,7 @@ namespace FlowtideDotNet.Base
 
     internal class LongWatermarkValueSerializer : IWatermarkSerializer
     {
-        public IWatermarkValue Deserialize(ref SequenceReader<byte> reader)
+        public AbstractWatermarkValue Deserialize(ref SequenceReader<byte> reader)
         {
             if (!reader.TryReadLittleEndian(out long val))
             {
@@ -64,7 +69,7 @@ namespace FlowtideDotNet.Base
             return new LongWatermarkValue(val);
         }
 
-        public void Serialize(IWatermarkValue value, IBufferWriter<byte> writer)
+        public void Serialize(AbstractWatermarkValue value, IBufferWriter<byte> writer)
         {
             if (value is LongWatermarkValue longWatermarkValue)
             {

@@ -10,11 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Logging;
+
 namespace FlowtideDotNet.Substrait.Hints
 {
     public class HintOptimizations : IEquatable<HintOptimizations>
     {
         public Dictionary<string, string> Properties { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        public void LogOnUnknownOptimization(ILogger logger, params string[] knownProperties)
+        {
+            foreach (var kvp in Properties)
+            {
+                if (!knownProperties.Contains(kvp.Key, StringComparer.OrdinalIgnoreCase))
+                {
+                    logger.LogWarning("Unknown optimization property '{Property}' with value '{Value}'", kvp.Key, kvp.Value);
+                }
+            }
+        }
 
         public bool Equals(HintOptimizations? other)
         {

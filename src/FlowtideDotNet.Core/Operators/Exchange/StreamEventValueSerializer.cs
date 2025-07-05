@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Failed to read watermark count");
             }
 
-            var watermarksBuilder = ImmutableDictionary.CreateBuilder<string, IWatermarkValue>();
+            var watermarksBuilder = ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
             for (int i = 0; i < watermarkCount; i++)
             {
                 if (!reader.TryReadLittleEndian(out int keyLength))
@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
 
                 var watermarkSerializer = WatermarkSerializeFactory.GetWatermarkSerializer(watermarkValueTypeId);
-                watermarksBuilder.Add(new KeyValuePair<string, IWatermarkValue>(key, watermarkSerializer.Deserialize(ref reader)));
+                watermarksBuilder.Add(new KeyValuePair<string, AbstractWatermarkValue>(key, watermarkSerializer.Deserialize(ref reader)));
             }
 
             return new Watermark(watermarksBuilder.ToImmutableDictionary(), startTime, sourceOperatorId);

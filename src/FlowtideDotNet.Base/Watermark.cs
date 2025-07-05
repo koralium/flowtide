@@ -20,40 +20,40 @@ namespace FlowtideDotNet.Base
     /// </summary>
     public class Watermark : IStreamEvent
     {
-        public Watermark(string name, IWatermarkValue value)
+        public Watermark(string name, AbstractWatermarkValue value)
         {
-            var builder = ImmutableDictionary.CreateBuilder<string, IWatermarkValue>();
+            var builder = ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
             builder.Add(name, value);
             Watermarks = builder.ToImmutable();
             StartTime = DateTimeOffset.UtcNow;
         }
 
-        public Watermark(string name, IWatermarkValue value, DateTimeOffset startTime)
+        public Watermark(string name, AbstractWatermarkValue value, DateTimeOffset startTime)
         {
-            var builder = ImmutableDictionary.CreateBuilder<string, IWatermarkValue>();
+            var builder = ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
             builder.Add(name, value);
             Watermarks = builder.ToImmutable();
             StartTime = startTime;
         }
 
-        public Watermark(IImmutableDictionary<string, IWatermarkValue> watermarks)
+        public Watermark(IImmutableDictionary<string, AbstractWatermarkValue> watermarks)
         {
             Watermarks = watermarks;
             StartTime = DateTimeOffset.UtcNow;
         }
 
-        public Watermark(IImmutableDictionary<string, IWatermarkValue> watermarks, DateTimeOffset startTime)
+        public Watermark(IImmutableDictionary<string, AbstractWatermarkValue> watermarks, DateTimeOffset startTime)
         {
             Watermarks = watermarks;
             StartTime = startTime;
         }
 
-        public Watermark(IImmutableDictionary<string, IWatermarkValue> watermarks, DateTimeOffset startTime, string? sourceOperatorId) : this(watermarks, startTime)
+        public Watermark(IImmutableDictionary<string, AbstractWatermarkValue> watermarks, DateTimeOffset startTime, string? sourceOperatorId) : this(watermarks, startTime)
         {
             SourceOperatorId = sourceOperatorId;
         }
 
-        public IImmutableDictionary<string, IWatermarkValue> Watermarks { get; }
+        public IImmutableDictionary<string, AbstractWatermarkValue> Watermarks { get; }
 
         public DateTimeOffset StartTime { get; }
 
@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Base
         public override bool Equals(object? obj)
         {
             return obj is Watermark watermark &&
-                   EqualityComparer<IImmutableDictionary<string, IWatermarkValue>>.Default.Equals(Watermarks, watermark.Watermarks);
+                   EqualityComparer<IImmutableDictionary<string, AbstractWatermarkValue>>.Default.Equals(Watermarks, watermark.Watermarks);
         }
 
         public override int GetHashCode()
