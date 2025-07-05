@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.Substrait.Sql;
+using System.Text;
 
 namespace FlowtideDotNet.SqlServer.Tests.e2e
 {
