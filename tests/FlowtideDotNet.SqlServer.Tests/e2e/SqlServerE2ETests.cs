@@ -789,7 +789,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
                 FROM [test-db].[dbo].[test-table7] WITH (WATERMARK_OUTPUT_MODE = ON_EACH_BATCH)
             ");
 
-            await waitSemaphore.WaitAsync();
+            await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30));
 
             var expectedDate = new DateTimeOffset(new DateTime(2024, 1, 3), TimeSpan.FromHours(1));
 
