@@ -177,7 +177,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
 
-            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, "WATERMARK_OUTPUT_MODE");
+            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, WatermarkModeKey);
             _watermarkOutputMode = GetWatermarkOutputMode();
 
             if (_eventsCounter == null)
