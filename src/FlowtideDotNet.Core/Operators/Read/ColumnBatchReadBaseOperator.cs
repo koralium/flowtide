@@ -157,19 +157,14 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             if (_readRelation.Hint.Optimizations.Properties.TryGetValue(WatermarkModeKey, out var mode))
             {
-                switch (mode)
+                if (WatermarkOutputModeHelper.TryParseWatermarkOutputMode(mode, out var parsedMode))
                 {
-                    case "AFTER_ALL_DATA":
-                        return WatermarkOutputMode.AFTER_ALL_DATA;
-                    case "ON_EACH_BATCH":
-                        return WatermarkOutputMode.ON_EACH_BATCH;
-                    default:
-                        Logger.LogWarning("Unknown watermark output mode: {mode}", mode);
-                        // Default to AFTER_ALL_DATA if the mode is unknown
-                        return WatermarkOutputMode.AFTER_ALL_DATA;
-                };
+                    return parsedMode;
+                }
+                Logger.LogWarning("Unknown watermark output mode: {mode}", mode);
+                return WatermarkOutputMode.AfterAllData;
             }
-            return WatermarkOutputMode.AFTER_ALL_DATA;
+            return WatermarkOutputMode.AfterAllData;
         }
 
 
@@ -586,7 +581,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                     sentData = true;
 
-                    if (_watermarkOutputMode == WatermarkOutputMode.ON_EACH_BATCH)
+                    if (_watermarkOutputMode == WatermarkOutputMode.OnEachBatch)
                     {
                         // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
                         await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
