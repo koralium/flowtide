@@ -225,7 +225,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         private async Task SendWatermark(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_state?.Value?.PartitionOffsets != null);
-            var watermark = new Dictionary<string, IWatermarkValue>();
+            var watermark = new Dictionary<string, AbstractWatermarkValue>();
             foreach (var kv in _state.Value.PartitionOffsets)
             {
                 watermark.Add(topicName + "_" + kv.Key, LongWatermarkValue.Create(kv.Value));

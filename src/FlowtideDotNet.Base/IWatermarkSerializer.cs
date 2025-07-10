@@ -21,8 +21,8 @@ namespace FlowtideDotNet.Base
 {
     public interface IWatermarkSerializer
     {
-        void Serialize(IWatermarkValue value, IBufferWriter<byte> writer);
+        void Serialize(AbstractWatermarkValue value, IBufferWriter<byte> writer);
 
-        IWatermarkValue Deserialize(ref SequenceReader<byte> reader);
+        AbstractWatermarkValue Deserialize(ref SequenceReader<byte> reader);
     }
 }
