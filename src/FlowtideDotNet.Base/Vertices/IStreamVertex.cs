@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         /// <summary>
         /// This method is called directly before saving persistent data checkpoint.
-        /// This method should be used sparringly since the vertex might have handled data
+        /// This method should be used sparingly since the vertex might have handled data
         /// that is after the checkpoint, so the vertex need to take that into consideration.
         /// 
         /// One use case is if a source has an offset (such as Kafka), and only a subset of events are in the result set.
