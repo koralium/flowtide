@@ -469,5 +469,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 _pauseSource = null;
             }
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

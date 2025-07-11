@@ -531,5 +531,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 _pauseSource = null;
             }
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

@@ -805,5 +805,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 _pauseSource = null;
             }
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

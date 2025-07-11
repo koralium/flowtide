@@ -287,5 +287,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _pauseSource = null;
             }
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

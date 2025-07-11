@@ -390,5 +390,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 _pauseSource = null;
             }
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }

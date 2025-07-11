@@ -501,5 +501,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
             _ingressState._output.Resume();
         }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
     }
 }
