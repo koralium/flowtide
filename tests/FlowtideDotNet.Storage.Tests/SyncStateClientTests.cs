@@ -16,15 +16,8 @@ using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
-using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Tree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests
 {
@@ -53,17 +46,17 @@ namespace FlowtideDotNet.Storage.Tests
             await manager.LruTable.StopCleanupTask();
 
             var client = manager.GetOrCreateClient("client");
-            var tree = await client.GetOrCreateTree("tree", 
+            var tree = await client.GetOrCreateTree("tree",
                 new BPlusTreeOptions<long, int, ListKeyContainer<long>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
-                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = GlobalMemoryManager.Instance
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
             //Version 0
             await tree.Upsert(1, 1);
-            
+
             await manager.LruTable.ForceCleanup();
 
             //Version 1

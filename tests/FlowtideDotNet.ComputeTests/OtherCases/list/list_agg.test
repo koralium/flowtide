@@ -1,0 +1,11 @@
+﻿### SUBSTRAIT_AGGREGATE_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_list.yaml'
+
+# basic: Basic examples without any special cases
+list_agg(('hello', 'world')::str) = ['hello', 'world']::LIST<str>
+list_agg((1, 3, 17)::i16) = [1, 3, 17]::LIST<i16>
+
+# null values: Null values are ignored
+list_agg((Null, 1, 3, 17)::i16) = [1, 3, 17]::LIST<i16>
+list_agg((1, Null, 3, 17)::i16) = [1, 3, 17]::LIST<i16>
+list_agg((1, 3, 17, Null)::i16) = [1, 3, 17]::LIST<i16>

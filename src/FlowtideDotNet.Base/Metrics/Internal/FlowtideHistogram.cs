@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         public void Record(T value)
         {
             TagList outputTags = new TagList();
-            foreach(var t in m_globalTags)
+            foreach (var t in m_globalTags)
             {
                 outputTags.Add(t);
             }
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         public void Record(T value, params KeyValuePair<string, object?>[] tags)
         {
             TagList outputTags = new TagList();
-            foreach(var tag in tags)
+            foreach (var tag in tags)
             {
                 outputTags.Add(tag);
             }
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
         public void Record(T value, in TagList tagList)
         {
             TagList outputTags = new TagList();
-            foreach(var t in tagList)
+            foreach (var t in tagList)
             {
                 outputTags.Add(t);
             }

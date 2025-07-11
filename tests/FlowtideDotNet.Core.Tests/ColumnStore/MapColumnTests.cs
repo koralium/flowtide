@@ -16,10 +16,10 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 { new StringValue("value"), new StringValue("hello4") }
             }));
 
-            
+
             var valueData = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "value" });
             Assert.Equal("hello4", valueData.ToString());
         }
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
                         dict.GetValueAt(k, dataValueContainer);
                         Assert.Equal(expectedVal[expectedKeys[k]], dataValueContainer.AsString.ToString());
-                    }                    
+                    }
                 }
             }
         }
@@ -428,6 +428,35 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                     Assert.Equal(dataValueContainer2.AsString.ToString(), dataValueContainer.AsString.ToString());
                 }
             }
+        }
+
+        [Fact]
+        public void TestAddToHash()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(2)), new KeyValuePair<IDataValue, IDataValue>(new Int64Value(5), new StringValue("hello")))
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
+        }
+
+        [Fact]
+        public void TestInsertNullAtStart()
+        {
+            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+
+            column.InsertAt(0, new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new StringValue("b"))));
+            column.InsertAt(0, NullValue.Instance);
+            var val = column.GetValueAt(0, default);
+            Assert.Equal(0, val.AsMap.GetLength());
         }
     }
 }

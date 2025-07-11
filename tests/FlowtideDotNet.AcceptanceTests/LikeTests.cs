@@ -10,11 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -35,7 +30,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT firstName FROM users WHERE firstName LIKE '" + firstLetterFirstUser + @"%';
             ");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Where(x => x.FirstName!.StartsWith(firstLetterFirstUser)).Select(x => new { firstName = x.FirstName}));
+            AssertCurrentDataEqual(Users.Where(x => x.FirstName!.StartsWith(firstLetterFirstUser)).Select(x => new { firstName = x.FirstName }));
         }
 
         [Fact]

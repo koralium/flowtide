@@ -167,3 +167,15 @@ Checks if an exprssion is not a numeric value. A null value returns null as in t
 ```sql
 SELECT is_nan(column1) FROM ...
 ```
+
+## Greatest
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#greatest)
+
+Returns the largest non-null value from a list of input expressions. If all values are null, the result is null. Follows the behavior defined in the Substrait specification.
+
+### SQL Usage
+
+```sql
+SELECT greatest(column1, column2, column3) FROM ...
+```

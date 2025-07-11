@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.OpenFGA.Internal;
-using FlowtideDotNet.Substrait.Relations;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
@@ -93,7 +91,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             var postClient = new OpenFgaClient(conf);
             while (true)
             {
-                var readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100});
+                var readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100 });
                 if (readResp.Tuples.Count == 100)
                 {
                     break;
@@ -369,7 +367,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
                 });
             }
-            
+
 
             var stream = new OpenFgaTestStream("testreadtuples", conf, true, false);
             stream.Generate(100);
@@ -875,7 +873,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             //      define role: [role]
             //        define user: [user]
             //        define can_read: user and can_read from role
-            
+
             var config = openFGAFixture.Configuration;
 
             var model = @"

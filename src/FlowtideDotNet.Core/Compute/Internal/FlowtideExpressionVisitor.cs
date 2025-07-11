@@ -56,15 +56,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             var expr = referenceSegment switch
             {
-                StructReferenceSegment { Field: >= 0 } structReferenceSegment => 
+                StructReferenceSegment { Field: >= 0 } structReferenceSegment =>
                     System.Linq.Expressions.Expression.Call(
-                        expression, 
-                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        expression,
+                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)),
                         System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field)),
-                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment => 
+                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment =>
                     System.Linq.Expressions.Expression.Call(
-                        expression, 
-                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        expression,
+                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)),
                         System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key)),
                 _ => throw new NotImplementedException($"The {nameof(referenceSegment)} must be a {nameof(StructReferenceSegment)} with a positive {nameof(StructReferenceSegment.Field)} or a {nameof(MapKeyReferenceSegment)} with a non-null {nameof(MapKeyReferenceSegment.Key)}"),
             };
@@ -195,7 +195,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 Arguments = new List<Substrait.Expressions.Expression>()
             };
 
-            foreach(var opt in singularOrList.Options)
+            foreach (var opt in singularOrList.Options)
             {
                 scalarFunction.Arguments.Add(new ScalarFunction()
                 {
@@ -242,11 +242,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
             blockExpressions.Add(System.Linq.Expressions.Expression.Call(builderConstant, newObjectMethod));
             // Start the vector and assign vector start variable
             blockExpressions.Add(System.Linq.Expressions.Expression.Assign(vectorStartVariable, System.Linq.Expressions.Expression.Call(builderConstant, startVectorMethod)));
-            
+
             // Add all the key value pairs to the map
             for (int i = 0; i < mapNestedExpression.KeyValues.Count; i++)
             {
-                   var keyValue = mapNestedExpression.KeyValues[i];
+                var keyValue = mapNestedExpression.KeyValues[i];
                 var key = keyValue.Key;
                 var value = keyValue.Value;
 

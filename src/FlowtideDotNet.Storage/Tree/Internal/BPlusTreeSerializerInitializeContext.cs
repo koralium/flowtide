@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -37,7 +32,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return stateSerializerInitializeReader.GetNewPageId();
         }
 
-        public Task<Memory<byte>> ReadPage(long pageId)
+        public Task<ReadOnlyMemory<byte>> ReadPage(long pageId)
         {
             return stateSerializerInitializeReader.ReadPage(pageId);
         }

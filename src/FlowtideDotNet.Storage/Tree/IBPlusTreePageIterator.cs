@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree.Internal;
 
 namespace FlowtideDotNet.Storage.Tree
 {
@@ -23,6 +24,11 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         /// <returns></returns>
         ValueTask SavePage(bool checkForResize);
+
+        /// <summary>
+        /// Get the current leaf node, should only be used for very specific scenarios.
+        /// </summary>
+        LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
 
         TKeyContainer Keys { get; }
 

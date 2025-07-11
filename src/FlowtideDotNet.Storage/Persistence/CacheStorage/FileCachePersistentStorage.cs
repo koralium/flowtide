@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.CacheStorage
@@ -22,7 +23,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
-            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent");
+            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
             this._ignoreDispose = ignoreDispose;
         }
 
@@ -75,11 +76,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             return ValueTask.CompletedTask;
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
             if (m_fileCache.Exists(key))
             {
-                value = m_fileCache.Read(key);
+                value = m_fileCache.ReadSync(key);
                 return true;
             }
             value = default;
@@ -88,7 +89,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public virtual ValueTask Write(long key, byte[] value)
         {
-            m_fileCache.WriteAsync(key, value);
+            m_fileCache.Write(key, new SerializableObject(value));
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
         }

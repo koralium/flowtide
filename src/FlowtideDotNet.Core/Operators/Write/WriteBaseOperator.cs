@@ -15,7 +15,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Write
 {
-    public abstract class WriteBaseOperator<TState> : EgressVertex<StreamEventBatch, TState>
+    public abstract class WriteBaseOperator : EgressVertex<StreamEventBatch>
     {
         public WriteBaseOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {

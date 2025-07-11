@@ -12,15 +12,14 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Storage.DataStructures;
 
 namespace MonitoringPrometheus
 {
@@ -36,7 +35,7 @@ namespace MonitoringPrometheus
         }
     }
 
-    public class DummyReadOperator : ReadBaseOperator<object>
+    public class DummyReadOperator : ReadBaseOperator
     {
         public DummyReadOperator(DataflowBlockOptions options) : base(options)
         {
@@ -59,14 +58,14 @@ namespace MonitoringPrometheus
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { "dummy" });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new object());
+            return Task.CompletedTask;
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)

@@ -13,11 +13,6 @@
 using Antlr4.Runtime;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser.Internal;
 using FlowtideDotNet.Zanzibar;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser
 {

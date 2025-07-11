@@ -21,8 +21,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         {
             Dictionary<string, ZanzibarType> types = new Dictionary<string, ZanzibarType>();
             Dictionary<string, ZanzibarCaveat> caveats = new Dictionary<string, ZanzibarCaveat>();
-            
-            foreach(var type in authorizationModel.TypeDefinitions)
+
+            foreach (var type in authorizationModel.TypeDefinitions)
             {
                 var convertedType = ConvertType(type);
                 types.Add(convertedType.Name, convertedType);
@@ -38,8 +38,8 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 throw new InvalidOperationException($"Type {type.Type} has no relations defined");
             }
             Dictionary<string, ZanzibarTypeRelation> relations = new Dictionary<string, ZanzibarTypeRelation>();
-            
-            foreach(var kv in type.Relations)
+
+            foreach (var kv in type.Relations)
             {
                 relations.Add(kv.Key, ConvertRelation(kv.Value, kv.Key, type));
             }

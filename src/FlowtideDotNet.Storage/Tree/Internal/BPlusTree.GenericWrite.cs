@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root, "WriteRoot");
+            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root);
 
             if (!rootNodeTask.IsCompletedSuccessfully)
             {
@@ -95,6 +95,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(newParentNode.Id, newParentNode);
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
+
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
 
                     if (isFull)
                     {
@@ -191,7 +196,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 index = ~index;
             }
             var childId = parentNode.children[index];
-            var getChildTask = m_stateClient.GetValue(childId, "GetGenericWriteInternal");
+            var getChildTask = m_stateClient.GetValue(childId);
 
             if (!getChildTask.IsCompletedSuccessfully)
             {
@@ -239,6 +244,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        leafNode.Return();
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
+
                     if (isFull)
                     {
                         leafNode.Return();
@@ -252,7 +263,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with left neighbor
                         var leftNeighborId = parentNode.children[index - 1];
-                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode1");
+                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                         if (!getLeftNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_SlowGetLeft(getLeftNodeTask, leafNode, parentNode, index, result);
@@ -265,7 +276,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with right neighbor
                         var rightNeighborId = parentNode.children[index + 1];
-                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode2");
+                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                         if (!getRightNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_NodeTooSmall_SlowGetRight(getRightNodeTask, leafNode, parentNode, index, result);
@@ -342,7 +353,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (index == parentNode.keys.Count)
                 {
                     var leftNeighborId = parentNode.children[index - 1];
-                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal1");
+                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                     if (!getLeftNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetLeft(getLeftNodeTask, internalNode, parentNode, index, result);
@@ -353,7 +364,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 else
                 {
                     var rightNeighborId = parentNode.children[index + 1];
-                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal2");
+                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                     if (!getRightNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetRight(getRightNodeTask, internalNode, parentNode, index, result);
@@ -495,6 +506,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
+                if (m_usePreviousPointer && leafNode.next != 0)
+                {
+                    return UpdateRightPrevious(result, leafNode, isFull, true);
+                }
+
                 if (isFull)
                 {
                     rightNode.Return();
@@ -565,6 +581,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var isFull = false;
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
+
+                if (m_usePreviousPointer && leftNode.next != 0)
+                {
+                    return UpdateRightPrevious(result, leftNode, isFull, true);
+                }
 
                 leftNode.Return();
 
@@ -708,9 +729,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var emptyValues = m_options.ValueSerializer.CreateEmpty();
             var newNode = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
             newNode.EnterWriteLock();
-            
+
             // Set the next id on the new node to the now left childs next id.
             newNode.next = child.next;
+
+            if (m_usePreviousPointer)
+            {
+                newNode.previous = child.Id;
+            }
 
             // Copy half of the values on the right to the new node
             newNode.keys.AddRangeFrom(child.keys, m_stateClient.Metadata.BucketLength / 2, child.keys.Count - m_stateClient.Metadata.BucketLength / 2);
@@ -858,7 +884,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 var remainder = half - rightNode.keys.Count;
 
-                
+
                 leftNode.keys.Add(parentKey);
                 // Copy values from left to right at the beginning
                 rightKeys.AddRangeFrom(leftNode.keys, leftNode.keys.Count - remainder, remainder);

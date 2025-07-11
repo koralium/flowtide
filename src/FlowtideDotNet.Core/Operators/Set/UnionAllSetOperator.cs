@@ -15,11 +15,6 @@ using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Set
@@ -28,7 +23,7 @@ namespace FlowtideDotNet.Core.Operators.Set
     /// Special set operator that combines the results of two or more queries.
     /// This requires no storage so its a seperate class.
     /// </summary>
-    internal class UnionAllSetOperator : MultipleInputVertex<StreamEventBatch, SetOperatorState>
+    internal class UnionAllSetOperator : MultipleInputVertex<StreamEventBatch>
     {
         private readonly SetRelation _setRelation;
 
@@ -69,7 +64,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                         }
                     }
                 }
-                
+
                 if (difference)
                 {
                     _emit = setRelation.Emit.ToArray();
@@ -89,9 +84,9 @@ namespace FlowtideDotNet.Core.Operators.Set
             return Task.CompletedTask;
         }
 
-        public override Task<SetOperatorState?> OnCheckpoint()
+        public override Task OnCheckpoint()
         {
-            return Task.FromResult<SetOperatorState?>(new SetOperatorState());
+            return Task.CompletedTask;
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -114,7 +109,7 @@ namespace FlowtideDotNet.Core.Operators.Set
             }
         }
 
-        protected override Task InitializeOrRestore(SetOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

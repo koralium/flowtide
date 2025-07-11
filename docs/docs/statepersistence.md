@@ -146,7 +146,7 @@ SQL Server storage support is still experimental.
 
 Store persistent data to sql server. 
 
-Before using this storage solution you must manually create required tables using this creation script: [Sql tables creation script](link_to_sql_create_script).
+Before using this storage solution you must manually create required tables using this creation script: [Sql tables creation script](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Script/create_tables.sql).
 
 The sql user running the system requires the following specific permissions:
 * `SELECT`
@@ -161,10 +161,12 @@ builder.Services.AddFlowtideStream("yourstream")
     {
         // register sql server storage using default settings
         s.AddSqlServerStorage("[connectionstring]");
+        // register sql server storge using function to retrieve the connection string.
+        s.AddSqlServerStorage(() => "[connectionstring]");
         // or use the overload to specify more settings
         s.AddSqlServerStorage(new SqlServerPersistentStorageSettings()
         {
-            ConnectionString = "[connectionstring]",
+            ConnectionStringFunc = () => builder.Configuration.GetConnectionString("[connectionstring]"),
             // if you created the tables on a non default schema (or with another name) you can specify the full name for the tables used here.
             // it's also possible to specify the database name as part of table name.
             StreamTableName = "[MySchema].[Streams]",
@@ -196,24 +198,18 @@ A data page is fetched using the following logic:
 ## Compression
 
 It is possible to compress pages in the state.
-This is done by providing two functions to state serialize options, a compress function and a decompress function.
+The option that exist today is to compress pages with Zstd. Most storage backends add zstd compression by default to save on network throughput and storage size.
 
-Example using ZLib compression:
+To set compression, it is set under add storage:
 
 ```csharp
-builder.WithStateOptions(() => new StateManagerOptions()
-{
+builder.AddStorage(b => {
     ...
-    SerializeOptions = new StateSerializeOptions()
-    {
-        CompressFunc = (stream) =>
-        {
-            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Compress);
-        },
-        DecompressFunc = (stream) =>
-        {
-            return new System.IO.Compression.ZLibStream(stream, CompressionMode.Decompress);
-        }
-    }
-})
+    
+    // Use zstd page compression
+    b.ZstdPageCompression();
+    
+    // Use no compression even if the storage medium added compression
+    b.NoCompression();
+});
 ```

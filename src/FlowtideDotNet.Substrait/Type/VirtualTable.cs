@@ -12,7 +12,6 @@
 
 
 using FlowtideDotNet.Substrait.Expressions;
-using Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait.Type
 {

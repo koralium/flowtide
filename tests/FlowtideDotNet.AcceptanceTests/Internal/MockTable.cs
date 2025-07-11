@@ -34,22 +34,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private readonly object _lock = new object();
         private List<RowOperation> _changes;
+        public Type _type;
 
-        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types)
+        public MockTable(List<string> columns, List<int> primaryKeyIndices, List<SubstraitBaseType> types, Type type)
         {
             Columns = columns;
             PrimaryKeyIndices = primaryKeyIndices;
             Types = types;
+            _type = type;
             _changes = new List<RowOperation>();
         }
 
+        public Type Type => _type;
         public List<string> Columns { get; }
         public List<int> PrimaryKeyIndices { get; }
         public List<SubstraitBaseType> Types { get; }
 
         public void AddOrUpdate<T>(IEnumerable<T> rows)
         {
-            foreach(var row in rows)
+            foreach (var row in rows)
             {
                 if (row == null)
                 {
@@ -61,7 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void Delete<T>(IEnumerable<T> rows)
         {
-            foreach(var row in rows)
+            foreach (var row in rows)
             {
                 if (row == null)
                 {
@@ -181,8 +184,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     }
                     else if (column is Guid guid)
                     {
-                        var bytes = guid.ToByteArray();
-                        b.Add(bytes);
+                        var guidString = guid.ToString();
+                        b.Add(guidString);
                     }
                     else if (column is List<int> listInt)
                     {
@@ -238,7 +241,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                                         else if (kv.Value is string stringV)
                                         {
                                             m.Add(kv.Key, stringV);
-                                        }   
+                                        }
                                     }
                                 });
                             }
@@ -252,7 +255,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                             {
                                 v.Vector(m =>
                                 {
-                                    foreach(var inner in item)
+                                    foreach (var inner in item)
                                     {
                                         m.Add(inner);
                                     }
@@ -268,14 +271,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     {
                         b.Add(dateTimeOffset.Subtract(DateTimeOffset.UnixEpoch).Ticks);
                     }
+                    else if (column is byte[] bytes)
+                    {
+                        b.Add(bytes);
+                    }
                     else
                     {
                         throw new NotImplementedException($"{column.GetType().Name}");
                     }
                 }
             });
-            
-            
+
+
         }
 
         public (IEnumerable<RowOperation> changes, int offset) GetOperations(int fromOffset)

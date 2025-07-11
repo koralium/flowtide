@@ -10,19 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Operators.Write;
-using FlowtideDotNet.Core;
-using FlowtideDotNet.Storage.StateManager;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Benchmarks.Stream
 {
@@ -41,7 +36,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         }
     }
 
-    internal class BenchmarkWriteOperator : WriteBaseOperator<object>
+    internal class BenchmarkWriteOperator : WriteBaseOperator
     {
         private readonly Action onCheckpoint;
 
@@ -62,15 +57,15 @@ namespace FlowtideDotNet.Benchmarks.Stream
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
             onCheckpoint();
-            return Task.FromResult(new object());
+            return Task.CompletedTask;
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)

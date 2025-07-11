@@ -13,15 +13,9 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -54,6 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new BinaryValue(blob.ToArray());
                 case FlexBuffers.Type.Map:
                     return MapToDataValue(flxValue);
+                case FlexBuffers.Type.VectorString:
                 case FlexBuffers.Type.Vector:
                     return ListToDataValue(flxValue);
             }
@@ -76,7 +71,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         private static IDataValue MapToDataValue(FlxValue flxValue)
         {
             var map = flxValue.AsMap;
-            
+
             List<KeyValuePair<IDataValue, IDataValue>> dataMap = new List<KeyValuePair<IDataValue, IDataValue>>();
             foreach (var kv in map)
             {
@@ -110,10 +105,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return MapToFlxValue(dataValue);
                 case ArrowTypeId.List:
                     return ListToFlxValue(dataValue);
+                case ArrowTypeId.Struct:
+                    return StructToFlxValue(dataValue);
             }
             throw new NotImplementedException();
         }
-        
+
         private static FlxValue ListToFlxValue(IDataValue value)
         {
             var list = value.AsList;
@@ -141,6 +138,22 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     var innerVal = DataValueToFlxValue(kv.Value);
                     m.Add(kv.Key.ToString()!, innerVal);
+                }
+            });
+            return FlxValue.FromBytes(bytes);
+        }
+
+        private static FlxValue StructToFlxValue(IDataValue value)
+        {
+            var structVal = value.AsStruct;
+
+            var bytes = FlexBufferBuilder.Map(m =>
+            {
+                for (int i = 0; i < structVal.Header.Count; i++)
+                {
+                    var innerVal = DataValueToFlxValue(structVal.GetAt(i));
+                    var name = structVal.Header.GetColumnName(i);
+                    m.Add(name, innerVal);
                 }
             });
             return FlxValue.FromBytes(bytes);
@@ -185,7 +198,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 columns[i] = Column.Create(batchmanager);
             }
 
-            foreach(var e in rowEvents)
+            foreach (var e in rowEvents)
             {
                 weights.Add(e.Weight);
                 iterations.Add(e.Iteration);

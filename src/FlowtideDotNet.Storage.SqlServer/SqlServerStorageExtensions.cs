@@ -27,7 +27,17 @@ namespace FlowtideDotNet.Storage.SqlServer
         {
             storageBuilder.SetPersistentStorage(new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
             {
-                ConnectionString = connectionString,
+                ConnectionStringFunc = () => connectionString,
+            }));
+
+            return storageBuilder;
+        }
+
+        public static IFlowtideStorageBuilder AddSqlServerStorage(this IFlowtideStorageBuilder storageBuilder, Func<string> connectionStringFunc)
+        {
+            storageBuilder.SetPersistentStorage(new SqlServerPersistentStorage(new SqlServerPersistentStorageSettings
+            {
+                ConnectionStringFunc = connectionStringFunc,
             }));
 
             return storageBuilder;

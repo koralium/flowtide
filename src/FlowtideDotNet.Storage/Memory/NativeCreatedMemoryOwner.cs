@@ -10,13 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -44,7 +39,7 @@ namespace FlowtideDotNet.Storage.Memory
 
         public override MemoryHandle Pin(int elementIndex = 0)
         {
-            return new MemoryHandle(ptr, default, default);
+            return new MemoryHandle(((byte*)ptr) + elementIndex, default, default);
         }
 
         public override void Unpin()

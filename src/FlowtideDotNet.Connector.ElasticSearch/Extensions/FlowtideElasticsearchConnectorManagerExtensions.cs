@@ -12,12 +12,6 @@
 
 using FlowtideDotNet.Connector.ElasticSearch;
 using FlowtideDotNet.Connector.ElasticSearch.Internal;
-using FlowtideDotNet.Core.Connectors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {

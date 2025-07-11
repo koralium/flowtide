@@ -10,29 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Core.Tests.SmokeTests;
 using EFCore.BulkExtensions;
-using Microsoft.EntityFrameworkCore;
-using FlowtideDotNet.Substrait.Sql;
-using FluentAssertions;
-using FlowtideDotNet.Substrait;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging.Abstractions;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core;
-using System.Diagnostics.Metrics;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Tests.SmokeTests;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.Metrics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -59,7 +56,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {
                 var name = rel.NamedTable.Names[0];
-                return $"tpch.dbo.{name}";
+                return new List<string>() { "tpch", "dbo", name };
             });
         }
 
@@ -89,10 +86,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sqlPlanBuilder.Sql("SELECT orderKey FROM tpch.dbo.orders");
             var plan = sqlPlanBuilder.GetPlan();
 
-            plan.Should().BeEquivalentTo(
-                new Plan()
-                {
-                    Relations = new List<Relation>()
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
                     {
                         new ProjectRelation()
                         {
@@ -138,8 +134,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                             }
                         }
                     },
-                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+            };
+
+            Assert.Equal(expected, plan);
         }
 
         [Fact]
@@ -233,8 +230,8 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sink.CreateBlock();
             sink.Link();
 
-            
-            await sink.Initialize("1", 0, 0, null, vertexHandler);
+
+            await sink.Initialize("1", 0, 0, vertexHandler, null);
 
             await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {
@@ -244,7 +241,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 })
             }, 1), 0));
 
-            await sink.SendAsync(new Watermark("test", 1));
+            await sink.SendAsync(new Watermark("test", LongWatermarkValue.Create(1)));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 
@@ -259,7 +256,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                         return reader.Read();
                     });
 
-                if(hasRow)
+                if (hasRow)
                 {
                     break;
                 }

@@ -25,10 +25,10 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Sinks
 {
-    internal class ConsoleSink : EgressVertex<StreamEventBatch, object>
+    internal class ConsoleSink : EgressVertex<StreamEventBatch>
     {
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>? _tree;
+        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
         private bool m_initialDataSent;
 
         public ConsoleSink(WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
@@ -48,15 +48,15 @@ namespace FlowtideDotNet.Core.Sinks
             return Task.CompletedTask;
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            _tree = await stateManagerClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>()
+            _tree = await stateManagerClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
                 Comparer = new ColumnComparer(writeRelation.OutputLength),
                 KeySerializer = new ColumnStoreSerializer(writeRelation.OutputLength, MemoryAllocator),
                 MemoryAllocator = MemoryAllocator,
                 UseByteBasedPageSizes = true,
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer())
+                ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator)
             });
         }
 
@@ -90,11 +90,11 @@ namespace FlowtideDotNet.Core.Sinks
             using NativeBufferWriter memoryStream = new NativeBufferWriter(MemoryAllocator);
             Utf8JsonWriter writer = new Utf8JsonWriter(memoryStream);
 
-            
+
             int count = 0;
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     var vals = new object[writeRelation.TableSchema.Names.Count + 1];
                     vals[0] = kv.Value;

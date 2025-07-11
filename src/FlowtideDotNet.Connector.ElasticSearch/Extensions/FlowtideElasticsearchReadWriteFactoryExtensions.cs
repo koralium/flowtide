@@ -14,16 +14,15 @@ using FlowtideDotNet.Connector.ElasticSearch;
 using FlowtideDotNet.Connector.ElasticSearch.Internal;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Engine
 {
     public static class FlowtideElasticsearchReadWriteFactoryExtensions
     {
         public static ReadWriteFactory AddElasticsearchSink(
-            this ReadWriteFactory factory, 
-            string regexPattern, 
-            FlowtideElasticsearchOptions options, 
+            this ReadWriteFactory factory,
+            string regexPattern,
+            FlowtideElasticsearchOptions options,
             Action<WriteRelation>? transform = null)
         {
             if (regexPattern == "*")
@@ -40,7 +39,7 @@ namespace FlowtideDotNet.Core.Engine
                 transform?.Invoke(writeRel);
 
                 var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRel, opt);
-                sink.CreateIndexAndMappings();
+                sink.CreateIndexAndMappings().GetAwaiter().GetResult();
                 return sink;
             });
             return factory;

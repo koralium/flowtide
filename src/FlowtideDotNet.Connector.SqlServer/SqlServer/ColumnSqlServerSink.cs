@@ -1,28 +1,29 @@
-﻿using FlowtideDotNet.Base;
-using FlowtideDotNet.Core;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
-    internal class SqlServerSinkState : ColumnWriteState
-    {
-    }
-
-    class ColumnSqlServerSink : ColumnGroupedWriteOperator<SqlServerSinkState>
+    class ColumnSqlServerSink : ColumnGroupedWriteOperator
     {
         private readonly SqlServerSinkOptions m_sqlServerSinkOptions;
         private readonly WriteRelation m_writeRelation;
@@ -34,19 +35,27 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         private DataTable? m_dataTable;
         private SqlBulkCopy? m_sqlBulkCopy;
         private SqlCommand? m_mergeIntoCommand;
-        private Action<DataTable, bool, EventBatchData, int>? m_mapRowFunc;
+        private Action<DataRow, bool, EventBatchData, int>? m_mapRowFunc;
 
         public ColumnSqlServerSink(
             SqlServerSinkOptions sqlServerSinkOptions,
-            WriteRelation writeRelation, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(sqlServerSinkOptions.ExecutionMode, writeRelation, executionDataflowBlockOptions)
         {
             this.m_connectionStringFunc = sqlServerSinkOptions.ConnectionStringFunc;
             this.m_sqlServerSinkOptions = sqlServerSinkOptions;
             this.m_writeRelation = writeRelation;
             m_dataValueContainer = new DataValueContainer();
-            m_tmpTableName = GetTmpTableName();
+
+            if (sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
+            {
+                m_tmpTableName = sqlServerSinkOptions.CustomBulkCopyDestinationTable;
+            }
+            else
+            {
+                m_tmpTableName = GetTmpTableName();
+            }
         }
 
         internal string GetTmpTableName()
@@ -56,9 +65,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override string DisplayName => "SQL Server Sink";
 
-        protected override SqlServerSinkState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new SqlServerSinkState();
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
@@ -111,10 +119,13 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 primaryKeyIndices.Add(index);
             }
             m_primaryKeys = primaryKeyIndices;
-            await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
 
             m_dataTable = new DataTable();
-            m_dataTable.Columns.Add("md_operation");
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null)
+            {
+                m_dataTable.Columns.Add("md_operation");
+            }
+            
             foreach (var column in dbSchema)
             {
                 if (column.DataType == typeof(decimal))
@@ -141,39 +152,82 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 }
             }
 
-            m_mapRowFunc = SqlServerUtils.GetDataRowFromColumnsFunc(dbSchema, m_primaryKeys, m_dataValueContainer);
-            var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
+            if (m_sqlServerSinkOptions.OnDataTableCreation != null)
+            {
+                await m_sqlServerSinkOptions.OnDataTableCreation(m_dataTable);
+            }
+
+            m_mapRowFunc = SqlServerUtils.GetDataRowFromColumnsFunc(dbSchema, m_primaryKeys, m_dataValueContainer, m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null);
             m_sqlBulkCopy = new SqlBulkCopy(m_connection);
             m_sqlBulkCopy.DestinationTableName = m_tmpTableName;
 
-            m_mergeIntoCommand = m_connection.CreateCommand();
-            m_mergeIntoCommand.CommandText = mergeIntoStatement;
-            await m_mergeIntoCommand.PrepareAsync();
+
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable != null)
+            {
+                var columns = await SqlServerUtils.GetColumns(m_connection, m_sqlServerSinkOptions.CustomBulkCopyDestinationTable);
+                var columnIndexMap = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+                for (int i = 0; i < columns.Count; i++)
+                {
+                    columnIndexMap[columns[i]] = i;
+                }
+
+                for (int c = 0; c < m_dataTable.Columns.Count; c++)
+                {
+                    var dataColumn = m_dataTable.Columns[c];
+                    if (columnIndexMap.TryGetValue(dataColumn.ColumnName, out int columnIndex))
+                    {
+                        m_sqlBulkCopy.ColumnMappings.Add(c, columnIndex);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Column '{dataColumn.ColumnName}' not found in destination table '{m_sqlServerSinkOptions.CustomBulkCopyDestinationTable}'.");
+                    }
+                }
+            }
+
+            if (m_sqlServerSinkOptions.CustomBulkCopyDestinationTable == null)
+            {
+                await SqlServerUtils.CreateTemporaryTable(m_connection, dbSchema, m_tmpTableName);
+                m_mergeIntoCommand = m_connection.CreateCommand();
+                var mergeIntoStatement = SqlServerUtils.CreateMergeIntoProcedure(m_tmpTableName, string.Join(".", m_writeRelation.NamedObject.Names.Select(x => $"[{x}]")), m_primaryKeyNames.ToHashSet(), m_dataTable);
+                m_mergeIntoCommand.CommandText = mergeIntoStatement;
+                await m_mergeIntoCommand.PrepareAsync();
+            }   
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await LoadMetadata();
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_dataTable != null);
             Debug.Assert(m_mapRowFunc != null);
             Debug.Assert(m_sqlBulkCopy != null);
-            Debug.Assert(m_mergeIntoCommand != null);
-
+            Debug.Assert(m_connection != null);
+            
             Logger.StartingDatabaseUpdate(StreamName, Name);
-
-            await foreach(var row in rows)
+            
+            await foreach (var row in rows)
             {
-                m_mapRowFunc(m_dataTable, row.IsDeleted, row.EventBatchData, row.Index);
+                var dataRow = m_dataTable.NewRow();
+                m_mapRowFunc(dataRow, row.IsDeleted, row.EventBatchData, row.Index);
+                if (m_sqlServerSinkOptions.ModifyRow != null)
+                {
+                    m_sqlServerSinkOptions.ModifyRow(dataRow, row.IsDeleted, watermark, CurrentCheckpointId, isInitialData);
+                }
+                m_dataTable.Rows.Add(dataRow);
 
                 if (m_dataTable.Rows.Count > 1_000)
                 {
                     await m_sqlBulkCopy.WriteToServerAsync(m_dataTable);
-                    await m_mergeIntoCommand.ExecuteNonQueryAsync();
+                    
+                    if (m_mergeIntoCommand != null)
+                    {
+                        await m_mergeIntoCommand.ExecuteNonQueryAsync();
+                    }
 
                     m_dataTable.Rows.Clear();
                 }
@@ -181,10 +235,20 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             if (m_dataTable.Rows.Count > 0)
             {
                 await m_sqlBulkCopy.WriteToServerAsync(m_dataTable);
-                await m_mergeIntoCommand.ExecuteNonQueryAsync();
+
+                if (m_mergeIntoCommand != null)
+                {
+                    await m_mergeIntoCommand.ExecuteNonQueryAsync();
+                }
 
                 m_dataTable.Rows.Clear();
             }
+
+            if (m_sqlServerSinkOptions.OnDataUploaded != null)
+            {
+                await m_sqlServerSinkOptions.OnDataUploaded(m_connection, watermark, CurrentCheckpointId, isInitialData);
+            }
+
             Logger.DatabaseUpdateComplete(StreamName, Name);
         }
     }

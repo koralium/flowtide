@@ -1,0 +1,29 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_string.yaml'
+
+# basic: Basic examples without any special cases
+from_json('"abcdef"'::str) = 'abcdef'::str
+from_json('["a", "b"]'::str) = ['a', 'b']::LIST<str>
+from_json('123'::str) = 123::i64
+from_json('123.45'::str) = 123.45::fp64
+from_json('true'::str) = true::bool
+from_json('false'::str) = false::bool
+from_json('null'::str) = null::str
+
+# Binary input: example with binary input
+from_json('"abcdef"'::FIXEDBINARY<7>) = 'abcdef'::str
+from_json('["a", "b"]'::FIXEDBINARY<10>) = ['a', 'b']::LIST<str>
+
+# Errors: error handling for invalid json
+from_json('{"a": 1'::str) = null::str
+from_json(123::i64) = null::str
+from_json('{"a": 1'::FIXEDBINARY<7>) = null::str
+from_json('{"a": 1'::str) [error_handling:ERROR] = <!ERROR>
+from_json(123::i64) [error_handling:ERROR] = <!ERROR>
+from_json('{"a": 1'::FIXEDBINARY<7>) [error_handling:ERROR] = <!ERROR>
+
+# Errors: Error handling enabled with correct json
+from_json('"abcdef"'::str) [error_handling:ERROR] = 'abcdef'::str
+from_json('["a", "b"]'::str) [error_handling:ERROR] = ['a', 'b']::LIST<str>
+from_json('"abcdef"'::FIXEDBINARY<7>) [error_handling:ERROR] = 'abcdef'::str
+from_json('["a", "b"]'::FIXEDBINARY<10>) [error_handling:ERROR] = ['a', 'b']::LIST<str>

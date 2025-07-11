@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree
 {
@@ -27,6 +22,8 @@ namespace FlowtideDotNet.Storage.Tree
         private readonly PrimitiveList<T> _values;
 
         public Memory<byte> Memory => _values.SlicedMemory;
+
+        public PrimitiveList<T> Data => _values;
 
         public PrimitiveListValueContainer(IMemoryAllocator memoryAllocator)
         {
@@ -96,6 +93,6 @@ namespace FlowtideDotNet.Storage.Tree
         public PrimitiveList<T> GetPrimitiveListCopy(IMemoryAllocator memoryAllocator)
         {
             return _values.Copy(memoryAllocator);
-        } 
+        }
     }
 }

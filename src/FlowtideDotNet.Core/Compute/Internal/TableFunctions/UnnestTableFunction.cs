@@ -12,13 +12,8 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
 {
@@ -30,14 +25,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.TableFunctions
             var method = typeof(UnnestTableFunction).GetMethod(nameof(DoUnnest), BindingFlags.Static | BindingFlags.Public);
             if (method == null)
             {
-                throw new InvalidOperationException("Could not find unnest method");    
+                throw new InvalidOperationException("Could not find unnest method");
             }
             return method;
         }
 
         public static void AddBuiltInUnnestFunction(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterTableFunction(FunctionsTableGeneric.Uri, FunctionsTableGeneric.Unnest, 
+            functionsRegister.RegisterTableFunction(FunctionsTableGeneric.Uri, FunctionsTableGeneric.Unnest,
                 (tableFunc, parameterInfo, visitor) =>
                 {
                     if (tableFunc.Arguments.Count != 1)

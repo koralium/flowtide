@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             int start = 0;
             int end = keyContainer.Count - 1;
             for (int i = 0; i < columnOrder.Count; i++)
-            {       
+            {
                 var column = columnOrder[i];
                 // Get value by container to skip boxing for each value
                 key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);

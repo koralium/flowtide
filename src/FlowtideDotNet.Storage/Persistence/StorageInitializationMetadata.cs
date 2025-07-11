@@ -10,21 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Storage.Persistence
 {
     public class StorageInitializationMetadata
     {
         public string StreamName { get; }
 
-        public StorageInitializationMetadata(string streamName)
+        public StreamVersionInformation? StreamVersion { get;  }
+
+        public StorageInitializationMetadata(string streamName, StreamVersionInformation? streamVersion = null)
         {
             StreamName = streamName;
+            StreamVersion = streamVersion;
         }
     }
 }

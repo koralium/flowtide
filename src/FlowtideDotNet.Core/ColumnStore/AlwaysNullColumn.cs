@@ -13,14 +13,17 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -36,6 +39,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         IDataColumn IColumn.DataColumn => throw new NotSupportedException();
 
         public ArrowTypeId Type => ArrowTypeId.Null;
+
+        int IColumn.Count => throw new NotImplementedException();
+
+        ArrowTypeId IColumn.Type => throw new NotImplementedException();
+
+        StructHeader? IColumn.StructHeader => default;
 
         public void Add<T>(in T value) where T : IDataValue
         {
@@ -130,6 +139,36 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         public Column Copy(IMemoryAllocator memoryAllocator)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+        }
+
+        int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            throw new NotSupportedException();
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
+        void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();
         }

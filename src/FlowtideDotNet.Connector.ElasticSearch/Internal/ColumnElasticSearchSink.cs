@@ -10,7 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Elasticsearch.Net;
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.IndexManagement;
+using Elastic.Clients.Elasticsearch.Mapping;
+using Elastic.Transport;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
@@ -18,29 +21,20 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using Nest;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 {
-    internal class ElasticState : ColumnWriteState
-    {
 
-    }
-
-    internal class ColumnElasticSearchSink : ColumnGroupedWriteOperator<ElasticState>
+    internal class ColumnElasticSearchSink : ColumnGroupedWriteOperator
     {
         private static byte NewlineChar = Encoding.UTF8.GetBytes("\n")[0];
         private readonly WriteRelation m_writeRelation;
         private readonly FlowtideElasticsearchOptions m_elasticsearchOptions;
-        private ElasticClient? m_client;
+        private ElasticsearchClient? m_client;
         private readonly ColumnToJsonElastic m_serializer;
         private readonly IReadOnlyList<int> m_primaryKeys;
         private readonly string m_displayName;
@@ -48,7 +42,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         private ICounter<long>? m_eventsCounter;
 
 
-        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+        public ColumnElasticSearchSink(FlowtideElasticsearchOptions elasticsearchOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
             m_elasticsearchOptions = elasticsearchOptions;
@@ -83,9 +77,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         public override string DisplayName => m_displayName;
 
-        protected override ElasticState Checkpoint(long checkpointTime)
+        protected override void Checkpoint(long checkpointTime)
         {
-            return new ElasticState();
         }
 
         protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
@@ -102,14 +95,15 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             return base.OnInitialDataSent();
         }
 
-        internal void CreateIndexAndMappings()
+        internal async Task CreateIndexAndMappings()
         {
-            var client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
+            var client = new ElasticsearchClient(m_elasticsearchOptions.ConnectionSettings());
 
-            var existingIndex = client.Indices.Get(m_indexName);
+            var existingIndex = await client.Indices.GetAsync(m_indexName);
             IndexState? indexState = default;
-            IProperties? properties = null;
-            if (existingIndex != null && existingIndex.IsValid && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
+            Properties? properties = null;
+
+            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
             {
                 properties = indexState.Mappings.Properties ?? new Properties();
             }
@@ -125,39 +119,42 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             if (indexState == null)
             {
-                var response = client.Indices.Create(m_indexName);
-                if (!response.IsValid)
+                var response = await client.Indices.CreateAsync(m_indexName);
+                if (!response.IsValidResponse)
                 {
                     throw new FlowtideElasticsearchResponseException(response);
                 }
             }
 
-            var mapResponse = client.Map(new PutMappingRequest(m_indexName)
+            var mapResponse = await client.Indices.PutMappingAsync(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
             });
 
-            if (!mapResponse.IsValid)
+            if (!mapResponse.IsValidResponse)
             {
                 throw new FlowtideElasticsearchResponseException(mapResponse);
             }
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, ElasticState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             if (m_eventsCounter == null)
             {
                 m_eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            m_client = new ElasticClient(m_elasticsearchOptions.ConnectionSettings);
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            m_client = new ElasticsearchClient(m_elasticsearchOptions.ConnectionSettings());
+            return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_serializer != null);
             Debug.Assert(m_eventsCounter != null);
+
+            // Create a new client for each upload changes, this is to allow using new credentials if they exist
+            m_client = new ElasticsearchClient(m_elasticsearchOptions.ConnectionSettings());
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
@@ -187,9 +184,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                     BulkResponse? response;
                     try
                     {
-                        response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                        response = await m_client.Transport.PostAsync<BulkResponse>("_bulk", PostData.ReadOnlyMemory(memoryStream.ToArray()));
+                        //response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         if (e is TaskCanceledException)
                         {
@@ -197,21 +195,24 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                         }
                         throw;
                     }
-                    
+
 
                     if (response.Errors)
                     {
                         foreach (var itemWithError in response.ItemsWithErrors)
                         {
-                            Logger.ElasticSearchInsertError(itemWithError.Error.ToString(), StreamName, Name);
+                            if (itemWithError.Error != null)
+                            {
+                                Logger.ElasticSearchInsertError(itemWithError.Error.ToString()!, StreamName, Name);
+                            }
                         }
                         throw new InvalidOperationException("Error in elasticsearch sink");
                     }
-                    if (response.OriginalException != null)
+                    if (response.TryGetOriginalException(out var originalException))
                     {
-                        throw response.OriginalException;
+                        throw originalException!;
                     }
-                    if (!response.ApiCall.Success)
+                    if (!response.IsSuccess())
                     {
                         throw new InvalidOperationException("Error in elasticsearch sink");
                     }
@@ -226,21 +227,25 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             if (batchCount > 0)
             {
                 m_eventsCounter.Add(batchCount);
-                var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
+                var response = await m_client.Transport.PostAsync<BulkResponse>("_bulk", PostData.ReadOnlyMemory(memoryStream.ToArray()));
+                //var response = await m_client.LowLevel.BulkAsync<BulkResponse>(PostData.ReadOnlyMemory(memoryStream.ToArray()), ctx: cancellationToken);
 
                 if (response.Errors)
                 {
                     foreach (var itemWithError in response.ItemsWithErrors)
                     {
-                        Logger.ElasticSearchInsertError(itemWithError.Error.ToString(), StreamName, Name);
+                        if (itemWithError.Error != null)
+                        {
+                            Logger.ElasticSearchInsertError(itemWithError.Error.ToString()!, StreamName, Name);
+                        }
                     }
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }
-                if (response.OriginalException != null)
+                if (response.TryGetOriginalException(out var originalException))
                 {
-                    throw response.OriginalException;
+                    throw originalException!;
                 }
-                if (!response.ApiCall.Success)
+                if (!response.IsSuccess())
                 {
                     throw new InvalidOperationException("Error in elasticsearch sink");
                 }

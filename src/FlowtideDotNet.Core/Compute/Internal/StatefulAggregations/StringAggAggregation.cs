@@ -18,14 +18,8 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {
@@ -108,14 +102,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 
         private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree", 
+            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = memoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = memoryAllocator
+                });
 
             return new StringAggAggregationSingleton(tree, groupingLength);
         }

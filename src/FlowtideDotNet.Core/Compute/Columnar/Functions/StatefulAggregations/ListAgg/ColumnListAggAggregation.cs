@@ -10,26 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListAgg;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
-using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 {
@@ -93,7 +83,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 throw new InvalidOperationException("List_agg must have one argument.");
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
-            
+
             var expr = GetListAggBody(arg!.Type);
             var body = expr.Body;
             var replacer = new ParameterReplacerVisitor(expr.Parameters[0], arg!);
@@ -112,7 +102,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         private static System.Linq.Expressions.LambdaExpression GetListAggBody(System.Type inputType)
         {
             var methodInfo = typeof(ColumnListAggAggregation).GetMethod(nameof(DoListAgg), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!.MakeGenericMethod(inputType);
-            
+
             var ev = System.Linq.Expressions.Expression.Parameter(inputType, "ev");
             var state = System.Linq.Expressions.Expression.Parameter(typeof(ColumnReference), "state");
             var weight = System.Linq.Expressions.Expression.Parameter(typeof(long), "weight");
@@ -167,7 +157,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             if (!singleton.SearchComparer.noMatch)
             {
                 bool firstPage = true;
-                await foreach(var page in iterator)
+                await foreach (var page in iterator)
                 {
                     if (!firstPage)
                     {

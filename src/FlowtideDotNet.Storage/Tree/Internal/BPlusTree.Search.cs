@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var getFirstTask = m_stateClient.GetValue(m_stateClient.Metadata.Left, "Leftleaf");
+            var getFirstTask = m_stateClient.GetValue(m_stateClient.Metadata.Left);
 
             if (!getFirstTask.IsCompleted)
             {
@@ -42,13 +42,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var rootTask = m_stateClient.GetValue(m_stateClient.Metadata.Root, "SearchRoot");
+            var rootTask = m_stateClient.GetValue(m_stateClient.Metadata.Root);
 
             if (!rootTask.IsCompletedSuccessfully)
             {
                 return SearchRoot_Slow(key, rootTask, searchComparer);
             }
-            return  SearchLeafNodeForRead_AfterTask(key, rootTask.Result!, searchComparer);
+            return SearchLeafNodeForRead_AfterTask(key, rootTask.Result!, searchComparer);
         }
 
         private async ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> SearchRoot_Slow(K key, ValueTask<IBPlusTreeNode?> task, IBplusTreeComparer<K, TKeyContainer> searchComparer)
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             var child = node.children[index];
             node.Return();
-            var childNodeTask = m_stateClient.GetValue(child, "SearchLeafNodeForReadInternal");
+            var childNodeTask = m_stateClient.GetValue(child);
 
             if (!childNodeTask.IsCompletedSuccessfully)
             {

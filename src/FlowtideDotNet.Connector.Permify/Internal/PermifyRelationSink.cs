@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Core.Operators.Write;
-using System.Threading.Tasks.Dataflow;
-using PermifyProto=Base.V1;
-using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.Flexbuffer;
-using System.Globalization;
+using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
+using System.Globalization;
+using System.Threading.Tasks.Dataflow;
+using PermifyProto = Base.V1;
 
 namespace FlowtideDotNet.Connector.Permify.Internal
 {
@@ -35,8 +35,8 @@ namespace FlowtideDotNet.Connector.Permify.Internal
 
         public PermifyRelationSink(
             WriteRelation writeRelation,
-            PermifySinkOptions permifySinkOptions, 
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            PermifySinkOptions permifySinkOptions,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(permifySinkOptions.ExecutionMode, executionDataflowBlockOptions)
         {
             _permifySinkOptions = permifySinkOptions;
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
             int deleteCounter = 0;
             string? lastToken = default;
 
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 var tuple = RowToTuple(row);
 

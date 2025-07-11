@@ -10,12 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Testcontainers.MsSql;
 
 namespace FlowtideDotNet.SqlServer.Tests.e2e
@@ -50,15 +45,19 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         {
             await _msSqlContainer.StartAsync();
 
-            await RunCommand("CREATE DATABASE [test-db]");
+            await RunCommand("CREATE DATABASE [test-db]", false);
             await RunCommand("ALTER DATABASE [test-db] SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON)");
         }
 
-        public async Task RunCommand(string command)
+        public async Task RunCommand(string command, bool changeDatabase = true)
         {
             using (SqlConnection sqlConnection = new SqlConnection(_msSqlContainer.GetConnectionString()))
             {
                 await sqlConnection.OpenAsync();
+                if (changeDatabase)
+                {
+                    await sqlConnection.ChangeDatabaseAsync("test-db");
+                }
                 using var cmd = sqlConnection.CreateCommand();
                 cmd.CommandText = command;
                 await cmd.ExecuteNonQueryAsync();

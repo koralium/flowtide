@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow.Types;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes
 {
@@ -25,7 +20,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes
         public const string ExtensionName = "flowtide.timestamptz";
         public static readonly TimestampTzType Default = new TimestampTzType();
 
-        public TimestampTzType() : base(10)
+        public TimestampTzType() : base(16)
         {
         }
 

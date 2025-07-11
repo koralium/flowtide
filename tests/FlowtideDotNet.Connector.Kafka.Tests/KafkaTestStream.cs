@@ -12,9 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
-using Microsoft.VisualStudio.TestPlatform.ObjectModel;
 
 namespace FlowtideDotNet.Connector.Kafka.Tests
 {

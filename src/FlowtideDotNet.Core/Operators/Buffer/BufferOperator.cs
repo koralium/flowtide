@@ -20,17 +20,12 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Buffer
 {
-    internal class BufferOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class BufferOperator : UnaryVertex<StreamEventBatch>
     {
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -77,7 +72,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
                 for (int i = 0; i < page.Keys._data.Columns.Count; i++)
                 {
-                     columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
+                    columns[i] = page.Keys._data.Columns[i].Copy(MemoryAllocator);
                 }
                 _eventsCounter.Add(weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
@@ -137,7 +132,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsCounter == null)
             {

@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
-                
+
                 relation = visitor.Visit(relation, _emptyObject);
 
                 plan.Relations[i] = relation;

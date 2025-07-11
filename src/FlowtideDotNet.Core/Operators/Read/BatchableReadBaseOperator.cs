@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -18,13 +19,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Read
@@ -36,7 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
     public record struct BatchableReadEvent(string Key, RowEvent RowEvent, long Watermark);
 
-    public abstract class BatchableReadBaseOperator : ReadBaseOperator<BatchableReadOperatorState>
+    public abstract class BatchableReadBaseOperator : ReadBaseOperator
     {
         /// <summary>
         /// Temporary tree used to store the full load data
@@ -52,7 +47,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         /// Tree used to store the deletions for the data in full load
         /// </summary>
         private IBPlusTree<string, int, ListKeyContainer<string>, ListValueContainer<int>>? _deletionsTree;
-        private BatchableReadOperatorState? _state;
+        private IObjectState<BatchableReadOperatorState>? _state;
         private readonly string _watermarkName;
         private readonly ReadRelation readRelation;
         private Func<RowEvent, bool>? _filter;
@@ -107,47 +102,44 @@ namespace FlowtideDotNet.Core.Operators.Read
             await DoDeltaLoad(output);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, BatchableReadOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<BatchableReadOperatorState>("batch_read_state");
+            if (_state.Value == null)
             {
-                _state = state;
-            }
-            else
-            {
-                _state = new BatchableReadOperatorState()
+                _state.Value = new BatchableReadOperatorState()
                 {
                     LastWatermark = -1
                 };
             }
 
-            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp", 
+            _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await _fullLoadTempTree.Clear();
 
-            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent", 
+            _persistentTree = await stateManagerClient.GetOrCreateTree("persistent",
                 new BPlusTreeOptions<string, RowEvent, ListKeyContainer<string>, ListValueContainer<RowEvent>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
 
-            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions", 
+            _deletionsTree = await stateManagerClient.GetOrCreateTree("deletions",
                 new BPlusTreeOptions<string, int, ListKeyContainer<string>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
-                KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await _deletionsTree.Clear();
         }
 
@@ -165,12 +157,12 @@ namespace FlowtideDotNet.Core.Operators.Read
         private async Task DoDeltaLoad(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_persistentTree != null, nameof(_persistentTree));
-            Debug.Assert(_state != null, nameof(_state));
+            Debug.Assert(_state?.Value != null, nameof(_state));
             await output.EnterCheckpointLock();
-            long maxWatermark = _state.LastWatermark;
+            long maxWatermark = _state.Value.LastWatermark;
             List<RowEvent> outputList = new List<RowEvent>();
             bool sentUpdates = false;
-            await foreach (var e in DeltaLoad(_state.LastWatermark))
+            await foreach (var e in DeltaLoad(_state.Value.LastWatermark))
             {
                 var key = e.Key;
                 if (e.RowEvent.Weight < 0)
@@ -206,7 +198,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 updated = true;
                             }
                             outputList.Add(new RowEvent(-1, 0, ArrayRowData.Create(current.RowData, readRelation.Emit)));
-                            
+
                             return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                         }
                         if (_filter != null)
@@ -243,7 +235,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             }
             if (sentUpdates)
             {
-                await output.SendWatermark(new Base.Watermark(_watermarkName, maxWatermark));
+                await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(maxWatermark)));
             }
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
@@ -254,7 +246,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             Debug.Assert(_fullLoadTempTree != null, nameof(_fullLoadTempTree));
             Debug.Assert(_persistentTree != null, nameof(_persistentTree));
             Debug.Assert(_deletionsTree != null, nameof(_deletionsTree));
-            Debug.Assert(_state != null, nameof(_state));
+            Debug.Assert(_state?.Value != null, nameof(_state));
 
             // Lock checkpointing until the full load is complete
             await output.EnterCheckpointLock();
@@ -269,7 +261,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     throw new NotSupportedException("Full load does not support deletions");
                 }
 
-                
+
                 var key = e.Key;
                 await _fullLoadTempTree.Upsert(key, e.RowEvent);
                 await _persistentTree.RMW(key, e.RowEvent, (input, current, exist) =>
@@ -408,8 +400,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                 outputList = new List<RowEvent>();
             }
             // Send the new max watermark
-            _state.LastWatermark = maxWatermark;
-            await output.SendWatermark(new Base.Watermark(_watermarkName, maxWatermark));
+            _state.Value.LastWatermark = maxWatermark;
+            await output.SendWatermark(new Base.Watermark(_watermarkName, LongWatermarkValue.Create(maxWatermark)));
 
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
@@ -426,19 +418,19 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected abstract TimeSpan? GetDeltaLoadTimeSpan();
 
-        protected override async Task<BatchableReadOperatorState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null, nameof(_state));
             Debug.Assert(_persistentTree != null, nameof(_persistentTree));
 
             await _persistentTree.Commit();
-            return _state;
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            Debug.Assert(_state != null, nameof(_state));
-            if (_state.LastWatermark < 0)
+            Debug.Assert(_state?.Value != null, nameof(_state));
+            if (_state.Value.LastWatermark < 0)
             {
                 // Only do full load if we have not done it before
                 await DoFullLoad(output);

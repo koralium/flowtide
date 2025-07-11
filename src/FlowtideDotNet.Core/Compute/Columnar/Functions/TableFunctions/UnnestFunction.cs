@@ -10,19 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 {
@@ -98,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                     weights.Add(1);
                     iterations.Add(0);
                     outputColumns[0].Add(new MapValue(
-                        new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)), 
+                        new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)),
                         new KeyValuePair<IDataValue, IDataValue>(_valueValue, map.GetValueAt(i))
                     ));
                 }

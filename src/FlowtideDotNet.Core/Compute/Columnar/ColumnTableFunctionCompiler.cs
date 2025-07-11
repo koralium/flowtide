@@ -11,16 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
@@ -28,7 +21,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
     internal static class ColumnTableFunctionCompiler
     {
         public static TableFunctionCompileResult CompileWithArg(
-            TableFunction tableFunction, 
+            TableFunction tableFunction,
             IFunctionsRegister functionsRegister,
             IMemoryAllocator memoryAllocator)
         {
@@ -39,7 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             var param = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
             var indexParam = System.Linq.Expressions.Expression.Parameter(typeof(int));
             var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
-            var parameterInfo = new ColumnParameterInfo(new List<ParameterExpression>() { param }, new List<ParameterExpression>() { indexParam}, new List<int> { 0 }, resultContainer);
+            var parameterInfo = new ColumnParameterInfo(new List<ParameterExpression>() { param }, new List<ParameterExpression>() { indexParam }, new List<int> { 0 }, resultContainer);
             var visitor = new ColumnarExpressionVisitor(functionsRegister);
 
             var tableFunctionResult = tableFunctionFactory.MapFunc(tableFunction, parameterInfo, visitor, memoryAllocator);

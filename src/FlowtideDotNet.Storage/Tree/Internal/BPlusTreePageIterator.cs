@@ -16,8 +16,8 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal class Enumerator : IEnumerator<KeyValuePair<K, V>>
         {
@@ -84,12 +84,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public TValueContainer Values => leaf != null ? leaf.values : throw new InvalidOperationException("Tried getting keys on an inactive iterator");
 
+        public LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage => leaf ?? throw new InvalidOperationException("Tried getting current page on an inactive iterator");
+
         public ValueTask SavePage(bool checkForResize)
         {
             Debug.Assert(leaf != null);
             var byteSize = leaf.GetByteSize();
             if (leaf.keys.Count > 0 && checkForResize && tree.m_stateClient.Metadata!.PageSizeBytes < byteSize)
             {
+                tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
                 // Force a traversion of the tree to ensure that size is looked at for splits.
                 var traverseTask = tree.RMWNoResult(leaf.keys.Get(0), default, (input, current, found) =>
                 {
@@ -108,7 +111,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     return WaitForNotFull();
                 }
             }
-           
+
             return ValueTask.CompletedTask;
         }
 

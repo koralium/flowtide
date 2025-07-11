@@ -31,7 +31,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 var tableMembers = TypeAccessor.Create(typeof(T)).GetMembers();
                 List<int> keyIndices = new List<int>();
-                List<SubstraitBaseType> types = new List<SubstraitBaseType>(); 
+                List<SubstraitBaseType> types = new List<SubstraitBaseType>();
                 for (int i = 0; i < tableMembers.Count; i++)
                 {
                     var attr = tableMembers[i].GetAttribute(typeof(KeyAttribute), false);
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         keyIndices.Add(i);
                     }
                 }
-                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types);
+                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types, typeof(T));
                 Tables.Add(tableName, mockTable);
             }
             return mockTable;

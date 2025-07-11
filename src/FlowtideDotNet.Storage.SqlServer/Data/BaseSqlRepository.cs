@@ -10,14 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Azure;
 using FlowtideDotNet.Storage.SqlServer.Exceptions;
 using Microsoft.Data.SqlClient;
 using System.Buffers.Binary;
 using System.Data;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Text;
+using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Storage.SqlServer.Data
 {
@@ -61,7 +59,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall([key]);
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
             cmd.Parameters.AddWithValue("@key", key);
@@ -88,9 +86,9 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             }
 
             cmd.CommandText = query;
-            connection.Open();
+            SqlServerStorageExtensionsHelpers.ExecutePipeline(connection.Open, Settings);
+            var reader = SqlServerStorageExtensionsHelpers.ExecutePipeline(cmd.ExecuteReader, Settings);
 
-            var reader = cmd.ExecuteReader();
             if (reader.Read())
             {
                 return reader.GetFieldValue<byte[]>(0);
@@ -105,7 +103,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall([key]);
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand();
             cmd.Connection = connection;
             cmd.Parameters.AddWithValue("@key", key);
@@ -133,7 +131,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.CommandText = query;
             await connection.OpenAsync();
 
-            var reader = await cmd.ExecuteReaderAsync();
+            var reader = await cmd.ExecuteReaderAsync().ExecutePipeline(Settings);
             if (await reader.ReadAsync())
             {
                 return await reader.GetFieldValueAsync<byte[]>(0);
@@ -158,8 +156,8 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
             if (transaction == null)
             {
-                using var connection = new SqlConnection(Settings.ConnectionString);
-                await connection.OpenAsync();
+                using var connection = new SqlConnection(Settings.ConnectionStringFunc());
+                await connection.OpenAsync().ExecutePipeline(Settings);
                 await SaveStreamPagesAsync(reader, connection);
             }
             else
@@ -176,7 +174,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 
             if (connection.State != ConnectionState.Open)
             {
-                await connection.OpenAsync();
+                await connection.OpenAsync().ExecutePipeline(Settings);
             }
 
             using var bulkCopy = new SqlBulkCopy(connection)
@@ -197,7 +195,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 ColumnOrderHints = { { "PageKey", SortOrder.Ascending }, { "StreamKey", SortOrder.Ascending } }
             };
 
-            await bulkCopy.WriteToServerAsync(reader);
+            await bulkCopy.WriteToServerAsync(reader).ExecutePipeline(Settings);
             await reader.DisposeAsync();
             await connection.DisposeAsync();
         }
@@ -226,7 +224,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
                 ColumnOrderHints = { { "PageKey", SortOrder.Ascending }, { "StreamKey", SortOrder.Ascending } }
             };
 
-            await bulkCopy.WriteToServerAsync(reader);
+            await bulkCopy.WriteToServerAsync(reader).ExecutePipeline(Settings);
             await reader.DisposeAsync();
         }
 
@@ -236,12 +234,12 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
 
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand($"DELETE FROM {Settings.StreamPageTableName} WHERE Version > @Version AND StreamKey = @StreamKey", connection);
             cmd.Parameters.AddWithValue("@Version", Stream.Metadata.CurrentVersion);
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
-            await connection.OpenAsync();
-            await cmd.ExecuteNonQueryAsync();
+            await connection.OpenAsync().ExecutePipeline(Settings);
+            await cmd.ExecuteNonQueryAsync().ExecutePipeline(Settings);
         }
 
         public async Task DeleteUnsuccessfulVersionsAsync(SqlTransaction transaction)
@@ -255,7 +253,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
             cmd.Connection = transaction.Connection;
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync().ExecutePipeline(Settings);
         }
 
         public async Task DeleteOldVersionsInDbAsync(SqlTransaction transaction)
@@ -275,7 +273,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             cmd.Parameters.AddWithValue("@StreamKey", Stream.Metadata.StreamKey);
             cmd.Transaction = transaction;
 
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync().ExecutePipeline(Settings);
         }
 
         public async Task DeleteOldVersionsInDbFromPagesAsync(IEnumerable<ManagedStreamPage> pages, SqlTransaction transaction)
@@ -310,7 +308,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             sb.Append(')');
 
             cmd.CommandText = sb.ToString();
-            await cmd.ExecuteNonQueryAsync();
+            await cmd.ExecuteNonQueryAsync().ExecutePipeline(Settings);
         }
 
         public static Guid ToPageKey(long pageId, int version)

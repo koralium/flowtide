@@ -15,12 +15,8 @@ using FASTER.devices;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
-using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -37,7 +33,7 @@ namespace FlowtideDotNet.DependencyInjection
             FileCacheOptions fileCacheOptions = new FileCacheOptions();
             options?.Invoke(fileCacheOptions);
             storageBuilder.SetPersistentStorage(new FileCachePersistentStorage(fileCacheOptions));
-            storageBuilder.ZLibCompression();
+            storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
 
@@ -54,10 +50,10 @@ namespace FlowtideDotNet.DependencyInjection
                 MemorySize = 1024 * 1024 * 32,
                 PageSize = 1024 * 1024 * 16
             }));
-            storageBuilder.ZLibCompression();
+            storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
-        
+
         /// <summary>
         /// Use FasterKV Azure storage, uses ZLib compression as default
         /// </summary>
@@ -67,50 +63,51 @@ namespace FlowtideDotNet.DependencyInjection
         /// <param name="directoryName">Directory name where the data should be stored.</param>
         /// <returns></returns>
         public static IFlowtideStorageBuilder AddFasterKVAzureStorage(
-            this IFlowtideStorageBuilder storageBuilder, 
-            string azureStorageString, 
+            this IFlowtideStorageBuilder storageBuilder,
+            string azureStorageString,
             string containerName,
             string directoryName)
         {
-            var log = new AzureStorageDevice(azureStorageString, containerName, directoryName, "hlog.log");
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                var azureStorageLogger = provider.GetRequiredService<ILogger<AzureStorageDevice>>();
+                var log = new AzureStorageDevice(azureStorageString, containerName, directoryName, "hlog.log", logger: azureStorageLogger);
 
-            // Create azure storage backed checkpoint manager
-            var checkpointManager = new DeviceLogCommitCheckpointManager(
-                            new AzureStorageNamedDeviceFactory(azureStorageString),
-                            new DefaultCheckpointNamingScheme($"{containerName}/{directoryName}/checkpoints/"));
+                var checkpointManagerLogger = provider.GetRequiredService<ILogger<DeviceLogCommitCheckpointManager>>();
+                // Create azure storage backed checkpoint manager
+                var checkpointManager = new DeviceLogCommitCheckpointManager(
+                                new AzureStorageNamedDeviceFactory(azureStorageString),
+                                new DefaultCheckpointNamingScheme($"{containerName}/{directoryName}/checkpoints/"), logger: checkpointManagerLogger);
 
-            storageBuilder.SetPersistentStorage(new FasterKvPersistentStorage(
-                new FasterKVSettings<long, SpanByte>()
-                {
-                    MemorySize = 1024 * 1024 * 32,
-                    PageSize = 1024 * 1024 * 16,
-                    CheckpointManager = checkpointManager,
-                    LogDevice = log
-                }
-            ));
-            storageBuilder.ZLibCompression();
+                var fasterKvLogger = provider.GetRequiredService<ILogger<FasterKvPersistentStorage>>();
+                return new FasterKvPersistentStorage(
+                    new FasterKVSettings<long, SpanByte>(null, logger: fasterKvLogger)
+                    {
+                        MemorySize = 1024 * 1024 * 32,
+                        PageSize = 1024 * 1024 * 16,
+                        CheckpointManager = checkpointManager,
+                        LogDevice = log
+                    }
+                );
+            });
+            storageBuilder.ZstdPageCompression();
 
             return storageBuilder;
         }
 
-        public static IFlowtideStorageBuilder ZLibCompression(this IFlowtideStorageBuilder storageBuilder)
+        public static IFlowtideStorageBuilder ZstdPageCompression(this IFlowtideStorageBuilder storageBuilder, int compressionLevel = 3)
         {
-            return storageBuilder.SetCompressionFunction(new StateSerializeOptions()
+            return storageBuilder.SetCompression(new StateSerializeOptions()
             {
-                CompressFunc = (stream) =>
-                {
-                    return new ZLibStream(stream, CompressionMode.Compress);
-                },
-                DecompressFunc = (stream) =>
-                {
-                    return new ZLibStream(stream, CompressionMode.Decompress);
-                }
+                CompressionMethod = CompressionMethod.Page,
+                CompressionType = CompressionType.Zstd,
+                CompressionLevel = compressionLevel
             });
         }
 
         public static IFlowtideStorageBuilder NoCompression(this IFlowtideStorageBuilder storageBuilder)
         {
-            return storageBuilder.SetCompressionFunction(new FlowtideDotNet.Storage.StateSerializeOptions());
+            return storageBuilder.SetCompression(new FlowtideDotNet.Storage.StateSerializeOptions());
         }
     }
 }

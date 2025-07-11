@@ -15,11 +15,6 @@ using FlowtideDotNet.Core.Operators.Write;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Client.Model;
 using OpenFga.Sdk.Model;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA
 {

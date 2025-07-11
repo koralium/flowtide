@@ -10,12 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.AcceptanceTests.Entities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -98,7 +92,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
 
             await WaitForUpdate();
-            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new {x.UserKey})).Distinct().ToList();
+            var expected = Users.Select(x => new { x.UserKey }).Union(Users.Select(u => new { UserKey = u.UserKey + 1 })).Except(Users.Select(x => new { x.UserKey })).Distinct().ToList();
             AssertCurrentDataEqual(expected);
         }
 

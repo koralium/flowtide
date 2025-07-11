@@ -48,5 +48,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             return _context.TransitionTo(this, newState);
         }
+
+        public virtual void Pause()
+        {
+        }
+
+        public virtual void Resume()
+        {
+        }
     }
 }

@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
 #endif
             var reader = new StreamPageDataReader(pages);
-            using var connection = new SqlConnection(Settings.ConnectionString);
+            using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             await connection.OpenAsync();
             await SaveStreamPagesAsync(reader, connection);
         }
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
             DebugWriter!.WriteCall();
             DebugWriter!.DumpObj(pages);
 #endif
-            foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var set)))
+            foreach (var page in pages.Where(page => ManagedPages.TryGetValue(page.PageId, out var _)))
             {
                 ManagedPages.Remove(page.PageId);
             }

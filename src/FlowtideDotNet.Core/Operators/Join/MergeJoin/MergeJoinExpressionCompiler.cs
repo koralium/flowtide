@@ -13,7 +13,6 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;

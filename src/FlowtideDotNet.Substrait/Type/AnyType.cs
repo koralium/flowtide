@@ -18,5 +18,10 @@ namespace FlowtideDotNet.Substrait.Type
         public override SubstraitType Type => SubstraitType.Any;
 
         public static AnyType Instance { get; } = new AnyType();
+
+        public AnyType()
+        {
+            Nullable = true;
+        }
     }
 }

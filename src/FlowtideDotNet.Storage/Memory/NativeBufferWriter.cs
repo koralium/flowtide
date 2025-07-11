@@ -10,13 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -66,13 +61,13 @@ namespace FlowtideDotNet.Storage.Memory
 
         public Memory<byte> GetMemory(int sizeHint = 0)
         {
-            EnsureSize(sizeHint);
+            EnsureSize(_index + sizeHint);
             return _memoryOwner.Memory.Slice(_index, sizeHint);
         }
 
         public Span<byte> GetSpan(int sizeHint = 0)
         {
-            EnsureSize(sizeHint);
+            EnsureSize(_index + sizeHint);
             return _memoryOwner.Memory.Span.Slice(_index, sizeHint);
         }
 

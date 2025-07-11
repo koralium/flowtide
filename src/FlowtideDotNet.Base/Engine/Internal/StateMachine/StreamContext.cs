@@ -10,20 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
-using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -40,14 +42,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
+        private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
+
         internal readonly string streamName;
+        internal readonly string version;
         internal readonly Dictionary<string, IStreamVertex> propagatorBlocks;
         internal readonly Dictionary<string, IStreamIngressVertex> ingressBlocks;
         internal readonly Dictionary<string, IStreamEgressVertex> egressBlocks;
         internal readonly Dictionary<string, IStreamVertex> _blockLookup;
         internal readonly IStateHandler stateHandler;
         internal readonly StreamMetrics _streamMetrics;
-        internal readonly IStreamNotificationReciever? _notificationReciever;
+        internal readonly StreamNotificationReceiver? _notificationReciever;
         private readonly StateManagerOptions stateManagerOptions;
         private readonly ILoggerFactory? loggerFactory1;
         internal readonly ILoggerFactory loggerFactory;
@@ -78,10 +83,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal StreamStateValue currentState;
         internal StreamStateValue _wantedState;
 
-        /// <summary>
-        /// Flag that tells if the stream has failed once
-        /// </summary>
-        private bool _hasFailed = false;
+        private StreamStatus _streamStatus;
+
+        internal object _pauseLock = new object();
+        private StreamStatus _statusBeforePause;
+        internal TaskCompletionSource? _pauseSource;
+        private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
+
         /// <summary>
         /// Enables or disables trigger registration, used often during failures
         /// </summary>
@@ -92,23 +100,63 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal bool _initialCheckpointTaken = false;
         
+        // Test variable
+        internal long _startCheckpointVersion = 0;
+
+        public StreamStatus Status => _streamStatus;
+
+        public FlowtideHealth Health
+        {
+            get
+            {
+                switch (Status)
+                {
+                    case StreamStatus.Failing:
+                        return FlowtideHealth.Unhealthy;
+                    case StreamStatus.Running:
+                        return FlowtideHealth.Healthy;
+                    case StreamStatus.Paused:
+                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                        {
+                            return FlowtideHealth.Healthy;
+                        }
+                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+                        {
+                            return FlowtideHealth.Unhealthy;
+                        }
+                        return FlowtideHealth.Degraded;
+                    case StreamStatus.Starting:
+                        return FlowtideHealth.Degraded;
+                    case StreamStatus.Stopped:
+                        return FlowtideHealth.Unhealthy;
+                    case StreamStatus.Degraded:
+                        return FlowtideHealth.Degraded;
+                    default:
+                        return FlowtideHealth.Unhealthy;
+                }
+            }
+        }
+
 
         public StreamContext(
             string streamName,
+            string version,
             Dictionary<string, IStreamVertex> propagatorBlocks,
             Dictionary<string, IStreamIngressVertex> ingressBlocks,
             Dictionary<string, IStreamEgressVertex> egressBlocks,
             IStateHandler stateHandler,
             StreamState? fromState,
             IStreamScheduler streamScheduler,
-            IStreamNotificationReciever? notificationReciever,
+            StreamNotificationReceiver? notificationReciever,
             StateManagerOptions stateManagerOptions,
             ILoggerFactory? loggerFactory,
             StreamVersionInformation? streamVersionInformation,
             DataflowStreamOptions dataflowStreamOptions,
-            IStreamMemoryManager streamMemoryManager)
+            IStreamMemoryManager streamMemoryManager,
+            IOptionsMonitor<FlowtidePauseOptions>? pauseMonitor)
         {
             this.streamName = streamName;
+            this.version = version;
             this.propagatorBlocks = propagatorBlocks;
             this.ingressBlocks = ingressBlocks;
             this.egressBlocks = egressBlocks;
@@ -125,19 +173,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _contextMeter = new Meter($"flowtide.{streamName}");
             _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {
-                var currentStatus = GetStatus();
                 var val = 0.0f;
-                switch (currentStatus)
+                switch (Health)
                 {
-                    case StreamStatus.Running:
+                    case FlowtideHealth.Healthy:
                         val = 1.0f;
                         break;
-                    case StreamStatus.Failing:
-                    case StreamStatus.Stopped:
+                    case FlowtideHealth.Unhealthy:
                         val = 0.0f;
                         break;
-                    case StreamStatus.Starting:
-                    case StreamStatus.Degraded:
+                    case FlowtideHealth.Degraded:
                         val = 0.5f;
                         break;
                     default:
@@ -146,6 +191,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 }
                 return new Measurement<float>(val, new KeyValuePair<string, object?>("stream", streamName));
             });
+            _contextMeter.CreateObservableGauge<int>("flowtide_status", () =>
+            {
+                return new Measurement<int>((int)Status, new KeyValuePair<string, object?>("stream", streamName));
+            });
             _contextMeter.CreateObservableGauge<int>("flowtide_state", () =>
             {
                 return new Measurement<int>((int)currentState, new KeyValuePair<string, object?>("stream", streamName));
@@ -153,6 +202,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _contextMeter.CreateObservableGauge<int>("flowtide_wanted_state", () =>
             {
                 return new Measurement<int>((int)_wantedState, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_checkpoint_version", () =>
+            {
+                Debug.Assert(_stateManager != null, nameof(_stateManager));
+                return new Measurement<long>(_stateManager.CurrentVersion, new KeyValuePair<string, object?>("stream", streamName));
+            });
+            // Meter that tells which version the stream started on, useful for testing
+            _contextMeter.CreateObservableGauge<long>("flowtide_stream_start_checkpoint_version", () =>
+            {
+                return new Measurement<long>(_startCheckpointVersion, new KeyValuePair<string, object?>("stream", streamName));
             });
             if (loggerFactory == null)
             {
@@ -167,7 +226,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _checkpointLock = new object();
 
             _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
-            
+
 
             _streamScheduler.Initialize(this);
             // Trigger init
@@ -191,11 +250,31 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             currentState = StreamStateValue.NotStarted;
             _state = new NotStartedStreamState();
             _state.SetContext(this);
+            _pauseMonitor = pauseMonitor;
+
+            if (_pauseMonitor != null)
+            {
+                if (_pauseMonitor.CurrentValue.IsPaused)
+                {
+                    Pause();
+                }
+                _pauseMonitor.OnChange((opt) =>
+                {
+                    if (opt.IsPaused)
+                    {
+                        Pause();
+                    }
+                    else
+                    {
+                        Resume();
+                    }
+                });
+            }
         }
 
         private Task TransitionTo(StreamStateMachineState current, StreamStateMachineState state, StreamStateValue previous)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 if (current != _state)
                 {
@@ -217,7 +296,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     //The notification reciever exceptions should not interupt the transitions
                     _notificationReciever.OnStreamStateChange(newState);
                 }
-                catch 
+                catch
                 {
                     // All errors are catched so notification reciever cant break the stream
                 }
@@ -229,7 +308,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 case StreamStateValue.Starting:
                     return TransitionTo(current, new StartStreamState(), oldState);
                 case StreamStateValue.Failure:
-                    _hasFailed = true;
                     return TransitionTo(current, new FailureStreamState(), oldState);
                 case StreamStateValue.Running:
                     return TransitionTo(current, new RunningStreamState(), oldState);
@@ -247,7 +325,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public Task CallTrigger(string triggerName, object? state)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 Debug.Assert(_state != null, "CallTrigger while not in a state");
                 return _state.CallTrigger(triggerName, state);
@@ -260,6 +338,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 return _state!.CallTrigger(operatorName, triggerName, state);
             }
+        }
+
+        internal void SetStatus(StreamStatus status)
+        {
+            _streamStatus = status;
         }
 
         internal Task CallTrigger_Internal(string triggerName, object? state)
@@ -310,7 +393,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal void ForEachBlock(Action<string, IStreamVertex> action)
         {
-            foreach(var block in _blockLookup)
+            foreach (var block in _blockLookup)
             {
                 action(block.Key, block.Value);
             }
@@ -412,7 +495,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 Debug.Assert(_state != null, nameof(_state));
 
@@ -467,9 +550,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             List<Task> removeTriggerTasks = new List<Task>();
             lock (_triggerLock)
             {
-                foreach(var trigger in _triggers)
+                foreach (var trigger in _triggers)
                 {
-                    foreach(var val in trigger.Value)
+                    foreach (var val in trigger.Value)
                     {
                         if (val.Interval.HasValue)
                         {
@@ -502,13 +585,28 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
+            var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
+
+            if (activity != null)
+            {
+                activity.SetStatus(ActivityStatusCode.Error);
+                activity.SetTag("stream", streamName);
+                if (e != null)
+                {
+                    activity.SetTag("exception", e);
+                }
+                activity.Stop();
+                activity.Dispose();
+            }
+            
             _logger.StreamError(e, streamName);
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 if (_notificationReciever != null)
                 {
                     _notificationReciever.OnFailure(e);
                 }
+
                 return _state!.OnFailure();
             }
         }
@@ -520,7 +618,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task DeleteAsync()
         {
-            lock(_contextLock)
+            lock (_contextLock)
             {
                 return _state!.DeleteAsync();
             }
@@ -594,7 +692,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 var links = block.Value.GetLinks();
 
-                foreach(var link in links)
+                foreach (var link in links)
                 {
                     if (link is IStreamVertex streamVertex)
                     {
@@ -610,32 +708,60 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return new StreamGraph(nodes, edges, currentState);
         }
 
-        internal StreamStatus GetStatus()
+        internal ValueTask CheckForPauseAsync()
         {
-            switch (currentState)
+            lock (_pauseLock)
             {
-                case StreamStateValue.NotStarted:
-                    return StreamStatus.Stopped;
-                case StreamStateValue.Starting:
-                    if (_hasFailed)
-                    {
-                        return StreamStatus.Failing;
-                    }
-                    return StreamStatus.Starting;
-                case StreamStateValue.Running:
-                    var graph = GetGraph();
-                    var hasDegradedNode = graph.Nodes.Any(x => x.Value.Gauges.Any(y => y.Name == "health" && y.Dimensions.First().Value.Value != 1));
-                    if (hasDegradedNode)
-                    {
-                        return StreamStatus.Degraded;
-                    }
-                    return StreamStatus.Running;
-                case StreamStateValue.Failure:
-                    return StreamStatus.Failing;
-                case StreamStateValue.Stopping:
-                    return StreamStatus.Running;
-                default:
-                    return StreamStatus.Degraded;
+                if (_pauseSource != null)
+                {
+                    return new ValueTask(_pauseSource.Task);
+                }
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        internal void CheckForPause()
+        {
+            Task? task = default;
+            lock (_pauseLock)
+            {
+                if (_pauseSource != null)
+                {
+                    task = _pauseSource.Task;
+                }
+            }
+            if (task != null)
+            {
+                task.Wait();
+            }
+        }
+
+        public void Pause()
+        {
+            lock (_pauseLock)
+            {
+                if (_pauseSource != null)
+                {
+                    return;
+                }
+                _pauseSource = new TaskCompletionSource();
+                _state!.Pause();
+                _statusBeforePause = Status;
+                SetStatus(StreamStatus.Paused);
+            }
+        }
+
+        public void Resume()
+        {
+            lock (_pauseLock)
+            {
+                if (_pauseSource != null)
+                {
+                    SetStatus(_statusBeforePause);
+                    _pauseSource.SetResult();
+                    _pauseSource = null;
+                    _state!.Resume();
+                }
             }
         }
     }

@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Tests.Flexbuff
         public override byte[] Rent(int minimumLength)
         {
             byte[] buffer = new byte[minimumLength];
-            for(int i = 0; i < buffer.Length; i++)
+            for (int i = 0; i < buffer.Length; i++)
             {
                 buffer[i] = 17;
             }

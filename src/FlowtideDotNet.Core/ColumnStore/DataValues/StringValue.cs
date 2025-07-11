@@ -12,26 +12,24 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Reflection.Metadata.Ecma335;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
     [DebuggerDisplay(@"\{String: {ToString()}\}")]
     public struct StringValue : IDataValue
     {
-        private Memory<byte> _utf8;
+        private ReadOnlyMemory<byte> _utf8;
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => new FlxString(_utf8.Span);
+        public StringValue AsString => this;
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -39,7 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => _utf8.Span;
+        public ReadOnlySpan<byte> AsBinary => _utf8.Span;
 
         public IMapValue AsMap => throw new NotImplementedException();
 
@@ -49,12 +47,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
+        public IStructValue AsStruct => throw new NotSupportedException();
+
+        public ReadOnlySpan<byte> Span => _utf8.Span;
+
+        public ReadOnlyMemory<byte> Memory => _utf8;
+
         public StringValue(byte[] utf8)
         {
             _utf8 = utf8;
         }
 
-        public StringValue(Memory<byte> utf8)
+        public StringValue(ReadOnlyMemory<byte> utf8)
         {
             _utf8 = utf8;
         }
@@ -73,6 +77,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             container._type = ArrowTypeId.String;
             container._stringValue = this;
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitStringValue(in this);
+        }
+
+        public int CompareTo(in StringValue other)
+        {
+            return Compare(this, other);
+        }
+
+        public static int Compare(in StringValue v1, in StringValue v2)
+        {
+            return v1.Span.SequenceCompareTo(v2.Span);
+        }
+
+        public static int CompareIgnoreCase(in FlxString v1, in FlxString v2)
+        {
+            return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(v1.Span, v2.Span);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_utf8.Span);
         }
     }
 }

@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Compute.Comparers
             return method;
         }
 
-        public static Expression EqualsExpression(Expression flxValueExpr, Expression str) 
+        public static Expression EqualsExpression(Expression flxValueExpr, Expression str)
         {
             return Expression.Call(methodInfo, flxValueExpr, str);
         }

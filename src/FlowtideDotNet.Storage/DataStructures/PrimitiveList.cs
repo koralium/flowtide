@@ -10,21 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Buffers.Binary;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Collections;
 using FlowtideDotNet.Storage.Memory;
+using System.Buffers;
+using System.Collections;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class PrimitiveList<T> : IDisposable, IReadOnlyList<T>
-        where T: unmanaged
+        where T : unmanaged
     {
         private void* _data;
         private int _dataLength;
@@ -88,6 +82,19 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
+        private void CheckSizeReduction()
+        {
+            var multipleid = (_length << 1) + (_length >> 1);
+            if (multipleid < _dataLength && _dataLength > 256)
+            {
+                Debug.Assert(_memoryAllocator != null);
+                Debug.Assert(_memoryOwner != null);
+                _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(T), 64);
+                _data = _memoryOwner.Memory.Pin().Pointer;
+                _dataLength = _length;
+            }
+        }
+
         private Span<T> AccessSpan => new Span<T>(_data, _dataLength);
 
         public void Add(T value)
@@ -142,11 +149,20 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length += count;
         }
 
+        public void MoveAtIndex(int index, int count)
+        {
+            EnsureCapacity(_length + count);
+            var span = AccessSpan;
+            span.Slice(index, _length - index).CopyTo(span.Slice(index + count, _length - index));
+            _length += count;
+        }
+
         public void RemoveAt(int index)
         {
             var span = AccessSpan;
             span.Slice(index + 1, _length - index - 1).CopyTo(span.Slice(index, _length - index - 1));
             _length--;
+            CheckSizeReduction();
         }
 
         public void RemoveRange(int index, int count)
@@ -155,6 +171,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             var length = _length - index - count;
             span.Slice(index + count, length).CopyTo(span.Slice(index));
             _length -= count;
+            CheckSizeReduction();
         }
 
         public T Get(in int index)

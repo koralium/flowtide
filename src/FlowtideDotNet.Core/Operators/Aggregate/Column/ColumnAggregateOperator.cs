@@ -10,39 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Operators.Set;
-using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using SqlParser;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.TableConstraint;
-using static Substrait.Protobuf.AggregateRel.Types;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
-    internal class ColumnAggregateOperator : UnaryVertex<StreamEventBatch, AggregateOperatorState>
+    internal class ColumnAggregateOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly AggregateRelation m_aggregateRelation;
         private readonly FunctionsRegister m_functionsRegister;
@@ -50,10 +36,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
 
-        /// <summary>
-        /// Temporary until column based aggregates are implemented
-        /// </summary>
         private List<IColumnAggregateContainer> m_measures;
+        private Func<EventBatchData, int, bool>?[] _measureFilters;
 
         private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
         private ColumnStore.Column[]? m_groupValues;
@@ -78,6 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public ColumnAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             m_measures = new List<IColumnAggregateContainer>();
+            _measureFilters = new Func<EventBatchData, int, bool>?[aggregateRelation.Measures?.Count ?? 0];
             m_aggregateRelation = aggregateRelation;
             m_functionsRegister = functionsRegister;
             m_outputCount = aggregateRelation.OutputLength;
@@ -124,7 +109,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                 }
             }
-            
+
         }
 
         public override string DisplayName => "Aggregation";
@@ -139,7 +124,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return Task.CompletedTask;
         }
 
-        public override async Task<AggregateOperatorState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null);
             Debug.Assert(m_groupValues != null);
@@ -171,8 +156,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             // Reset iterator
             _treeIterator!.Dispose();
             _treeIterator = _tree.CreateIterator();
-
-            return new AggregateOperatorState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -194,7 +177,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             PrimitiveList<int> outputWeights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> outputIterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            var outputColumnCount = m_outputCount; //(groupExpressions?.Count ?? 0) + m_measures.Count;
+            var outputColumnCount = m_outputCount;
             ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
 
             for (int i = 0; i < outputColumnCount; i++)
@@ -213,7 +196,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var emptyRow = new ColumnRowReference() { referenceBatch = m_groupValuesBatch, RowIndex = 0 };
                 var comparer = new AggregateSearchComparer(0);
                 await _treeIterator!.Seek(emptyRow, comparer);
-                
+
                 if (!comparer.noMatch)
                 {
                     var enumerator = _treeIterator.GetAsyncEnumerator();
@@ -281,7 +264,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             // Add it to the state for previous value, so the value can be removed if changed
                             m_temporaryStateValues[m_measures.Count + i].Add(newValue);
                         }
-                        
+
                     }
                     outputIterations.Add(0);
                     outputWeights.Add(1);
@@ -319,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     {
                         var comparer = new AggregateSearchComparer(m_groupValues.Length);
                         await _treeIterator!.Seek(kv.Key, comparer);
-                        
+
                         if (comparer.noMatch)
                         {
                             continue;
@@ -378,7 +361,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             }
                         }
 
-                        
+
                         // Add measure values
                         for (int i = 0; i < m_measures.Count; i++)
                         {
@@ -404,7 +387,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                                 treePage.ExitWriteLock();
                             }
                         }
-                        
+
 
                         outputIterations.Add(0);
                         outputWeights.Add(1);
@@ -492,7 +475,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_groupValuesBatch != null);
             Debug.Assert(m_temporaryStateBatch != null);
 
-            for(int i = 0; i < m_groupValues.Length; i++)
+            for (int i = 0; i < m_groupValues.Length; i++)
             {
                 m_groupValues[i].Clear();
             }
@@ -526,20 +509,20 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
 
                     await _temporaryTree.RMWNoResult(new ColumnRowReference()
+                    {
+                        referenceBatch = m_groupValuesBatch,
+                        RowIndex = groupIndex
+                    }, default, (_, current, exist) =>
+                    {
+                        if (exist)
                         {
-                            referenceBatch = m_groupValuesBatch,
-                            RowIndex = groupIndex
-                        }, default, (_, current, exist) =>
+                            return (1, GenericWriteOperation.None);
+                        }
+                        else
                         {
-                            if (exist)
-                            {
-                                return (1, GenericWriteOperation.None);
-                            }
-                            else
-                            {
-                                return (1, GenericWriteOperation.Upsert);
-                            }
-                        });
+                            return (1, GenericWriteOperation.Upsert);
+                        }
+                    });
                 }
 
                 var comparer = new AggregateSearchComparer(m_groupValues.Length);
@@ -548,7 +531,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     referenceBatch = m_groupValuesBatch,
                     RowIndex = groupIndex
                 }, comparer);
-                
 
                 if (!comparer.noMatch)
                 {
@@ -565,6 +547,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             for (int k = 0; k < m_measures.Count; k++)
                             {
                                 var stateColumn = page.Values._eventBatch.Columns[k]; //.Get(index);
+                                if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
+                                {
+                                    continue;
+                                }
                                 await m_measures[k].Compute(new ColumnRowReference()
                                 {
                                     referenceBatch = m_groupValuesBatch,
@@ -593,6 +579,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             var col = m_temporaryStateValues[k];
                             // Add a null value for state.
                             col.Add(NullValue.Instance);
+
+                            if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
+                            {
+                                continue;
+                            }
+                            
                             await m_measures[k].Compute(new ColumnRowReference()
                             {
                                 referenceBatch = m_groupValuesBatch,
@@ -606,7 +598,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             col.Add(NullValue.Instance);
                         }
                     }
-                    
+
 
                     await _tree.Upsert(new ColumnRowReference()
                     {
@@ -624,7 +616,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
@@ -701,6 +693,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     var measure = m_aggregateRelation.Measures[i];
                     var aggregateContainer = await ColumnMeasureCompiler.CompileMeasure(groupExpressions?.Count ?? 0, stateManagerClient.GetChildManager(i.ToString()), measure.Measure, m_functionsRegister, MemoryAllocator);
                     m_measures.Add(aggregateContainer);
+                    if (measure.Filter != null)
+                    {
+                        _measureFilters[i] = ColumnBooleanCompiler.Compile(measure.Filter, m_functionsRegister);
+                    }
                 }
             }
 

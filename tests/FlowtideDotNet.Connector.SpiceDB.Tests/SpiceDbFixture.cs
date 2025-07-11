@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 .WithPortBinding(50051, true)
                 .WithCommand("serve-testing")
                 .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("grpc server started serving"));
-            _container = builder.Build();   
+            _container = builder.Build();
         }
 
         public async Task DisposeAsync()

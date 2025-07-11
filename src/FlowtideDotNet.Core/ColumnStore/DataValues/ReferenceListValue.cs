@@ -12,9 +12,9 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int Count => end - start;
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
@@ -57,6 +57,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public IStructValue AsStruct => throw new NotSupportedException();
 
         public void CopyToContainer(DataValueContainer container)
         {
@@ -90,6 +92,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         public override string ToString()
         {
             return $"[{String.Join(',', ListValues().Select(x => x.ToString()))}]";
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitReferenceListValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = start; i < end; i++)
+            {
+                column.GetValueAt(i, default).AddToHash(hashAlgorithm);
+            }
         }
     }
 }

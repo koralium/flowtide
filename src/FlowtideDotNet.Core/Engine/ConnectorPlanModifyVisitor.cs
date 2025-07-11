@@ -10,16 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Optimizer;
-using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Engine
 {

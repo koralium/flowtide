@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -63,7 +64,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
             column.UpdateAt(0, new NullValue());
-            
+
             Assert.True(column.GetValueAt(0, default).Type == ArrowTypeId.Null);
         }
 
@@ -87,10 +88,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(2));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.Int64Array)result.Item1;
-            Assert.Equal(1, arrowArray.GetValue(0));
+            var arrowArray = (Apache.Arrow.Int8Array)result.Item1;
+            Assert.Equal((sbyte)1, arrowArray.GetValue(0));
             Assert.Null(arrowArray.GetValue(1));
-            Assert.Equal(2, arrowArray.GetValue(2));
+            Assert.Equal((sbyte)2, arrowArray.GetValue(2));
         }
 
         [Fact]
@@ -102,10 +103,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new Int64Value(2));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.Int64Array)result.Item1;
+            var arrowArray = (Apache.Arrow.Int8Array)result.Item1;
             Assert.Null(arrowArray.GetValue(0));
-            Assert.Equal(1, arrowArray.GetValue(1));
-            Assert.Equal(2, arrowArray.GetValue(2));
+            Assert.Equal((sbyte)1, arrowArray.GetValue(1));
+            Assert.Equal((sbyte)2, arrowArray.GetValue(2));
         }
 
         [Fact]
@@ -138,7 +139,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("2", arrowArray.GetString(2));
         }
 
-        
+
 
         [Fact]
         public void ValidateInsertRangeSetsNullCorrectly()
@@ -197,6 +198,25 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("2", column.GetValueAt(1, default).AsString.ToString());
             Assert.True(column.GetValueAt(2, default).Type == ArrowTypeId.Null);
             Assert.True(column.GetValueAt(3, default).Type == ArrowTypeId.Null);
+        }
+
+        [Fact]
+        public void TestAddToHashNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                NullValue.Instance,
+                new StringValue("2")
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
         }
     }
 }

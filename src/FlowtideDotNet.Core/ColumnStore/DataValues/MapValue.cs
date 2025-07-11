@@ -13,10 +13,10 @@
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => this;
 
@@ -61,6 +61,22 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public IStructValue AsStruct => throw new NotSupportedException();
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitMapValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            for (int i = 0; i < keyValuePairs.Count; i++)
+            {
+                keyValuePairs[i].Key.AddToHash(hashAlgorithm);
+                keyValuePairs[i].Value.AddToHash(hashAlgorithm);
+            }
+        }
 
         public void CopyToContainer(DataValueContainer container)
         {

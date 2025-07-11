@@ -11,17 +11,9 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Diagnosers;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
-using FlowtideDotNet.Base.Metrics;
 using Perfolizer.Horology;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks.Stream
 {

@@ -15,11 +15,6 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
@@ -44,7 +39,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), writeRelation, executionMode, dataflowBlockOptions);
+            return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), executionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }

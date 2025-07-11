@@ -11,9 +11,11 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,7 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => value;
 
@@ -44,7 +46,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
@@ -53,6 +55,25 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public IStructValue AsStruct => throw new NotSupportedException();
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitBoolValue(in this);
+        }
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            if (value)
+            {
+                hashAlgorithm.Append(ByteArrayUtils.trueBytes);
+            }
+            else
+            {
+                hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+            }
+        }
 
         public void CopyToContainer(DataValueContainer container)
         {
@@ -64,5 +85,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return value ? "true" : "false";
         }
+
+
     }
 }

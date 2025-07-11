@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Optimizer
 {
     internal class MergeJoinFindVisitor : OptimizerBaseVisitor
     {
-        private bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
+        internal static bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
         {
             if (expression is ScalarFunction booleanComparison &&
                 booleanComparison.ExtensionUri == FunctionsComparison.Uri &&
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     Type = joinRelation.Type
                 };
             }
-            
+
             if (joinRelation.Expression is ScalarFunction andFunction &&
                 andFunction.ExtensionUri == FunctionsBoolean.Uri &&
                 andFunction.ExtensionName == FunctionsBoolean.And)
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     };
                 }
             }
-                return base.VisitJoinRelation(joinRelation, state);
+            return base.VisitJoinRelation(joinRelation, state);
         }
     }
 }

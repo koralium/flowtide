@@ -13,8 +13,8 @@
 namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IAsyncEnumerable<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>, IDisposable
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         /// <summary>
         /// Goes to the beginning of the values
@@ -35,5 +35,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// This method allows using the same iterator over a longer course of time.
         /// </summary>
         void Reset();
+
+        void CloneSeekResultTo(IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> other);
     }
 }

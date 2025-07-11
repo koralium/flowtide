@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -26,9 +27,9 @@ namespace FlowtideDotNet.Core.Compute
     public interface IFunctionsRegister
     {
         void RegisterColumnScalarFunction(
-            string uri, 
-            string name, 
-            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, System.Linq.Expressions.Expression> mapFunc);
+            string uri,
+            string name,
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc);
 
         /// <summary>
         /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="uri"></param>
         /// <param name="name"></param>
         void RegisterStreamingAggregateFunction(
-            string uri, 
+            string uri,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc);
@@ -127,11 +128,15 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="mapFunc"></param>
         void RegisterTableFunction(
             string uri,
-            string name, 
+            string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
 
         bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
 
         bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
+
+        internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
+
+        IFunctionServices FunctionServices { get; }
     }
 }

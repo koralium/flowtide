@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.DataStructures;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -56,7 +51,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root, "WriteRoot");
+            var rootNodeTask = m_stateClient.GetValue(m_stateClient.Metadata.Root);
 
             if (!rootNodeTask.IsCompletedSuccessfully)
             {
@@ -109,6 +104,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(newNode.Id, newNode);
 
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
                     if (isFull)
                     {
                         rootNode.Return();
@@ -159,7 +158,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 index = ~index;
             }
             var childId = parentNode.children[index];
-            var getChildTask = m_stateClient.GetValue(childId, "GetGenericWriteInternal");
+            var getChildTask = m_stateClient.GetValue(childId);
 
             if (!getChildTask.IsCompletedSuccessfully)
             {
@@ -211,6 +210,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
 
+                    if (m_usePreviousPointer && newNode.next != 0)
+                    {
+                        leafNode.Return();
+                        return UpdateRightPrevious(result, newNode, isFull, false);
+                    }
+
                     if (isFull)
                     {
                         leafNode.Return();
@@ -224,7 +229,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with left neighbor
                         var leftNeighborId = parentNode.children[index - 1];
-                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode1");
+                        var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                         if (!getLeftNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_LeafNodeTooSmall_SlowGetLeftByteBased(getLeftNodeTask, leafNode, parentNode, index, result);
@@ -237,7 +242,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Merge with right neighbor
                         var rightNeighborId = parentNode.children[index + 1];
-                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode2");
+                        var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                         if (!getRightNodeTask.IsCompletedSuccessfully)
                         {
                             return GenericWrite_Internal_AfterGetNode_NodeTooSmall_SlowGetRightByteBased(getRightNodeTask, leafNode, parentNode, index, result);
@@ -365,7 +370,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (index == parentNode.keys.Count)
                 {
                     var leftNeighborId = parentNode.children[index - 1];
-                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal1");
+                    var getLeftNodeTask = m_stateClient.GetValue(leftNeighborId);
                     if (!getLeftNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetLeftByteBased(getLeftNodeTask, internalNode, parentNode, index, result);
@@ -376,7 +381,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 else
                 {
                     var rightNeighborId = parentNode.children[index + 1];
-                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId, "GenericWrite_Internal_AfterGetNode_AfterCallInternal2");
+                    var getRightNodeTask = m_stateClient.GetValue(rightNeighborId);
                     if (!getRightNodeTask.IsCompletedSuccessfully)
                     {
                         return GenericWrite_Internal_AfterGetNode_AfterCallInternal_InternalTooSmall_SlowGetRightByteBased(getRightNodeTask, internalNode, parentNode, index, result);
@@ -414,7 +419,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var leftNodeSize = leftNode.GetByteSize();
             var rightNodeSize = internalNode.GetByteSize();
             if (
-                ((leftNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2) || (leftNodeSize + rightNodeSize) > m_stateClient.Metadata.PageSizeBytes) 
+                ((leftNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2) || (leftNodeSize + rightNodeSize) > m_stateClient.Metadata.PageSizeBytes)
                 && (leftNode.keys.Count + internalNode.keys.Count > minPageSizeBeforeSplit) &&
                 leftNode.keys.Count >= minPageSizeAfterSplit)
             {
@@ -488,7 +493,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var byteSize = rightNode.GetByteSize();
             var leftSize = internalNode.GetByteSize();
             if (
-                (byteSize >= (m_stateClient.Metadata.PageSizeBytes / 2) || (byteSize + leftSize) >= m_stateClient.Metadata.PageSizeBytes) && 
+                (byteSize >= (m_stateClient.Metadata.PageSizeBytes / 2) || (byteSize + leftSize) >= m_stateClient.Metadata.PageSizeBytes) &&
                 ((rightNode.keys.Count + internalNode.keys.Count) > minPageSizeBeforeSplit))
             {
                 var parentKey = parentNode.keys.Get(index);
@@ -555,7 +560,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             )
         {
             Debug.Assert(m_stateClient.Metadata != null);
-            
+
             var leftSize = leftNode.GetByteSize();
             var rightSize = leafNode.GetByteSize();
             // Check if the left node has more than half the allowed size and also more keys than the minimum allowed,
@@ -563,7 +568,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (
                 // Size is at least half the size of the page or the combined size is larger than the allowed size
                 // Also number of elements is larger than the minimum allowed size
-                (leftSize >= m_stateClient.Metadata.PageSizeBytes / 2 || (leftSize + rightSize) > m_stateClient.Metadata.PageSizeBytes) && 
+                (leftSize >= m_stateClient.Metadata.PageSizeBytes / 2 || (leftSize + rightSize) > m_stateClient.Metadata.PageSizeBytes) &&
                 ((leftNode.keys.Count + leafNode.keys.Count) > minPageSizeBeforeSplit))
             {
                 var newSplitKey = SplitBetweenNodesByteBased(in leftNode, in leafNode);
@@ -601,6 +606,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leftNode.Id, leftNode);
 
+                if (m_usePreviousPointer && leftNode.next != 0)
+                {
+                    return UpdateRightPrevious(result, leftNode, isFull, true);
+                }
+
                 leftNode.Return();
 
                 if (isFull)
@@ -635,7 +645,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var rightNodeSize = rightNode.GetByteSize();
             var leftSize = leafNode.GetByteSize();
             if (
-                ((rightNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2) || (leftSize + rightNodeSize) > m_stateClient.Metadata.PageSizeBytes) && 
+                ((rightNodeSize >= m_stateClient.Metadata.PageSizeBytes / 2) || (leftSize + rightNodeSize) > m_stateClient.Metadata.PageSizeBytes) &&
                 ((rightNode.keys.Count + leafNode.keys.Count) > minPageSizeBeforeSplit))
             {
                 var newSplitKey = SplitBetweenNodesByteBased(in leafNode, in rightNode);
@@ -671,6 +681,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 isFull |= m_stateClient.AddOrUpdate(parentNode.Id, parentNode);
                 isFull |= m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
+                if (m_usePreviousPointer && leafNode.next != 0)
+                {
+                    rightNode.Return();
+                    return UpdateRightPrevious(result, leafNode, isFull, true);
+                }
+
                 if (isFull)
                 {
                     rightNode.Return();
@@ -681,6 +697,31 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             rightNode.Return();
             leafNode.Return();
             return ValueTask.FromResult(result);
+        }
+
+        private async ValueTask<GenericWriteOperation> UpdateRightPrevious(
+            GenericWriteOperation result, 
+            LeafNode<K, V, TKeyContainer, TValueContainer> leafNode,
+            bool isFull,
+            bool returnLeaf)
+        {
+            var nextNodeObj = await m_stateClient.GetValue(leafNode.next);
+            if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
+            {
+                nextNode.previous = leafNode.Id;
+                isFull |= m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
+                if (returnLeaf)
+                {
+                    leafNode.Return();
+                }
+                nextNode.Return();
+                if (isFull)
+                {
+                    await m_stateClient.WaitForNotFullAsync();
+                }
+                return result;
+            }
+            throw new NotImplementedException();
         }
 
         /// <summary>
@@ -763,7 +804,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 // Add a new key with the most right value on left side
                 leftNode.keys.Add(parentKey);
                 leftNode.keys.AddRangeFrom(rightNode.keys, 0, remainder - 1);
-                
+
                 // Set the split key to the most right value
                 var splitKey = rightNode.keys.Get(remainder - 1);
                 parent.EnterWriteLock();
@@ -800,7 +841,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     splitIndex = leftNode.keys.Count - 1;
                 }
-                
+
 
                 var dataToMove = leftNode.keys.Count - splitIndex;
 
@@ -874,6 +915,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Set the next id on the new node to the now left childs next id.
             newNode.next = child.next;
 
+            if (m_usePreviousPointer)
+            {
+                newNode.previous = child.Id;
+            }
+            
+
             // Copy half of the values on the right to the new node
             newNode.keys.AddRangeFrom(child.keys, start, child.keys.Count - start);
             newNode.values.AddRangeFrom(child.values, start, child.values.Count - start);
@@ -899,7 +946,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             // TODO: Remove when comfortable
             Debug.Assert(newNode.keys.Count >= minPageSizeAfterSplit && child.keys.Count >= minPageSizeAfterSplit, "Split did not work as expected");
-            
+
 
             return (newNode, splitKey);
         }
@@ -941,7 +988,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             parent.ExitWriteLock();
 
             child.EnterWriteLock();
-            child.keys.RemoveRange(start - 1, (childKeyCount- start) + 1);
+            child.keys.RemoveRange(start - 1, (childKeyCount - start) + 1);
             child.children.RemoveRange(start, (childKeyCount - start) + 1);
             child.ExitWriteLock();
 
@@ -970,7 +1017,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var halfCount = (totalCount + 1) / 2;
             var halfSize = totalSize / 2;
-            
+
             // Left side is smaller and right node has enough keys to move values into left
             if (leftSize < halfSize && rightNode.keys.Count >= minPageSizeBeforeSplit)
             {

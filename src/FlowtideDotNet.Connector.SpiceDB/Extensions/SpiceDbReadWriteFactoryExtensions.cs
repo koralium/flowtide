@@ -14,12 +14,7 @@ using FlowtideDotNet.Connector.SpiceDB.Internal;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Extensions
 {

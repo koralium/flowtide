@@ -14,7 +14,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FlowtideDotNet.AcceptanceTests.Entities
 {
-    public class User
+    public class User : IEquatable<User>
     {
         [Key]
         public int UserKey { get; set; }
@@ -40,5 +40,26 @@ namespace FlowtideDotNet.AcceptanceTests.Entities
         public bool Active { get; set; }
 
         public DateTime? BirthDate { get; set; }
+
+        public bool Equals(User? other)
+        {
+            if (other == null)
+            {
+                return false;
+            }
+
+            return UserKey == other.UserKey &&
+                Gender == other.Gender &&
+                FirstName == other.FirstName &&
+                LastName == other.LastName &&
+                NullableString == other.NullableString &&
+                CompanyId == other.CompanyId &&
+                Visits == other.Visits &&
+                ManagerKey == other.ManagerKey &&
+                TrimmableNullableString == other.TrimmableNullableString &&
+                DoubleValue == other.DoubleValue &&
+                Active == other.Active &&
+                BirthDate == other.BirthDate;
+        }
     }
 }

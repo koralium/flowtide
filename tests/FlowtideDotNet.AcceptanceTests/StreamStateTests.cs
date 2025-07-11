@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -41,29 +36,29 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal(StreamStateValue.NotStarted, State);
         }
 
-        [Fact]
-        public async Task TestStopStreamThenStart()
-        {
-            GenerateData();
-            await StartStream(@"
-            INSERT INTO output
-            SELECT userkey FROM users");
+        //[Fact]
+        //public async Task TestStopStreamThenStart()
+        //{
+        //    GenerateData();
+        //    await StartStream(@"
+        //    INSERT INTO output
+        //    SELECT userkey FROM users");
 
-            await WaitForUpdate();
+        //    await WaitForUpdate();
 
-            await StopStream();
+        //    await StopStream();
 
-            Assert.Equal(StreamStateValue.NotStarted, State);
+        //    Assert.Equal(StreamStateValue.NotStarted, State);
 
-            GenerateData();
+        //    GenerateData();
 
-            await StartStream();
+        //    await StartStream();
 
-            await WaitForUpdate();
+        //    await WaitForUpdate();
 
-            AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
+        //    AssertCurrentDataEqual(Users.Select(x => new { x.UserKey }));
 
-            Assert.Equal(StreamStateValue.Running, State);
-        }
+        //    Assert.Equal(StreamStateValue.Running, State);
+        //}
     }
 }

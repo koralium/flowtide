@@ -15,28 +15,19 @@ using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
-using SqlParser.Ast;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
-    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
+    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch>
     {
 #if DEBUG_WRITE
         private StreamWriter? allOutput;
@@ -104,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             return Task.CompletedTask;
         }
 
-        public override async Task<NormalizationState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
             allOutput!.WriteLine("Checkpoint");
@@ -112,7 +103,6 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 #endif
 
             await _tree!.Commit();
-            return new NormalizationState();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -128,7 +118,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             PrimitiveList<int> deleteBatchKeyOffsets = new PrimitiveList<int>(otherColumnsMemoryManager);
             List<IColumn> deleteBatchColumns = new List<IColumn>();
-            
+
             for (int i = 0; i < _otherColumns.Count; i++)
             {
                 deleteBatchColumns.Add(Column.Create(otherColumnsMemoryManager));
@@ -182,7 +172,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
             }
-            
+
 
             if (deleteBatchKeyOffsets.Count > 0)
             {
@@ -256,9 +246,9 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private async Task Upsert(
             int index,
             ColumnRowReference columnRef,
-            PrimitiveList<int> toEmitOffsets, 
+            PrimitiveList<int> toEmitOffsets,
             PrimitiveList<int> weights,
-            PrimitiveList<int> deleteBatchKeyOffsets, 
+            PrimitiveList<int> deleteBatchKeyOffsets,
             List<IColumn> deleteBatchColumns)
         {
             var (operation, _) = await _tree!.RMW(
@@ -298,7 +288,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
         }
 
-        protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))

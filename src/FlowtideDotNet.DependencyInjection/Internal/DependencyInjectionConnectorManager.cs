@@ -11,14 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Sql;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {

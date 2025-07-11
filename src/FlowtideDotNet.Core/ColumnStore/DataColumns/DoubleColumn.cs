@@ -13,19 +13,24 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -37,6 +42,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _data.Count;
 
         public ArrowTypeId Type => ArrowTypeId.Double;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public DoubleColumn(IMemoryAllocator memoryAllocator)
         {
@@ -109,7 +116,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._doubleValue = new DoubleValue(_data[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             var val = dataValue.AsDouble;
@@ -151,7 +158,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var dataBuffer = new ArrowBuffer(_data.Memory);
+            var dataBuffer = new ArrowBuffer(_data.SlicedMemory);
             var array = new DoubleArray(dataBuffer, nullBuffer, Count, nullCount, 0);
             return (array, new DoubleType());
         }
@@ -235,6 +242,39 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new DoubleColumn(_data.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, _data[index]);
+            hashAlgorithm.Append(buffer);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddDoubleType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FloatingPoint, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_data.SlicedMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
     }
 }

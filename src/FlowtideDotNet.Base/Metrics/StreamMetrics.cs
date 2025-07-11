@@ -207,10 +207,10 @@ namespace FlowtideDotNet.Base.Metrics
             _meterListener.RecordObservableInstruments();
 
             Dictionary<string, GraphNodeMetrics> output = new Dictionary<string, GraphNodeMetrics>();
-            foreach(var vertex in _vertices)
+            foreach (var vertex in _vertices)
             {
                 output.Add(vertex.Key, new GraphNodeMetrics(
-                    vertex.Value.OperatorName, 
+                    vertex.Value.OperatorName,
                     vertex.Value.Counters.Select(x => x.GetSnapshot()).ToList(),
                     vertex.Value.Gauges.Select(x => x.GetSnapshot()).ToList()
                 ));
@@ -229,7 +229,7 @@ namespace FlowtideDotNet.Base.Metrics
                 }
 
                 _meterListener.Dispose();
-                foreach(var kv in _meters)
+                foreach (var kv in _meters)
                 {
                     kv.Value.Dispose();
                 }

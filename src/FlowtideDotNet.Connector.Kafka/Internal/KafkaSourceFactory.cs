@@ -15,11 +15,6 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
@@ -45,7 +40,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 }
             }
 
-            if (keyIndex == -1)
+            if (keyIndex == -1 && !options.IsImmutable)
             {
                 readRelation.BaseSchema.Names.Add("_key");
 
@@ -59,6 +54,20 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
                 readRelation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
                 keyIndex = readRelation.BaseSchema.Names.Count - 1;
+            }
+
+            if (options.IsImmutable)
+            {
+                if (readRelation.Filter != null)
+                {
+                    return new FilterRelation()
+                    {
+                        Condition = readRelation.Filter,
+                        Input = readRelation,
+                        Emit = readRelation.Emit
+                    };
+                }
+                return readRelation;
             }
 
             return new NormalizationRelation()

@@ -26,7 +26,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.TopN
 {
-    internal class TopNOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class TopNOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly TopNRelation _relation;
         private readonly TopNComparer _sortComparer;
@@ -160,14 +160,14 @@ namespace FlowtideDotNet.Core.Operators.TopN
 
         private async Task GetOutputValues(
             int inputWeight,
-            ColumnRowReference ev, 
-            PrimitiveList<int> inBatchWeights, 
+            ColumnRowReference ev,
+            PrimitiveList<int> inBatchWeights,
             PrimitiveList<uint> inBatchIterations,
             PrimitiveList<int> foundOffsets,
             PrimitiveList<int> deleteWeights,
             PrimitiveList<uint> deleteIterations,
             IColumn[] deleteBatchColumns,
-            IBPlusTreeIterator<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>> iterator, 
+            IBPlusTreeIterator<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>> iterator,
             GenericWriteOperation op)
         {
             await iterator.SeekFirst();
@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
             {
                 var page = enumerator.Current;
                 var dataBatch = page.Keys._data;
-                
+
                 var index = _sortComparer.FindIndex(ev, page.Keys);
                 var loopEndIndex = index;
                 if (loopEndIndex < 0)
@@ -330,7 +330,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
         }
 
 
-        protected override async Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             if (_eventsOutCounter == null)
             {

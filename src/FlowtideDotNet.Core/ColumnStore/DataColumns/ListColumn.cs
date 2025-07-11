@@ -10,22 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Types;
 using Apache.Arrow;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
-using FlowtideDotNet.Core.ColumnStore.Serialization;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
-using static Substrait.Protobuf.Expression.Types.Literal.Types;
 using System.Collections;
-using static SqlParser.Ast.TableConstraint;
-using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
+using System.IO.Hashing;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -39,6 +36,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int Count => _offsets.Count - 1;
 
         public ArrowTypeId Type => ArrowTypeId.List;
+
+        public StructHeader StructHeader => throw new NotImplementedException();
 
         public ListColumn(IMemoryAllocator memoryAllocator)
         {
@@ -105,6 +104,28 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            if (otherColumn is ListColumn otherList)
+            {
+                var startOffset = _offsets.Get(thisIndex);
+                var endOffset = _offsets.Get(thisIndex + 1);
+                var otherStartOffset = otherList._offsets.Get(otherIndex);
+                var otherEndOffset = otherList._offsets.Get(otherIndex + 1);
+                var thisListCount = endOffset - startOffset;
+                var otherListCount = otherEndOffset - otherStartOffset;
+                if (thisListCount != otherListCount)
+                {
+                    return thisListCount.CompareTo(otherListCount);
+                }
+                for (int i = 0; i < thisListCount; i++)
+                {
+                    var compare = _internalColumn.CompareTo(otherList._internalColumn, startOffset + i, otherStartOffset + i);
+                    if (compare != 0)
+                    {
+                        return compare;
+                    }
+                }
+                return 0;
+            }
             throw new NotImplementedException();
         }
 
@@ -124,7 +145,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return 1;
             }
             var otherList = value.AsList;
-            
+
             var startOffset = _offsets.Get(index);
             var endOffset = _offsets.Get(index + 1);
             var thisListCount = endOffset - startOffset;
@@ -157,7 +178,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._type = ArrowTypeId.List;
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)
@@ -197,7 +218,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     _offsets.Update(index + 1, currentStart + listLength, listLength - currentLength);
                 }
-                
+
             }
             else
             {
@@ -230,8 +251,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (endOffset > startOffset)
             {
                 _internalColumn.RemoveRange(startOffset, endOffset - startOffset);
-            }   
-            
+            }
+
             _offsets.RemoveAt(index + 1, startOffset - endOffset);
         }
 
@@ -250,7 +271,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             if (list is ReferenceListValue referenceListVal)
             {
                 _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
-                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);   
+                _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);
             }
             else
             {
@@ -260,7 +281,56 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
 
                 _offsets.InsertAt(index + 1, startOffset + list.Count, list.Count);
-            }   
+            }
+        }
+
+        public int GetListLength(in int index)
+        {
+            Debug.Assert(index < Count);
+            return _offsets.Get(index + 1) - _offsets.Get(index);
+        }
+
+        public void AppendToList<T>(in int index, in T value) where T : IDataValue
+        {
+            Debug.Assert(index < Count);
+            var endOffset = _offsets.Get(index + 1);
+
+            _internalColumn.InsertAt(endOffset, value);
+            _offsets.Update(index + 1, endOffset + 1, 1);
+        }
+
+        public void UpdateListElement(in int index, in int listIndex, in IDataValue value)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.UpdateAt(startOffset + listIndex, value);
+        }
+
+        public void RemoveListElement(in int index, in int listIndex)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            var endOffset = _offsets.Get(index + 1);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.RemoveAt(startOffset + listIndex);
+            _offsets.Update(index + 1, endOffset - 1, -1);
+        }
+
+        public IDataValue GetListElementValue(in int index, in int listIndex)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            return _internalColumn.GetValueAt(startOffset + listIndex, default);
+        }
+
+        public void GetListElementValue(in int index, in int listIndex, DataValueContainer dataValueContainer)
+        {
+            Debug.Assert(index < Count);
+            var startOffset = _offsets.Get(index);
+            Debug.Assert(listIndex < (_offsets.Get(index + 1) - startOffset));
+            _internalColumn.GetValueAt(startOffset + listIndex, dataValueContainer, default);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(Apache.Arrow.ArrowBuffer nullBuffer, int nullCount)
@@ -437,6 +507,51 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new ListColumn(_internalColumn.Copy(memoryAllocator), _offsets.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var listStart = _offsets.Get(index);
+            var listEnd = _offsets.Get(index + 1);
+
+            for (int i = listStart; i < listEnd; i++)
+            {
+                _internalColumn.AddToHash(i, default, hashAlgorithm);
+            }
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddListType();
+            var childStack = pointerStack.Slice(1);
+            pointerStack[0] = _internalColumn.CreateSchemaField(ref arrowSerializer, emptyStringPointer, childStack);
+            var childVectorPointer = arrowSerializer.CreateChildrenVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.List, typePointer, childrenOffset: childVectorPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            var innerEstimate = _internalColumn.GetSerializationEstimate();
+            return new SerializationEstimation(innerEstimate.fieldNodeCount + 1, innerEstimate.bufferCount + 1, innerEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            _internalColumn.AddFieldNodes(ref arrowSerializer);
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_offsets.Memory.Length);
+            _internalColumn.AddBuffers(ref arrowSerializer);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
+
+            _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
     }
 }

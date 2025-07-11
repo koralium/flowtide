@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
 
         IAsyncEnumerable<StreamEventBatch> OnTrigger(string triggerName, object? state);
 
-        Task InitializeOrRestore(string streamName, string operatorName, Func<string, TimeSpan?, Task> addTriggerFunc, object? state);
+        Task InitializeOrRestore(string streamName, string operatorName, Func<string, TimeSpan?, Task> addTriggerFunc);
 
         Task DeleteAsync();
     }

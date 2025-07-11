@@ -10,19 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers.Binary;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
 {
@@ -32,6 +24,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         {
             ColumnMinMaxAggregation.RegisterMin(functionsRegister);
             ColumnMinMaxAggregation.RegisterMax(functionsRegister);
+            ColumnMinMaxByAggregation.RegisterMinBy(functionsRegister);
+            ColumnMinMaxByAggregation.RegisterMaxBy(functionsRegister);
 
             functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
@@ -99,6 +93,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                     var floatCount = currentState.AsLong + (value.AsDouble * weight);
                     state.Update(new DoubleValue(floatCount));
                 }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var decimalCount = (decimal)currentState.AsLong + (value.AsDecimal * weight);
+                    state.Update(new DecimalValue(decimalCount));
+                }
             }
             else if (currentState.Type == ArrowTypeId.Double)
             {
@@ -111,6 +110,29 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                 {
                     var count = currentState.AsDouble + (value.AsDouble * weight);
                     state.Update(new DoubleValue(count));
+                }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = (decimal)currentState.AsDouble + (value.AsDecimal * weight);
+                    state.Update(new DecimalValue(count));
+                }
+            }
+            else if (currentState.Type == ArrowTypeId.Decimal128)
+            {
+                if (value.Type == ArrowTypeId.Int64)
+                {
+                    var count = currentState.AsDecimal + (value.AsLong * weight);
+                    state.Update(new DecimalValue(count));
+                }
+                else if (value.Type == ArrowTypeId.Double)
+                {
+                    var count = currentState.AsDecimal + (decimal)(value.AsDouble * weight);
+                    state.Update(new DecimalValue(count));
+                }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = currentState.AsDecimal + (value.AsDecimal * weight);
+                    state.Update(new DecimalValue(count));
                 }
             }
             else if (currentState.Type == ArrowTypeId.Null)
@@ -125,6 +147,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                     var count = (value.AsDouble * weight);
                     state.Update(new DoubleValue(count));
                 }
+                else if (value.Type == ArrowTypeId.Decimal128)
+                {
+                    var count = (value.AsDecimal * weight);
+                    state.Update(new DecimalValue(count));
+                }
             }
         }
 
@@ -137,7 +164,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         private static void GetSum0Value(ColumnReference state, ColumnStore.Column outputColumn)
         {
             var stateVal = state.GetValue();
-            
+
             if (stateVal.Type == ArrowTypeId.Null)
             {
                 outputColumn.Add(new DoubleValue(0.0));

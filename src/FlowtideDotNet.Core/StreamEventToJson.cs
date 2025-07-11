@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core
             this.names = names;
             propertyNames = new List<JsonEncodedText>(names.Count);
 
-            foreach(var name in names)
+            foreach (var name in names)
             {
                 propertyNames.Add(JsonEncodedText.Encode(name));
             }
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core
         {
             var writer = new Utf8JsonWriter(stream);
             writer.WriteStartObject();
-            for(int i = 0; i < streamEvent.Length; i++)
+            for (int i = 0; i < streamEvent.Length; i++)
             {
                 if (ShouldWriteColumn(i))
                 {

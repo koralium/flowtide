@@ -16,7 +16,6 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using FluentAssertions;
 
 namespace FlowtideDotNet.Core.Tests.OptimizerTests
 {
@@ -200,8 +199,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 }
             };
 
-            plan.Should().BeEquivalentTo(expected,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expected, plan);
         }
     }
 }

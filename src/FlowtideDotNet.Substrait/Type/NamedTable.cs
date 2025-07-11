@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Substrait.Type
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach(var name in Names)
+            foreach (var name in Names)
             {
                 code.Add(name);
             }

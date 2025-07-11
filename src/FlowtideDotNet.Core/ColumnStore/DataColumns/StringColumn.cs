@@ -13,17 +13,21 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Unicode;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -37,17 +41,19 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.String;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public StringColumn(IMemoryAllocator memoryAllocator)
         {
             _binaryList = new BinaryList(memoryAllocator);
         }
 
-        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte> dataMemory, IMemoryAllocator memoryAllocator)
+        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
         }
 
-        internal StringColumn(BinaryList binaryList)
+        private StringColumn(BinaryList binaryList)
         {
             _binaryList = binaryList;
         }
@@ -132,7 +138,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return BoundarySearch.SearchBoundries(_binaryList, dataValue.AsString.Span, start, end, SpanByteComparer.Instance);
             }
-            
+
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -245,6 +251,40 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new StringColumn(_binaryList.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(_binaryList.GetMemory(in index).Span);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddUtf8Type();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 2, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_binaryList.OffsetMemory.Length);
+            arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
+
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
+            dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
         }
     }
 }

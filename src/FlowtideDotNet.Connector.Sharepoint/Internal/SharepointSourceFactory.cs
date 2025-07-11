@@ -16,12 +16,6 @@ using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal
@@ -39,7 +33,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            return tableProvider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+            return tableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out _);
         }
 
         public ITableProvider Create()

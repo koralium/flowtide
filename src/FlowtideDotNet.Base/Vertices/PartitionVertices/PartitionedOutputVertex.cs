@@ -17,7 +17,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 {
-    public class PartitionedOutputVertex<T, TState> : MultipleInputVertex<T, TState>
+    public class PartitionedOutputVertex<T> : MultipleInputVertex<T>
     {
         public PartitionedOutputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(targetCount, executionDataflowBlockOptions)
         {
@@ -35,9 +35,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return Task.CompletedTask;
         }
 
-        public override Task<TState?> OnCheckpoint()
+        public override Task OnCheckpoint()
         {
-            return Task.FromResult(default(TState));
+            return Task.CompletedTask;
         }
 
         public override IAsyncEnumerable<T> OnRecieve(int targetId, T msg, long time)
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return new SingleAsyncEnumerable<T>(msg);
         }
 
-        protected override Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

@@ -20,5 +20,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
         /// Time between capturing the values to time series.
         /// </summary>
         public TimeSpan CaptureRate { get; set; }
+
+        /// <summary>
+        /// Set the max lifetime metrics should be kept, if null metrics will be kept forever.
+        /// Default is 1 day
+        /// </summary>
+        public TimeSpan? MaxLifetime { get; set; } = TimeSpan.FromDays(1);
     }
 }

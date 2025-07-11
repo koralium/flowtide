@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
                 getBoolValueBody = getBoolValueExpr.Body;
                 getBoolValueBody = new ParameterReplacerVisitor(getBoolValueExpr.Parameters[0], resolved).Visit(getBoolValueBody);
-                
+
 
                 var conditionBody = condition.Body;
 

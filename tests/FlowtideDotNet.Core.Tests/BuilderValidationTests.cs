@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Sinks;
@@ -185,7 +184,7 @@ namespace FlowtideDotNet.Core.Tests
                 await stream2.StartAsync();
             });
             Assert.Equal("Stream plan hash stored in storage is different than the hash used.", ex.Message);
-            
+
         }
     }
 }

@@ -24,11 +24,11 @@ namespace FlowtideDotNet.Base.Engine.Internal
         private readonly Func<string, string, TimeSpan?, Task> registerTrigger;
 
         public VertexHandler(
-            string streamName, 
-            string operatorName, 
-            Action<TimeSpan> checkpointFunc, 
-            Func<string, string, TimeSpan?, Task> registerTrigger, 
-            IMeter metrics, 
+            string streamName,
+            string operatorName,
+            Action<TimeSpan> checkpointFunc,
+            Func<string, string, TimeSpan?, Task> registerTrigger,
+            IMeter metrics,
             IStateManagerClient stateClient,
             ILoggerFactory loggerFactory,
             IOperatorMemoryManager memoryManager)

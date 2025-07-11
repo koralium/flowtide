@@ -14,11 +14,6 @@ using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Zanzibar.QueryPlanner;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB
 {

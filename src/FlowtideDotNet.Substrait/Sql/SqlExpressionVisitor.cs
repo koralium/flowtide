@@ -56,7 +56,11 @@ namespace FlowtideDotNet.Substrait.Sql
             switch (binaryOp.Op)
             {
                 case BinaryOperator.Eq:
-                    if (left.Type.Type != AnyType.Instance.Type && right.Type.Type != AnyType.Instance.Type && left.Type.Type != right.Type.Type)
+                    if (left.Type.Type != AnyType.Instance.Type && 
+                        right.Type.Type != AnyType.Instance.Type && 
+                        left.Type.Type != right.Type.Type
+                        && left.Type.Type != SubstraitType.Null &&
+                        right.Type.Type != SubstraitType.Null)
                     {
                         throw new SubstraitParseException($"Missmatch type in equality: '{binaryOp.ToSql()}', type({left.Type.Type.ToString()}) = type({right.Type.Type.ToString()})");
                     }
@@ -212,7 +216,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             Arguments = concatExpressions
                         }, $"$concat", returnType);
                 case BinaryOperator.Plus:
-                    returnType = left.Type;
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -228,7 +232,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         returnType
                         );
                 case BinaryOperator.Minus:
-                    returnType = left.Type;
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -244,7 +248,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         returnType
                         );
                 case BinaryOperator.Multiply:
-                    returnType = left.Type;
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -257,7 +261,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             }
                         }, "$multiply", returnType);
                 case BinaryOperator.Divide:
-                    returnType = left.Type;
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -270,7 +274,7 @@ namespace FlowtideDotNet.Substrait.Sql
                             }
                         }, "$divide", returnType);
                 case BinaryOperator.Modulo:
-                    returnType = left.Type;
+                    returnType = ArithmeticReturnType(left.Type, right.Type);
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -294,12 +298,42 @@ namespace FlowtideDotNet.Substrait.Sql
                                 left.Expr,
                                 right.Expr
                             }
-                        }, 
+                        },
                         $"{left.Name}_{right.Name}",
                         returnType
                         );
                 default:
                     throw new NotImplementedException($"Binary operation {binaryOp.Op.ToString()}' is not yet supported in SQL mode.");
+            }
+        }
+
+        private SubstraitBaseType ArithmeticReturnType(SubstraitBaseType left, SubstraitBaseType right)
+        {
+            var maxType = Math.Max((int)left.Type, (int)right.Type);
+
+            if (maxType == (int)SubstraitType.Int64)
+            {
+                return new Int64Type();
+            }
+            else if (maxType == (int)SubstraitType.Int32)
+            {
+                return new Int32Type();
+            }
+            else if (maxType == (int)SubstraitType.Fp32)
+            {
+                return new Fp32Type();
+            }
+            else if (maxType == (int)SubstraitType.Fp64)
+            {
+                return new Fp64Type();
+            }
+            else if (maxType == (int)SubstraitType.Decimal)
+            {
+                return new DecimalType();
+            }
+            else
+            {
+                return AnyType.Instance;
             }
         }
 
@@ -360,7 +394,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 throw new NotSupportedException();
             }
-            
+
         }
 
         protected override ExpressionData VisitCompoundIdentifier(SqlParser.Ast.Expression.CompoundIdentifier compoundIdentifier, EmitData state)
@@ -418,7 +452,15 @@ namespace FlowtideDotNet.Substrait.Sql
             }
             if (literalValue.Value is Value.Null)
             {
-                return new ExpressionData(new NullLiteral(), "$null", new AnyType());
+                return new ExpressionData(new NullLiteral(), "$null", NullType.Instance);
+            }
+            if (literalValue.Value is Value.HexStringLiteral hexStringLiteral)
+            {
+                var hexBytes = System.Convert.FromHexString(hexStringLiteral.Value);
+                return new ExpressionData(new BinaryLiteral()
+                {
+                    Value = hexBytes
+                }, "$binary", new BinaryType());
             }
             throw new NotImplementedException($"The literal type: '{literalValue.Value.GetType().Name}' is not yet implemented");
         }
@@ -452,7 +494,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var elseResult = Visit(caseExpression.ElseResult, state);
                 elseExpr = elseResult.Expr;
-                if (returnType != elseResult.Type)
+                if (returnType != elseResult.Type && elseResult.Type.Type != SubstraitType.Null)
                 {
                     returnType = new AnyType();
                 }
@@ -501,7 +543,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 {
                     expr.Expr
                 }
-            }, "$isnotnull", expr.Type);
+            }, "$isnotnull", new BoolType() { Nullable = true });
         }
 
         protected override ExpressionData VisitFloor(SqlParser.Ast.Expression.Floor floor, EmitData state)
@@ -550,7 +592,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     ExtensionName = FunctionsBoolean.Not,
                     Arguments = new List<Expressions.Expression>() { expressionData.Expr }
                 }, expressionData.Name,
-                expressionData.Type 
+                expressionData.Type
                 );
         }
 
@@ -617,12 +659,12 @@ namespace FlowtideDotNet.Substrait.Sql
         {
             var expr = Visit(inList.Expression, state);
             List<Expressions.Expression> options = new List<Expressions.Expression>();
-            foreach(var v in inList.List)
+            foreach (var v in inList.List)
             {
                 options.Add(Visit(v, state).Expr);
             }
-            
-        
+
+
             var result = new ExpressionData(
                 new SingularOrListExpression()
                 {
@@ -649,7 +691,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 baseType = new StringType();
             }
-            else if(cast.DataType is SqlParser.Ast.DataType.Int || 
+            else if (cast.DataType is SqlParser.Ast.DataType.Int ||
                 cast.DataType is SqlParser.Ast.DataType.Integer ||
                 cast.DataType is SqlParser.Ast.DataType.SmallInt ||
                 cast.DataType is SqlParser.Ast.DataType.TinyInt)
@@ -741,9 +783,9 @@ namespace FlowtideDotNet.Substrait.Sql
             Expressions.Expression escapeChar = new NullLiteral();
             if (like.EscapeChar != null)
             {
-                escapeChar = new StringLiteral() { Value = like.EscapeChar.Value.ToString() };
+                escapeChar = new StringLiteral() { Value = like.EscapeChar };
             }
-            
+
             var likeFunction = new ScalarFunction()
             {
                 ExtensionUri = FunctionsString.Uri,

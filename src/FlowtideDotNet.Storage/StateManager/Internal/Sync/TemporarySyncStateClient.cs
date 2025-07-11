@@ -10,12 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 {
     internal class TemporarySyncStateClient<V, TMetadata> : StateClient, IStateClient<V, TMetadata>, ILruEvictHandler
@@ -77,9 +71,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return baseClient.GetNewPageId();
         }
 
-        public ValueTask<V?> GetValue(in long key, string from)
+        public ValueTask<V?> GetValue(in long key)
         {
-            return baseClient.GetValue(key, from);
+            return baseClient.GetValue(key);
         }
 
         public override ValueTask Reset(bool clearMetadata)

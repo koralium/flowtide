@@ -10,13 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -30,10 +27,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.testStorage = testStorage;
         }
 
-        public override Task Write(long key, byte[] value)
+        public override Task Write(long key, SerializableObject value)
         {
             HasCommitted = false;
-            testStorage.AddWrittenKey(key, value);
+            ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
+            value.Serialize(bufferWriter);
+            testStorage.AddWrittenKey(key, bufferWriter.WrittenSpan.ToArray());
             return base.Write(key, value);
         }
 

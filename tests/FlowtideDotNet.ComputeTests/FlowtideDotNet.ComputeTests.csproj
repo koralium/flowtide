@@ -7,73 +7,43 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-
-    <!-- Remove comments to see output test files -->
-	 <!--<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-	  <CompilerGeneratedFilesOutputPath>.\GeneratedFiles</CompilerGeneratedFilesOutputPath>-->
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="OtherCases\comparison\is_finite.test" />
-    <None Remove="OtherCases\string\lower.test" />
-    <None Remove="OtherCases\string\strpos.test" />
-    <None Remove="Substrait\cases\boolean\not.test" />
-    <None Remove="Substrait\cases\boolean\xor.test" />
-    <None Remove="Substrait\cases\comparison\between.test" />
-    <None Remove="Substrait\cases\comparison\coalesce.test" />
-    <None Remove="Substrait\cases\comparison\gt.test" />
-    <None Remove="Substrait\cases\comparison\gte.test" />
-    <None Remove="Substrait\cases\comparison\is_finite.test" />
-    <None Remove="Substrait\cases\comparison\is_infinite.test" />
-    <None Remove="Substrait\cases\comparison\is_nan.test" />
-    <None Remove="Substrait\cases\comparison\is_not_null.test" />
-    <None Remove="Substrait\cases\comparison\is_null.test" />
-    <None Remove="Substrait\cases\comparison\lt.test" />
-    <None Remove="Substrait\cases\comparison\lte.test" />
-    <None Remove="Substrait\cases\comparison\not_equal.test" />
-    <None Remove="Substrait\cases\rounding\floor.test" />
-    <None Remove="Substrait\cases\rounding\round.test" />
-    <None Remove="Substrait\cases\string\char_length.test" />
-    <None Remove="Substrait\cases\string\like.test" />
-    <None Remove="Substrait\cases\string\lower.test" />
-    <None Remove="Substrait\cases\string\ltrim.test" />
-    <None Remove="Substrait\cases\string\rtrim.test" />
-    <None Remove="Substrait\cases\string\trim.test" />
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="xunit" Version="2.5.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
-	<PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
-	<PackageReference Include="Antlr4BuildTasks" Version="12.2.0" PrivateAssets="all" />
+    <EmbeddedResource Include="**\*.test" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Substrait\cases\arithmetic\add.test" />
+    <None Remove="Substrait\cases\arithmetic\multiply.test" />
+    <None Remove="Substrait\cases\arithmetic\subtract.test" />
+    <None Remove="Substrait\cases\arithmetic\sum.test" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <PackageReference Include="coverlet.collector" Version="6.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.0.2">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
-    <ProjectReference Include="..\FlowtideDotNet.ComputeTests.SourceGenerator\FlowtideDotNet.ComputeTests.SourceGenerator.csproj" ReferenceOutputAssembly="true" OutputItemType="Analyzer" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
-	<ItemGroup>
-		<AdditionalFiles Include="OtherCases/string/*.test" />
-		<AdditionalFiles Include="Substrait/cases/string/*.test" />
-		<AdditionalFiles Include="Substrait/cases/boolean/*.test" />
-		<AdditionalFiles Include="Substrait/cases/comparison/*.test" />
-		<AdditionalFiles Include="Substrait/cases/rounding/*.test" />
-		<AdditionalFiles Include="OtherCases\comparison\*.test" />
-    <AdditionalFiles Include="OtherCases\datetime\*.test" />
-		<AdditionalFiles Include="Substrait/cases/aggregate_generic/count.test" />
-		<AdditionalFiles Include="Substrait/cases/arithmetic/max.test" />
-		<AdditionalFiles Include="Substrait/cases/arithmetic/min.test" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <Folder Include="GeneratedFiles\" />
-	</ItemGroup>
 
 </Project>

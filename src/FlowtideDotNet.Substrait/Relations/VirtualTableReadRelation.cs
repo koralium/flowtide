@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Relations
     public sealed class VirtualTableReadRelation : Relation, IEquatable<VirtualTableReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
-        
+
         public required VirtualTable Values { get; set; }
 
         public override int OutputLength

@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.Engine
 
         public ReadOperatorInfo GetReadOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            foreach(var readfunc in _readFuncs)
+            foreach (var readfunc in _readFuncs)
             {
                 var result = readfunc(readRelation, functionsRegister, dataflowBlockOptions);
-                if (result != null) 
+                if (result != null)
                 {
                     return result;
                 }
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Engine
 
         public IStreamEgressVertex GetWriteOperator(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
-            foreach(var writefunc in _writeFuncs)
+            foreach (var writefunc in _writeFuncs)
             {
                 var result = writefunc(writeRelation, executionDataflowBlockOptions);
                 if (result != null)

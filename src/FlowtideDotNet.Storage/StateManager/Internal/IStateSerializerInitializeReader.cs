@@ -10,18 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     public interface IStateSerializerInitializeReader
     {
         long GetNewPageId();
 
-        Task<Memory<byte>> ReadPage(long pageId);
+        Task<ReadOnlyMemory<byte>> ReadPage(long pageId);
     }
 }

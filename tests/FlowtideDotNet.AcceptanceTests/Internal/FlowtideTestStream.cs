@@ -10,29 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FastMember;
-using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Debug;
-using Serilog;
-using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using Serilog;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -44,7 +42,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private Base.Engine.DataflowStream? _stream;
         private readonly object _lock = new object();
         private readonly string testName;
-        private List<byte[]>? _actualData;
+        private EventBatchData? _actualData;
         int updateCounter = 0;
         int waitCounter = 0;
         FlowtideBuilder flowtideBuilder;
@@ -57,7 +55,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public string TestName => testName;
 
-        public IReadOnlyList<User> Users  => generator.Users;
+        public IReadOnlyList<User> Users => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
 
@@ -73,7 +71,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public SqlPlanBuilder SqlPlanBuilder => sqlPlanBuilder;
 
-        public int CachePageCount { get; set; } = 1000;
+        public int CachePageCount { get; set; } = 100_000;
 
         public Watermark? LastWatermark => _lastWatermark;
 
@@ -85,7 +83,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _db = new Internal.MockDatabase();
             generator = new DatasetGenerator(_db);
             sqlPlanBuilder = new SqlPlanBuilder();
-            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
             flowtideBuilder = new FlowtideBuilder(streamName)
                 .WithLoggerFactory(new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }));
             this.testName = testName;
@@ -146,6 +143,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.AddOrUpdateCompany(company);
         }
 
+        public void AddOrUpdateOrder(Order order)
+        {
+            generator.AddOrUpdateOrder(order);
+        }
+
+        public void AddOrUpdateProject(Project project)
+        {
+            generator.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            generator.AddOrUpdateProjectMember(projectMember);
+        }
+
+
         [MemberNotNull(nameof(_connectorManager))]
         public void SetupConnectorManager()
         {
@@ -157,13 +170,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+        public Task CreateStream(
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             TimeSpan? timestampInterval = default,
             int pageSize = 1024,
-            bool ignoreSameDataCheck = false)
+            bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default,
+            string? version = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -176,14 +192,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             SetupConnectorManager();
-            foreach(var tableProvider in _connectorManager.GetTableProviders())
+            foreach (var tableProvider in _connectorManager.GetTableProviders())
             {
                 sqlPlanBuilder.AddTableProvider(tableProvider);
             }
+            sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
+
             sqlPlanBuilder.Sql(sql);
             var plan = sqlPlanBuilder.GetPlan();
 
-            
+
 
 
 #if DEBUG_WRITE
@@ -202,7 +220,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
-            plan = Core.Optimizer.PlanOptimizer.Optimize(plan);
+            plan = Core.Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
 
             var emitValidationVisitor = new EmitLengthValidatorVisitor();
             foreach (var relation in plan.Relations)
@@ -217,7 +235,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .WithLoggerFactory(loggerFactory)
 #endif
                 .AddConnectorManager(_connectorManager)
-                .WithNotificationReciever(_notificationReciever)
+                .WithCheckpointListener(_notificationReciever)
+                .WithStateChangeListener(_notificationReciever)
+                .WithFailureListener(_notificationReciever)
                 .SetGetTimestampUpdateInterval(timestampInterval.Value)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {
@@ -225,14 +245,41 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
+                    //DefaultBPlusTreePageSizeBytes = 1,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"
                     }
                 });
+
+            if (!string.IsNullOrWhiteSpace(version))
+            {
+                flowtideBuilder.SetVersion(version);
+            }
+
+            if (checkFailureListener != null)
+            {
+                flowtideBuilder.WithCheckFailureListener(checkFailureListener);
+            }
+
             var stream = flowtideBuilder.Build();
             _stream = stream;
-            await _stream.StartAsync();
+            return Task.CompletedTask;
+        }
+
+        public async Task StartStream(
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
+            TimeSpan? timestampInterval = default,
+            int pageSize = 1024,
+            bool ignoreSameDataCheck = false,
+            ICheckFailureListener? checkFailureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default,
+            string? version = default)
+        {
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version);
+            await _stream!.StartAsync();
         }
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
@@ -244,7 +291,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }, ignoreSameDataCheck, true);
         }
 
-        private void OnDataUpdate(List<byte[]> actualData)
+        private void OnDataUpdate(EventBatchData actualData)
         {
             lock (_lock)
             {
@@ -264,7 +311,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 _dataUpdated = false;
             }
         }
-    
+
         /// <summary>
         /// Simulate a crash on the stream, waits until the stream has failed.
         /// </summary>
@@ -373,84 +420,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
-            var membersInOrder = typeof(T).GetProperties().Select(x => x.Name).ToList();
-            var accessor = TypeAccessor.Create(typeof(T));
-
-            SortedDictionary<RowEvent, int> dict = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
-
-            foreach (var row in data)
-            {
-                Assert.NotNull(row);
-                var e = MockTable.ToStreamEvent(new RowOperation(row, false), membersInOrder);
-                if (dict.TryGetValue(e, out var weight))
-                {
-                    dict[e] = e.Weight + weight;
-                }
-                else
-                {
-                    dict.Add(e, 1);
-                }
-            }
-            var expectedData = dict.SelectMany(x =>
-            {
-                List<byte[]> output = new List<byte[]>();
-                for (int i = 0; i < x.Value; i++)
-                {
-                    var compactData = (CompactRowData)x.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
-                    output.Add(compactData.Span.ToArray());
-                }
-                return output;
-            }).ToList();
-
-            Assert.Equal(expectedData.Count, _actualData!.Count);
-
-            bool fail = false;
-            for (int i = 0; i < expectedData.Count; i++)
-            {
-                var expectedRow = expectedData[i];
-                var actualRow = _actualData[i];
-
-                if (!expectedRow.SequenceEqual(actualRow))
-                {
-                    var expectedRowJson = FlxValue.FromMemory(expectedRow).ToJson;
-                    var actualRowJson = FlxValue.FromMemory(actualRow).ToJson;
-                    if (!expectedRowJson.Equals(actualRowJson))
-                    {
-                        fail = true;
-                    }
-                }
-            }
-
-            if (fail)
-            {
-                List<string> expected = new List<string>();
-                List<string> actual = new List<string>();
-
-                for (int i = 0; i < expectedData.Count; i++)
-                {
-                    var expectedRow = expectedData[i];
-                    var actualRow = _actualData[i];
-                    expected.Add(FlxValue.FromMemory(expectedRow).ToJson);
-                    actual.Add(FlxValue.FromMemory(actualRow).ToJson);
-                }
-                expected.Sort();
-                actual.Sort();
-                for (int i = 0; i < expected.Count; i++)
-                {
-                    Assert.Equal(expected[i], actual[i]);
-                }
-            }
+            var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
+            EventBatchAssertion.Equal(expectedBatch, _actualData!);
         }
 
-        public List<FlxVector> GetActualRowsAsVectors()
+        public EventBatchData GetActualRowsAsVectors()
         {
             Assert.NotNull(_actualData);
-            List<FlxVector> output = new List<FlxVector>();
-            for(int i = 0; i < _actualData.Count; i++)
-            {
-                output.Add(FlxValue.FromMemory(_actualData[i]).AsVector);
-            }
-            return output;
+            return _actualData;
         }
 
         public async ValueTask DisposeAsync()

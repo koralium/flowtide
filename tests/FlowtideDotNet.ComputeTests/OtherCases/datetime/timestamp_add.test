@@ -1,0 +1,60 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+
+# Add years
+timestamp_add('year'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2021-03-04T13:04:01'::ts
+timestamp_add('year'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2023-03-04T13:04:01'::ts
+timestamp_add('year'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2019-03-04T13:04:01'::ts
+
+# Add quarters
+timestamp_add('quarter'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-06-04T13:04:01'::ts
+timestamp_add('quarter'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-12-04T13:04:01'::ts
+timestamp_add('quarter'::str, 4::i32, '2020-03-04T13:04:01'::ts) = '2021-03-04T13:04:01'::ts
+timestamp_add('quarter'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2019-12-04T13:04:01'::ts
+
+# Add months
+timestamp_add('month'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-04-04T13:04:01'::ts
+timestamp_add('month'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-06-04T13:04:01'::ts
+timestamp_add('month'::str, 12::i32, '2020-03-04T13:04:01'::ts) = '2021-03-04T13:04:01'::ts
+timestamp_add('month'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-02-04T13:04:01'::ts
+
+# Add weeks
+timestamp_add('week'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-11T13:04:01'::ts
+timestamp_add('week'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-25T13:04:01'::ts
+timestamp_add('week'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-02-26T13:04:01'::ts
+
+# Add days
+timestamp_add('day'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-05T13:04:01'::ts
+timestamp_add('day'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-07T13:04:01'::ts
+timestamp_add('day'::str, 30::i32, '2020-03-04T13:04:01'::ts) = '2020-04-03T13:04:01'::ts
+timestamp_add('day'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-03T13:04:01'::ts
+
+# Add hours
+timestamp_add('hour'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T14:04:01'::ts
+timestamp_add('hour'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T16:04:01'::ts
+timestamp_add('hour'::str, 24::i32, '2020-03-04T13:04:01'::ts) = '2020-03-05T13:04:01'::ts
+timestamp_add('hour'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T12:04:01'::ts
+
+# Add minutes
+timestamp_add('minute'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:05:01'::ts
+timestamp_add('minute'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:07:01'::ts
+timestamp_add('minute'::str, 60::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T14:04:01'::ts
+timestamp_add('minute'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:03:01'::ts
+
+# Add seconds
+timestamp_add('second'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:02'::ts
+timestamp_add('second'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:04'::ts
+timestamp_add('second'::str, 60::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:05:01'::ts
+timestamp_add('second'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:00'::ts
+
+# Add milliseconds
+timestamp_add('millisecond'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:01.001'::ts
+timestamp_add('millisecond'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:01.003'::ts
+timestamp_add('millisecond'::str, 1000::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:02.000'::ts
+timestamp_add('millisecond'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:00.999'::ts
+
+# Add microseconds
+timestamp_add('microsecond'::str, 1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:01.000001'::ts
+timestamp_add('microsecond'::str, 3::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:01.000003'::ts
+timestamp_add('microsecond'::str, 1000000::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:02.000000'::ts
+timestamp_add('microsecond'::str, -1::i32, '2020-03-04T13:04:01'::ts) = '2020-03-04T13:04:00.999999'::ts

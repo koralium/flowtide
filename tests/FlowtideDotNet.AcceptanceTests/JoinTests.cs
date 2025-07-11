@@ -12,6 +12,7 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.Base;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -73,7 +74,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(
-                from order in Orders 
+                from order in Orders
                 join user in Users on order.UserKey equals user.UserKey into gj
                 from subuser in gj.DefaultIfEmpty()
                 select new
@@ -579,7 +580,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
 
             var orderList = Orders.ToList();
-            foreach(var order in orderList)
+            foreach (var order in orderList)
             {
                 DeleteOrder(order);
             }
@@ -880,8 +881,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["orders"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["orders"]).Value);
             await Crash();
 
             GenerateData();
@@ -889,8 +890,8 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(2000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(2000, LastWatermark.Watermarks["orders"]);
+            Assert.Equal(2000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(2000, ((LongWatermarkValue)LastWatermark.Watermarks["orders"]).Value);
 
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
@@ -1075,9 +1076,9 @@ namespace FlowtideDotNet.AcceptanceTests
             //
 
             var expected = from user in Users
-            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
-            join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
-            select new { user.UserKey, project.Name };
+                           join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
+                           join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
+                           select new { user.UserKey, project.Name };
 
             var expectedList = expected.ToList();
 
@@ -1131,25 +1132,25 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["users"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Null(LastWatermark.Watermarks["users"]);
+            Assert.Null(LastWatermark.Watermarks["projectmembers"]);
 
             GenerateUsers(1000);
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(-1, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Null(LastWatermark.Watermarks["projectmembers"]);
 
             GenerateProjectMembers(1000);
             await WaitForUpdate();
 
             Assert.NotNull(LastWatermark);
-            Assert.Equal(1000, LastWatermark.Watermarks["projects"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["users"]);
-            Assert.Equal(1000, LastWatermark.Watermarks["projectmembers"]);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projects"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["users"]).Value);
+            Assert.Equal(1000, ((LongWatermarkValue)LastWatermark.Watermarks["projectmembers"]).Value);
 
             var expected = from user in Users
                            join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey into gj
@@ -1345,15 +1346,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             var rightJoin = (from user in Users
-             join order in Orders on user.UserKey equals order.UserKey into gj
-             from suborder in gj.DefaultIfEmpty()
-             select new
-             {
-                 suborder?.OrderKey,
-                 user.UserKey,
-                 user.FirstName,
-                 user.LastName
-             });
+                             join order in Orders on user.UserKey equals order.UserKey into gj
+                             from suborder in gj.DefaultIfEmpty()
+                             select new
+                             {
+                                 suborder?.OrderKey,
+                                 user.UserKey,
+                                 user.FirstName,
+                                 user.LastName
+                             });
 
             var leftJoin = (
                 from order in Orders
@@ -1376,15 +1377,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             rightJoin = (from user in Users
-                             join order in Orders on user.UserKey equals order.UserKey into gj
-                             from suborder in gj.DefaultIfEmpty()
-                             select new
-                             {
-                                 suborder?.OrderKey,
-                                 user.UserKey,
-                                 user.FirstName,
-                                 user.LastName
-                             });
+                         join order in Orders on user.UserKey equals order.UserKey into gj
+                         from suborder in gj.DefaultIfEmpty()
+                         select new
+                         {
+                             suborder?.OrderKey,
+                             user.UserKey,
+                             user.FirstName,
+                             user.LastName
+                         });
 
             leftJoin = (
                 from order in Orders
@@ -1401,6 +1402,46 @@ namespace FlowtideDotNet.AcceptanceTests
             fullOuterJoin = leftJoin.Union(rightJoin).ToList();
 
             AssertCurrentDataEqual(fullOuterJoin);
+        }
+
+        [Fact]
+        public async Task PostJoinConditionShouldCheckAllRows()
+        {
+            // Add members first to make sure all the data is inside the tree
+            AddOrUpdateProjectMember(new ProjectMember()
+            {
+                CompanyId = "1",
+                ProjectNumber = "123",
+                UserKey = 0,
+                ProjectMemberKey = 1
+            });
+            AddOrUpdateProjectMember(new ProjectMember()
+            {
+                CompanyId = "1",
+                ProjectNumber = "123",
+                UserKey = 1,
+                ProjectMemberKey = 2
+            });
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    pm.userkey
+                FROM projects p
+                LEFT JOIN projectmembers pm
+                ON p.projectnumber = pm.projectnumber AND p.companyid = pm.companyid AND pm.userkey % ProjectKey = 1", ignoreSameDataCheck: false);
+            await WaitForUpdate();
+            // add the project to do the join
+            AddOrUpdateProject(new Project()
+            {
+                ProjectKey = 2,
+                CompanyId = "1",
+                ProjectNumber = "123",
+                Name = "Project 1"
+            });
+            await WaitForUpdate();
+
+            var actualData = GetActualRows();
+            AssertCurrentDataEqual(new[] { new { val = 1 } });
         }
     }
 }

@@ -12,11 +12,11 @@
 
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
+using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
@@ -43,9 +43,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         const long UnixEpochTicks = DaysTo1970 * TicksPerDay;
 
         public long ticks;
-        public short offset;
+        public long offset;
 
-        public TimestampTzValue(long ticks, short offset)
+        public TimestampTzValue(long ticks, long offset)
         {
             this.ticks = ticks;
             this.offset = offset;
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => throw new NotImplementedException();
 
@@ -92,6 +92,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         public void CopyToContainer(DataValueContainer container)
         {
             container._timestampValue = this;
+            container._type = ArrowTypeId.Timestamp;
         }
 
         public DateTimeOffset ToDateTimeOffset()
@@ -104,6 +105,25 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             return new TimestampTzValue(UnixEpochTicks + (microseconds * TicksPerMicrosecond), 0);
         }
 
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, ticks);
+            hashAlgorithm.Append(buffer);
+        }
+
         public long UnixTimestampMicroseconds => (ticks - UnixEpochTicks) / TicksPerMicrosecond;
+
+        public IStructValue AsStruct => throw new NotSupportedException();
+
+        public override string ToString()
+        {
+            return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitTimestampTzValue(in this);
+        }
     }
 }

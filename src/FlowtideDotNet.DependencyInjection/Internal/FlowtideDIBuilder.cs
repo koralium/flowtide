@@ -10,19 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.DependencyInjection.Exceptions;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Options;
+using System.Reflection;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -30,13 +27,16 @@ namespace FlowtideDotNet.DependencyInjection.Internal
     {
         private readonly string streamName;
         private readonly IServiceCollection services;
-        private readonly List<Action<FlowtideBuilder>> _customOptions;
+        private readonly List<Action<IServiceProvider, FlowtideBuilder>> _customOptions;
+        private string? _streamVersion;
+        private bool _useHashPlanAsVersion = false;
+        private PlanOptimizerSettings? _planOptimizerSettings;
 
         public FlowtideDIBuilder(string streamName, IServiceCollection services)
         {
             this.streamName = streamName;
             this.services = services;
-            _customOptions = new List<Action<FlowtideBuilder>>();
+            _customOptions = new List<Action<IServiceProvider, FlowtideBuilder>>();
         }
 
         public IServiceCollection Services => services;
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         public string StreamName => streamName;
 
         public IFlowtideDIBuilder AddConnectors(Action<IDependencyInjectionConnectorManager> registerFunc)
-        {   
+        {
             services.AddKeyedSingleton<IConnectorManager>(streamName, (provider, key) =>
             {
                 var manager = new DependencyInjectionConnectorManager(provider);
@@ -84,6 +84,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
             var stateManager = serviceProvider.GetKeyedService<StateManagerOptions>(streamName);
 
+            var pauseMonitor = serviceProvider.GetService<IOptionsMonitor<FlowtidePauseOptions>>();
+
             if (connectorManager == null)
             {
                 throw new FlowtideMissingConnectorManagerException("IConnectorManager must be registered in the service collection, please do so manually or use the \"AddConnectors\" method.");
@@ -100,20 +102,33 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             }
 
             var plan = planProvider.GetPlan();
-
             var streamBuilder = new FlowtideBuilder(streamName)
                 .AddConnectorManager(connectorManager)
-                .AddPlan(plan)
+                .AddPlan(plan, planOptimizerSettings: _planOptimizerSettings)
                 .WithStateOptions(stateManager);
+
+            if (_useHashPlanAsVersion)
+            {
+                streamBuilder.SetHashPlanAsVersion();
+            }
+            else if (!string.IsNullOrWhiteSpace(_streamVersion))
+            {
+                streamBuilder.SetVersion(_streamVersion);
+            }
+
+            if (pauseMonitor != null)
+            {
+                streamBuilder.WithPauseMonitor(pauseMonitor);
+            }
 
             if (loggerFactory != null)
             {
                 streamBuilder.WithLoggerFactory(loggerFactory);
             }
 
-            foreach(var customOption in _customOptions)
+            foreach (var customOption in _customOptions)
             {
-                customOption(streamBuilder);
+                customOption(serviceProvider, streamBuilder);
             }
 
             var stream = streamBuilder.Build();
@@ -121,9 +136,34 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             return stream;
         }
 
-        public IFlowtideDIBuilder AddCustomOptions(Action<FlowtideBuilder> options)
+        public IFlowtideDIBuilder AddCustomOptions(Action<IServiceProvider, FlowtideBuilder> options)
         {
             _customOptions.Add(options);
+            return this;
+        }
+
+        public IFlowtideDIBuilder AddVersioningFromAssembly()
+        {
+            _streamVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+            return this;
+        }
+
+        public IFlowtideDIBuilder AddVersioningFromString(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _streamVersion = version;
+            return this;
+        }
+
+        public IFlowtideDIBuilder AddVersioningFromPlanHash()
+        {
+            _useHashPlanAsVersion = true;
+            return this;
+        }
+
+        public IFlowtideDIBuilder SetOptimizerSettings(PlanOptimizerSettings planOptimizerSettings)
+        {
+            _planOptimizerSettings = planOptimizerSettings;
             return this;
         }
     }

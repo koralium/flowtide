@@ -14,19 +14,18 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Egress
 {
-    public abstract class EgressVertex<T, TState> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
+    public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
     {
         private Action<string>? _checkpointDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
@@ -41,6 +40,11 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private IMeter? _metrics;
         private ILogger? _logger;
 
+        private TaskCompletionSource? _pauseSource;
+
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
+
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
         protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
@@ -48,6 +52,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after initialize or setup method calls");
 
         public abstract string DisplayName { get; }
+
+        public long CurrentCheckpointId { get; private set; }
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
@@ -86,7 +92,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
             }
-            
+
             return OnWatermark(watermark);
         }
 
@@ -119,8 +125,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            var newState = await OnCheckpoint(checkpointEvent.CheckpointTime);
-            checkpointEvent.AddState(Name, newState);
+            CurrentCheckpointId = checkpointEvent.CheckpointTime;
+            await OnCheckpoint(checkpointEvent.CheckpointTime);
         }
 
         public virtual Task OnTrigger(string name, object? state)
@@ -128,7 +134,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             return Task.CompletedTask;
         }
 
-        protected abstract Task<TState> OnCheckpoint(long checkpointTime);
+        protected abstract Task OnCheckpoint(long checkpointTime);
 
         private async Task HandleRecieve(T msg, long time)
         {
@@ -156,19 +162,16 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _targetBlock.Fault(exception);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _cancellationTokenSource = new CancellationTokenSource();
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
-            TState? dState = default;
-            if (state.HasValue)
-            {
-                dState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
+            CurrentCheckpointId = newTime;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -197,7 +200,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             _latencyHistogram = Metrics.CreateHistogram<float>("latency");
 
-            return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
+            return InitializeOrRestore(restoreTime, vertexHandler.StateClient);
         }
 
         protected void SetHealth(bool healthy)
@@ -205,7 +208,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _isHealthy = healthy;
         }
 
-        protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
 
         public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, IStreamEvent messageValue, ISourceBlock<IStreamEvent>? source, bool consumeToAccept)
         {
@@ -233,7 +236,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
             }
-            
+
             return ValueTask.CompletedTask;
         }
 
@@ -257,6 +260,32 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return Enumerable.Empty<ITargetBlock<IStreamEvent>>();
+        }
+
+        protected ValueTask CheckForPause()
+        {
+            if (_pauseSource != null)
+            {
+                return new ValueTask(_pauseSource.Task);
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

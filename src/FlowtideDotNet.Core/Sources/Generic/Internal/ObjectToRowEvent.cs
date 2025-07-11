@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Relations;
 using System.Text.Json;

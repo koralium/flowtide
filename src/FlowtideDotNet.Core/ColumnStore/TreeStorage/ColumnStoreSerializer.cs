@@ -11,31 +11,28 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using Apache.Arrow.Ipc;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal class ColumnStoreSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ColumnKeyStorageContainer>
+    public class ColumnStoreSerializer : IBPlusTreeKeySerializer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private readonly int columnCount;
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly EventBatchBPlusTreeSerializer _batchSerializer;
+
 
         public ColumnStoreSerializer(int columnCount, IMemoryAllocator memoryAllocator)
         {
             this.columnCount = columnCount;
             this.memoryAllocator = memoryAllocator;
+            _batchSerializer = new EventBatchBPlusTreeSerializer();
         }
+
         public ColumnKeyStorageContainer CreateEmpty()
         {
             return new ColumnKeyStorageContainer(columnCount, memoryAllocator);
@@ -48,21 +45,15 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return fieldInfo!;
         }
 
-        public ColumnKeyStorageContainer Deserialize(in BinaryReader reader)
+        public ColumnKeyStorageContainer Deserialize(ref SequenceReader<byte> reader)
         {
-            using var arrowReader = new ArrowStreamReader(reader.BaseStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
-            var recordBatch = arrowReader.ReadNextRecordBatch();
-
-            var eventBatch = EventArrowSerializer.ArrowToBatch(recordBatch, memoryAllocator);
-
-            return new ColumnKeyStorageContainer(recordBatch.ColumnCount, eventBatch, recordBatch.Length);
+            var batchResult = _batchSerializer.Deserialize(ref reader, memoryAllocator);
+            return new ColumnKeyStorageContainer(batchResult.EventBatch.Columns.Count, batchResult.EventBatch, batchResult.Count);
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnKeyStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnKeyStorageContainer values)
         {
-            var recordBatch = EventArrowSerializer.BatchToArrow(values._data, values.Count);
-            var batchWriter = new ArrowStreamWriter(writer.BaseStream, recordBatch.Schema, true);
-            batchWriter.WriteRecordBatch(recordBatch);
+            _batchSerializer.Serialize(writer, values._data, values.Count);
         }
 
         public Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context)

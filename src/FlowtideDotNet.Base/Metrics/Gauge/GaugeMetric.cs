@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Base.Metrics.Gauge
         {
             Dictionary<string, GaugeTagSnapshot> dimensions = new Dictionary<string, GaugeTagSnapshot>();
 
-            foreach(var gauge in _gauges)
+            foreach (var gauge in _gauges)
             {
                 dimensions[""] = gauge.Value.GetSnapshot();
             }

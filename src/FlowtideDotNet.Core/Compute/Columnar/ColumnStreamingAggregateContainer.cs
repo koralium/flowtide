@@ -10,20 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static FlowtideDotNet.Core.Compute.IFunctionsRegister;
-using FlexBuffers;
-using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
-using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
@@ -85,16 +77,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         public Func<AggregateFunction, ColumnParameterInfo, ColumnarExpressionVisitor, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> UpdateStateFunc { get; }
 
         public override Task<IColumnAggregateContainer> CreateContainer(
-            int groupingLength, 
+            int groupingLength,
             IStateManagerClient stateManagerClient,
             IMemoryAllocator memoryAllocator,
-            AggregateFunction aggregateFunction, 
-            ColumnParameterInfo parametersInfo, 
-            ColumnarExpressionVisitor visitor, 
-            ParameterExpression eventBatchParameter, 
-            ParameterExpression indexParameter, 
-            ParameterExpression stateParameter, 
-            ParameterExpression weightParameter, 
+            AggregateFunction aggregateFunction,
+            ColumnParameterInfo parametersInfo,
+            ColumnarExpressionVisitor visitor,
+            ParameterExpression eventBatchParameter,
+            ParameterExpression indexParameter,
+            ParameterExpression stateParameter,
+            ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);

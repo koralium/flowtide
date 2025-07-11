@@ -28,11 +28,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate
 {
-    internal class AggregateOperatorState
-    {
-
-    }
-    internal class AggregateOperator : UnaryVertex<StreamEventBatch, AggregateOperatorState>
+    internal class AggregateOperator : UnaryVertex<StreamEventBatch>
     {
         private static byte[] EmptyVector = FlexBufferBuilder.Vector(b => { });
         private readonly AggregateRelation aggregateRelation;
@@ -87,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             return Task.CompletedTask;
         }
 
-        public override async Task<AggregateOperatorState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null, "Tree should not be null");
 
@@ -103,7 +99,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             {
                 await measure.Commit();
             }
-            return new AggregateOperatorState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -160,7 +155,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                         outputs = new List<RowEvent>();
                     }
-                    
+
                     // Replace the previous value with the new value
                     val.PreviousValue = outputData;
                 }
@@ -194,7 +189,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                         outputs = new List<RowEvent>();
                     }
-                    
+
                 }
                 await _tree.Upsert(new RowEvent(0, 0, new CompactRowData(EmptyVector)), val);
             }
@@ -203,9 +198,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 var iterator = _temporaryTree.CreateIterator();
                 await iterator.SeekFirst();
 
-                await foreach(var page in iterator)
+                await foreach (var page in iterator)
                 {
-                    foreach(var kv in page)
+                    foreach (var kv in page)
                     {
                         var (found, val) = await _tree.GetValue(kv.Key);
 
@@ -247,7 +242,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                                 _flexBufferNewValue.Add(measureResult);
                             }
                         }
-                        
+
                         _flexBufferNewValue.EndVector(vectorStart, false, false);
                         var newObjectValue = _flexBufferNewValue.Finish();
                         if (val.PreviousValue != null)
@@ -281,7 +276,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                             yield return new StreamEventBatch(outputs, aggregateRelation.OutputLength);
                             outputs = new List<RowEvent>();
                         }
-                        
+
 
                         val.PreviousValue = newObjectValue;
                         await _tree.Upsert(kv.Key, val);
@@ -339,7 +334,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                         {
                             return (1, GenericWriteOperation.Upsert);
                         }
-                        
+
                     });
                 }
                 else
@@ -394,7 +389,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             yield break;
         }
 
-        protected override async Task InitializeOrRestore(AggregateOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
@@ -430,22 +425,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed", "events", "Total events processed");
             }
 
-            _tree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1", 
+            _tree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, AggregateRowState, ListKeyContainer<RowEvent>, ListValueContainer<AggregateRowState>>()
-            {
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<AggregateRowState>(new AggregateRowStateSerializer()),
-                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
-                MemoryAllocator = MemoryAllocator
-            });
-            _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp", 
+                {
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<AggregateRowState>(new AggregateRowStateSerializer()),
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                    MemoryAllocator = MemoryAllocator
+                });
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
-                MemoryAllocator = MemoryAllocator
-            });
+                {
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new BPlusTreeStreamEventComparer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await _temporaryTree.Clear();
         }
     }

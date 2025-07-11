@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Base
         {
             HashSet<string> newSet = new HashSet<string>(WatermarkNames);
 
-            foreach(var name in watermarkNames)
+            foreach (var name in watermarkNames)
             {
                 newSet.Add(name);
             }

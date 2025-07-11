@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.SqlServer.Tests

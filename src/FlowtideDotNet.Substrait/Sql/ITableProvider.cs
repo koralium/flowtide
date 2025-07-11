@@ -16,6 +16,6 @@ namespace FlowtideDotNet.Substrait.Sql
 {
     public interface ITableProvider
     {
-        bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata);
+        bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata);
     }
 }

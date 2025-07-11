@@ -43,28 +43,13 @@ The *SQL Server connector* supports reading and writing the following data types
 
 ## Source
 
-The SQL Server Source allows Flowtide to fetch rows and updates from a SQL Server table.
-There is one prerequisite for this connector to work:
-
+The SQL Server Source allows Flowtide to fetch rows and upates from a SQL Server table.
 
 :::info
 
-Change tracking must be enabled on the table.
+It's strongly recommended that change tracking is enabled on the targeted tables. And must be enabled to allow near-realtime streaming.
 
 :::
-
-Without change tracking, Flowtide wont be able to find updates on the table.
-There are plans to allow the source to run in batch mode where it computes the delta inside of the connector, but
-that is not yet available.
-
-The SQL Server Source can be added to the 'ConnectorManager' with the following line:
-
-```csharp
-connectorManager.AddSqlServerSource(() => connectionString);
-```
-
-The connection string must be set as a function, since the idea is that the connection string might change, from say a system such as
-*Hashicorp Vault*.
 
 The source uses the following logic to fetch data into the stream:
 
@@ -85,10 +70,80 @@ The source uses the following logic to fetch data into the stream:
   }
 ```
 
-The source will retry fetching data in-case of a SQL Server error, as long as it can reconnect to the database.
-It will mark the operator as unhealthy, but it will not trigger a stream restart.
+### Reading with change tracking
+To configure a source for a table with change tracking:
+```csharp
+connectors.AddSqlServerSource(() => "connectionstring");
 
-If the operator cannot reconnect to the SQL Server, it will trigger a full stream restart.
+connectors.AddSqlServerSource(new SqlServerSourceOptions
+{
+    ConnectionStringFunc = () => "",
+});
+```
+
+By default changes are fetched once per second and can be modified using the `DeltaLoadInterval` option.
+
+### Reading without change tracking
+Flowtide can read data from sources that do not have change tracking enabled. For these sources data are all data is fetched on an interval, specified with the `FullReloadInterval` option on the source.
+
+:::warning
+
+Note that changes are not directly caught when change tracking is disabled.
+
+::: 
+
+#### Reading from views
+To allow  from sql server views the following options must be set:
+
+```csharp
+connectors.AddSqlServerSource(new SqlServerSourceOptions
+{
+    ConnectionStringFunc = () => "",
+    EnableFullReload = true,
+    FullReloadInterval = TimeSpan.FromHours(24),
+});
+```
+
+This will read all data from the view on an interval specified. Delta loading data is not enabled when targeting a view.
+
+#### Reading from tables
+When targeting a table that does not have change tracking enabled an additional option must be provided `AllowFullReloadOnTablesWithoutChangeTracking`.
+
+```csharp
+connectors.AddSqlServerSource(new SqlServerSourceOptions
+{
+    ConnectionStringFunc = () => "",
+    EnableFullReload = true,
+    FullReloadInterval = TimeSpan.FromHours(24),
+    AllowFullReloadOnTablesWithoutChangeTracking = true
+});
+```
+
+This will read all data from the table on an interval specified in `FullReloadInterval`. Delta loading data is not enabled when targeting a table without change tracking.
+
+:::info
+
+If the table supports change tracking, delta loading will still be used even if these options are provided. But a full load will occur on the provided interval.
+
+:::
+
+#### Reading from large views or tables without change tracking
+
+When targeting a large view or table it's possible to control the allowed size (number of rows) with the `FullLoadMaxRowCount` option. This default value is 1 000 000 rows.
+
+### Retry strategy (reading from SQL Server)
+
+By default the SQL Server source has a default retry strategy that will retry up to 10 times with increasing intervals, totaling a period of ~16 minutes. 
+If no successful connection could be made during this period the stream will be restarted.
+
+A custom pipeline can be specified on the source by setting the `ResiliencePipeline` property.
+```csharp
+connectors.AddSqlServerSource(new SqlServerSourceOptions
+{
+    ResiliencePipeline = myPipeline
+});
+```
+Flowtide uses `polly` to handle retries, documentation and examples can be found here: [Polly](https://github.com/App-vNext/Polly).
 
 ## Sink
 

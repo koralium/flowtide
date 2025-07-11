@@ -27,13 +27,13 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
             this.testName = testName;
 
             InitializeCosmosDb().GetAwaiter().GetResult();
-            
+
         }
 
         private async Task InitializeCosmosDb()
         {
             var cosmosClient = new CosmosClient(testConnString);
-            
+
             var dbProps = await cosmosClient.CreateDatabaseIfNotExistsAsync(testName);
             await dbProps.Database.CreateContainerIfNotExistsAsync(testName, "/pk");
         }

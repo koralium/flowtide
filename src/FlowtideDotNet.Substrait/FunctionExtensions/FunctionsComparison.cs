@@ -29,5 +29,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string IsNull = "is_null";
         public const string IsNan = "is_nan";
         public const string NullIf = "nullif";
+        public const string Greatest = "greatest";
     }
 }

@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Core
             vector(builder);
             buffer.EndVector(start, false, false);
             var fin = buffer.Finish();
-            
+
             return new RowEvent(weight, iteration, new CompactRowData(fin, FlxValue.FromMemory(fin).AsVector));
         }
 

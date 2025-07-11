@@ -152,9 +152,26 @@ namespace FlowtideDotNet.Core.Optimizer
             return tableFunctionRelation;
         }
 
+        public override Relation VisitExchangeRelation(ExchangeRelation exchangeRelation, object state)
+        {
+            exchangeRelation.Input = Visit(exchangeRelation.Input, state);
+            return exchangeRelation;
+        }
+
+        public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object state)
+        {
+            return standardOutputExchangeReferenceRelation;
+        }
+
         public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object state)
         {
             return virtualTableReadRelation;
+        }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
+        {
+            consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+            return consistentPartitionWindowRelation;
         }
     }
 }

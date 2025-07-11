@@ -30,9 +30,10 @@ namespace FlowtideDotNet.SqlServer
             this.mustBeInConnectionStringDb = mustBeInConnectionStringDb;
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            var tableNameSplitted = tableName.Split(".");
+            var fullName = string.Join(".", tableName);
+            var tableNameSplitted = fullName.Split(".");
             string? schema = "dbo";
             string? name = null;
             string? tableCatalog = default;
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.SqlServer
             {
                 conn.ChangeDatabase(tableCatalog);
             }
-            catch(DbException dbException)
+            catch (DbException dbException)
             {
                 if (dbException.Message.Contains("not able to access the database"))
                 {
@@ -78,7 +79,7 @@ namespace FlowtideDotNet.SqlServer
                     return false;
                 }
             }
-            
+
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "select COLUMN_NAME, DATA_TYPE from INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @tableSchema  AND TABLE_CATALOG = @catalog";
             cmd.Parameters.Add(new SqlParameter("@tableName", name));
@@ -88,7 +89,7 @@ namespace FlowtideDotNet.SqlServer
             using var reader = cmd.ExecuteReader();
             List<string> columnOutput = new List<string>();
             List<SubstraitBaseType> columnTypes = new List<SubstraitBaseType>();
-            
+
             var columnNameOrdinal = reader.GetOrdinal("COLUMN_NAME");
             var dataTypeOrdinal = reader.GetOrdinal("DATA_TYPE");
             while (reader.Read())
@@ -103,7 +104,7 @@ namespace FlowtideDotNet.SqlServer
                 tableMetadata = default;
                 return false;
             }
-            tableMetadata = new TableMetadata(tableName, new NamedStruct()
+            tableMetadata = new TableMetadata(fullName, new NamedStruct()
             {
                 Names = columnOutput,
                 Struct = new Struct()

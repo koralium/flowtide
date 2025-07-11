@@ -15,7 +15,7 @@ using System.Diagnostics;
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> : IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
+        where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
         internal class Enumerator : IAsyncEnumerator<IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer>>
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     pageIterator.Reset(null, index);
                     return ValueTask.FromResult(false);
                 }
-                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next, "MoveNextAsync2");
+                var getNextPageTask = tree.m_stateClient.GetValue(leafNode.next);
 
                 if (!getNextPageTask.IsCompleted)
                 {
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else if (searchComparer.SeekNextPageForValue)
                 {
-                    var nextPage = tree.m_stateClient.GetValue(leafNode.next, "AfterSeekTask");
+                    var nextPage = tree.m_stateClient.GetValue(leafNode.next);
                     leafNode.Return();
                     if (!nextPage.IsCompleted)
                     {
@@ -214,6 +214,24 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             enumerator.Reset(default, 0);
             leafNode = null;
+        }
+
+        public void CloneSeekResultTo(IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> other)
+        {
+            if (other is BPlusTreeIterator<K, V, TKeyContainer, TValueContainer> otherIterator)
+            {
+                otherIterator.leafNode = leafNode;
+                if (otherIterator.leafNode == null || !otherIterator.leafNode.TryRent())
+                {
+                    throw new InvalidOperationException("Cannot rent leaf node");
+                }
+                otherIterator.index = index;
+                otherIterator.enumerator.Reset(leafNode, index);
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
         }
     }
 }

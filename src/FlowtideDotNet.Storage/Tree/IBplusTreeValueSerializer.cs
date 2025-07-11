@@ -10,22 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tree
 {
     public interface IBplusTreeValueSerializer<V, TValueContainer>
-        where TValueContainer: IValueContainer<V>
+        where TValueContainer : IValueContainer<V>
     {
         TValueContainer CreateEmpty();
 
-        TValueContainer Deserialize(in BinaryReader reader);
+        TValueContainer Deserialize(ref SequenceReader<byte> reader);
 
-        void Serialize(in BinaryWriter writer, in TValueContainer values);
+        void Serialize(in IBufferWriter<byte> writer, in TValueContainer values);
 
         Task CheckpointAsync(IBPlusTreeSerializerCheckpointContext context);
 

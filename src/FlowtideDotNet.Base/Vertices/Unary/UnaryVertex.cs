@@ -11,24 +11,23 @@
 // limitations under the License.
 
 using DataflowStream.dataflow.Internal.Extensions;
-using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Base.dataflow;
+using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
+using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Base.Metrics;
 using System.Text;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Storage.Memory;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Unary
 {
-    public abstract class UnaryVertex<T, TState> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
+    public abstract class UnaryVertex<T> : IPropagatorBlock<IStreamEvent, IStreamEvent>, IStreamVertex
     {
         private TransformManyBlock<IStreamEvent, IStreamEvent>? _transformBlock;
         private ParallelSource<IStreamEvent>? _parallelSource;
@@ -40,6 +39,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         private long _currentTime = 0;
         private IVertexHandler? _vertexHandler;
         private bool _isHealthy = true;
+        private TaskCompletionSource? _pauseSource;
 
         private string? _name;
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
@@ -53,6 +53,9 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
@@ -93,7 +96,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnTrigger(triggerEvent.Name, triggerEvent.State);
                     // Inject data into the stream from the trigger
-                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => 
+                    return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
                     {
                         if (source is IRentable rentable)
                         {
@@ -106,9 +109,15 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     var enumerator = OnRecieve(streamMessage.Data, streamMessage.Time);
 
+                    if (_pauseSource != null)
+                    {
+                        enumerator = WaitForPause(enumerator);
+                    }
+
                     if (streamMessage.Data is IRentable inputRentable)
                     {
-                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) => {
+                        return new AsyncEnumerableReturnRentable<T, IStreamEvent>(inputRentable, enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -118,7 +127,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                     }
                     else
                     {
-                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) => {
+                        return new AsyncEnumerableDowncast<T, IStreamEvent>(enumerator, (source) =>
+                        {
                             if (source is IRentable rentable)
                             {
                                 rentable.Rent(_links.Count);
@@ -130,6 +140,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 if (streamEvent is Watermark watermark)
                 {
                     return new AsyncEnumerableWithWait<IStreamEvent, IStreamEvent>(HandleWatermark(watermark), (s) => s, ShouldWait);
+                }
+                if (streamEvent is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    return Passthrough(initialDataDoneEvent);
                 }
 
                 throw new NotSupportedException();
@@ -184,19 +198,16 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             return EmptyAsyncEnumerable<T>.Instance;
         }
 
-        public async Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _name = name;
             _streamName = vertexHandler.StreamName;
             _vertexHandler = vertexHandler;
 
-            TState? parsedState = default;
-            if (state.HasValue)
-            {
-                parsedState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
-            await InitializeOrRestore(parsedState, vertexHandler.StateClient);
+            _streamVersion = streamVersionInformation;
+
+            await InitializeOrRestore(vertexHandler.StateClient);
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -244,8 +255,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 var links = GetLinks();
 
                 List<Measurement<int>> measurements = new List<Measurement<int>>();
-                
-                foreach(var link in links)
+
+                foreach (var link in links)
                 {
                     TagList tags = new TagList
                     {
@@ -285,7 +296,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public abstract Task Compact();
 
-        protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
         private async IAsyncEnumerable<IStreamEvent> HandleCheckpointEnumerable(ILockingEvent checkpointEvent)
         {
@@ -303,14 +314,27 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             _parallelTarget!.ReleaseCheckpoint();
         }
 
+        private async IAsyncEnumerable<T> WaitForPause(IAsyncEnumerable<T> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
+        }
+
         internal protected virtual async Task<ILockingEvent> HandleCheckpoint(ILockingEvent lockingEvent)
         {
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
                 Logger.CheckpointInOperator(StreamName, Name);
                 _currentTime = checkpointEvent.NewTime;
-                var checkpointState = await OnCheckpoint();
-                checkpointEvent.AddState(Name, checkpointState);
+                await OnCheckpoint();
                 return checkpointEvent;
             }
             return lockingEvent;
@@ -318,7 +342,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public abstract IAsyncEnumerable<T> OnRecieve(T msg, long time);
 
-        public abstract Task<TState> OnCheckpoint();
+        public abstract Task OnCheckpoint();
 
         public virtual IAsyncEnumerable<T> OnTrigger(string name, object? state)
         {
@@ -427,6 +451,23 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return _links.Select(x => x.Item1);
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
         }
     }
 }

@@ -10,12 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics;
@@ -41,18 +43,20 @@ namespace FlowtideDotNet.AcceptanceTests
         public StreamStateValue State => flowtideTestStream.State;
 
         protected Task StartStream(
-            string sql, 
-            int parallelism = 1, 
-            StateSerializeOptions? stateSerializeOptions = default, 
+            string sql,
+            int parallelism = 1,
+            StateSerializeOptions? stateSerializeOptions = default,
             int pageSize = 1024,
-            bool ignoreSameDataCheck = false) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck);
+            bool ignoreSameDataCheck = false,
+            ICheckFailureListener? failureListener = default,
+            PlanOptimizerSettings? planOptimizerSettings = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();
 
         protected Task StartStream() => flowtideTestStream.StartStream();
 
-        public List<FlxVector> GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+        public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
 
         protected void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
@@ -114,6 +118,21 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AddOrUpdateUser(user);
         }
 
+        public void AddOrUpdateOrder(Order order)
+        {
+            flowtideTestStream.AddOrUpdateOrder(order);
+        }
+
+        public void AddOrUpdateProject(Project project)
+        {
+            flowtideTestStream.AddOrUpdateProject(project);
+        }
+
+        public void AddOrUpdateProjectMember(ProjectMember projectMember)
+        {
+            flowtideTestStream.AddOrUpdateProjectMember(projectMember);
+        }
+
         public void DeleteUser(User user)
         {
             flowtideTestStream.DeleteUser(user);
@@ -144,7 +163,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public async Task DisposeAsync()
         {
-            
+
             await flowtideTestStream.DisposeAsync();
         }
 

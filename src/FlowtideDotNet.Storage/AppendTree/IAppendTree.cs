@@ -11,21 +11,18 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.AppendTree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Storage
 {
-    public interface IAppendTree<K, V>
+    public interface IAppendTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer : IKeyContainer<K>
     {
         ValueTask Append(in K key, in V value);
         ValueTask Commit();
         ValueTask Prune(K key);
         internal Task<string> Print();
-        IAppendTreeIterator<K, V> CreateIterator();
+        IAppendTreeIterator<K, V, TKeyContainer> CreateIterator();
         ValueTask Clear();
     }
 }

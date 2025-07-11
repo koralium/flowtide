@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Uri, FunctionsRounding.Floor, (x) => FloorImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Uri, FunctionsRounding.Round, (x) => RoundImplementation(x));
         }
-        
+
         private static FlxValue CeilingImplementation(FlxValue x)
         {
             // Integers are already rounded

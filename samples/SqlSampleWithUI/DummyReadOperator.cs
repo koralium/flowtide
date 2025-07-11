@@ -13,7 +13,6 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
@@ -36,7 +35,7 @@ namespace SqlSampleWithUI
         }
     }
 
-    public class DummyReadOperator : ReadBaseOperator<object>
+    public class DummyReadOperator : ReadBaseOperator
     {
         public DummyReadOperator(DataflowBlockOptions options) : base(options)
         {
@@ -59,12 +58,12 @@ namespace SqlSampleWithUI
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { "dummy" });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
             return Task.FromResult(new object());
         }
@@ -72,7 +71,7 @@ namespace SqlSampleWithUI
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             
-            for (int i = 0; i < 1_0_000; i++)
+            for (int i = 0; i < 10_000; i++)
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = MemoryAllocator;
@@ -80,7 +79,7 @@ namespace SqlSampleWithUI
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-                
+
                 for (int b = 0; b < 16; b++)
                 {
                     columns[b] = Column.Create(memoryManager);
@@ -97,7 +96,7 @@ namespace SqlSampleWithUI
                 }
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                
+
             }
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }

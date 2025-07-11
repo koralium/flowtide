@@ -23,20 +23,13 @@ using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.CustomProtobuf;
 using FlowtideDotNet.Substrait.Relations;
-using SqlParser.Tokens;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 {
-    internal class BlockNestedJoinOperator : MultipleInputVertex<StreamEventBatch, JoinState>
+    internal class BlockNestedJoinOperator : MultipleInputVertex<StreamEventBatch>
     {
         private readonly JoinRelation _joinRelation;
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool> _condition;
@@ -91,7 +84,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             return Task.CompletedTask;
         }
 
-        public override async Task<JoinState?> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(_leftTree != null, nameof(_leftTree));
             Debug.Assert(_rightTree != null, nameof(_rightTree));
@@ -105,8 +98,6 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             await _leftTree.Commit();
             await _rightTree.Commit();
-
-            return new JoinState();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -395,7 +386,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 var outputColumn = columns[_leftOutputIndices[i]];
-                outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1); 
+                outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
             }
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
@@ -588,7 +579,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             }
         }
 
-        protected override async Task InitializeOrRestore(JoinState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Logger.BlockNestedLoopInUse(StreamName, Name);
 

@@ -19,27 +19,15 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using Grpc.Gateway.ProtocGenOpenapiv2.Options;
-using Grpc.Net.Client;
-using Microsoft.Extensions.Logging;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Tracing;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static Grpc.Core.Metadata;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
     internal class SpiceDbSink : SimpleGroupedWriteOperator
     {
-        private readonly int m_resourceObjectTypeIndex; 
+        private readonly int m_resourceObjectTypeIndex;
         private readonly int m_resourceObjectIdIndex;
         private readonly int m_relationIndex;
         private readonly int m_subjectObjectTypeIndex;
@@ -101,13 +89,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult(new MetadataResult(m_primaryKeys));
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
             }
-            return base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            return base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
         protected override async IAsyncEnumerable<RowEvent> GetExistingData()
@@ -128,7 +116,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     m_spiceDbSinkOptions.DeleteExistingDataFilter.OptionalCursor = cursor;
                 }
-                
+
                 var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
                 var readAllEnumerable = relationshipsStream.ResponseStream;
 
@@ -136,13 +124,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 {
                     try
                     {
-                        if(!await readAllEnumerable.MoveNext())
+                        if (!await readAllEnumerable.MoveNext())
                         {
                             run = false;
                             break;
                         }
                     }
-                    catch(Exception e)
+                    catch (Exception e)
                     {
                         if (e is RpcException rpcException &&
                             rpcException.InnerException is HttpProtocolException protocolException &&
@@ -159,7 +147,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     yield return m_existingDataEncoder.Encode(readAllEnumerable.Current.Relationship, 1);
                     cursor = readAllEnumerable.Current.AfterResultCursor;
                 }
-            }   
+            }
         }
 
         private static string ColumnToString(scoped in FlxValueRef flxValue)
@@ -245,10 +233,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             var watch = Stopwatch.StartNew();
             string? lastToken = default;
             List<Task<string>> uploadTasks = new List<Task<string>>();
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 var relationship = GetRelationship(row);
-                
+
                 if (row.IsDeleted)
                 {
                     request.Updates.Add(new RelationshipUpdate()
@@ -259,10 +247,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 }
                 else
                 {
-                    request.Updates.Add(new RelationshipUpdate() 
-                    { 
-                        Operation = RelationshipUpdate.Types.Operation.Touch, 
-                        Relationship = relationship 
+                    request.Updates.Add(new RelationshipUpdate()
+                    {
+                        Operation = RelationshipUpdate.Types.Operation.Touch,
+                        Relationship = relationship
                     });
                 }
                 if (request.Updates.Count >= m_spiceDbSinkOptions.BatchSize)
@@ -289,7 +277,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                                 response = await m_client.WriteRelationshipsAsync(req, metadata, cancellationToken: cancellationToken);
                                 break;
                             }
-                            catch(Exception e)
+                            catch (Exception e)
                             {
                                 retries++;
                                 if (retries < 5)
@@ -316,6 +304,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         {
                             if (uploadTasks[i].IsCompleted)
                             {
+                                if (uploadTasks[i].IsFaulted)
+                                {
+                                    throw new InvalidOperationException($"Failed to upload changes: {uploadTasks[i].Exception?.Message}", uploadTasks[i].Exception);
+                                }
                                 lastToken = uploadTasks[i].Result;
                                 uploadTasks.RemoveAt(i);
                             }

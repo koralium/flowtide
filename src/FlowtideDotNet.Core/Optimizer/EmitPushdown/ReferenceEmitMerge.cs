@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
         {
             HashSet<int> mergedEmit = new HashSet<int>();
 
-            foreach(var r in referenceRelations)
+            foreach (var r in referenceRelations)
             {
                 if (r.EmitSet)
                 {
@@ -35,9 +35,9 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             plan.Relations[index].Emit = mergedEmit.OrderBy(x => x).ToList();
 
             // Visit all relations and update their usage
-            for(int i = 0; i < plan.Relations.Count; i++)
+            for (int i = 0; i < plan.Relations.Count; i++)
             {
-                
+
             }
         }
     }

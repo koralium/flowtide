@@ -10,17 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
 using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -151,7 +145,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     Vector128<sbyte> mappingVector = Vector128.Load(pMapping);
 
                     int vectorSize = Vector128<sbyte>.Count;
-                    
+
                     for (; i <= count - vectorSize; i += vectorSize)
                     {
                         Vector128<sbyte> sourceVector = Vector128.Load(pSource + start + i);

@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
@@ -106,7 +105,7 @@ namespace FlowtideDotNet.Substrait.Relations
             }
             if (Groupings != null)
             {
-                foreach(var group in Groupings)
+                foreach (var group in Groupings)
                 {
                     length += group.GroupingExpressions.Count;
                 }

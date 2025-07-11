@@ -14,13 +14,8 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Internal
 {

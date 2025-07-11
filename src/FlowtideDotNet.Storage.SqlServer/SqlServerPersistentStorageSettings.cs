@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Polly;
+using Polly.Retry;
+
 namespace FlowtideDotNet.Storage.SqlServer
 {
     /// <summary>
@@ -17,10 +20,29 @@ namespace FlowtideDotNet.Storage.SqlServer
     /// </summary>
     public class SqlServerPersistentStorageSettings
     {
+        public SqlServerPersistentStorageSettings()
+        {
+            ResiliencePipeline = new ResiliencePipelineBuilder()
+                .AddRetry(new RetryStrategyOptions
+                {
+                    MaxRetryAttempts = 5,
+                    DelayGenerator = (args) =>
+                    {
+                        if (args.AttemptNumber < 5)
+                        {
+                            var seconds = args.AttemptNumber == 1 ? 1 : args.AttemptNumber * 5;
+                            return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromSeconds(seconds));
+                        }
+
+                        return ValueTask.FromResult<TimeSpan?>(TimeSpan.FromMinutes(args.AttemptNumber - 4));
+                    }
+                })
+                .Build();
+        }
         /// <summary>
-        /// Gets or sets the connection string used to connect to the SQL Server database.
+        /// Gets or sets function for retrieval of the connection string used to connect to the SQL Server database.
         /// </summary>
-        public required string ConnectionString { get; set; }
+        public required Func<string> ConnectionStringFunc { get; set; }
 
         /// <summary>
         /// Gets or sets the limit for the number of pages to be written in bulk operations. 
@@ -42,6 +64,18 @@ namespace FlowtideDotNet.Storage.SqlServer
         /// Gets or sets the name of the stream page table, can include schema and database name.
         /// </summary>
         public string StreamPageTableName { get; set; } = "[dbo].[StreamPages]";
+
+        /// <summary>
+        /// If set to true, flowtide versioning will be used in combination with the stream name to create a unique key, if a new version is detected, a new stream will be created.
+        /// If set to false, the flowtide stream name is used as the key, and considered the same independant of version.
+        /// </summary>
+        public bool UseFlowtideVersioning { get; set; }
+
+        /// <summary>
+        /// Resilience pipeline for the source.
+        /// The default pipeline waits and retries 10 times with increasing intervals.
+        /// </summary>
+        public ResiliencePipeline ResiliencePipeline { get; set; }
     }
 
     /// <summary>

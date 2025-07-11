@@ -13,15 +13,8 @@
 using FlexBuffers;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.ConflictTarget;
-using static Substrait.Protobuf.FunctionSignature.Types;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 {
@@ -91,7 +84,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
             _stateManagerClient = stateManagerClient;
             _decoders = await client.GetColumnDecoders(listId, columns.Keys.ToList(), stateManagerClient);
             _columns = columns.Keys.ToHashSet();
-            foreach(var column in columns)
+            foreach (var column in columns)
             {
                 _descriptions[column.Key] = column.Value.Description;
             }

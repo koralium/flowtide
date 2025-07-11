@@ -13,22 +13,16 @@
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
-    internal class ColumnFilterOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class ColumnFilterOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly FilterRelation _filterRelation;
         private readonly Func<EventBatchData, int, bool> _filter;
@@ -106,7 +100,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             }
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }

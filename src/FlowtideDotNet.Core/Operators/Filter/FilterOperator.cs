@@ -10,20 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Unary;
-using FlowtideDotNet.Core.Operators.Filter.Internal;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Base.Metrics;
-using System.Diagnostics;
+using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Operators.Filter.Internal;
 using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Filter
 {
-    internal class FilterOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class FilterOperator : UnaryVertex<StreamEventBatch>
     {
         public override string DisplayName => "Filter";
 
@@ -57,14 +56,14 @@ namespace FlowtideDotNet.Core.Operators.Filter
             return _filterImplementation.OnRecieve(msg, time);
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Logger.InitializingFilterOperator(StreamName, Name);
             if (_eventsProcessed == null)
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            return _filterImplementation.InitializeOrRestore(StreamName, Name, RegisterTrigger, state);
+            return _filterImplementation.InitializeOrRestore(StreamName, Name, RegisterTrigger);
         }
 
         public override Task DeleteAsync()

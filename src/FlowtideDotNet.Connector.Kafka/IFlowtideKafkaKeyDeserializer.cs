@@ -11,11 +11,13 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
     public interface IFlowtideKafkaKeyDeserializer
     {
         FlxValue Deserialize(byte[] bytes);
+        void Deserialize(byte[] bytes, IColumn column);
     }
 }

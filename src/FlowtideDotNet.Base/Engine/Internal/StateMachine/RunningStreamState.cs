@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Ingress;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -55,9 +54,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 // Write the latest state
                 run._context._lastState = new StreamState(
-                    run._currentCheckpoint.CheckpointTime, 
-                    run._currentCheckpoint.GetOperatorStates(), 
-                    _context._streamVersionInformation?.Version ?? 0, 
+                    run._currentCheckpoint.CheckpointTime,
                     _context._streamVersionInformation?.Hash ?? string.Empty);
 
                 run._context._stateManager.Metadata = run._context._lastState;
@@ -133,6 +130,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             lock (_context._checkpointLock)
             {
+                if (_context.Status == StreamStatus.Failing)
+                {
+                    // If the stream was in the failure status, we can now set it to running to mark that it is operational
+                    _context.SetStatus(StreamStatus.Running);
+                }
                 _context._initialCheckpointTaken = true;
                 if (_context.checkpointTask != null)
                 {
@@ -172,6 +174,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
+            _context.CheckForPause();
+
+            if (_context.Status != StreamStatus.Failing)
+            {
+                // Failure status is removed when a checkpoint has been made, since a failure could happen in the middle of doing a checkpoint
+                _context.SetStatus(StreamStatus.Running);
+            }
 
             _context._logger.StreamIsInRunningState(_context.streamName);
             lock (_lock)
@@ -212,7 +221,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         {
                             CheckpointCompleted();
                         }
-                        
+
                         return Task.CompletedTask;
                     })
                     .Unwrap();
@@ -312,8 +321,26 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     TransitionTo(StreamStateValue.Stopping);
                 }
             }
-            
+
             return Task.CompletedTask;
+        }
+
+        public override void Pause()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context.ForEachBlock((id, block) =>
+            {
+                block.Pause();
+            });
+        }
+
+        public override void Resume()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context.ForEachBlock((id, block) =>
+            {
+                block.Resume();
+            });
         }
     }
 }

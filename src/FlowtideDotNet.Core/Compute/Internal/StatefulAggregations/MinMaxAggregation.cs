@@ -116,8 +116,8 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
         private static FlxValue NullValue = FlxValue.FromBytes(FlexBuffer.Null());
 
         private static async Task<MinMaxAggregationSingleton> InitializeMinMax(
-            int groupingLength, 
-            IStateManagerClient stateManagerClient, 
+            int groupingLength,
+            IStateManagerClient stateManagerClient,
             IComparer<RowEvent> comparer,
             string treeName)
         {
@@ -131,14 +131,14 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             {
                 searchPrimaryKeys.Add(i);
             }
-            var tree = await stateManagerClient.GetOrCreateTree(treeName, 
+            var tree = await stateManagerClient.GetOrCreateTree(treeName,
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
-            {
-                Comparer = new BPlusTreeListComparer<RowEvent>(comparer),
-                KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
-                ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                MemoryAllocator = GlobalMemoryManager.Instance
-            });
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(comparer),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
 
             return new MinMaxAggregationSingleton(tree, groupingLength);
         }
@@ -197,10 +197,10 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             var row = new RowEvent(0, 0, new CompactRowData(vector, FlxValue.FromMemory(vector).AsVector));
             var iterator = singleton.Tree.CreateIterator();
             await iterator.Seek(row);
-            
-            await foreach(var page in iterator)
+
+            await foreach (var page in iterator)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     if (singleton.AreKeyEqual(kv.Key, row))
                     {

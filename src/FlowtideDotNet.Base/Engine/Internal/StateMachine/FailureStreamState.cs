@@ -21,8 +21,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void Initialize(StreamStateValue previousState)
         {
+            Debug.Assert(_context != null, nameof(_context));
+            _context.CheckForPause();
             lock (_lock)
             {
+                _context.SetStatus(StreamStatus.Failing);
                 if (_currentTask != null)
                 {
                     return;
@@ -34,11 +37,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     .Unwrap()
                     .ContinueWith(t =>
                     {
-                        lock(_lock)
+                        lock (_lock)
                         {
                             _currentTask = null;
                         }
-                        
+
                         if (t.IsFaulted)
                         {
                             Debug.Assert(_context != null, nameof(_context));
@@ -68,7 +71,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context.ForEachBlock((key, block) =>
             {
-                block.Fault(new Exception());
+                block.Fault(new Exception($"Faulting block due to stream failure."));
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });

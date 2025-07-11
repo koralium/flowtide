@@ -19,12 +19,26 @@ namespace FlowtideDotNet.Core
     public static class SqlServerConnectorManagerExtensions
     {
         public static IConnectorManager AddSqlServerSource(
-            this IConnectorManager connectorManager, 
+            this IConnectorManager connectorManager,
             Func<string> connectionStringFunc,
-            Func<ReadRelation, string>? tableNameTransform = null,
+            Func<ReadRelation, IReadOnlyList<string>>? tableNameTransform = null,
             bool useDatabaseDefinedInConnectionStringOnly = false)
         {
-            connectorManager.AddSource(new SqlServerSourceFactory(connectionStringFunc, tableNameTransform, useDatabaseDefinedInConnectionStringOnly));
+            connectorManager.AddSource(new SqlServerSourceFactory(new SqlServerSourceOptions
+            {
+                ConnectionStringFunc = connectionStringFunc,
+                TableNameTransform = tableNameTransform,
+                UseDatabaseDefinedInConnectionStringOnly = useDatabaseDefinedInConnectionStringOnly
+            }));
+
+            return connectorManager;
+        }
+
+        public static IConnectorManager AddSqlServerSource(
+            this IConnectorManager connectorManager,
+            SqlServerSourceOptions options)
+        {
+            connectorManager.AddSource(new SqlServerSourceFactory(options));
             return connectorManager;
         }
 

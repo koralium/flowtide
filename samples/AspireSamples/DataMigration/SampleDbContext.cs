@@ -12,14 +12,8 @@
 
 using AspireSamples.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace AspireSamples.DataMigration
 {
@@ -40,8 +34,9 @@ namespace AspireSamples.DataMigration
             {
                 opt.ToTable("users")
                 .HasKey(x => x.UserKey);
-            }); 
-            modelBuilder.Entity<Order>(opt => {
+            });
+            modelBuilder.Entity<Order>(opt =>
+            {
                 opt.ToTable("orders")
                 .HasKey(x => x.OrderKey);
             });

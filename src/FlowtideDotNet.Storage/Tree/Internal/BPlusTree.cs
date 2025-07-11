@@ -11,15 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer: IKeyContainer<K>
-        where TValueContainer: IValueContainer<V>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
@@ -27,8 +26,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int minSize;
         private bool m_isByteBased;
         private int byteMinSize;
+        private bool m_usePreviousPointer;
 
-        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options) 
+        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
             Debug.Assert(options.BucketSize.HasValue);
             Debug.Assert(options.PageSizeBytes.HasValue);
@@ -38,6 +38,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.m_keyComparer = options.Comparer;
             m_isByteBased = options.UseByteBasedPageSizes;
             byteMinSize = (options.PageSizeBytes.Value) / 3;
+            m_usePreviousPointer = options.UsePreviousPointers;
         }
 
         public long CacheMisses => m_stateClient.CacheMisses;
@@ -62,13 +63,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async Task<string> Print()
         {
             Debug.Assert(m_stateClient.Metadata != null);
-            var root = (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot"))!;
+            var root = (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root))!;
 
             var builder = new StringBuilder();
             builder.AppendLine("digraph g {");
             builder.AppendLine("splines=line");
             builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id, "GetPrint"))!);
+            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id))!);
             builder.AppendLine("}");
             return builder.ToString();
         }
@@ -155,6 +156,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator()
         {
             return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
+        }
+
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator()
+        {
+            return new BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer>(this);
         }
 
         public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)

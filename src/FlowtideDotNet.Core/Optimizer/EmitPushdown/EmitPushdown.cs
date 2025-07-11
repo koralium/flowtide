@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 plan.Relations[i] = relation;
             }
 
-            foreach(var reference in referenceRelations)
+            foreach (var reference in referenceRelations)
             {
                 ReferenceEmitMerge.MergeReferences(plan, reference.Key, reference.Value);
             }

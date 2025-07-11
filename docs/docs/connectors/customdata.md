@@ -80,6 +80,8 @@ connectorManager.AddCustomSource(
     (readRelation) => new ExampleDataSource(userRepository));
 ```
 
+All rows must return an identifier that is used when calculating changes of the data. This key can be accessed when querying with the special name of `__key`.
+
 ### Trigger data reloads programatically
 
 The generic data source also registers triggers that allows the user to notify the stream when a reload should happen.
@@ -128,7 +130,7 @@ internal class TestDataSink : GenericDataSink<User>
         return Task.FromResult(new List<string> { "{primaryKeyColumnName}" });
     }
 
-    public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes)
+    public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
     {
         await foreach(var userChange in changes)
         {
@@ -149,4 +151,26 @@ Add the generic data sink to the *ConnectorManager*:
 
 ```csharp
 connectorManager.AddCustomSink("{tableName}", (rel) => new testDataSink());
+```
+
+## Adding custom converters
+
+It is possible to register custom converters to convert .NET objects into the column format, and back. This is done by overriding the `GetCustomConverters` method in both
+generic sources and sinks.
+
+One example is for instance to use strings for enums instead of integers. Example:
+
+```csharp
+internal class MyDataSource : GenericDataSource<MyClass>
+{
+    ...
+
+    public override IEnumerable<IObjectColumnResolver> GetCustomConverters()
+    {
+        // Returns a new converter resolver for enums that will use strings instead of integers
+        yield return new EnumResolver(enumAsStrings: true);
+    }
+
+    ...
+}
 ```

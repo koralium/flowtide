@@ -16,11 +16,6 @@ using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
@@ -38,7 +33,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override bool CanHandle(ReadRelation readRelation)
         {
-            return mongoDbTableProvider.TryGetTableInformation(readRelation.NamedTable.DotSeperated, out _);
+            return mongoDbTableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out _);
         }
 
         public ITableProvider Create()

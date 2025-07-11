@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var rightNames = right.GetNames();
                 var leftTypes = left.GetTypes();
                 var rightTypes = right.GetTypes();
-                
+
                 for (int i = 0; i < leftNames.Count; i++)
                 {
                     var alias = default(string);
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         var condition = exprVisitor.Visit(exprAlias.Expression, parent);
                         returnType = condition.Type;
                     }
-                    
+
                     projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias, returnType);
                     outputCounter++;
                 }
@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         conditionName = condition.Name;
                         returnType = condition.Type;
                     }
-                    
+
                     projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(conditionName) })), outputCounter, conditionName, returnType);
                     outputCounter++;
                 }
@@ -166,9 +166,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override EmitData? VisitTable(TableFactor.Table table, object? state)
         {
+            var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
-            if (tablesMetadata.TryGetTable(tableName, out var t))
+            if (tablesMetadata.TryGetTable(tableNameParts, out var t))
             {
                 var emitData = new EmitData();
 
@@ -183,7 +184,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         returnType = new AnyType();
                     }
-                    
+
                     emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i], returnType);
                 }
 
@@ -217,7 +218,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             Debug.Assert(join.Relation != null);
             var right = Visit(join.Relation, state);
-            
+
             if (left == null || right == null)
             {
                 return null;

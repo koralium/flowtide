@@ -39,7 +39,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 this.series = series;
                 this.duration = duration;
             }
-        } 
+        }
 
         private readonly MetricSeries metricSeries;
         private Stack<VisitResult> _callStack;
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public void Visit(FunctionCall fnCall)
         {
-            
+
             if (fnCall.Function.Name == "rate")
             {
                 fnCall.Args[0].Accept(this);
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 throw new NotImplementedException();
             }
-            
+
         }
 
         public void Visit(VectorMatching vm)
@@ -155,7 +155,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 if (serie.Tags.Count == 0)
                 {
-                    foreach(var grouping in seriesGroupings)
+                    foreach (var grouping in seriesGroupings)
                     {
                         grouping.Value.Add(serie);
                     }
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         private IEnumerable<MetricSerie> FilterSeries(IEnumerable<MetricSerie> series, LabelMatchers matchers)
         {
-            foreach(var matcher in matchers.Matchers)
+            foreach (var matcher in matchers.Matchers)
             {
                 switch (matcher.Operator)
                 {
@@ -269,7 +269,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 series = metricSeries.GetAllSeries();
             }
-            
+
             if (vs.LabelMatchers != null)
             {
                 series = FilterSeries(series, vs.LabelMatchers);

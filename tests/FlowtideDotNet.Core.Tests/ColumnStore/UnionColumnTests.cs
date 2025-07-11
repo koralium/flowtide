@@ -17,9 +17,11 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -490,6 +492,29 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
+        public void TestInsertRangeFromInsertBasicColumnWithEmptyValidityList()
+        {
+            Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            Column stringColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("hello"),
+                new StringValue("world")
+            };
+
+            unionColumn.InsertRangeFrom(1, stringColumn, 1, 1);
+
+            Assert.Equal(3, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("world", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(2, default).AsDecimal);
+        }
+
+        [Fact]
         public void InsertRangeFromOtherUnionColumn()
         {
             UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance)
@@ -815,6 +840,33 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(1, copy.GetValueAt(0, default).AsLong);
             Assert.Equal(3, copy.GetValueAt(1, default).AsDecimal);
+        }
+
+        [Fact]
+        public void TestAddToHash()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
+
+            column.AddToHash(1, default, hash);
+            columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(1, default).AddToHash(hash);
+            valueHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
         }
     }
 }

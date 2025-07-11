@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace FlowtideDotNet.AspNetCore.HealthCheck
@@ -25,22 +24,18 @@ namespace FlowtideDotNet.AspNetCore.HealthCheck
         }
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
         {
-            var status = dataflowStream.Status;
+            var health = dataflowStream.Health;
 
-            switch (status)
+            switch (health)
             {
-                case StreamStatus.Failing:
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "Stream is in state 'failing'."));
-                case StreamStatus.Running:
+                case Base.FlowtideHealth.Unhealthy:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy));
+                case Base.FlowtideHealth.Healthy:
                     return Task.FromResult(new HealthCheckResult(HealthStatus.Healthy));
-                case StreamStatus.Starting:
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in state 'starting'."));
-                case StreamStatus.Stopped:
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy, "Stream is in state 'stopped'."));
-                case StreamStatus.Degraded:
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in state 'degraded'."));
+                case Base.FlowtideHealth.Degraded:
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded));
                 default:
-                    return Task.FromResult(new HealthCheckResult(HealthStatus.Degraded, "Stream is in unknown state."));
+                    return Task.FromResult(new HealthCheckResult(HealthStatus.Unhealthy));
             }
         }
     }

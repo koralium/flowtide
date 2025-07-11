@@ -1,3 +1,15 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -64,6 +76,25 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.Gender == Entities.Gender.Female ? x.FirstName : x.LastName }));
+        }
+
+        /// <summary>
+        /// Special case test where the case did not downcast correctly to IDataValue
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task SelectWithCaseStructWithNullElse()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    CASE WHEN Active = false THEN named_struct('id', FirstName) 
+                    ELSE NULL
+                    END AS name
+                FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.Active == false ? new { id = x.FirstName } : null }));
         }
 
         [Fact]
@@ -247,6 +278,67 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(new[] { new { str = "a" }, new { str = "b" }, new { str = "c" } });
+        }
+
+        [Fact]
+        public async Task SelectFromValuesListBinaryData()
+        {
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT hex FROM 
+                (
+                    VALUES 
+                    (0x544F2041)
+                ) t(hex)");
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { hex = new byte[] { 84, 79, 32, 65 } } });
+        }
+
+        [Fact]
+        public async Task SelectWithNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct('firstName', firstName, 'lastName', lastName) AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { firstName = x.FirstName, lastName = x.LastName } }));
+        }
+
+        [Fact]
+        public async Task SelectSubPropertyFromNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                CREATE VIEW testview AS
+                SELECT 
+                    named_struct('firstName', firstName, 'lastName', lastName) AS name
+                FROM users;
+
+                INSERT INTO output
+                SELECT name.firstName FROM testview;");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { x.FirstName }));
+        }
+
+        [Fact]
+        public async Task SelectWithEmptyNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct() AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { } }));
         }
     }
 }

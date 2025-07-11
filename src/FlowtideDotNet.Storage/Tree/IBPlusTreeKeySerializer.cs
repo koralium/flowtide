@@ -10,11 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tree
 {
@@ -23,9 +19,9 @@ namespace FlowtideDotNet.Storage.Tree
     {
         TKeyContainer CreateEmpty();
 
-        TKeyContainer Deserialize(in BinaryReader reader);
+        TKeyContainer Deserialize(ref SequenceReader<byte> reader);
 
-        void Serialize(in BinaryWriter writer, in TKeyContainer values);
+        void Serialize(in IBufferWriter<byte> writer, in TKeyContainer values);
 
         /// <summary>
         /// Called on each checkpoint, its primary function is to allow a serializer to write any potential metadata

@@ -11,16 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
-    internal class NotificationReciever : IStreamNotificationReciever
+    internal class NotificationReciever : ICheckpointListener, IStreamStateChangeListener, IFailureListener
     {
         private readonly Action onCheckpointComplete;
         internal Exception? _exception;
@@ -30,7 +24,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             this.onCheckpointComplete = onCheckpointComplete;
         }
-        public void OnCheckpointComplete()
+
+        public void OnCheckpointComplete(StreamCheckpointNotification notification)
         {
             onCheckpointComplete();
         }
@@ -52,20 +47,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return false;
         }
 
-        public void OnFailure(Exception? exception)
+        public void OnFailure(StreamFailureNotification notification)
         {
-            if (IsCrashException(exception))
+            if (IsCrashException(notification.Exception))
             {
                 return;
             }
             _error = true;
-            _exception = exception;
+            _exception = notification.Exception;
         }
 
-        public void OnStreamStateChange(StreamStateValue newState)
+        public void OnStreamStateChange(StreamStateChangeNotification notification)
         {
-        }
 
-        
+        }
     }
 }

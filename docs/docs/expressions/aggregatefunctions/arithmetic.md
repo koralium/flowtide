@@ -55,3 +55,31 @@ MAX ignores any null input values.
 ```sql
 SELECT max(column1) FROM ...
 ```
+
+## Min By
+
+*This function does not have a substrait definition.*
+
+Returns the value of `x` associated with the minimum value of `y`. If there are no rows, a `NULL` value is returned. `MIN_BY` ignores any rows where `y` is `NULL`.
+
+### SQL Usage
+
+```sql
+SELECT min_by(x, y) FROM ...
+```
+
+## Max By
+
+*This function does not have a substrait definition.*
+
+Returns the value of `x` associated with the maximum value of `y`. If there are no rows, a `NULL` value is returned. `MAX_BY` ignores any rows where `y` is `NULL`.
+
+### SQL Usage
+
+```sql
+SELECT max_by(x, y) FROM ...
+```
+
+
+
+

@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
                 return func(fd, offset, length, advice);
             }
             return -1;
-                
+
         }
     }
 }

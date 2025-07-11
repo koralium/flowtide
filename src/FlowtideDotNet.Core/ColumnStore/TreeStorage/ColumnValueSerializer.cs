@@ -12,11 +12,7 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
@@ -41,7 +37,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return new ColumnValueStorageContainer(_columnCount, _memoryAllocator);
         }
 
-        public ColumnValueStorageContainer Deserialize(in BinaryReader reader)
+        public ColumnValueStorageContainer Deserialize(ref SequenceReader<byte> reader)
         {
             throw new NotImplementedException();
         }
@@ -51,7 +47,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return Task.CompletedTask;
         }
 
-        public void Serialize(in BinaryWriter writer, in ColumnValueStorageContainer values)
+        public void Serialize(in IBufferWriter<byte> writer, in ColumnValueStorageContainer values)
         {
             throw new NotImplementedException();
         }

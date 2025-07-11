@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Ingress;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -77,8 +72,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Write the latest state
                 run._context._lastState = new StreamState(
                     run._currentCheckpoint.CheckpointTime,
-                    run._currentCheckpoint.GetOperatorStates(),
-                    _context._streamVersionInformation?.Version ?? 0,
                     _context._streamVersionInformation?.Hash ?? string.Empty);
 
                 run._context._stateManager.Metadata = run._context._lastState;
@@ -162,7 +155,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context._stateManager.Dispose();
 
-            
+
             await TransitionTo(StreamStateValue.NotStarted);
             _context._logger.StoppedStream(_context.streamName);
 
@@ -179,6 +172,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null);
+            _context.CheckForPause();
+            _context.SetStatus(StreamStatus.Stopping);
             _context._logger.StoppingStream(_context.streamName);
             _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
         }

@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -123,7 +122,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return new Measurement<long>(hits + misses, new KeyValuePair<string, object?>("stream", m_streamName));
                 });
             }
-            
+
             this.lruTableOptions = lruTableOptions;
             _addOrUpdate_newValue_func = AddOrUpdate_NewValue;
             _addOrUpdate_existingValue_func = AddOrUpdate_ExistingValue;
@@ -156,10 +155,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (node.List != null)
                         {
                             m_nodes.Remove(node);
-                        }                        
+                        }
                     }
                 }
-                
+
             }
         }
 
@@ -207,7 +206,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     _fullLock.Release();
                 }
-                
+
             }
         }
 
@@ -218,6 +217,28 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             m_cleanupTokenSource.Cancel();
             await m_cleanupTask!;
+        }
+
+        public bool TryGetCacheValue(long key, out LinkedListNode<LinkedListValue>? node)
+        {
+            if (cache.TryGetValue(key, out node))
+            {
+                lock (node)
+                {
+                    if (node.ValueRef.removed)
+                    {
+                        return false;
+                    }
+                    if (!node.ValueRef.value.TryRent())
+                    {
+                        throw new InvalidOperationException("Could not rent value from cache");
+                    }
+                    node.ValueRef.useCount = Math.Min(node.ValueRef.useCount + 1, 5);
+                    Interlocked.Increment(ref m_cacheHits);
+                    return true;
+                }
+            }
+            return false;
         }
 
         public bool TryGetValue(long key, out ICacheObject? cacheObject)
@@ -387,13 +408,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     toBeRemovedCount = currentCount - cleanupStartLocal;
                 }
             }
-           
+
             LinkedListNode<LinkedListValue>? iteratorNode;
             lock (m_nodes)
             {
                 iteratorNode = m_nodes.First;
             }
-            
+
             Dictionary<ILruEvictHandler, List<(LinkedListNode<LinkedListValue>, long)>> groupedValues = new Dictionary<ILruEvictHandler, List<(LinkedListNode<LinkedListValue>, long)>>();
             List<(LinkedListNode<LinkedListValue>, long)> toBeRemoved = new List<(LinkedListNode<LinkedListValue>, long)>();
             while (iteratorNode != null && (toBeRemoved.Count < toBeRemovedCount))
@@ -427,7 +448,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
 
             List<Task> evictTasks = new List<Task>();
-            foreach(var group in groupedValues)
+            foreach (var group in groupedValues)
             {
                 evictTasks.Add(Task.Factory.StartNew(() =>
                 {
@@ -437,7 +458,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             await Task.WhenAll(evictTasks);
 
-            foreach(var group in groupedValues)
+            foreach (var group in groupedValues)
             {
                 // Go through each value and remove them from the cache
                 foreach (var val in group.Value)

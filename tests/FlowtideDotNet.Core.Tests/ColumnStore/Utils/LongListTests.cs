@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
 {
@@ -146,7 +141,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         {
             var allocator = GlobalMemoryManager.Instance;
             using var longList = new NativeLongList(allocator);
-            
+
             for (int i = 0; i < 1_000_000; i++)
             {
                 longList.Add(i);

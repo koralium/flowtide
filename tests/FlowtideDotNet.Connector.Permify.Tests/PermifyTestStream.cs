@@ -13,11 +13,6 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 using Grpc.Net.Client;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Permify.Tests
 {
@@ -30,7 +25,7 @@ namespace FlowtideDotNet.Connector.Permify.Tests
         private int updateCounter = 0;
 
         public PermifyTestStream(
-            string testName, 
+            string testName,
             string tenantId,
             GrpcChannel grpcChannel,
             bool addWriteResolver,
@@ -90,7 +85,7 @@ namespace FlowtideDotNet.Connector.Permify.Tests
             {
                 await base.WaitForUpdate();
             }
-            
+
         }
     }
 }

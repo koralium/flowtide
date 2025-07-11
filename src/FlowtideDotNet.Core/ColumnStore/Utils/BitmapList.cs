@@ -19,8 +19,6 @@ using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Threading.Tasks;
-using static SqlParser.Ast.DataType;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -124,7 +122,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public BitmapList()
         {
-            
+
         }
 
         public void Assign(IMemoryAllocator memoryAllocator)
@@ -355,7 +353,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 EnsureSize(_dataLength + 1);
             }
             span = AccessSpan;
-            
+
             if (mod > 0)
             {
                 var bottomBitsMask = BitPatternArray[mod - 1];
@@ -371,10 +369,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     var previousEndShift = span[endShiftIndex];
                     // Fetch the value of the most right integer and mask it to get the bits that should remain unchanged
                     var endIntPreviousValue = span[endIndex] & topBitsSetMask[countRemainder - 1]; // was -1 before
-                    
+
                     // Copy in the data, this could change the value of the most right integer and most left integer
                     other.AccessSpan.Slice(start >> 5, numberOfNewInts).CopyTo(span.Slice(toIndex));
-                    
+
                     if (modDifference > 0)
                     {
                         // The difference is positive, so the copied values must be shifted left to make them get to the correct indices.

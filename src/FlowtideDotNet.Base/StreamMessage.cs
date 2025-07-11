@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Base
 {
-    public abstract class StreamMessage : IStreamEvent 
+    public abstract class StreamMessage : IStreamEvent
     {
         public abstract long Time { get; internal set; }
     }

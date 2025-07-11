@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Text.Json;
+using FlowtideDotNet.Storage;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices
@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         string DisplayName { get; }
 
-        Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler);
+        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation);
 
         void CreateBlock();
 
@@ -45,5 +45,9 @@ namespace FlowtideDotNet.Base.Vertices
         Task DeleteAsync();
 
         IEnumerable<ITargetBlock<IStreamEvent>> GetLinks();
+
+        void Pause();
+
+        void Resume();
     }
 }

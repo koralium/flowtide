@@ -12,12 +12,11 @@
 
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
-using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -36,7 +35,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public long AsLong => throw new NotImplementedException();
 
-        public FlxString AsString => throw new NotImplementedException();
+        public StringValue AsString => throw new NotImplementedException();
 
         public bool AsBool => throw new NotImplementedException();
 
@@ -44,7 +43,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IListValue AsList => throw new NotImplementedException();
 
-        public Span<byte> AsBinary => throw new NotImplementedException();
+        public ReadOnlySpan<byte> AsBinary => throw new NotImplementedException();
 
         public IMapValue AsMap => this;
 
@@ -53,6 +52,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         public bool IsNull => false;
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
+
+        public IStructValue AsStruct => throw new NotSupportedException();
+
+        public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            var length = GetLength();
+            for (int i = 0; i < length; i++)
+            {
+                var key = GetKeyAt(i);
+                var value = GetValueAt(i);
+                key.AddToHash(hashAlgorithm);
+                value.AddToHash(hashAlgorithm);
+            }
+        }
 
         public void CopyToContainer(DataValueContainer container)
         {
@@ -93,6 +106,31 @@ namespace FlowtideDotNet.Core.ColumnStore
         IEnumerator IEnumerable.GetEnumerator()
         {
             return mapColumn.GetKeyValuePairs(index).GetEnumerator();
+        }
+
+        public override string ToString()
+        {
+            var sb = new StringBuilder();
+            sb.Append("{");
+            var first = true;
+            foreach (var kv in this)
+            {
+                if (!first)
+                {
+                    sb.Append(", ");
+                }
+                first = false;
+                sb.Append(kv.Key);
+                sb.Append(": ");
+                sb.Append(kv.Value);
+            }
+            sb.Append("}");
+            return sb.ToString();
+        }
+
+        public void Accept(in DataValueVisitor visitor)
+        {
+            visitor.VisitReferenceMapValue(in this);
         }
     }
 }

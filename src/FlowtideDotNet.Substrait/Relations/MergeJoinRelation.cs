@@ -70,12 +70,12 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Type);
             code.Add(Left);
             code.Add(Right);
-            
-            foreach(var key in LeftKeys)
+
+            foreach (var key in LeftKeys)
             {
                 code.Add(key);
             }
-            foreach(var key in RightKeys)
+            foreach (var key in RightKeys)
             {
                 code.Add(key);
             }

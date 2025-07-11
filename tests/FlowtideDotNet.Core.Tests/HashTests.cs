@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Tests
             var reg = new FunctionsRegister();
             var function = HashCompiler.CompileGetHashCode(expressions, reg);
 
-            
+
             var hash = function(testEvent);
             Assert.Equal(expected, hash);
         }

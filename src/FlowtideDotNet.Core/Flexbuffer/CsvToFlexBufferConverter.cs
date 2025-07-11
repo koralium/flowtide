@@ -37,7 +37,7 @@ namespace FlexBuffers
                     if (isInDoubleQuotes == false)
                     {
                         isInDoubleQuotes = true;
-                        offset++;    
+                        offset++;
                     }
                     else
                     {
@@ -52,20 +52,23 @@ namespace FlexBuffers
                             offset++;
                         }
                     }
-                    
-                } else if (csv[offset] == separator && isInDoubleQuotes == false)
+
+                }
+                else if (csv[offset] == separator && isInDoubleQuotes == false)
                 {
                     flx.Add(sb.ToString());
                     sb.Clear();
                     offset++;
-                } else if (csv[offset] == '\n' && isInDoubleQuotes == false)
+                }
+                else if (csv[offset] == '\n' && isInDoubleQuotes == false)
                 {
                     flx.Add(sb.ToString());
                     flx.EndVector(innerVec, false, false);
                     innerVec = -1;
                     sb.Clear();
                     offset++;
-                } else if (csv[offset] == '\r' && csv.Length > offset + 1 && csv[offset + 1] == '\n' && isInDoubleQuotes == false)
+                }
+                else if (csv[offset] == '\r' && csv.Length > offset + 1 && csv[offset + 1] == '\n' && isInDoubleQuotes == false)
                 {
                     flx.Add(sb.ToString());
                     flx.EndVector(innerVec, false, false);

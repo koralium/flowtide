@@ -14,11 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
@@ -60,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 // Get value by container to skip boxing for each value
                 key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
-                
+
                 if (dataValueContainer._type == ArrowTypeId.Null)
                 {
                     noMatch = true;

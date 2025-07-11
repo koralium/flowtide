@@ -1,33 +1,40 @@
-﻿using Authzed.Api.V1;
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using Authzed.Api.V1;
 using Authzed.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Grpc.Core;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
 {
-    class ColumnSpiceDbSource : ReadBaseOperator<FlowtideSpiceDbSourceState>
+    class ColumnSpiceDbSource : ReadBaseOperator
     {
         private PermissionsService.PermissionsServiceClient? m_client;
         private readonly SpiceDbSourceOptions m_spiceDbSourceOptions;
         private readonly ReadRelation _readRelation;
-        private FlowtideSpiceDbSourceState? m_state;
+        private IObjectState<FlowtideSpiceDbSourceState>? m_state;
         private readonly ColumnSpiceDbRowEncoder m_rowEncoder;
         private WatchService.WatchServiceClient? m_watchClient;
         private List<string> readTypes = new List<string>();
@@ -102,15 +109,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             return Task.FromResult<IReadOnlySet<string>>(watermarkNames);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, FlowtideSpiceDbSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            m_state = await stateManagerClient.GetOrCreateObjectStateAsync<FlowtideSpiceDbSourceState>("spicedb_state");
+            if (m_state.Value == null)
             {
-                m_state = state;
-            }
-            else
-            {
-                m_state = new FlowtideSpiceDbSourceState()
+                m_state.Value = new FlowtideSpiceDbSourceState()
                 {
                     TypeTimestamps = new Dictionary<string, long>()
                 };
@@ -146,10 +150,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             m_watchClient = new WatchService.WatchServiceClient(m_spiceDbSourceOptions.Channel);
         }
 
-        protected override Task<FlowtideSpiceDbSourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(m_state != null);
-            return Task.FromResult(m_state);
+            await m_state.Commit();
         }
 
         private static long GetRevision(string token)
@@ -174,13 +178,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         private Watermark GetCurrentWatermark()
         {
-            Debug.Assert(m_state != null);
-            Debug.Assert(m_state.TypeTimestamps != null);
+            Debug.Assert(m_state?.Value != null);
+            Debug.Assert(m_state.Value.TypeTimestamps != null);
 
-            var builder = ImmutableDictionary.CreateBuilder<string, long>();
-            foreach (var kv in m_state.TypeTimestamps)
+            var builder = ImmutableDictionary.CreateBuilder<string, AbstractWatermarkValue>();
+            foreach (var kv in m_state.Value.TypeTimestamps)
             {
-                builder.Add($"spicedb_{kv.Key}", kv.Value);
+                builder.Add($"spicedb_{kv.Key}", LongWatermarkValue.Create(kv.Value));
             }
             return new Watermark(builder.ToImmutable());
         }
@@ -189,8 +193,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         {
             Debug.Assert(watchStream != null);
             Debug.Assert(m_watchClient != null);
-            Debug.Assert(m_state != null);
-            Debug.Assert(m_state.TypeTimestamps != null);
+            Debug.Assert(m_state?.Value != null);
+            Debug.Assert(m_state?.Value?.TypeTimestamps != null);
 
             bool initWatch = false;
 
@@ -207,11 +211,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             metadata = m_spiceDbSourceOptions.GetMetadata();
                         }
                         var watchRequest = new WatchRequest();
-                        if (m_state.ContinuationToken != null)
+                        if (m_state.Value.ContinuationToken != null)
                         {
                             watchRequest.OptionalStartCursor = new ZedToken
                             {
-                                Token = m_state.ContinuationToken
+                                Token = m_state.Value.ContinuationToken
                             };
                         }
                         if (!readAllTypes)
@@ -232,13 +236,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         await output.EnterCheckpointLock();
                         var current = watchStream.ResponseStream.Current;
 
-                        if (current.ChangesThrough.Token == m_state.ContinuationToken)
+                        if (current.ChangesThrough.Token == m_state.Value.ContinuationToken)
                         {
                             output.ExitCheckpointLock();
                             continue;
                         }
 
-                        m_state.ContinuationToken = current.ChangesThrough.Token;
+                        m_state.Value.ContinuationToken = current.ChangesThrough.Token;
                         var revision = GetRevision(current.ChangesThrough.Token);
 
                         PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
@@ -263,7 +267,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             m_rowEncoder.Encode(update.Relationship, columns);
                             weights.Add(weight);
                             iterations.Add(0);
-                            m_state.TypeTimestamps[update.Relationship.Resource.ObjectType] = revision;
+                            m_state.Value.TypeTimestamps[update.Relationship.Resource.ObjectType] = revision;
                         }
                         if (weights.Count > 0)
                         {
@@ -311,8 +315,8 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         {
             Debug.Assert(m_client != null);
             Debug.Assert(m_watchClient != null);
-            Debug.Assert(m_state != null);
-            Debug.Assert(m_state.TypeTimestamps != null);
+            Debug.Assert(m_state?.Value != null);
+            Debug.Assert(m_state.Value?.TypeTimestamps != null);
 
             Metadata? metadata = default;
             if (m_spiceDbSourceOptions.GetMetadata != null)
@@ -320,11 +324,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 metadata = m_spiceDbSourceOptions.GetMetadata();
             }
             var watchRequest = new WatchRequest();
-            if (m_state.ContinuationToken != null)
+            if (m_state.Value.ContinuationToken != null)
             {
                 watchRequest.OptionalStartCursor = new ZedToken
                 {
-                    Token = m_state.ContinuationToken
+                    Token = m_state.Value.ContinuationToken
                 };
             }
             if (!readAllTypes)
@@ -338,7 +342,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             // Start the watch stream, this will be used later to check for changes
             watchStream = m_watchClient.Watch(watchRequest, metadata);
 
-            if (m_state.ContinuationToken == null)
+            if (m_state.Value.ContinuationToken == null)
             {
                 await output.EnterCheckpointLock();
 
@@ -426,7 +430,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                                     columns[i].Dispose();
                                 }
                             }
-                            m_state.TypeTimestamps[readType] = minRevision;
+                            m_state.Value.TypeTimestamps[readType] = minRevision;
                             break;
                         }
                         catch (Exception e)
@@ -451,7 +455,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
 
                 }
-                m_state.ContinuationToken = firstToken;
+                m_state.Value.ContinuationToken = firstToken;
                 await output.SendWatermark(GetCurrentWatermark());
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));

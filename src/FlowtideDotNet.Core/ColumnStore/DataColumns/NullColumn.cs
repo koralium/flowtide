@@ -13,15 +13,17 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -32,8 +34,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Null;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public NullColumn()
-        {    
+        {
         }
 
         public NullColumn(int count)
@@ -149,6 +153,35 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new NullColumn(_count);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var typePointer = arrowSerializer.AddNullType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Null, typePointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 0, sizeof(int));
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(_count, _count);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
         }
     }
 }

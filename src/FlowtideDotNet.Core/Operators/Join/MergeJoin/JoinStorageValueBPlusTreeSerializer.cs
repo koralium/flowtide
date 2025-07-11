@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             writer.Write(values.Count);
             var bytes = new byte[8 * values.Count];
             var span = bytes.AsSpan();
-            for (int i = 0; i < values.Count;i++)
+            for (int i = 0; i < values.Count; i++)
             {
                 BinaryPrimitives.WriteInt32LittleEndian(span.Slice(i * 8), values[i].Weight);
                 BinaryPrimitives.WriteInt32LittleEndian(span.Slice(i * 8 + 4), values[i].JoinWeight);

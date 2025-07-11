@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private bool _inLock;
         private TaskCompletionSource? _stopEvents;
 
-        internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock) 
+        internal IngressOutput(IngressState<T> ingressState, ITargetBlock<IStreamEvent> targetBlock)
         {
             _ingressState = ingressState;
             _targetBlock = targetBlock;
@@ -72,7 +72,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         internal void Stop()
         {
-            _stopEvents = new TaskCompletionSource();
+            if (_stopEvents == null)
+            {
+                _stopEvents = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        internal void Resume()
+        {
+            if (_stopEvents != null)
+            {
+                _stopEvents.SetResult();
+                _stopEvents = null;
+            }
         }
 
         internal void Fault(Exception exception)
@@ -88,6 +100,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         internal Task SendLockingEvent(ILockingEvent lockingEvent)
         {
             return _targetBlock.SendAsync(lockingEvent, CancellationToken);
+        }
+
+        internal Task SendEvent(IStreamEvent streamEvent)
+        {
+            return _targetBlock.SendAsync(streamEvent, CancellationToken);
         }
 
         public Task SendWatermark(Watermark watermark)

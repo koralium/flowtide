@@ -27,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT ceil(userkey / 3) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (long)Math.Ceiling(x.UserKey / (double)3) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Ceiling(x.UserKey / (double)3) }));
         }
 
         [Fact]
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT ceiling(userkey / 3) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (long)Math.Ceiling(x.UserKey / (double)3) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Ceiling(x.UserKey / (double)3) }));
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT floor(userkey / 3) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (long)Math.Floor(x.UserKey / (double)3) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Floor(x.UserKey / (double)3) }));
         }
 
         [Fact]
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT round(userkey / 3) as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = (long)Math.Round(x.UserKey / (double)3) }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = Math.Round(x.UserKey / (double)3) }));
         }
 
         [Fact]

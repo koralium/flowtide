@@ -1,3 +1,15 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
 
@@ -22,7 +34,8 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             var jsonData = @"
                 {
                     ""firstName"": ""testFirst"",
-                    ""lastName"": ""testLast""  
+                    ""lastName"": ""testLast"",
+                    ""other"": ""hello""
                 }
             ";
 
@@ -54,7 +67,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 FROM [test-topic]
             ");
 
-            
+
             consumer.Subscribe("output");
 
             var msg1 = consumer.Consume();
@@ -86,7 +99,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             });
 
             var msg3 = consumer.Consume();
-            
+
             Assert.Equal("key", msg3.Message.Key);
             Assert.Null(msg3.Message.Value);
         }
@@ -122,7 +135,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
                 Value = @"{""firstName"":""testSecond"",""lastName"":""testSecond""}"
             });
 
-            
+
             var consumer = new ConsumerBuilder<string, string>(kafkaFixture.GetConsumerConfig("testwithexistingdata")).Build();
 
             KafkaTestStream kafkaTestStream = new KafkaTestStream(kafkaFixture, topic, "testwithexistingdata", true);

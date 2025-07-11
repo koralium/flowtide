@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
     public record ScalarResponse(Expression Expression, SubstraitBaseType Type);
     public record AggregateResponse(AggregateFunction AggregateFunction, SubstraitBaseType Type);
+    public record WindowResponse(WindowFunction WindowFunction, SubstraitBaseType Type);
 
     public interface ISqlFunctionRegister
     {

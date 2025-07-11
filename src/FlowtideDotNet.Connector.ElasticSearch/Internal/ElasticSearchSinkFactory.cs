@@ -14,12 +14,6 @@ using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Internal
@@ -36,7 +30,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
-            sink.CreateIndexAndMappings();
+            sink.CreateIndexAndMappings().ConfigureAwait(false).GetAwaiter().GetResult();
             return sink;
         }
     }

@@ -10,11 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -342,7 +337,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (double)1 : (double)0 }));
+            AssertCurrentDataEqual(Users.Select(u => new { val = u.Active ? (decimal)1 : (decimal)0 }));
         }
 
         [Fact]

@@ -14,20 +14,22 @@ using Apache.Arrow;
 using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -40,6 +42,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.Decimal128;
 
+        public StructHeader StructHeader => throw new NotImplementedException();
+
         public DecimalColumn(IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<decimal>(memoryAllocator);
@@ -47,7 +51,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);   
+            _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
         }
 
         internal DecimalColumn(PrimitiveList<decimal> values)
@@ -110,7 +114,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataValueContainer._decimalValue = new DecimalValue(_values[index]);
         }
 
-        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) 
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue
         {
             if (desc)
@@ -148,7 +152,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             var buffers = new ArrowBuffer[2]
             {
                 nullBuffer,
-                new ArrowBuffer(_values.Memory)
+                new ArrowBuffer(_values.SlicedMemory)
             };
             var array = new FixedSizeBinaryArray(new ArrayData(FloatingPointDecimalType.Default, Count, nullCount, 0, buffers));
             return (array, FloatingPointDecimalType.Default);
@@ -233,6 +237,44 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataColumn Copy(IMemoryAllocator memoryAllocator)
         {
             return new DecimalColumn(_values.Copy(memoryAllocator));
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[16];
+            var decimalSpan = MemoryMarshal.Cast<byte, decimal>(buffer);
+            decimalSpan[0] = _values[index];
+            hashAlgorithm.Append(buffer);
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);
+            var extensionValuePointer = arrowSerializer.CreateStringUtf8("flowtide.floatingdecimaltype"u8);
+            var typePointer = arrowSerializer.AddFixedSizeBinaryType(16);
+            pointerStack[0] = arrowSerializer.CreateKeyValue(extensionKeyPointer, extensionValuePointer);
+            var customMetadataPointer = arrowSerializer.CreateCustomMetadataVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FixedSizeBinary, typePointer, custom_metadataOffset: customMetadataPointer);
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_values.SlicedMemory.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
     }
 }

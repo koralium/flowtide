@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow.Types;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes
 {

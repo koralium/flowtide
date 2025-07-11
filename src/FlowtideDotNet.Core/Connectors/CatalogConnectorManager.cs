@@ -13,12 +13,7 @@
 using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Connectors
 {
@@ -97,17 +92,18 @@ namespace FlowtideDotNet.Core.Connectors
                 .Union(_tableProviders);
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (tableName.StartsWith(catalogName))
+            if (tableName.Count > 1 && tableName[0] == catalogName)
             {
                 if (_resolvedTableProviders == null)
                 {
                     _resolvedTableProviders = GetTableProviders().ToList();
                 }
-                for(int i = 0; i < _resolvedTableProviders.Count; i++)
+                for (int i = 0; i < _resolvedTableProviders.Count; i++)
                 {
-                    if (_resolvedTableProviders[i].TryGetTableInformation(tableName.Substring(catalogName.Length + 1), out tableMetadata))
+                    var nameWithoutCatalog = tableName.Skip(1).ToList();
+                    if (_resolvedTableProviders[i].TryGetTableInformation(nameWithoutCatalog, out tableMetadata))
                     {
                         return true;
                     }

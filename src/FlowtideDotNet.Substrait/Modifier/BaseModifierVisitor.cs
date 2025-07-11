@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Modifier
 {
@@ -147,7 +142,7 @@ namespace FlowtideDotNet.Substrait.Modifier
             {
                 tableFunctionRelation.Input = Visit(tableFunctionRelation.Input, state);
             }
-            
+
             return tableFunctionRelation;
         }
 
@@ -171,6 +166,12 @@ namespace FlowtideDotNet.Substrait.Modifier
         public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object? state)
         {
             return standardOutputExchangeReferenceRelation;
+        }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object? state)
+        {
+            consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+            return consistentPartitionWindowRelation;
         }
     }
 }

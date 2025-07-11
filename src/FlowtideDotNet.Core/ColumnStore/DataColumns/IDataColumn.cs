@@ -12,15 +12,18 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -31,19 +34,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         ArrowTypeId Type { get; }
 
         int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList)
-            where T: IDataValue;
+            where T : IDataValue;
 
         int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex);
 
         int Add<T>(in T value)
-            where T: IDataValue;
+            where T : IDataValue;
 
         IDataValue GetValueAt(in int index, in ReferenceSegment? child);
 
         void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child);
 
         int Update<T>(in int index, in T value)
-            where T: IDataValue;
+            where T : IDataValue;
 
         (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             where T : IDataValue;
@@ -82,5 +85,23 @@ namespace FlowtideDotNet.Core.ColumnStore
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
 
         IDataColumn Copy(IMemoryAllocator memoryAllocator);
+
+        void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
+
+        internal int CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack);
+
+        internal void AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount);
+
+        internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
+
+        SerializationEstimation GetSerializationEstimate();
+
+        /// <summary>
+        /// Only used for struct column, added for ease of access.
+        /// Returns the header of a struct (column names).
+        /// </summary>
+        StructHeader StructHeader { get; }
     }
 }

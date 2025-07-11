@@ -14,9 +14,11 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -26,7 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         long AsLong { get; }
 
-        FlxString AsString { get; }
+        StringValue AsString { get; }
 
         bool AsBool { get; }
 
@@ -34,7 +36,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         IListValue AsList { get; }
 
-        Span<byte> AsBinary { get; }
+        ReadOnlySpan<byte> AsBinary { get; }
 
         IMapValue AsMap { get; }
 
@@ -44,6 +46,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         TimestampTzValue AsTimestamp { get; }
 
+        IStructValue AsStruct { get; }
+
         void CopyToContainer(DataValueContainer container);
+
+        void Accept(in DataValueVisitor visitor);
+
+        void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm);
     }
 }

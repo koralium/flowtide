@@ -14,13 +14,13 @@ using System.Runtime.InteropServices;
 
 namespace FlexBuffers
 {
-    [StructLayout(LayoutKind.Explicit, Size=10)]
+    [StructLayout(LayoutKind.Explicit, Size = 10)]
     public struct StackValue
     {
         [FieldOffset(0)] private ulong UValue;
-        
+
         [FieldOffset(0)] private long LValue;
-        
+
         [FieldOffset(0)] private double DValue;
 
         [FieldOffset(8)] private BitWidth Width;
@@ -36,7 +36,7 @@ namespace FlexBuffers
                 ValueType = Type.Null
             };
         }
-        
+
         public static StackValue Value(float value)
         {
             return new StackValue
@@ -46,7 +46,7 @@ namespace FlexBuffers
                 ValueType = Type.Float
             };
         }
-        
+
         public static StackValue Value(double value)
         {
             return new StackValue
@@ -56,7 +56,7 @@ namespace FlexBuffers
                 ValueType = Type.Float
             };
         }
-        
+
         public static StackValue Value(bool value)
         {
             return new StackValue
@@ -66,7 +66,7 @@ namespace FlexBuffers
                 ValueType = Type.Bool
             };
         }
-        
+
         public static StackValue Value(long value)
         {
             return new StackValue
@@ -76,7 +76,7 @@ namespace FlexBuffers
                 ValueType = Type.Int
             };
         }
-        
+
         public static StackValue Value(ulong value)
         {
             return new StackValue
@@ -86,7 +86,7 @@ namespace FlexBuffers
                 ValueType = Type.Uint
             };
         }
-        
+
         public static StackValue Value(ulong value, BitWidth width, Type type)
         {
             return new StackValue
@@ -96,7 +96,7 @@ namespace FlexBuffers
                 ValueType = type
             };
         }
-        
+
         public static StackValue Value(long value, BitWidth width, Type type)
         {
             return new StackValue
@@ -111,7 +111,7 @@ namespace FlexBuffers
         {
             if (TypesUtil.IsInline(ValueType))
             {
-                return (BitWidth) Math.Max((int) bitWidth, (int) Width);
+                return (BitWidth)Math.Max((int)bitWidth, (int)Width);
             }
 
             return Width;
@@ -135,7 +135,7 @@ namespace FlexBuffers
                 var offsetLoc = size + BitWidthUtil.PaddingSize(size, width) + (ulong)index * width;
                 var offset = offsetLoc - UValue;
                 var bitWidth = BitWidthUtil.Width(offset);
-                if ((1UL << (byte) bitWidth) == width)
+                if ((1UL << (byte)bitWidth) == width)
                 {
                     return bitWidth;
                 }

@@ -10,24 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
-using FlowtideDotNet.Substrait.Relations;
-using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Core.Compute.Columnar;
-using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.VirtualTable
 {
-    internal class VirtualTableOperator : IngressVertex<StreamEventBatch, VirtualTableState>
+    internal class VirtualTableOperator : IngressVertex<StreamEventBatch>
     {
         private readonly VirtualTableReadRelation virtualTableReadRelation;
         private readonly IFunctionsRegister functionsRegister;
         private IReadOnlySet<string>? watermarkNames;
-        private bool hasSentInitial = false;
+        private IObjectState<VirtualTableState>? _state;
         private int[] _emitList;
         public override string DisplayName => "Virtual Table";
 
@@ -67,36 +68,38 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            if (watermarkNames != null) 
+            if (watermarkNames != null)
             {
                 return Task.FromResult(watermarkNames);
             }
             throw new InvalidOperationException("Get watermarks called before initialize");
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, VirtualTableState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             watermarkNames = new HashSet<string>() { Name };
 
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<VirtualTableState>("virtual_table_state");
+            if (_state.Value == null)
             {
-                hasSentInitial = state.HasSentInitial;
+                _state.Value = new VirtualTableState()
+                {
+                    HasSentInitial = false
+                };
             }
-            
-            return Task.CompletedTask;
+
         }
 
-        protected override Task<VirtualTableState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new VirtualTableState()
-            {
-                HasSentInitial = hasSentInitial
-            });
+            Debug.Assert(_state != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            if (hasSentInitial)
+            Debug.Assert(_state?.Value != null);
+            if (_state.Value.HasSentInitial)
             {
                 return;
             }
@@ -111,7 +114,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
                 columns[i] = Column.Create(MemoryAllocator);
             }
 
-            foreach(var row in virtualTableReadRelation.Values.Expressions)
+            foreach (var row in virtualTableReadRelation.Values.Expressions)
             {
                 weights.Add(1);
                 iterations.Add(0);
@@ -124,8 +127,8 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
             var outputBatch = new EventBatchData(columns);
             await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputBatch)));
-            await output.SendWatermark(new Base.Watermark(Name, 1));
-            hasSentInitial = true;
+            await output.SendWatermark(new Base.Watermark(Name, LongWatermarkValue.Create(1)));
+            _state.Value.HasSentInitial = true;
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
         }

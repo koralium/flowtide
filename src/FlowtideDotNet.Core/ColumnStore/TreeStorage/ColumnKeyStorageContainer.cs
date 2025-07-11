@@ -12,20 +12,17 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 {
-    internal class ColumnKeyStorageContainer : IKeyContainer<ColumnRowReference>
+    public class ColumnKeyStorageContainer : IKeyContainer<ColumnRowReference>
     {
         private readonly int columnCount;
         internal EventBatchData _data;
         private DataValueContainer _dataValueContainer;
         private int _count;
+
+        public EventBatchData Data => _data;
 
         public ColumnKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)
         {

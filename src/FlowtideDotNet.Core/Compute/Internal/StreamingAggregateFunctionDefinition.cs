@@ -82,15 +82,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> UpdateStateFunc { get; }
 
         public override Task<IAggregateContainer> CreateContainer(
-            int groupingLength, 
+            int groupingLength,
             IStateManagerClient stateManagerClient,
             IMemoryAllocator memoryAllocator,
-            AggregateFunction aggregateFunction, 
-            ParametersInfo parametersInfo, 
-            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor, 
-            ParameterExpression eventParameter, 
-            ParameterExpression stateParameter, 
-            ParameterExpression weightParameter, 
+            AggregateFunction aggregateFunction,
+            ParametersInfo parametersInfo,
+            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,
+            ParameterExpression eventParameter,
+            ParameterExpression stateParameter,
+            ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);

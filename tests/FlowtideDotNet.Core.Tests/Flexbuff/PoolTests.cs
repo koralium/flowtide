@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlexBuffers;
-using FluentAssertions;
 
 namespace FlowtideDotNet.Core.Tests.Flexbuff
 {
@@ -41,7 +40,7 @@ namespace FlowtideDotNet.Core.Tests.Flexbuff
             var cleanArray = FillData(flexBuffClean);
             var dirtyArray = FillData(flexBuffDirt);
 
-            dirtyArray.Should().Equal(cleanArray);
+            Assert.Equal(cleanArray, dirtyArray);
         }
     }
 }

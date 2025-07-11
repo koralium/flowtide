@@ -25,7 +25,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.TableFunction
 {
-    internal class TableFunctionJoinOperator : UnaryVertex<StreamEventBatch, object?>
+    internal class TableFunctionJoinOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly TableFunctionRelation _tableFunctionRelation;
         private readonly IFunctionsRegister _functionsRegister;
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         public TableFunctionJoinOperator(
             TableFunctionRelation tableFunctionRelation,
             IFunctionsRegister functionsRegister,
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions) 
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions)
             : base(executionDataflowBlockOptions)
         {
             _tableFunctionRelation = tableFunctionRelation;
@@ -68,9 +68,9 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             return Task.CompletedTask;
         }
 
-        public override Task<object?> OnCheckpoint()
+        public override Task OnCheckpoint()
         {
-            return Task.FromResult<object?>(null);
+            return Task.CompletedTask;
         }
 
         private static (List<int> incomingIndices, List<int> outgoingIndex) GetOutputColumns(TableFunctionRelation tableFunctionRelation, int relative, int maxSize)
@@ -134,9 +134,9 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                 var inputWeight = inputWeights[inputIndex];
                 var inputIteration = iterations[inputIndex];
                 var newRows = _func(data, inputIndex);
-                
+
                 bool emittedAny = false;
-                foreach(var batch in newRows)
+                foreach (var batch in newRows)
                 {
                     int matchStart = -1;
                     int matchEnd = -1;
@@ -228,7 +228,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Debug.Assert(_tableFunctionRelation.Input != null);
 
