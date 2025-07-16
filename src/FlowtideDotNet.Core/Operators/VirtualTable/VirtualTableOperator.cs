@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
@@ -126,7 +127,7 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
             var outputBatch = new EventBatchData(columns);
             await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputBatch)));
-            await output.SendWatermark(new Base.Watermark(Name, 1));
+            await output.SendWatermark(new Base.Watermark(Name, LongWatermarkValue.Create(1)));
             _state.Value.HasSentInitial = true;
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));

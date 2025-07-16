@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             {
                 await output.EnterCheckpointLock();
                 await SendChanges(request, changes, output);
-                await output.SendWatermark(new Watermark(m_watermarkName, m_state.Value.LastTimestamp));
+                await output.SendWatermark(new Watermark(m_watermarkName, LongWatermarkValue.Create(m_state.Value.LastTimestamp)));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
             await SendChanges(request, changes, output);
 
-            await output.SendWatermark(new Watermark(m_watermarkName, m_state.Value.LastTimestamp));
+            await output.SendWatermark(new Watermark(m_watermarkName, LongWatermarkValue.Create(m_state.Value.LastTimestamp)));
             output.ExitCheckpointLock();
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             await RegisterTrigger("load_changes", TimeSpan.FromSeconds(1));

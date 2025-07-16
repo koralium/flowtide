@@ -12,6 +12,7 @@
 
 using Confluent.Kafka;
 using FlexBuffers;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
@@ -224,10 +225,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         private async Task SendWatermark(IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_state?.Value?.PartitionOffsets != null);
-            var watermark = new Dictionary<string, long>();
+            var watermark = new Dictionary<string, AbstractWatermarkValue>();
             foreach (var kv in _state.Value.PartitionOffsets)
             {
-                watermark.Add(topicName + "_" + kv.Key, kv.Value);
+                watermark.Add(topicName + "_" + kv.Key, LongWatermarkValue.Create(kv.Value));
             }
             await output.SendWatermark(new Base.Watermark(watermark.ToImmutableDictionary()));
         }

@@ -304,6 +304,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 await SendInitial(output);
                 // Send event here that initial is completed
+                await output.SendEvent(new InitialDataDoneEvent());
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 
@@ -499,6 +500,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
             _ingressState._output.Resume();
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

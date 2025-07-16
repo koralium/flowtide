@@ -68,6 +68,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     await run._context._stateManager.Compact();
                 }
 
+                await _context.ForEachBlockAsync(static async (key, block) =>
+                {
+                    await block.BeforeSaveCheckpoint();
+                });
+
                 // Take state checkpoint
                 _context._logger.StartingStateManagerCheckpoint(_context.streamName);
                 await run._context._stateManager.CheckpointAsync(false);

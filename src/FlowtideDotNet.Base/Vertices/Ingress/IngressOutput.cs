@@ -102,6 +102,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             return _targetBlock.SendAsync(lockingEvent, CancellationToken);
         }
 
+        internal Task SendEvent(IStreamEvent streamEvent)
+        {
+            return _targetBlock.SendAsync(streamEvent, CancellationToken);
+        }
+
         public Task SendWatermark(Watermark watermark)
         {
             if (_stopEvents != null)
