@@ -17,7 +17,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Optimizer.WaternarkOutput
+namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
 {
     internal class WatermarkOutputVisitor : RelationVisitor<Relation, bool>
     {

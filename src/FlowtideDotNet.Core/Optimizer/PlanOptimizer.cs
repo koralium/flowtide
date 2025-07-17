@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
-using FlowtideDotNet.Core.Optimizer.WaternarkOutput;
+using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
