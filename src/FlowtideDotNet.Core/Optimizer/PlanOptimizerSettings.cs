@@ -30,5 +30,7 @@ namespace FlowtideDotNet.Core.Optimizer
         public bool SimplifyProjection { get; set; } = true;
 
         public int Parallelization { get; set; } = 1;
+
+        public bool TryAddWatermarkOutputMode { get; set; } = true;
     }
 }
