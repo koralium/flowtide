@@ -26,19 +26,18 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Postgresql.Internal
 {
-    internal class PostgresqlSourceState : ColumnBatchReadState
+    internal class PostgresqlSource : ColumnBatchReadBaseOperator
     {
+        private readonly PostgresSourceOptions _postgresOptions;
 
-    }
-    internal class PostgresqlSource : ColumnBatchReadBaseOperator<PostgresqlSourceState>
-    {
-        public PostgresqlSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
+        public PostgresqlSource(PostgresSourceOptions postgresOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
+            this._postgresOptions = postgresOptions;
         }
 
         public override string DisplayName => throw new NotImplementedException();
 
-        protected override Task<PostgresqlSourceState> Checkpoint(long checkpointTime)
+        protected override Task Checkpoint(long checkpointTime)
         {
             throw new NotImplementedException();
         }
@@ -48,32 +47,37 @@ namespace FlowtideDotNet.Connector.Postgresql.Internal
         //    return base.DeltaLoadTrigger(output, state);
         //}
 
-        protected override async Task InitializeOrRestore(long restoreTime, PostgresqlSourceState? state, IStateManagerClient stateManagerClient)
-        {
-            NpgsqlDataSource npgsqlDataSource = NpgsqlDataSource.Create("");
-            using var listPublicationsCommand = npgsqlDataSource.CreateCommand("select * from pg_publication_tables");
-            using var reader = await listPublicationsCommand.ExecuteReaderAsync();
+        //protected override async Task InitializeOrRestore(long restoreTime, PostgresqlSourceState? state, IStateManagerClient stateManagerClient)
+        //{
+        //    NpgsqlDataSource npgsqlDataSource = NpgsqlDataSource.Create("");
+        //    using var listPublicationsCommand = npgsqlDataSource.CreateCommand("select * from pg_publication_tables");
+        //    using var reader = await listPublicationsCommand.ExecuteReaderAsync();
 
-            var pubNameOrdinal = reader.GetOrdinal("pubname");
-            var pubTableNameOrdinal = reader.GetOrdinal("tablename");
-            var schemaNameOrdinal = reader.GetOrdinal("schemaname");
+        //    var pubNameOrdinal = reader.GetOrdinal("pubname");
+        //    var pubTableNameOrdinal = reader.GetOrdinal("tablename");
+        //    var schemaNameOrdinal = reader.GetOrdinal("schemaname");
 
-            while (await reader.ReadAsync())
-            {
-                var publicationName = reader.GetString(pubNameOrdinal);
-                var tableName = reader.GetString(pubTableNameOrdinal);
-                var schemaName = reader.GetString(schemaNameOrdinal);
-            }
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
-        }
+        //    while (await reader.ReadAsync())
+        //    {
+        //        var publicationName = reader.GetString(pubNameOrdinal);
+        //        var tableName = reader.GetString(pubTableNameOrdinal);
+        //        var schemaName = reader.GetString(schemaNameOrdinal);
+        //    }
+        //    await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+        //}
 
         protected override IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
-        protected override IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)
+        protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)
         {
+            using var conn = new NpgsqlConnection(_postgresOptions.ConnectionStringFunc());
+
+            // Get the current WAL location which will be used in the subscribe
+            var currentWalLocation = await PostgresClientUtils.GetCurrentWalLocation(conn);
+
             throw new NotImplementedException();
         }
 

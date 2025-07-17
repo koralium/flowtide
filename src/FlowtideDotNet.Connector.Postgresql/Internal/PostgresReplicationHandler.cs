@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Connector.Postgresql.Internal
 
             while (await enumerator.MoveNextAsync())
             {
-                
+                enumerator.Current.WalStart
             }
         }
     }

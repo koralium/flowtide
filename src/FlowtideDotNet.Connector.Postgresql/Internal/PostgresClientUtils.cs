@@ -10,34 +10,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Substrait.Relations;
+using Npgsql;
+using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Postgresql.Internal
 {
-    internal class PostgresqlSourceFactory : AbstractConnectorSourceFactory
+    internal static class PostgresClientUtils
     {
-        public PostgresqlSourceFactory()
+        public static async Task<NpgsqlLogSequenceNumber> GetCurrentWalLocation(NpgsqlConnection connection)
         {
-            
-        }
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = "SELECT pg_current_wal_lsn()";
 
-        public override bool CanHandle(ReadRelation readRelation)
-        {
-            return true;
-        }
-
-        public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
-        {
-            return new PostgresqlSource(readRelation, functionsRegister, dataflowBlockOptions);
+            var result = await cmd.ExecuteScalarAsync();
+            if (result is NpgsqlLogSequenceNumber lsn)
+            {
+                return lsn;
+            }
+            else if (result is string strLsn)
+            {
+                return NpgsqlLogSequenceNumber.Parse(strLsn);
+            }
+            else
+            {
+                throw new InvalidOperationException("Unexpected result type from pg_current_wal_lsn()");
+            }
         }
     }
 }
