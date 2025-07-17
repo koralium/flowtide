@@ -771,7 +771,15 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         {
             if (table.Count == 3)
             {
-                await sqlConnection.ChangeDatabaseAsync(table[0]);
+                var originalDatabase = sqlConnection.Database;
+                try
+                {
+                    await sqlConnection.ChangeDatabaseAsync(table[0]);
+                }
+                finally
+                {
+                    await sqlConnection.ChangeDatabaseAsync(originalDatabase);
+                }
             }
             using var cmd = sqlConnection.CreateCommand();
             cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
