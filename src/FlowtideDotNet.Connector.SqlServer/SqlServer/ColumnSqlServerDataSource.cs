@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
 
                 // Get current change tracking version
-                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection, readRelation.NamedTable.Names);
 
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 

@@ -767,8 +767,12 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return await reader.ReadAsync();
         }
 
-        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection)
+        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection, IReadOnlyList<string> table)
         {
+            if (table.Count == 3)
+            {
+                await sqlConnection.ChangeDatabaseAsync(table[0]);
+            }
             using var cmd = sqlConnection.CreateCommand();
             cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
 
