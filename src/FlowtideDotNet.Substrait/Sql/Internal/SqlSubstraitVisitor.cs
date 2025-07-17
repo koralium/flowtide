@@ -273,8 +273,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("PARTITION_COUNT can only be used on a distributed view");
                 }
-                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
-                subRelations.Add(relation);
+                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, relation, relation.OutputLength));
             }
 
             return default;
@@ -1203,10 +1202,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("Hints are not supported when selecting from views at this point.");
                 }
+
+                if (!viewContainer.RelationId.HasValue)
+                {
+                    viewContainer.RelationId = subRelations.Count;
+                    subRelations.Add(viewContainer.Relation);
+                }
+
                 return new RelationData(new ReferenceRelation()
                 {
                     ReferenceOutputLength = viewContainer.OutputLength,
-                    RelationId = viewContainer.RelationId
+                    RelationId = viewContainer.RelationId.Value
                 }, emitData);
             }
 
