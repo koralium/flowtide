@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             if (Options.IsChangeTrackingEnabled && State.Value.ChangeTrackingVersion < 1)
             {
-                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
+                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection, ReadRelation.NamedTable.Names);
             }
             else if (!Options.IsChangeTrackingEnabled)
             {
