@@ -73,10 +73,6 @@ namespace FlowtideDotNet.Core.Sinks
         protected override async Task OnWatermark(Watermark watermark)
         {
             await WriteData();
-            //if (m_initialDataSent)
-            //{
-                
-            //}
         }
 
         private async Task WriteData()
