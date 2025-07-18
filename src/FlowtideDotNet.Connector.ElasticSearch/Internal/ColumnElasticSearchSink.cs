@@ -103,7 +103,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             IndexState? indexState = default;
             Properties? properties = null;
 
-            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
+            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState) &&
+                indexState.Mappings != null)
             {
                 properties = indexState.Mappings.Properties ?? new Properties();
             }
