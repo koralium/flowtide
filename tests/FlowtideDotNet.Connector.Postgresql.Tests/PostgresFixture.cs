@@ -34,6 +34,7 @@ namespace FlowtideDotNet.Connector.Postgresql.Tests
                 .WithEnvironment("POSTGRES_PASSWORD", "password")
                 .WithEnvironment("POSTGRES_DB", "testdb")
                 .WithCommand("-c", "fsync=off")
+                .WithCommand("-c", "wal_level=logical")
                 .WithCommand("-c", "full_page_writes=off")
                 .WithCommand("-c", "synchronous_commit=off")
                 .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("database system is ready to accept connections"))

@@ -25,9 +25,13 @@ namespace FlowtideDotNet.Connector.Postgresql.Internal
 {
     internal class PostgresqlSourceFactory : AbstractConnectorSourceFactory
     {
-        public PostgresqlSourceFactory()
+        private readonly PostgresSourceOptions options;
+        private PostgresReplicationHandler replicationHandler;
+
+        public PostgresqlSourceFactory(PostgresSourceOptions options)
         {
-            
+            this.options = options;
+            replicationHandler = new PostgresReplicationHandler(options);
         }
 
         public override bool CanHandle(ReadRelation readRelation)
@@ -37,7 +41,8 @@ namespace FlowtideDotNet.Connector.Postgresql.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new PostgresqlSource(readRelation, functionsRegister, dataflowBlockOptions);
+            replicationHandler.AddPostgresSourceCount();
+            return new PostgresqlSource(options, replicationHandler, readRelation, functionsRegister, dataflowBlockOptions);
         }
     }
 }

@@ -10,21 +10,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Postgresql
+namespace FlowtideDotNet.Connector.Postgresql.Tests
 {
-    public class PostgresSourceOptions
+    internal class PostgresTestStream : FlowtideTestStream
     {
-        public required Func<string> ConnectionStringFunc { get; set; }
+        private readonly PostgresSourceOptions sourceOptions;
 
-        public Func<ReadRelation, string> GetPublicationNameFunc { get; set; } = (relation) => $"flowtide_{relation.NamedTable.DotSeperated.ToLowerInvariant()}";
+        public PostgresTestStream(string testName, PostgresSourceOptions sourceOptions) : base(testName)
+        {
+            this.sourceOptions = sourceOptions;
+        }
 
-        public bool CreateNonExistingPublication { get; set; } = true;
+        protected override void AddReadResolvers(IConnectorManager connectorManger)
+        {
+            connectorManger.AddPostgresqlSource(sourceOptions);
+        }
     }
 }

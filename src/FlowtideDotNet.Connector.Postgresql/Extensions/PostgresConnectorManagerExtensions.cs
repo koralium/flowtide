@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Postgresql;
+using FlowtideDotNet.Connector.Postgresql.Internal;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
@@ -17,14 +20,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Postgresql
+namespace Microsoft.Extensions.DependencyInjection
 {
-    public class PostgresSourceOptions
+    public static class PostgresConnectorManagerExtensions
     {
-        public required Func<string> ConnectionStringFunc { get; set; }
+        public static IConnectorManager AddPostgresqlSource(
+            this IConnectorManager connectorManager,
+            PostgresSourceOptions options)
+        {
+            connectorManager.AddSource(new PostgresqlSourceFactory(options));
 
-        public Func<ReadRelation, string> GetPublicationNameFunc { get; set; } = (relation) => $"flowtide_{relation.NamedTable.DotSeperated.ToLowerInvariant()}";
-
-        public bool CreateNonExistingPublication { get; set; } = true;
+            return connectorManager;
+        }
     }
 }

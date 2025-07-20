@@ -10,21 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Postgresql
+namespace FlowtideDotNet.Connector.Postgresql.Internal
 {
-    public class PostgresSourceOptions
+    internal class ReplicationColumnInfo
     {
-        public required Func<string> ConnectionStringFunc { get; set; }
+        public ReplicationColumnInfo(string columnName, string dataTypeName)
+        {
+            ColumnName = columnName;
+            DataTypeName = dataTypeName;
+        }
 
-        public Func<ReadRelation, string> GetPublicationNameFunc { get; set; } = (relation) => $"flowtide_{relation.NamedTable.DotSeperated.ToLowerInvariant()}";
+        public string ColumnName { get; }
 
-        public bool CreateNonExistingPublication { get; set; } = true;
+        public string DataTypeName { get; }
+
     }
 }

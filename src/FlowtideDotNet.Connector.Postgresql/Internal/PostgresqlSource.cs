@@ -12,13 +12,19 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using Npgsql;
+using Npgsql.Replication.PgOutput.Messages;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,66 +35,232 @@ namespace FlowtideDotNet.Connector.Postgresql.Internal
     internal class PostgresqlSource : ColumnBatchReadBaseOperator
     {
         private readonly PostgresSourceOptions _postgresOptions;
+        private readonly PostgresReplicationHandler replicationHandler;
+        private readonly ReadRelation _readRelation;
+        private List<int>? _primaryKeyIndices;
+        private List<Action<NpgsqlDataReader, IColumn>>? _convertFunctions;
+        private IReadOnlyList<string>? _primaryKeys;
 
-        public PostgresqlSource(PostgresSourceOptions postgresOptions, ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
+        public PostgresqlSource(
+            PostgresSourceOptions postgresOptions,
+            PostgresReplicationHandler replicationHandler,
+            ReadRelation readRelation, 
+            IFunctionsRegister functionsRegister, 
+            DataflowBlockOptions options) : base(readRelation, functionsRegister, options)
         {
             this._postgresOptions = postgresOptions;
+            this.replicationHandler = replicationHandler;
+            this._readRelation = readRelation;
         }
 
-        public override string DisplayName => throw new NotImplementedException();
+        public override string DisplayName => "Postgres";
 
         protected override Task Checkpoint(long checkpointTime)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
-        //protected override Task DeltaLoadTrigger(IngressOutput<StreamEventBatch> output, object? state)
-        //{
-        //    return base.DeltaLoadTrigger(output, state);
-        //}
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
+        {
+            using var conn = new NpgsqlConnection(_postgresOptions.ConnectionStringFunc());
+            await conn.OpenAsync();
 
-        //protected override async Task InitializeOrRestore(long restoreTime, PostgresqlSourceState? state, IStateManagerClient stateManagerClient)
-        //{
-        //    NpgsqlDataSource npgsqlDataSource = NpgsqlDataSource.Create("");
-        //    using var listPublicationsCommand = npgsqlDataSource.CreateCommand("select * from pg_publication_tables");
-        //    using var reader = await listPublicationsCommand.ExecuteReaderAsync();
+            var replicationColumns = await PostgresClientUtils.GetReplicationColumns(conn, _readRelation.NamedTable.Names);
+            _primaryKeys = replicationColumns;
 
-        //    var pubNameOrdinal = reader.GetOrdinal("pubname");
-        //    var pubTableNameOrdinal = reader.GetOrdinal("tablename");
-        //    var schemaNameOrdinal = reader.GetOrdinal("schemaname");
+            // Check that all replication columns are in the read relation, if not add them
+            List<int> primaryKeyIndices = new List<int>();
+            for (int i = 0; i < replicationColumns.Count; i++)
+            {
+                bool found = false;
+                for (int k = 0; k < _readRelation.BaseSchema.Names.Count; k++)
+                {
+                    if (replicationColumns[i].Equals(_readRelation.BaseSchema.Names[k], StringComparison.OrdinalIgnoreCase))
+                    {
+                        found = true;
+                        primaryKeyIndices.Add(k);
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    primaryKeyIndices.Add(_readRelation.BaseSchema.Names.Count);
+                    _readRelation.BaseSchema.Names.Add(replicationColumns[i]);
+                }
+            }
 
-        //    while (await reader.ReadAsync())
-        //    {
-        //        var publicationName = reader.GetString(pubNameOrdinal);
-        //        var tableName = reader.GetString(pubTableNameOrdinal);
-        //        var schemaName = reader.GetString(schemaNameOrdinal);
-        //    }
-        //    await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
-        //}
+            _primaryKeyIndices = primaryKeyIndices;
+
+            // Fetch the schema of the table and also create the convert functions into arrow format
+            var schema = await PostgresClientUtils.GetTableSchema(conn, _readRelation);
+            _convertFunctions = PostgresClientUtils.GetColumnEventCreator(schema);
+
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
+        }
+
 
         protected override IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
+        private ValueTask OnBeginMessage(BeginMessage beginMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask OnRelationMessage(RelationMessage relationMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask OnInsertMessage(InsertMessage insertMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask OnUpdateMessage(UpdateMessage updateMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask OnDeleteMessage(DeleteMessage deleteMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        private ValueTask OnCommitMessage(CommitMessage commitMessage)
+        {
+            return ValueTask.CompletedTask;
+        }
+
         protected override async IAsyncEnumerable<ColumnReadEvent> FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)
         {
+            Debug.Assert(_primaryKeys != null);
+            Debug.Assert(_convertFunctions != null);
+
             using var conn = new NpgsqlConnection(_postgresOptions.ConnectionStringFunc());
+            await conn.OpenAsync();
 
             // Get the current WAL location which will be used in the subscribe
             var currentWalLocation = await PostgresClientUtils.GetCurrentWalLocation(conn);
 
-            throw new NotImplementedException();
+            await replicationHandler.Subscribe(
+                _postgresOptions.GetPublicationNameFunc(_readRelation), 
+                _readRelation.NamedTable.DotSeperated, 
+                (ulong)currentWalLocation,
+                OnBeginMessage,
+                OnRelationMessage,
+                OnInsertMessage,
+                OnUpdateMessage,
+                OnDeleteMessage,
+                OnCommitMessage
+                );
+
+
+            int batchSize = 10000;
+
+            IColumn[] outputColumns = new IColumn[_convertFunctions.Count];
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            for (int i = 0; i < _convertFunctions.Count; i++)
+            {
+                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+
+            Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
+
+            List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
+
+            while (true)
+            {
+                using var cmd = conn.CreateCommand();
+
+                if (primaryKeyValues.Count == 0)
+                {
+                    cmd.CommandText = PostgresClientUtils.CreateInitialSelectStatement(_readRelation, _primaryKeys, batchSize, false, null);
+                }
+                else
+                {
+                    cmd.CommandText = PostgresClientUtils.CreateInitialSelectStatement(_readRelation, _primaryKeys, batchSize, true, null);
+                    foreach (var pk in primaryKeyValues)
+                    {
+                        cmd.Parameters.Add(new NpgsqlParameter(pk.Key, pk.Value));
+                    }
+                }
+
+                using var reader = await cmd.ExecuteReaderAsync(cancellationToken);
+                List<int> primaryKeyOrdinals = new List<int>();
+                foreach (var pk in _primaryKeys)
+                {
+                    primaryKeyOrdinals.Add(reader.GetOrdinal(pk));
+                }
+
+                int elementCount = 0;
+                while (await reader.ReadAsync())
+                {
+                    elementCount++;
+                    weights.Add(1);
+                    iterations.Add(0);
+                    for (int i = 0; i < _convertFunctions.Count; i++)
+                    {
+                        _convertFunctions[i](reader, outputColumns[i]);
+                    }
+
+                    primaryKeyValues.Clear();
+                    for (int i = 0; i < primaryKeyOrdinals.Count; i++)
+                    {
+                        primaryKeyValues.Add(_primaryKeys[i], reader.GetValue(primaryKeyOrdinals[i]));
+                    }
+
+                    if (weights.Count >= 100)
+                    {
+                        weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                        weights = new PrimitiveList<int>(MemoryAllocator);
+                        iterations = new PrimitiveList<uint>(MemoryAllocator);
+                        outputColumns = new IColumn[_convertFunctions.Count];
+                        for (int i = 0; i < _convertFunctions.Count; i++)
+                        {
+                            outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
+                        }
+                    }
+                }
+
+                if (weights.Count > 0)
+                {
+                    weightedBatches.Add(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    outputColumns = new IColumn[_convertFunctions.Count];
+                    for (int i = 0; i < _convertFunctions.Count; i++)
+                    {
+                        outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
+                    }
+                }
+
+                foreach (var weightedBatch in weightedBatches)
+                {
+                    yield return new ColumnReadEvent(weightedBatch, 0);
+                }
+                weightedBatches.Clear();
+
+                if (elementCount != batchSize)
+                {
+                    break;
+                }
+            }
         }
 
         protected override ValueTask<List<int>> GetPrimaryKeyColumns()
         {
-            throw new NotImplementedException();
+            Debug.Assert(_primaryKeyIndices != null);
+            return ValueTask.FromResult(_primaryKeyIndices);
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            throw new NotImplementedException();
+            return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _readRelation.NamedTable.DotSeperated });
         }
     }
 }
