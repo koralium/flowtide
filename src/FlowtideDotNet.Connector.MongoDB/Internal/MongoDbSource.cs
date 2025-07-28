@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
@@ -277,7 +278,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
                 if (weights.Count > 0)
                 {
-                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations!, new EventBatchData(columns!)), new Base.Watermark(_readRelation.NamedTable.DotSeperated, timestamp!.Value));
+                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations!, new EventBatchData(columns!)), new Base.Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(timestamp!.Value)));
                     weights = null;
                     iterations = null;
                     columns = null;
@@ -343,6 +344,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     Logger.ChangeStreamDisabledUsingFullLoad(e, StreamName, Name);
                     _watchDisabled = true;
                 }
+            }
+
+            if (!this.DeltaLoadInterval.HasValue)
+            {
+                this.DeltaLoadInterval = _options.FullReloadIntervalForNonReplicaSets;
             }
 
             if (!res.TryGetValue("localTime", out var timestamp))

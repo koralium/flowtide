@@ -767,8 +767,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return await reader.ReadAsync();
         }
 
-        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection)
+        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection, IReadOnlyList<string> table)
         {
+            if (table.Count == 3)
+            {
+                var originalDatabase = sqlConnection.Database;
+                try
+                {
+                    await sqlConnection.ChangeDatabaseAsync(table[0]);
+                }
+                finally
+                {
+                    await sqlConnection.ChangeDatabaseAsync(originalDatabase);
+                }
+            }
             using var cmd = sqlConnection.CreateCommand();
             cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
 
@@ -893,7 +905,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
             WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + QUOTENAME(CONSTRAINT_NAME)), 'IsPrimaryKey') = 1
-            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema ORDER BY ORDINAL_POSITION";
 
             using var command = connection.CreateCommand();
             command.CommandText = cmd;
@@ -947,18 +959,39 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
         public static async Task<List<string>> GetColumns(SqlConnection connection, string tableFullName)
         {
             var splitName = tableFullName.Split('.');
-            if (splitName.Length != 3)
+            string? db = null;
+            string? schema = null;
+            string? table = null;
+            if (splitName.Length == 3)
             {
-                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+                db = splitName[0];
+                schema = splitName[1];
+                table = splitName[2];
             }
-            var db = splitName[0];
-            var schema = splitName[1];
-            var table = splitName[2];
-            await connection.ChangeDatabaseAsync(db);
+            else if (splitName.Length == 2)
+            {
+                schema = splitName[0];
+                table = splitName[1];
+            }
+            else if (splitName.Length == 1)
+            {
+                schema = "dbo";
+                table = splitName[0];
+            }
+            else
+            {
+                throw new InvalidOperationException("Table name must be in one of the following formats: database.schema.tablename, schema.tablename, or tablename (defaulting to schema 'dbo').");
+            }
+            if (db != null)
+            {
+                await connection.ChangeDatabaseAsync(db);
+            }
+            
             var cmd = @"
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema
+            ORDER BY ORDINAL_POSITION";
             using var command = connection.CreateCommand();
             command.CommandText = cmd;
             command.Parameters.Add(new SqlParameter("tableName", table));
@@ -1008,21 +1041,24 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
-        public static Action<DataTable, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
+        public static Action<DataRow, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
             IReadOnlyCollection<DbColumn> columns,
             IReadOnlyList<int> primaryKeys,
-            DataValueContainer dataValueContainer)
+            DataValueContainer dataValueContainer,
+            bool includeOperation)
         {
             var columnList = columns.ToList();
             var mapFuncs = GetColumnsToDataTableValueMaps(columnList, dataValueContainer);
             var columnNames = columnList.Select(x => x.ColumnName).ToList();
-            return (table, isDeleted, batch, index) =>
+            return (row, isDeleted, batch, index) =>
             {
-                var row = table.NewRow();
-
                 if (isDeleted)
                 {
-                    row["md_operation"] = "D";
+                    if (includeOperation)
+                    {
+                        row["md_operation"] = "D";
+                    }
+                    
                     // Set only primaryKeys
                     for (int i = 0; i < columnNames.Count; i++)
                     {
@@ -1035,11 +1071,14 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             row[columnNames[i]] = DBNull.Value;
                         }
                     }
-                    table.Rows.Add(row);
                     return;
                 }
 
-                row["md_operation"] = "I";
+                if (includeOperation)
+                {
+                    row["md_operation"] = "I";
+                }
+                
                 for (int i = 0; i < columnNames.Count; i++)
                 {
                     var val = mapFuncs[i](batch, index);
@@ -1052,7 +1091,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                         row[columnNames[i]] = val;
                     }
                 }
-                table.Rows.Add(row);
             };
         }
 

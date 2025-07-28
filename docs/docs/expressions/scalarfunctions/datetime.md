@@ -176,3 +176,30 @@ If the input timestamp is `NULL` or the format string is `NULL`, the function wi
 ```sql
 SELECT TIMESTAMP_FORMAT(timestampColumn, 'yyyy-MM-dd');
 ```
+
+## Timestamp Add
+
+*This function has no substrait equivalent*
+
+Add a specified time interval to a timestamp value. The result is a new timestamp value with the interval added.
+
+### Supported Components
+
+* `YEAR` Add the specified number of years.
+* `QUARTER` Add the specified number of quarters (3-month intervals).
+* `MONTH` Add the specified number of months.
+* `WEEK` Add the specified number of weeks (7-day intervals).
+* `DAY` Add the specified number of days.
+* `HOUR` Add the specified number of hours.
+* `MINUTE` Add the specified number of minutes.
+* `SECOND` Add the specified number of seconds.
+* `MILLISECOND` Add the specified number of milliseconds.
+* `MICROSECOND` Add the specified number of microseconds.
+
+### SQL Usage
+
+```sql
+SELECT TIMESTAMP_ADD(component, amount, timestamp) FROM ...
+SELECT TIMESTAMP_ADD('DAY', 7, timestamp_column) FROM ...
+SELECT TIMESTAMP_ADD('MONTH', 3, timestamp_column) FROM ...
+```

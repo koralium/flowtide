@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices
@@ -24,7 +25,7 @@ namespace FlowtideDotNet.Base.Vertices
 
         string DisplayName { get; }
 
-        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler);
+        Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation);
 
         void CreateBlock();
 
@@ -48,5 +49,17 @@ namespace FlowtideDotNet.Base.Vertices
         void Pause();
 
         void Resume();
+
+        /// <summary>
+        /// This method is called directly before saving persistent data checkpoint.
+        /// This method should be used sparingly since the vertex might have handled data
+        /// that is after the checkpoint, so the vertex need to take that into consideration.
+        /// 
+        /// One use case is if a source has an offset (such as Kafka), and only a subset of events are in the result set.
+        /// If no new event has been sent into the stream after the checkpoint event, this method can be used to update the offset
+        /// to the latest one to skip loading in unnecessary data in the case of a crash.
+        /// </summary>
+        /// <returns></returns>
+        Task BeforeSaveCheckpoint();
     }
 }

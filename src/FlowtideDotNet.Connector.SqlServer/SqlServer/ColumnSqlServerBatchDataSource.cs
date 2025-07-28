@@ -53,7 +53,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             {
                 using var connection = new SqlConnection(Options.ConnectionStringFunc());
                 await connection.OpenAsync(linkedCancellation.Token);
-                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection);
+                
+                State.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(connection, ReadRelation.NamedTable.Names);
             }
             else if (!Options.IsChangeTrackingEnabled)
             {

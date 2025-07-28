@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -49,6 +50,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
         private IMeter? _metrics;
+        private StreamVersionInformation? _streamVersion;
+
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
         private bool _isHealthy = true;
         private bool _sentLockingEvent;
@@ -56,6 +59,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private bool singleReadSource;
         private TaskCompletionSource? _pauseSource;
         private IMemoryAllocator? _memoryAllocator;
+        private bool _receivedInitialLoadDoneEvent;
+
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
@@ -130,6 +135,15 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 output.Add(new KeyValuePair<int, IStreamEvent>(0, _latestWatermark));
                 _latestWatermark = null;
             }
+            else
+            {
+                if (_receivedInitialLoadDoneEvent)
+                {
+                    // If no watermark and we are in a checkpoint and we recieved an initial load done event, send it forward
+                    output.Add(new KeyValuePair<int, IStreamEvent>(0, new InitialDataDoneEvent()));
+                    _receivedInitialLoadDoneEvent = false;
+                }
+            }
 
             // Send out the checkpoint event out from the fixed point
             output.Add(new KeyValuePair<int, IStreamEvent>(0, ev));
@@ -179,6 +193,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public void CreateBlock()
         {
             singleReadSource = false;
+            _receivedInitialLoadDoneEvent = false;
 
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
@@ -320,6 +335,11 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 {
                     return HandleWatermark(r.Key, watermark);
                 }
+                if (r.Value is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    _receivedInitialLoadDoneEvent = true;
+                    return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
+                }
                 throw new NotSupportedException();
             }, new ExecutionDataflowBlockOptions()
             {
@@ -392,13 +412,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             return _loopSource.Links.Union(_egressSource.Links);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -509,6 +530,11 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 _pauseSource.SetResult();
                 _pauseSource = null;
             }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

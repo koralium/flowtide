@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             this.m_executionMode = executionMode;
             this.m_writeRelation = writeRelation;
-
+            
             // Create the event batch used for delete, this is used to give the user the same amount of columns
             // if it is an upsert or a delete
             _deleteBatchColumns = new IColumn[writeRelation.OutputLength];

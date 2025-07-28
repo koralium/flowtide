@@ -115,6 +115,8 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
             }
 
+            await op.SendAsync(new Watermark("test", new LongWatermarkValue(123)));
+
             // Do a checkpoint to save the data to disk
             await op.SendAsync(new Checkpoint(1, 2));
 
@@ -140,6 +142,17 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             {
                 Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
             }
+            
+            // Index 2 will always be the watermark in this test
+            var watermark = fetchData.OutEvents[2] as Watermark;
+            Assert.NotNull(watermark);
+
+            Assert.True(watermark.Watermarks.TryGetValue("test", out var watermarkValue));
+
+            var longwatermark = watermarkValue as LongWatermarkValue;
+            Assert.NotNull(longwatermark);
+
+            Assert.Equal(123, longwatermark.Value);
         }
 
         /// <summary>

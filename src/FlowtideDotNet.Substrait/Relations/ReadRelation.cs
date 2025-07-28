@@ -98,7 +98,8 @@ namespace FlowtideDotNet.Substrait.Relations
                     Names = NamedTable.Names.ToList()
                 },
                 Filter = Filter,
-                Emit = Emit
+                Emit = Emit,
+                Hint = Hint.Clone()
             };
         }
     }

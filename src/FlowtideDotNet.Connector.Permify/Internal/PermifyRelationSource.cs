@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
             // decode the token from base64 string to long
             var bytes = Convert.FromBase64String(token);
             var offset = BinaryPrimitives.ReadInt64LittleEndian(bytes);
-            return new Watermark(_readRelation.NamedTable.DotSeperated, offset);
+            return new Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(offset));
         }
 
         private async Task LoadChangesTask(IngressOutput<StreamEventBatch> output, object? state)
@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Connector.Permify.Internal
                 }
                 _state.Value.SentInitial = true;
                 // Since we cant get the current snap token at this stage, just write a 1.
-                await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, 1));
+                await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(1)));
                 output.ExitCheckpointLock();
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }

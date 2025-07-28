@@ -2118,5 +2118,119 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expected, plan);
         }
 
+        [Fact]
+        public void TableWithOptions()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1, c2 FROM testtable WITH (WATERMARK_OUTPUT_MODE = EVERY_BATCH)
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){2,3},
+                        Expressions = new List<Expression>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 0
+                                }
+                            },
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 1
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1", "c2" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }},
+                            Hint = new Hints.Hint()
+                            {
+                                Optimizations = new Hints.HintOptimizations()
+                                {
+                                    Properties = new Dictionary<string, string>(){ { "WATERMARK_OUTPUT_MODE", "EVERY_BATCH" } }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void PruneUnusedView()
+        {
+            builder.Sql(@"
+            CREATE TABLE testtable (
+                c1 any
+            );
+            
+            CREATE VIEW testview AS
+            SELECT c1 FROM testtable;
+
+            SELECT c1 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){ 1 },
+                        Expressions = new List<Expressions.Expression>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 0
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
     }
 }

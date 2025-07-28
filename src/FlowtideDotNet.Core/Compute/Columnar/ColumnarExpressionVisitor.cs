@@ -210,6 +210,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 elseStatement = System.Linq.Expressions.Expression.Constant(new NullValue(), typeof(IDataValue));
             }
 
+            if (elseStatement.Type != typeof(IDataValue))
+            {
+                elseStatement = System.Linq.Expressions.Expression.Convert(elseStatement, typeof(IDataValue));
+            }
+
             var expr = elseStatement;
             for (int i = ifThenExpression.Ifs.Count - 1; i >= 0; i--)
             {
@@ -225,6 +230,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     Debug.Assert(genericToBoolMethod != null);
                     var toBoolMethod = genericToBoolMethod.MakeGenericMethod(ifStatement.Type);
                     ifStatement = System.Linq.Expressions.Expression.Call(toBoolMethod, ifStatement);
+                }
+
+                if (thenStatement.Type != typeof(IDataValue))
+                {
+                    thenStatement = System.Linq.Expressions.Expression.Convert(thenStatement, typeof(IDataValue));
                 }
 
                 expr = System.Linq.Expressions.Expression.Condition(ifStatement, thenStatement, expr);

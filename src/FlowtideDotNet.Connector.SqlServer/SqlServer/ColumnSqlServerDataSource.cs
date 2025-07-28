@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
@@ -165,7 +166,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 _eventsProcessed.Add(weights.Count);
                 Logger.ChangesFoundInTable(weights.Count, _tableName, StreamName, Name);
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns))));
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.ChangeTrackingVersion)));
                 this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             }
             else
@@ -271,7 +272,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
 
                 // Get current change tracking version
-                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection, readRelation.NamedTable.Names);
 
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
@@ -400,7 +401,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 }
 
                 // Send watermark information after all initial data has been loaded
-                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, _state.Value.ChangeTrackingVersion));
+                await output.SendWatermark(new FlowtideDotNet.Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.ChangeTrackingVersion)));
 
                 output.ExitCheckpointLock();
                 // Schedule a checkpoint after all the data has been sent

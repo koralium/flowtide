@@ -231,7 +231,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sink.Link();
 
 
-            await sink.Initialize("1", 0, 0, vertexHandler);
+            await sink.Initialize("1", 0, 0, vertexHandler, null);
 
             await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 })
             }, 1), 0));
 
-            await sink.SendAsync(new Watermark("test", 1));
+            await sink.SendAsync(new Watermark("test", LongWatermarkValue.Create(1)));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 

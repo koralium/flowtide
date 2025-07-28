@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.FixedPoint;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -41,8 +42,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
         private TaskCompletionSource? _pauseSource;
+        private StreamVersionInformation? _streamVersion;
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
@@ -134,6 +138,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 {
                     return HandleWatermark(watermark);
                 }
+                if (x is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    return Broadcast(initialDataDoneEvent);
+                }
                 throw new NotSupportedException();
             }, _executionDataflowBlockOptions);
             _inputTargetBlock = _inputBlock;
@@ -179,6 +187,16 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         protected virtual Task OnWatermark(Watermark watermark)
         {
             return Task.CompletedTask;
+        }
+
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> Broadcast(IStreamEvent e)
+        {
+            List<KeyValuePair<int, IStreamEvent>> output = new List<KeyValuePair<int, IStreamEvent>>();
+            for (int i = 0; i < targetNumber; i++)
+            {
+                output.Add(new KeyValuePair<int, IStreamEvent>(i, e));
+            }
+            return output.ToAsyncEnumerable();
         }
 
         private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
@@ -232,7 +250,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _name = operatorName;
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
@@ -240,6 +258,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
             _vertexHandler = vertexHandler;
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -370,6 +389,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 _pauseSource.SetResult();
                 _pauseSource = null;
             }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

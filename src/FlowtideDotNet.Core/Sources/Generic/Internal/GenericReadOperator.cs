@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
@@ -196,7 +197,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
                 if (weights.Count >= 100)
                 {
-                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, _lastWatermark.Value));
+                    yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
                     columns = new Column[_readRelation.BaseSchema.Names.Count];
                     for (int i = 0; i < columns.Length; i++)
                     {
@@ -210,7 +211,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
             if (weights.Count > 0)
             {
-                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, _lastWatermark.Value));
+                yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), new Base.Watermark(_watermarkName, LongWatermarkValue.Create(_lastWatermark.Value)));
                 _tempLookup.Clear();
             }
             else

@@ -273,8 +273,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("PARTITION_COUNT can only be used on a distributed view");
                 }
-                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
-                subRelations.Add(relation);
+                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, relation, relation.OutputLength));
             }
 
             return default;
@@ -981,9 +980,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     if (IsTableFunction(join.Relation))
                     {
-                        return VisitTableFunctionJoin(join, parent);
+                        parent = VisitTableFunctionJoin(join, parent);
                     }
-                    parent = VisitJoin(join, parent, state);
+                    else
+                    {
+                        parent = VisitJoin(join, parent, state);
+                    }
                     Debug.Assert(parent != null);
                 }
             }
@@ -1186,11 +1188,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return exchangeRelationData;
             }
 
-            if (table.WithHints != null)
-            {
-                throw new InvalidOperationException("Hints are not supported on tables at this point.");
-            }
-
             var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
@@ -1201,10 +1198,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     emitData = emitData.CloneWithAlias(table.Alias.Name.Value, default);
                 }
+                if (table.WithHints != null)
+                {
+                    throw new InvalidOperationException("Hints are not supported when selecting from views at this point.");
+                }
+
+                if (!viewContainer.RelationId.HasValue)
+                {
+                    viewContainer.RelationId = subRelations.Count;
+                    subRelations.Add(viewContainer.Relation);
+                }
+
                 return new RelationData(new ReferenceRelation()
                 {
                     ReferenceOutputLength = viewContainer.OutputLength,
-                    RelationId = viewContainer.RelationId
+                    RelationId = viewContainer.RelationId.Value
                 }, emitData);
             }
 
@@ -1215,6 +1223,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (table.Alias != null)
                 {
                     emitData = emitData.CloneWithAlias(table.Alias.Name.Value, default);
+                }
+                if (table.WithHints != null)
+                {
+                    throw new InvalidOperationException("Hints are not supported when selecting from CTE views at this point.");
                 }
                 return new RelationData(new IterationReferenceReadRelation()
                 {
@@ -1252,6 +1264,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         Types = t.Schema.Names.Select(x => new AnyType() as SubstraitBaseType).ToList()
                     };
                 }
+                
                 var readRelation = new ReadRelation()
                 {
                     NamedTable = new FlowtideDotNet.Substrait.Type.NamedTable()
@@ -1260,6 +1273,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     },
                     BaseSchema = t.Schema
                 };
+
+                if (table.WithHints != null)
+                {
+                    var options = TableOptionExtractor.ReadOptions(table.WithHints);
+                    foreach(var kv in options)
+                    {
+                        readRelation.Hint.Optimizations.Properties.Add(kv.Key, kv.Value);
+                    }
+                }
+
                 return new RelationData(readRelation, emitData);
             }
             else

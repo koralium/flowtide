@@ -23,32 +23,93 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
     /// </summary>
     internal class JoinFilterPushdownVisitor : OptimizerBaseVisitor
     {
+        private static void TestPushdownNotNull(JoinRelation joinRelation, Expression expression, List<Expression> leftPushdowns, List<Expression> rightPushdowns)
+        {
+            if ((joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Right) &&
+                MergeJoinFindVisitor.Check(joinRelation, expression, out var leftKey, out var rightKey))
+            {
+                if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right)
+                {
+                    if (leftKey.ReferenceSegment is StructReferenceSegment leftStruct)
+                    {
+                        leftPushdowns.Add(new ScalarFunction()
+                        {
+                            Arguments = new List<Expression>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = leftStruct.Field,
+                                    Child = leftStruct.Child
+                                }
+                            }
+                        },
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsNotNull
+                        });
+                    }
+                }
+
+                if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left)
+                {
+                    if (rightKey.ReferenceSegment is StructReferenceSegment rightStruct)
+                    {
+                        rightPushdowns.Add(new ScalarFunction()
+                        {
+                            Arguments = new List<Expression>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = rightStruct.Field,
+                                    Child = rightStruct.Child
+                                }
+                            }
+                        },
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.IsNotNull
+                        });
+                    }
+                }
+            }
+        }
+
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
         {
             // Check root expression
             var visitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength);
             visitor.Visit(joinRelation.Expression!, state);
+
+            List<Expression> leftPushdowns = new List<Expression>();
+            List<Expression> rightPushdowns = new List<Expression>();
+
+            if (joinRelation.Expression != null)
+            {
+                TestPushdownNotNull(joinRelation, joinRelation.Expression, leftPushdowns, rightPushdowns);
+
+                if (joinRelation.Expression is ScalarFunction scalarFunc &&
+                    scalarFunc.ExtensionUri == FunctionsBoolean.Uri && scalarFunc.ExtensionName == FunctionsBoolean.And)
+                {
+                    for (int i = 0; i < scalarFunc.Arguments.Count; i++)
+                    {
+                        TestPushdownNotNull(joinRelation, scalarFunc.Arguments[i], leftPushdowns, rightPushdowns);
+                    }
+                }
+            }
+
             if (!visitor.unknownCase)
             {
                 // Only fields from left is used
                 if (visitor.fieldInLeft && !visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
-                    joinRelation.Left = new FilterRelation()
-                    {
-                        Condition = joinRelation.Expression!,
-                        Input = joinRelation.Left
-                    };
-                    joinRelation.Expression = new BoolLiteral() { Value = true };
+                    leftPushdowns.Add(new BoolLiteral() { Value = true });
                 }
                 // Only field in right is used
                 else if (!visitor.fieldInLeft && visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
-                    joinRelation.Right = new FilterRelation()
-                    {
-                        Condition = joinRelation.Expression!,
-                        Input = joinRelation.Right
-                    };
-                    joinRelation.Expression = new BoolLiteral() { Value = true };
+                    rightPushdowns.Add(new BoolLiteral() { Value = true });
                 }
             }
 
@@ -56,8 +117,6 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 andFunctionScalar.ExtensionUri == FunctionsBoolean.Uri &&
                 andFunctionScalar.ExtensionName == FunctionsBoolean.And)
             {
-                List<Expression> leftPushDown = new List<Expression>();
-                List<Expression> rightPushDown = new List<Expression>();
                 for (int i = 0; i < andFunctionScalar.Arguments.Count; i++)
                 {
                     var expr = andFunctionScalar.Arguments[i];
@@ -65,14 +124,14 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     andVisitor.Visit(expr, state);
                     if (andVisitor.fieldInLeft && !andVisitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                     {
-                        leftPushDown.Add(expr);
+                        leftPushdowns.Add(expr);
                         andFunctionScalar.Arguments.RemoveAt(i);
                         i--;
                     }
                     // Only field in right is used
                     else if (!andVisitor.fieldInLeft && andVisitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                     {
-                        rightPushDown.Add(expr);
+                        rightPushdowns.Add(expr);
                         andFunctionScalar.Arguments.RemoveAt(i);
                         i--;
                     }
@@ -85,64 +144,65 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                         joinRelation.Expression = new BoolLiteral() { Value = true };
                     }
                 }
-                if (leftPushDown.Count > 0)
-                {
+            }
 
-                    if (leftPushDown.Count == 1)
+            if (leftPushdowns.Count > 0)
+            {
+
+                if (leftPushdowns.Count == 1)
+                {
+                    joinRelation.Left = new FilterRelation()
                     {
-                        joinRelation.Left = new FilterRelation()
-                        {
-                            Condition = leftPushDown[0],
-                            Input = joinRelation.Left
-                        };
-                    }
-                    else
-                    {
-                        joinRelation.Left = new FilterRelation()
-                        {
-                            Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = leftPushDown },
-                            Input = joinRelation.Left
-                        };
-                    }
+                        Condition = leftPushdowns[0],
+                        Input = joinRelation.Left
+                    };
                 }
-                if (rightPushDown.Count > 0)
+                else
                 {
-                    // Find used fields
-                    var usageVisitor = new ExpressionFieldUsageVisitor(joinRelation.Left.OutputLength);
-                    foreach (var expr in rightPushDown)
+                    joinRelation.Left = new FilterRelation()
                     {
-                        usageVisitor.Visit(expr, default);
-                    }
-                    var rightUsageFields = usageVisitor.UsedFieldsRight.Distinct().ToList();
+                        Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = leftPushdowns },
+                        Input = joinRelation.Left
+                    };
+                }
+            }
+            if (rightPushdowns.Count > 0)
+            {
+                // Find used fields
+                var usageVisitor = new ExpressionFieldUsageVisitor(joinRelation.Left.OutputLength);
+                foreach (var expr in rightPushdowns)
+                {
+                    usageVisitor.Visit(expr, default);
+                }
+                var rightUsageFields = usageVisitor.UsedFieldsRight.Distinct().ToList();
 
-                    // Build lookup table from old to new field id
-                    Dictionary<int, int> oldToNew = new Dictionary<int, int>();
-                    foreach (var usedField in rightUsageFields)
+                // Build lookup table from old to new field id
+                Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+                foreach (var usedField in rightUsageFields)
+                {
+                    oldToNew.Add(usedField, usedField - joinRelation.Left.OutputLength);
+                }
+                // Replace old ids with the new ids
+                var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
+                foreach (var expr in rightPushdowns)
+                {
+                    replaceVisitor.Visit(expr, default);
+                }
+                if (rightPushdowns.Count == 1)
+                {
+                    joinRelation.Right = new FilterRelation()
                     {
-                        oldToNew.Add(usedField, usedField - joinRelation.Left.OutputLength);
-                    }
-                    // Replace old ids with the new ids
-                    var replaceVisitor = new ExpressionFieldReplaceVisitor(oldToNew);
-                    foreach (var expr in rightPushDown)
+                        Condition = rightPushdowns[0],
+                        Input = joinRelation.Right
+                    };
+                }
+                else
+                {
+                    joinRelation.Right = new FilterRelation()
                     {
-                        replaceVisitor.Visit(expr, default);
-                    }
-                    if (rightPushDown.Count == 1)
-                    {
-                        joinRelation.Right = new FilterRelation()
-                        {
-                            Condition = rightPushDown[0],
-                            Input = joinRelation.Right
-                        };
-                    }
-                    else
-                    {
-                        joinRelation.Right = new FilterRelation()
-                        {
-                            Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = rightPushDown },
-                            Input = joinRelation.Right
-                        };
-                    }
+                        Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = rightPushdowns },
+                        Input = joinRelation.Right
+                    };
                 }
             }
 

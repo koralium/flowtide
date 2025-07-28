@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.Json
 {
-    internal static class DataValueJsonReader
+    public static class DataValueJsonReader
     {
         public static IDataValue Read(ref Utf8JsonReader reader)
         {

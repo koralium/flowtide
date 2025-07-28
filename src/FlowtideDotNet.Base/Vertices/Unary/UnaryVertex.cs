@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -52,6 +53,9 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
+
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMemoryAllocator MemoryAllocator => _vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
 
@@ -137,6 +141,10 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 {
                     return new AsyncEnumerableWithWait<IStreamEvent, IStreamEvent>(HandleWatermark(watermark), (s) => s, ShouldWait);
                 }
+                if (streamEvent is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    return Passthrough(initialDataDoneEvent);
+                }
 
                 throw new NotSupportedException();
             }, executionDataflowBlockOptions);
@@ -190,13 +198,15 @@ namespace FlowtideDotNet.Base.Vertices.Unary
             return EmptyAsyncEnumerable<T>.Instance;
         }
 
-        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _name = name;
             _streamName = vertexHandler.StreamName;
             _vertexHandler = vertexHandler;
 
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
+
             await InitializeOrRestore(vertexHandler.StateClient);
 
             Metrics.CreateObservableGauge("busy", () =>
@@ -458,6 +468,11 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 _pauseSource.SetResult();
                 _pauseSource = null;
             }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

@@ -104,6 +104,28 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
+            if (otherColumn is ListColumn otherList)
+            {
+                var startOffset = _offsets.Get(thisIndex);
+                var endOffset = _offsets.Get(thisIndex + 1);
+                var otherStartOffset = otherList._offsets.Get(otherIndex);
+                var otherEndOffset = otherList._offsets.Get(otherIndex + 1);
+                var thisListCount = endOffset - startOffset;
+                var otherListCount = otherEndOffset - otherStartOffset;
+                if (thisListCount != otherListCount)
+                {
+                    return thisListCount.CompareTo(otherListCount);
+                }
+                for (int i = 0; i < thisListCount; i++)
+                {
+                    var compare = _internalColumn.CompareTo(otherList._internalColumn, startOffset + i, otherStartOffset + i);
+                    if (compare != 0)
+                    {
+                        return compare;
+                    }
+                }
+                return 0;
+            }
             throw new NotImplementedException();
         }
 

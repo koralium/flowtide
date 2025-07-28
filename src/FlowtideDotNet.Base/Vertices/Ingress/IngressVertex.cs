@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -53,6 +54,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public string Name { get; private set; }
 
         protected string StreamName { get; private set; }
+
+        public StreamVersionInformation? StreamVersion { get; private set; }
 
         public abstract string DisplayName { get; }
 
@@ -301,15 +304,17 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 await SendInitial(output);
                 // Send event here that initial is completed
+                await output.SendEvent(new InitialDataDoneEvent());
             }, taskCreationOptions: TaskCreationOptions.LongRunning);
         }
 
-        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public async Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             Debug.Assert(_ingressState != null, nameof(_ingressState));
 
             Name = name;
             StreamName = vertexHandler.StreamName;
+            StreamVersion = streamVersionInformation;
 
             if (_runningTasks.Count > 0)
             {
@@ -495,6 +500,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             Debug.Assert(_ingressState?._output != null, nameof(_ingressState._output));
             _ingressState._output.Resume();
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
@@ -41,6 +42,9 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private TaskCompletionSource? _pauseSource;
 
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
+
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
         protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
@@ -48,6 +52,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after initialize or setup method calls");
 
         public abstract string DisplayName { get; }
+
+        public long CurrentCheckpointId { get; private set; }
 
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
@@ -119,6 +125,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
+            CurrentCheckpointId = checkpointEvent.CheckpointTime;
             await OnCheckpoint(checkpointEvent.CheckpointTime);
         }
 
@@ -155,7 +162,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _targetBlock.Fault(exception);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
             _cancellationTokenSource = new CancellationTokenSource();
@@ -163,6 +170,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
+            CurrentCheckpointId = newTime;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -277,6 +286,11 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _pauseSource.SetResult();
                 _pauseSource = null;
             }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Sources.Generic
             this IConnectorManager manager,
             string tableName,
             Func<WriteRelation, GenericDataSink<T>> createFunc,
-            ExecutionMode executionMode = ExecutionMode.Hybrid)
+            ExecutionMode executionMode = ExecutionMode.OnWatermark)
             where T : class
         {
             manager.AddSink(new CustomSinkFactory<T>(tableName, createFunc, executionMode));

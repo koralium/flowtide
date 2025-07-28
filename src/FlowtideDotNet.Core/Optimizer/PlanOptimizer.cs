@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
+using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -62,6 +63,11 @@ namespace FlowtideDotNet.Core.Optimizer
             if (settings.SimplifyProjection)
             {
                 plan = DirectFieldSimplification.DirectFieldSimplification.Optimize(plan);
+            }
+
+            if (settings.TryAddWatermarkOutputMode)
+            {
+                plan = WatermarkOutputOptimizer.Optimize(plan);
             }
 
             EmitPushdown.EmitPushdown.Optimize(plan);

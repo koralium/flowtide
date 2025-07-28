@@ -49,13 +49,14 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             this.keyDeserializer = keyDeserializer;
         }
 
-        internal static Dictionary<int, long> GetCurrentWatermarks(IConsumer<byte[], byte[]> consumer, List<TopicPartition> topicPartitions)
+        internal static Dictionary<int, long> GetCurrentWatermarks(IConsumer<byte[], byte[]> consumer, List<TopicPartition> topicPartitions, Dictionary<int, long> existingOffsets)
         {
             Dictionary<int, long> beforeStartOffsets = new Dictionary<int, long>();
             foreach (var topicPartition in topicPartitions)
             {
                 var offsets = consumer.QueryWatermarkOffsets(topicPartition, TimeSpan.FromSeconds(10));
                 var offset = offsets.High.Value - 1;
+                var low = offsets.Low.Value - 1;
                 if (beforeStartOffsets.TryGetValue(topicPartition.Partition.Value, out var currentOffset))
                 {
                     if (currentOffset < offset)
@@ -67,6 +68,17 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 {
                     beforeStartOffsets.Add(topicPartition.Partition.Value, offset);
                 }
+                if (existingOffsets.TryGetValue(topicPartition.Partition.Value, out var existingOffset))
+                {
+                    if (existingOffset < low)
+                    {
+                        beforeStartOffsets[topicPartition.Partition.Value] = low;
+                    }
+                }
+                else
+                {
+                    existingOffsets.Add(topicPartition.Partition.Value, low);
+                }
             }
             return beforeStartOffsets;
         }
@@ -74,7 +86,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
         public IEnumerable<RowEvent> ReadInitial()
         {
             Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
-            Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions);
+            Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions, currentOffsets);
 
             // Set all the partition offsets to start at -1 incase there is no data.
             foreach (var kv in beforeStartOffsets)
