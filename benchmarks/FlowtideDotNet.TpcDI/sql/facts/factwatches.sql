@@ -2,7 +2,7 @@
 CREATE VIEW watchhistory_read AS
 SELECT * FROM watchhistory_raw;
 
-CREATE VIEW watches_window_func_1 AS
+CREATE VIEW watches_window_func AS
 SELECT
   W_C_ID,
   W_S_SYMB,
@@ -13,33 +13,13 @@ SELECT
   END as date_canceled,
   BatchID,
   ROW_NUMBER() OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC) as rn
-FROM watchhistory_read
-WHERE W_C_ID % 2 = 0;
-
-CREATE VIEW watches_window_func_2 AS
-SELECT
-  W_C_ID,
-  W_S_SYMB,
-  LAST_VALUE(W_DTS) OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as date_placed,
-  CASE 
-	WHEN W_ACTION = 'CNCL' THEN W_DTS
-	ELSE NULL
-  END as date_canceled,
-  BatchID,
-  ROW_NUMBER() OVER (PARTITION BY W_C_ID, W_S_SYMB ORDER BY W_DTS DESC) as rn
-FROM watchhistory_read
-WHERE W_C_ID % 2 = 1;
+FROM watchhistory_read;
 
 
 CREATE VIEW watches_aggregate AS
 SELECT
 *
-FROM watches_window_func_1
-WHERE rn = 1
-UNION ALL
-SELECT
-*
-FROM watches_window_func_2
+FROM watches_window_func
 WHERE rn = 1;
 
 CREATE VIEW watches_single_row AS
@@ -57,8 +37,8 @@ CREATE VIEW FactWatches AS
 SELECT
   dc.SK_CustomerID,
   ds.SK_SecurityID,
-  CAST(strftime(date_placed, '%Y%m%d') as INT) as SK_DateID_DatePlaced,
-  CAST(strftime(date_canceled, '%Y%m%d') as INT) as SK_DateID_DateRemoved,
+  CAST(timestamp_format(date_placed, 'yyyyMMdd') as INT) as SK_DateID_DatePlaced,
+  CAST(timestamp_format(date_canceled, 'yyyyMMdd') as INT) as SK_DateID_DateRemoved,
   w.BatchID,
   w.W_C_ID,
   w.dts,

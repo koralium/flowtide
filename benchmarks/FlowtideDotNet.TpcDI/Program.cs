@@ -41,7 +41,7 @@ var dimtradesql = File.ReadAllText("./sql/dimensions/dimtrade.sql");
 var factcashbalancesql = File.ReadAllText("./sql/facts/factcashbalances.sql");
 var factholdingssql = File.ReadAllText("./sql/facts/factholdings.sql");
 var factwatchessql = File.ReadAllText("./sql/facts/factwatches.sql");
-//var factmarkethistorysql = File.ReadAllText("./sql/facts/factmarkethistory.sql");
+var factmarkethistorysql = File.ReadAllText("./sql/facts/factmarkethistory.sql");
 
 var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     datesql,
@@ -61,13 +61,21 @@ var combinedSql = string.Join(Environment.NewLine + Environment.NewLine,
     dimtradesql,
     factcashbalancesql,
     factholdingssql,
-    factwatchessql);
-    //factmarkethistorysql);
+    factwatchessql,
+    factmarkethistorysql);
 
 var filesLocation = Files.Of.LocalDisk("./inputdata");
 
 builder.Services.AddFlowtideStream("stream")
     .AddSqlTextAsPlan(combinedSql)
+    .AddCustomOptions((s, p) =>
+    {
+        //p.SetMessageQueueSize(1000);
+    })
+    .SetOptimizerSettings(new FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings()
+    {
+        Parallelization = 4
+    })
     //.WriteCheckFailuresToLogger()
     .AddConnectors(c =>
     {
@@ -103,8 +111,8 @@ builder.Services.AddFlowtideStream("stream")
     {
         s.AddFasterKVFileSystemStorage("./tmpdir");
         //s.MaxProcessMemory = 8 * 1024 * 1024 * 1024L; // 8GB
-        s.MinPageCount = 100_000;
-        s.MaxPageCount = 150_000;
+        s.MinPageCount = 200_000;
+        s.MaxPageCount = 800_000;
 
         //s.AddTemporaryDevelopmentStorage();
     });
