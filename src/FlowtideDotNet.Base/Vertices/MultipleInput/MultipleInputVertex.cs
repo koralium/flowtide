@@ -100,6 +100,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             executionDataflowBlockOptions.CancellationToken = tokenSource.Token;
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>((r) =>
             {
+                
                 if (r.Value is ILockingEvent ev)
                 {
                     if (TargetInCheckpoint(r.Key, ev, out var checkpoints))
@@ -583,6 +584,8 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         public Task Completion => _transformBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after create blocks method.");
 
         public MultipleInputTargetHolder[] Targets => _targetHolders;
+
+        public float Busy => ((float)_transformBlock.InputCount) / executionDataflowBlockOptions.BoundedCapacity;
 
         public void Complete()
         {

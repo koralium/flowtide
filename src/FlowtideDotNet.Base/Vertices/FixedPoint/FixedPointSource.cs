@@ -46,6 +46,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public string DisplayName => throw new NotImplementedException();
 
+        public float Busy => 0.0f;
+
         public void Initialize()
         {
             _block = new TransformBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>(x => x.Value, executionDataflowBlockOptions);

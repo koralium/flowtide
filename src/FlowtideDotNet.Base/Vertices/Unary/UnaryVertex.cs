@@ -361,6 +361,8 @@ namespace FlowtideDotNet.Base.Vertices.Unary
 
         public Task Completion => _transformBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after CreateBlocks.");
 
+        public float Busy => ((float)_transformBlock.InputCount) / executionDataflowBlockOptions.BoundedCapacity;
+
         public void Complete()
         {
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));

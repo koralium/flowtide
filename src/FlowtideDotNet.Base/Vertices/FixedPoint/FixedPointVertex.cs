@@ -94,6 +94,8 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public abstract string DisplayName { get; }
 
+        public float Busy => 0.0f;
+
         public virtual Task Compact()
         {
             return Task.CompletedTask;

@@ -61,5 +61,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         /// <returns></returns>
         Task BeforeSaveCheckpoint();
+
+        float Busy { get; }
     }
 }

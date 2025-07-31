@@ -149,6 +149,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public Task Completion => _targetBlock?.Completion ?? throw new NotSupportedException("CreateBlocks must be called before getting completion");
 
+        public float Busy => ((float)_targetBlock.InputQueue) / _targetBlock.MaxInputQueue;
+
         public void Complete()
         {
             Debug.Assert(_targetBlock != null, "CreateBlocks must be called before completing");

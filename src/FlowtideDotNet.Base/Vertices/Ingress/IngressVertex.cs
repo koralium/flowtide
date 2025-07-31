@@ -118,6 +118,19 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
 
         public Task Completion => GetCompletion();
 
+        public float Busy
+        {
+            get
+            {
+                //var backpressurevalue = ((float)_ingressState._block.Count) / options.BoundedCapacity;
+                //if (_runningTasks.Count > 0)
+                //{
+                //    return (1.0f - backpressurevalue);
+                //}
+                return 0.0f;
+            }
+        }
+
         private Task GetCompletion()
         {
             lock (_stateLock)

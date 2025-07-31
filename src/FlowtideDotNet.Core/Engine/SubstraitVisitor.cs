@@ -40,6 +40,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Operators.Exchange;
+using FlowtideDotNet.Base.Scheduling;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -71,6 +72,7 @@ namespace FlowtideDotNet.Core.Engine
         private Dictionary<string, ColumnIterationOperator> _iterationOperators = new Dictionary<string, ColumnIterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
         private readonly int _queueSize;
+        private StreamScheduler flowtideTaskScheduler;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
         {
@@ -84,6 +86,12 @@ namespace FlowtideDotNet.Core.Engine
                 if (_taskScheduler != null)
                 {
                     options.TaskScheduler = _taskScheduler;
+                }
+                else
+                {
+                    //var scheduler = new OperatorScheduler(flowtideTaskScheduler);
+                    //scheduler.OperatorId = _operatorId - 1; // Set the operator ID for the scheduler
+                    //options.TaskScheduler = scheduler; //flowtideTaskScheduler;
                 }
                 return options;
             }
@@ -146,6 +154,8 @@ namespace FlowtideDotNet.Core.Engine
             _queueSize = queueSize;
             _taskScheduler = taskScheduler;
             _doneRelations = new Dictionary<int, RelationTree>();
+            var processCount = (int)(Environment.ProcessorCount);
+            flowtideTaskScheduler = new StreamScheduler(processCount);
         }
 
         //private ExecutionDataflowBlockOptions CreateBlockOptions()
@@ -193,7 +203,13 @@ namespace FlowtideDotNet.Core.Engine
 
             if (_useColumnStore)
             {
-                op = new ColumnProjectOperator(projectRelation, functionsRegister, DefaultBlockOptions);
+                var opt = DefaultBlockOptions;
+                op = new ColumnProjectOperator(projectRelation, functionsRegister, opt);
+                if (opt.TaskScheduler is OperatorScheduler scheduler)
+                {
+                    // Set the operator ID for the scheduler
+                    scheduler.Vertex = op; // Use the current operator ID
+                }
             }
             else
             {
@@ -248,7 +264,13 @@ namespace FlowtideDotNet.Core.Engine
                 UnaryVertex<StreamEventBatch>? op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                    var opt = DefaultBlockOptions;
+                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, opt);
+                    if (opt.TaskScheduler is OperatorScheduler scheduler)
+                    {
+                        // Set the operator ID for the scheduler
+                        scheduler.Vertex = op; // Use the current operator ID
+                    }
                 }
                 else
                 {
@@ -328,7 +350,13 @@ namespace FlowtideDotNet.Core.Engine
                 MultipleInputVertex<StreamEventBatch> op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    var opt = DefaultBlockOptions;
+                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, opt);
+                    if (opt.TaskScheduler is OperatorScheduler scheduler)
+                    {
+                        // Set the operator ID for the scheduler
+                        scheduler.Vertex = op; // Use the current operator ID
+                    }
                 }
                 else
                 {
@@ -425,8 +453,14 @@ namespace FlowtideDotNet.Core.Engine
             // TODO: Remove this if statement after readwritefactory is removed
             if (connectorManager != null)
             {
+                var opt = DefaultBlockOptions;
                 var sourceFactory = connectorManager.GetSourceFactory(readRelation);
-                op = sourceFactory.CreateSource(readRelation, functionsRegister, DefaultBlockOptions);
+                op = sourceFactory.CreateSource(readRelation, functionsRegister, opt);
+                if (opt.TaskScheduler is OperatorScheduler scheduler)
+                {
+                    // Set the operator ID for the scheduler
+                    scheduler.Vertex = op; // Use the current operator ID
+                }
                 previousState = state;
             }
             #region ReadwriteFactory obsolete
@@ -678,7 +712,15 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new WindowOperator(consistentPartitionWindowRelation, functionsRegister, DefaultBlockOptions);
+            var opt = DefaultBlockOptions;
+            
+            var op = new WindowOperator(consistentPartitionWindowRelation, functionsRegister, opt);
+            if (opt.TaskScheduler is OperatorScheduler scheduler)
+            {
+                // Set the operator ID for the scheduler
+                scheduler.Vertex = op; // Use the current operator ID
+                scheduler.Weight = 2.0f;
+            }
             if (state != null)
             {
                 op.LinkTo(state);
@@ -691,7 +733,13 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitExchangeRelation(ExchangeRelation exchangeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ExchangeOperator(exchangeRelation, functionsRegister, DefaultBlockOptions);
+            var opt = DefaultBlockOptions;
+            var op = new ExchangeOperator(exchangeRelation, functionsRegister, opt);
+            if (opt.TaskScheduler is OperatorScheduler scheduler)
+            {
+                // Set the operator ID for the scheduler
+                scheduler.Vertex = op; // Use the current operator ID
+            }
 
             exchangeRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);

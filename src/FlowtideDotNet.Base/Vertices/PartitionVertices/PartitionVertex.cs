@@ -70,6 +70,8 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 
         public abstract string DisplayName { get; }
 
+        public float Busy => ((float)_inputBlock.InputCount) / _executionDataflowBlockOptions.BoundedCapacity;
+
         public Task Compact()
         {
             return Task.CompletedTask;
