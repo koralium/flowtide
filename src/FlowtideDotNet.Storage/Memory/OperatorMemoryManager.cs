@@ -18,7 +18,7 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe class OperatorMemoryManager : IOperatorMemoryManager
+    internal unsafe class OperatorMemoryManager : IOperatorMemoryManager
     {
         
 
