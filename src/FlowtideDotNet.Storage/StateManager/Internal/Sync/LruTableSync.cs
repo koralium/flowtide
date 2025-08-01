@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
+using mimalloc;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
@@ -489,6 +490,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                     }
                 }
+            }
+
+            if (isCleanup)
+            {
+                MiMalloc.mi_collect(true);
             }
         }
 
