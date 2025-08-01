@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.Memory
 {
     public unsafe class OperatorMemoryManager : IOperatorMemoryManager
     {
+        
+
         private readonly string m_streamName;
         private readonly string m_operatorName;
         private long _allocatedMemory;
@@ -56,7 +58,7 @@ namespace FlowtideDotNet.Storage.Memory
             var goodSize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
 
             var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
-            if (ptr == null)
+            if (ptr == GlobalMemoryManager.NullPtr)
             {
                 throw new InvalidOperationException("Could not allocate memory");
             }
@@ -75,9 +77,10 @@ namespace FlowtideDotNet.Storage.Memory
                 {
                     return memory;
                 }
+                
                 var newPtr = MiMalloc.mi_realloc_aligned(native.ptr, (nuint)alignedsize, (nuint)alignment);
 
-                if (newPtr == null)
+                if (newPtr == GlobalMemoryManager.NullPtr)
                 {
                     throw new InvalidOperationException("Could not reallocate memory");
                 }
@@ -100,6 +103,10 @@ namespace FlowtideDotNet.Storage.Memory
             else
             {
                 var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)alignedsize);
+                if (ptr == GlobalMemoryManager.NullPtr)
+                {
+                    throw new InvalidOperationException("Could not allocate memory");
+                }
                 RegisterAllocationToMetrics(alignedsize);
                 RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
