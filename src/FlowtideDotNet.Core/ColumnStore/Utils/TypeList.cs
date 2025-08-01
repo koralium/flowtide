@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
                     _data = _memoryOwner.Memory.Pin().Pointer;
                 }
-                _dataLength = newLength;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(sbyte);
             }
         }
 

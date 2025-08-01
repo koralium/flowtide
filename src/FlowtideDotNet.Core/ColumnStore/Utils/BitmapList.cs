@@ -183,7 +183,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = _memoryOwner.Memory.Pin().Pointer;
                     NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(allocationSize - oldSize), 0);
                 }
-                _dataLength = length;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(int);
             }
         }
 
