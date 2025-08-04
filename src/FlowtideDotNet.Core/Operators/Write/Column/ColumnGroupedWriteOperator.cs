@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 await SendData();
             }
-            if (m_hasSentInitialData.Value == false)
+            if (!m_hasSentInitialData.Value)
             {
                 await OnInitialDataSent();
                 m_hasSentInitialData.Value = true;
