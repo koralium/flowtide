@@ -10,17 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
 {
     internal class WatermarkOutputVisitor : RelationVisitor<Relation, bool>
     {
+
+        public void Run(Plan plan, bool[] referenceMap)
+        {
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                var relation = plan.Relations[i];
+                this.Visit(relation, referenceMap[i]);
+            }
+        }
+
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, bool state)
         {
             // We will not change output mode if an aggregate relation is found
@@ -150,7 +156,7 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
 
         public override Relation VisitSetRelation(SetRelation setRelation, bool state)
         {
-            if (setRelation.Operation == SetOperation.UnionAll)
+            if (setRelation.Operation == SetOperation.UnionAll || setRelation.Operation == SetOperation.UnionDistinct)
             {
                 foreach (var input in setRelation.Inputs)
                 {

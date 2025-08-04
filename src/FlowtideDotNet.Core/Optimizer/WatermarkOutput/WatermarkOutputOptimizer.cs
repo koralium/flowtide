@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
 {
@@ -23,12 +18,17 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
     {
         public static Plan Optimize(Plan plan)
         {
+            // Reference visitor figures out which relations where a watermark output can be pushed down into.
+            WatermarkOutputReferenceVisitor referenceVisitor = new WatermarkOutputReferenceVisitor(plan);
+            var relationMap = referenceVisitor.Run();
+
+            // Cleanup visitor removes the temporary optimization property from the relations.
+            WatermarkOutputCleanupVisitor cleanupVisitor = new WatermarkOutputCleanupVisitor();
+            cleanupVisitor.Run(plan);
+
+            // The main visitor applies the watermark output optimization based on the reference map.
             var visitor = new WatermarkOutputVisitor();
-            
-            for (int i = 0; i < plan.Relations.Count; i++)
-            {
-                visitor.Visit(plan.Relations[i], false);
-            }
+            visitor.Run(plan, relationMap);
 
             return plan;
         }
