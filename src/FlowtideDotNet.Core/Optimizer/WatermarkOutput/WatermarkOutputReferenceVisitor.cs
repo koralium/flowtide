@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
                 {
                     canUseEveryBatch = true;
                 }
-                foreach(var kv in map)
+                foreach (var kv in map)
                 {
                     canUseEveryBatch &= kv.Value;
                 }
