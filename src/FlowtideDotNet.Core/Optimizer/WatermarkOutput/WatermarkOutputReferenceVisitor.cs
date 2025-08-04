@@ -160,7 +160,7 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
 
             if (!_relationReferences.TryGetValue(referenceRelation.RelationId, out var referenceMap))
             {
-                referenceMap = new Dictionary<string, bool>();
+                referenceMap = new();
                 _relationReferences[referenceRelation.RelationId] = referenceMap;
                 _changeFound = true;
             }
