@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
         private int _currentRelation;
         private bool _changeFound;
         private int _referenceIdCounter;
-        private Dictionary<int, Dictionary<string, bool>> _relationReferences = new Dictionary<int, Dictionary<string, bool>>();
+        private Dictionary<int, Dictionary<string, bool>> _relationReferences = new();
         private readonly Plan _plan;
 
         public WatermarkOutputReferenceVisitor(Plan plan)
