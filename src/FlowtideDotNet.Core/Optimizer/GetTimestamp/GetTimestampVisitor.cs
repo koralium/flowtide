@@ -207,7 +207,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 throw new InvalidOperationException("gettimestamp is not supported in join conditions yet.");
             }
 
-            return base.VisitJoinRelation(joinRelation, state);
+            return joinRelation;
         }
 
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
