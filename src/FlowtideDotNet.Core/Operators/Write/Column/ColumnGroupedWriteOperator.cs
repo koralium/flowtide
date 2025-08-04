@@ -161,6 +161,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 await SendData();
             }
+            if (m_hasSentInitialData.Value == false)
+            {
+                await OnInitialDataSent();
+                m_hasSentInitialData.Value = true;
+            }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
             await m_tree.Commit();
@@ -311,11 +316,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
-            }
-            if (m_hasSentInitialData.Value == false)
-            {
-                await OnInitialDataSent();
-                m_hasSentInitialData.Value = true;
             }
         }
 
