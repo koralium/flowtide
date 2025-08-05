@@ -328,6 +328,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 if (e.BatchData != null)
                 {
+                    e.BatchData.Rent(1);
                     PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(MemoryAllocator);
                     PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
                     PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -457,6 +458,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                     e.BatchData.Weights.Dispose();
                     e.BatchData.Iterations.Dispose();
+                    e.BatchData.Return();
                 }
 
                 if (e.Watermark != null)
