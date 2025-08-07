@@ -1202,7 +1202,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 if (argList.Args == null || argList.Args.Count < 1)
                 {
-                    throw new SubstraitParseException("xxhash128_guid_string requires atleast one argument");
+                    throw new SubstraitParseException("xxhash128_guid_string requires at least one argument");
                 }
 
                 List<Expressions.Expression> argumentList = new List<Expressions.Expression>();
