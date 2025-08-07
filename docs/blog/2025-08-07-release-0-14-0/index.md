@@ -9,7 +9,7 @@ tags: [release]
 ### Window functions support
 
 Flowtide now support SQL window functions such as `ROW_NUMBER`, `SUM`, `LEAD`, `LAG`.
-This is a quite new feature and any feedback would be highly appriciated.
+This is a quite new feature and any feedback would be highly appreciated.
 
 To learn which functions are supported please visit [docs](https://koralium.github.io/flowtide/docs/expressions/windowfunctions).
 
