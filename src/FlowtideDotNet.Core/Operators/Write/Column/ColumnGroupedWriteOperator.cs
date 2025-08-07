@@ -113,8 +113,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
             if (FetchExistingData && !m_hasSentInitialData.Value)
             {
-                var primaryKeySelectorList = m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
-                m_existingRowComparer = new ExistingRowComparer(primaryKeySelectorList, primaryKeySelectorList);
+                m_existingRowComparer = new ExistingRowComparer(m_primaryKeyColumns.Count);
                 m_existingData = await stateManagerClient.GetOrCreateTree("existing",
                 new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
                 {
