@@ -1,0 +1,9 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_hash.yaml'
+
+# Basic tests
+xxhash128_guid_string('2016-12-31T13:30:15'::ts) = '81ad73b8-5fcb-f3b7-385a-2ae0afec3379'::str
+xxhash128_guid_string(123::i64) = '73ee1948-c617-586c-3264-27d6e25f86d1'::str
+xxhash128_guid_string('hello'::str) = 'adc1e9b5-1b07-7f3e-c779-cfaa5e523818'::str
+xxhash128_guid_string(Null::str) = '935ecda6-0092-6a0f-c44b-dff4074eecdb'::str
+xxhash128_guid_string(true::bool) = '445a0251-8391-0555-e12e-f9d2eb86ceeb'::str
