@@ -225,6 +225,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         Input = new SetRelation()
                         {
+                            Operation = SetOperation.UnionAll,
                             Inputs = new List<Relation>()
                             {
                                 new ReferenceRelation()
@@ -284,6 +285,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         Input = new SetRelation()
                         {
+                            Operation = SetOperation.UnionAll,
                             Inputs = new List<Relation>()
                             {
                                 new ReferenceRelation()

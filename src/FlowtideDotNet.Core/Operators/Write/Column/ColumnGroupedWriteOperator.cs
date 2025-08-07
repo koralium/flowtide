@@ -113,8 +113,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
             if (FetchExistingData && !m_hasSentInitialData.Value)
             {
-                var primaryKeySelectorList = m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
-                m_existingRowComparer = new ExistingRowComparer(primaryKeySelectorList, primaryKeySelectorList);
+                m_existingRowComparer = new ExistingRowComparer(m_primaryKeyColumns.Count);
                 m_existingData = await stateManagerClient.GetOrCreateTree("existing",
                 new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
                 {
@@ -160,6 +159,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             if (m_executionMode == ExecutionMode.OnCheckpoint || (m_executionMode == ExecutionMode.Hybrid && !m_hasSentInitialData.Value))
             {
                 await SendData();
+            }
+            if (!m_hasSentInitialData.Value)
+            {
+                await OnInitialDataSent();
+                m_hasSentInitialData.Value = true;
             }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
@@ -311,11 +315,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
-            }
-            if (m_hasSentInitialData.Value == false)
-            {
-                await OnInitialDataSent();
-                m_hasSentInitialData.Value = true;
             }
         }
 
