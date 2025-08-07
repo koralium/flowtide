@@ -1215,7 +1215,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                     else
                     {
-                        throw new SubstraitParseException($"check_true value arguments cannot be '*'");
+                        throw new SubstraitParseException($"xxhash128_guid_string value arguments cannot be '*'");
                     }
                 }
 
