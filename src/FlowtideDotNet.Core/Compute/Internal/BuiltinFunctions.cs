@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Columnar.Functions.BuiltInStructFunctions.AddBuiltInStructFunctions(functionsRegister);
             Columnar.Functions.BuiltInListFunctions.AddBuiltInListFunctions(functionsRegister);
             Columnar.Functions.BuiltInArithmeticFunctions.AddBuiltInArithmeticFunctions(functionsRegister);
+            Columnar.Functions.HashFunctions.HashFunctions.RegisterHashFunctions(functionsRegister);
 
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
