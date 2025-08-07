@@ -4,10 +4,33 @@
         <title>Flowtide Blog</title>
         <link>https://koralium.github.io/flowtide/blog</link>
         <description>Flowtide Blog</description>
-        <lastBuildDate>Mon, 10 Feb 2025 00:00:00 GMT</lastBuildDate>
+        <lastBuildDate>Thu, 07 Aug 2025 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <language>en</language>
+        <item>
+            <title><![CDATA[Release 0.14.0]]></title>
+            <link>https://koralium.github.io/flowtide/blog/release-0-14-0</link>
+            <guid>https://koralium.github.io/flowtide/blog/release-0-14-0</guid>
+            <pubDate>Thu, 07 Aug 2025 00:00:00 GMT</pubDate>
+            <description><![CDATA[Major changes]]></description>
+            <content:encoded><![CDATA[<h2 class="anchor anchorWithStickyNavbar_LWe7" id="major-changes">Major changes<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#major-changes" class="hash-link" aria-label="Direct link to Major changes" title="Direct link to Major changes">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="window-functions-support">Window functions support<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#window-functions-support" class="hash-link" aria-label="Direct link to Window functions support" title="Direct link to Window functions support">​</a></h3>
+<p>Flowtide now support SQL window functions such as <code>ROW_NUMBER</code>, <code>SUM</code>, <code>LEAD</code>, <code>LAG</code>.
+This is a quite new feature and any feedback would be highly appreciated.</p>
+<p>To learn which functions are supported please visit <a href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions" target="_blank" rel="noopener noreferrer">docs</a>.</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="qdrant-connector">Qdrant Connector<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#qdrant-connector" class="hash-link" aria-label="Direct link to Qdrant Connector" title="Direct link to Qdrant Connector">​</a></h3>
+<p>A connector for Qdrant has been added to make it easy to integrate data to be used by AI or other tools that rely on a vector database. This connector allows easy near real-time synchronization of data used by Qdrant.</p>
+<p>To learn more how to use the Qdrant connector please visit <a href="https://koralium.github.io/flowtide/docs/connectors/qdrant" target="_blank" rel="noopener noreferrer">docs</a>.</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="new-test-framework">New test framework<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#new-test-framework" class="hash-link" aria-label="Direct link to New test framework" title="Direct link to New test framework">​</a></h3>
+<p>A new framework has been released called <code>FlowtideDotNet.TestFramework</code> to help simplify the process of doing integration testing of streams.</p>
+<p>To learn more please visit <a href="https://koralium.github.io/flowtide/docs/testing" target="_blank" rel="noopener noreferrer">docs</a>.</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="minor-changes">Minor changes<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#minor-changes" class="hash-link" aria-label="Direct link to Minor changes" title="Direct link to Minor changes">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="sql-server-connector-changes">SQL Server Connector Changes<a href="https://koralium.github.io/flowtide/blog/release-0-14-0#sql-server-connector-changes" class="hash-link" aria-label="Direct link to SQL Server Connector Changes" title="Direct link to SQL Server Connector Changes">​</a></h3>
+<p>The SQL Server connector has been rebuilt to support tables without change tracking (including views). This works by polling all data, so it should not be used in large tables, but can give a quick start to experiment with a tables data before enabling change tracking.</p>
+<p>Optimizations has been added for partitioned tables, to give quick selects from large tables where each partition is fetched individually to reduce the cost of cross-partition queries.</p>]]></content:encoded>
+            <category>release</category>
+        </item>
         <item>
             <title><![CDATA[Release 0.13.0]]></title>
             <link>https://koralium.github.io/flowtide/blog/release-0-13-0</link>
