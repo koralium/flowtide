@@ -7,3 +7,7 @@ xxhash128_guid_string(123::i64) = '73ee1948-c617-586c-3264-27d6e25f86d1'::str
 xxhash128_guid_string('hello'::str) = 'adc1e9b5-1b07-7f3e-c779-cfaa5e523818'::str
 xxhash128_guid_string(Null::str) = '935ecda6-0092-6a0f-c44b-dff4074eecdb'::str
 xxhash128_guid_string(true::bool) = '445a0251-8391-0555-e12e-f9d2eb86ceeb'::str
+
+# Two different inputs
+xxhash128_guid_string(123::i64, 'hello'::str) = 'ac0da65e-aa0d-7e77-b7e9-a53cf543e3ec'::str
+xxhash128_guid_string(true::bool, Null::str) = 'b7c56a4d-a1d1-5c65-ab94-ac0ace7276c0'::str

@@ -12,13 +12,8 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
 {
@@ -29,50 +24,85 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
             functionsRegister.RegisterColumnScalarFunction(FunctionsHash.Uri, FunctionsHash.XxHash128GuidString,
                 (func, paramInfo, visitor, functionServices) =>
                 {
-                    if (func.Arguments.Count != 1)
+                    if (func.Arguments.Count < 1)
                     {
-                        throw new ArgumentException($"Function {FunctionsHash.XxHash128GuidString} expects exactly one argument.");
-                    }
-                    var arg = func.Arguments[0];
-                    var argExpr = visitor.Visit(arg, paramInfo);
-
-                    if (argExpr == null)
-                    {
-                        throw new ArgumentException($"Argument {arg} cannot be null.");
+                        throw new ArgumentException($"Function {FunctionsHash.XxHash128GuidString} expects atleast one argument.");
                     }
 
-                    var methodInfo = typeof(XxHash128Functions).GetMethod(nameof(XxHash128GuidStringMethod), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
-                    if (methodInfo == null)
+                    var hashInstanceExpr = Expression.Constant(new XxHash128());
+                    var destinationExpr = Expression.Constant(new byte[16]);
+                    var utf8DestinationExpr = Expression.Constant(new byte[36]);
+                    var outputExpr = Expression.Constant(new DataValueContainer());
+
+                    List<Expression> hashExpressions = new List<Expression>();
+                    for (int i = 0; i < func.Arguments.Count; i++)
                     {
-                        throw new InvalidOperationException(
-                            $"Method {nameof(XxHash128GuidStringMethod)} not found in {nameof(XxHash128Functions)}.");
+                        var arg = func.Arguments[i];
+                        var argExpr = visitor.Visit(arg, paramInfo);
+
+                        if (argExpr == null)
+                        {
+                            throw new ArgumentException($"Argument {arg} cannot be null.");
+                        }
+
+                        var addToHashMethod = argExpr.Type.GetMethod("AddToHash", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                        if (addToHashMethod == null)
+                        {
+                            throw new InvalidOperationException($"Method AddToHash not found on type {argExpr.Type}.");
+                        }
+
+                        hashExpressions.Add(Expression.Call(argExpr, addToHashMethod, hashInstanceExpr));
                     }
-                    var shakeInstanceExpr = System.Linq.Expressions.Expression.Constant(new XxHash128());
-                    var destinationExpr = System.Linq.Expressions.Expression.Constant(new byte[16]);
-                    var utf8DestinationExpr = System.Linq.Expressions.Expression.Constant(new byte[36]);
-                    var outputExpr = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
-                    var genericMethod = methodInfo.MakeGenericMethod(argExpr.Type);
-                    return System.Linq.Expressions.Expression.Call(
-                        genericMethod,
-                        argExpr,
-                        shakeInstanceExpr,
-                        destinationExpr,
-                        utf8DestinationExpr,
-                        outputExpr);
+
+                    var spanVariable = Expression.Variable(typeof(Span<byte>), "span");
+                    var destAsSpan = Expression.New(typeof(Span<byte>).GetConstructor([typeof(byte[])])!, destinationExpr);
+                    var assignToSpanExpr = Expression.Assign(spanVariable, destAsSpan);
+
+                    hashExpressions.Add(assignToSpanExpr);
+
+                    var hashMethod = typeof(XxHash128).GetMethod("GetHashAndReset", [typeof(Span<byte>)]);
+
+                    if (hashMethod == null)
+                    {
+                        throw new InvalidOperationException("Method GetHashAndReset not found on XxHash128.");
+                    }
+
+                    // Call GetHashAndReset
+                    var callGetHash = Expression.Call(hashInstanceExpr, hashMethod, spanVariable);
+                    hashExpressions.Add(callGetHash);
+
+                    var guidCtor = Expression.New(typeof(Guid).GetConstructor([typeof(byte[])])!, destinationExpr);
+
+                    // Get the try format method for guid to take it to a string
+                    var tryFormatMethod = guidCtor.Type.GetMethod("TryFormat", [typeof(Span<byte>), typeof(int).MakeByRefType(), typeof(ReadOnlySpan<char>)]);
+
+                    if (tryFormatMethod == null)
+                    {
+                        throw new InvalidOperationException("Method TryFormat not found on Guid.");
+                    }
+
+                    var outBytesWrittenExpr = Expression.Variable(typeof(int), "bytesWritten");
+
+                    var readonlySpanChar = Expression.Default(typeof(ReadOnlySpan<char>));
+
+                    // Call TryFormat to convert the Guid to a string
+                    var tryFormatCall = Expression.Call(
+                        guidCtor,
+                        tryFormatMethod,
+                        Expression.New(typeof(Span<byte>).GetConstructor([typeof(byte[])])!, utf8DestinationExpr),
+                        outBytesWrittenExpr,
+                        readonlySpanChar
+                        ); 
+
+                    var newStringValue = Expression.New(typeof(StringValue).GetConstructor([typeof(byte[])])!, utf8DestinationExpr);
+
+                    hashExpressions.Add(tryFormatCall);
+                    var convertToIDataValue = Expression.Convert(newStringValue, typeof(IDataValue));
+                    hashExpressions.Add(convertToIDataValue);
+                    var blockExpr = Expression.Block(typeof(IDataValue), new List<ParameterExpression>() { spanVariable, outBytesWrittenExpr }, hashExpressions);
+
+                    return blockExpr;
                 });
-        }
-
-        private static IDataValue XxHash128GuidStringMethod<T>(T value, XxHash128 hashInstance, byte[] hashDestination, byte[] utf8Destination, DataValueContainer output)
-            where T : IDataValue
-        {
-            value.AddToHash(hashInstance);
-            hashInstance.GetHashAndReset(hashDestination);
-
-            new Guid(hashDestination).TryFormat(utf8Destination, out int bytesWritten);
-
-            output._type = ArrowTypeId.String;
-            output._stringValue = new StringValue(utf8Destination);
-            return output;
         }
     }
 }
