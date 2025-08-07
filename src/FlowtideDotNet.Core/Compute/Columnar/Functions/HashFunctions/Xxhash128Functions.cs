@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
                 {
                     if (func.Arguments.Count < 1)
                     {
-                        throw new ArgumentException($"Function {FunctionsHash.XxHash128GuidString} expects atleast one argument.");
+                        throw new ArgumentException($"Function {FunctionsHash.XxHash128GuidString} expects at least one argument.");
                     }
 
                     var hashInstanceExpr = Expression.Constant(new XxHash128());
