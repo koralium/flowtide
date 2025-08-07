@@ -10,6 +10,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="8.0.10" />
     <PackageReference Include="Microsoft.FASTER.Core" Version="2.6.1" />
+    <PackageReference Include="mimalloc-csharp" Version="1.0.7" />
     <PackageReference Include="Polly.Core" Version="8.5.2" />
     <PackageReference Include="ZstdSharp.Port" Version="0.8.4" />
   </ItemGroup>
