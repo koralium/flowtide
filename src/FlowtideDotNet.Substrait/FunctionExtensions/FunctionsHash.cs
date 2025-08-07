@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Uri = "/functions_hash.yaml";
 
         /// <summary>
-        /// Does a shake128 and returns a guid
+        /// Does an XxHash128 and returns a guid
         /// </summary>
         public const string XxHash128GuidString = "xxhash128_guid_string";
     }
