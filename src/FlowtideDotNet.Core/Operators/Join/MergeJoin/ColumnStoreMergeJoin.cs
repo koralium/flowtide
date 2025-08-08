@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     {
         protected IBPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftTree;
         protected IBPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightTree;
+        private IBplusTreeUpdater<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _leftTreeUpdater;
+        private IBplusTreeUpdater<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightTreeUpdater;
 
         private readonly MergeJoinRelation _mergeJoinRelation;
         private MergeJoinInsertComparer _leftInsertComparer;
@@ -162,6 +164,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _leftIterator!.Reset();
 
             _rightIterator!.Reset();
+
+            await _leftTreeUpdater!.Commit();
+            await _rightTreeUpdater!.Commit();
 
             await _leftTree!.Commit();
             await _rightTree!.Commit();
@@ -304,20 +309,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
                 var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
-                await _leftTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
+
+                await _leftTreeUpdater!.Seek(in columnReference);
+                if (_leftTreeUpdater.Found)
                 {
-                    if (found)
+                    var current = _leftTreeUpdater.GetValue();
+                    current.weight += insertWeights.weight;
+                    current.joinWeight += insertWeights.joinWeight;
+                    if (current.weight == 0)
                     {
-                        current!.weight += input!.weight;
-                        current.joinWeight += input.joinWeight;
-                        if (current.weight == 0)
-                        {
-                            return (default, GenericWriteOperation.Delete);
-                        }
-                        return (current, GenericWriteOperation.Upsert);
+                        await _leftTreeUpdater.Delete();
                     }
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                    else
+                    {
+                        await _leftTreeUpdater.Upsert(in columnReference, in current);
+                    }
+                }
+                else
+                {
+                    await _leftTreeUpdater.Upsert(in columnReference, in insertWeights);
+                }
             }
 
             if (foundOffsets.Count > 0)
@@ -510,20 +521,27 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
                 var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
-                await _rightTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
+
+                await _rightTreeUpdater!.Seek(in columnReference);
+
+                if (_rightTreeUpdater.Found)
                 {
-                    if (found)
+                    var current = _rightTreeUpdater.GetValue();
+                    current.weight += insertWeights.weight;
+                    current.joinWeight += insertWeights.joinWeight;
+                    if (current.weight == 0)
                     {
-                        current!.weight += input!.weight;
-                        current.joinWeight += input.joinWeight;
-                        if (current.weight == 0)
-                        {
-                            return (default, GenericWriteOperation.Delete);
-                        }
-                        return (current, GenericWriteOperation.Upsert);
+                        await _rightTreeUpdater.Delete();
                     }
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                    else
+                    {
+                        await _rightTreeUpdater.Upsert(in columnReference, in current);
+                    }
+                }
+                else
+                {
+                    await _rightTreeUpdater.Upsert(in columnReference, in insertWeights);
+                }
             }
 
             if (foundOffsets.Count > 0)
@@ -776,6 +794,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator
                 });
+            _leftTreeUpdater = _leftTree.CreateUpdater();
             _rightTree = await stateManagerClient.GetOrCreateTree("right",
                 new BPlusTreeOptions<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>()
                 {
@@ -785,6 +804,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator
                 });
+            _rightTreeUpdater = _rightTree.CreateUpdater();
 
             _leftIterator = _leftTree.CreateIterator();
             _rightIterator = _rightTree.CreateIterator();

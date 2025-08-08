@@ -23,9 +23,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
         private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
-        private int minSize;
+        internal int minSize;
         private bool m_isByteBased;
-        private int byteMinSize;
+        internal int byteMinSize;
         private bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
@@ -206,6 +206,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeys, emptyValues);
             m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
             m_stateClient.AddOrUpdate(rootId, root);
+        }
+
+        public IBplusTreeUpdater<K, V, TKeyContainer, TValueContainer> CreateUpdater()
+        {
+            return new BPlusTreeUpdater<K, V, TKeyContainer, TValueContainer>(this);
         }
     }
 }
