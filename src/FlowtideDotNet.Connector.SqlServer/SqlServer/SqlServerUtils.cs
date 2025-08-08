@@ -589,7 +589,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 stringBuilder.AppendLine($"WHERE {filters}");
             }
 
-            string orderBys = string.Join(", ", primaryKeys);
+            string orderBys = string.Join(", ", primaryKeys.Select(x => $"[{x}]"));
             stringBuilder.AppendLine(" ORDER BY " + orderBys);
             stringBuilder.AppendLine(" OFFSET 0 ROWS FETCH NEXT " + batchSize + " ROWS ONLY");
 
@@ -1746,16 +1746,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             for (int i = 0; i < primaryKeys.Count; i++)
             {
                 string pkName = primaryKeys[i];
-                string pkValue = $"@{pkName}";
+                string pkValue = $"@pk{i}";
 
                 List<string> comparators = new List<string>();
-                comparators.Add("(" + pkName + " > " + pkValue + ")");
+                comparators.Add("([" + pkName + "] > " + pkValue + ")");
 
                 for (int k = i - 1; k >= 0; k--)
                 {
                     string innerPkName = primaryKeys[k];
-                    String innerPkValue = $"@{innerPkName}";
-                    comparators.Add("(" + innerPkName + " = " + innerPkValue + ")");
+                    String innerPkValue = $"@pk{k}";
+                    comparators.Add("([" + innerPkName + "] = " + innerPkValue + ")");
                 }
 
                 if (comparators.Count == 1)
