@@ -43,6 +43,7 @@ namespace FlowtideDotNet.Core.Engine
         private string _version = "";
         private bool _useHashPlanAsVersion = false;
         private bool _isCheckFailureRegistered = false;
+        private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
         {
@@ -249,6 +250,13 @@ namespace FlowtideDotNet.Core.Engine
             }
         }
 
+        public FlowtideBuilder SetDistributedOptions(DistributedOptions distributedOptions)
+        {
+            _distributedOptions = distributedOptions;
+            return this;
+        }
+
+
         public FlowtideDotNet.Base.Engine.DataflowStream Build()
         {
             if (_plan == null)
@@ -286,7 +294,8 @@ namespace FlowtideDotNet.Core.Engine
                 _parallelism,
                 _getTimestampInterval,
                 _useColumnStore,
-                _taskScheduler);
+                _taskScheduler,
+                _distributedOptions);
 
             // Set the notification receiver to the function register to allow check functions get access to it.
             _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);

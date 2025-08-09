@@ -29,7 +29,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Orleans.Internal
 {
-    internal class PullExchangeReadOperator : IngressVertex<StreamEventBatch, object>
+    internal class PullExchangeReadOperator : IngressVertex<StreamEventBatch>
     {
         private readonly PullExchangeReferenceRelation exchangeReferenceRelation;
         private readonly IGrainFactory grainFactory;
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Orleans.Internal
             throw new NotImplementedException();
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             _referenceGrain = grainFactory.GetGrain<IStreamGrain>(exchangeReferenceRelation.SubStreamName);
 

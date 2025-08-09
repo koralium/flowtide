@@ -7,11 +7,14 @@ using Orleans.Serialization;
 using Orleans.Serialization.Cloning;
 using Orleans.Serialization.Serializers;
 using static SqlParser.Ast.DataType;
-using OrleansSample;
 using FlowtideDotNet.Core.Sinks;
 using OpenTelemetry.Metrics;
 using static SqlParser.Ast.Action;
 using System.Net.Security;
+using OrleansSample;
+using FlowtideDotNet.AspNetCore.Extensions;
+using System.Net.Sockets;
+using FlowtideDotNet.Core.Optimizer;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -46,6 +49,8 @@ builder.Services.AddOrleans(b =>
 // Add services to the container.
 
 var app = builder.Build();
+
+app.StartFlowtideMetrics("/stream");
 
 var grainFactory = app.Services.GetRequiredService<IGrainFactory>();
 var grain = grainFactory.GetGrain<IStreamGrain>("sub1");
@@ -82,12 +87,12 @@ CREATE TABLE table2 (val any);
 
 SUBSTREAM sub1;
 
-CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
 SELECT val FROM table1;
 
 SUBSTREAM sub2;
 
-CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = 'val', PARTITION_COUNT = 2) AS
+CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
 SELECT val FROM table2;
 
 SUBSTREAM sub1;
@@ -111,6 +116,12 @@ ON a.val = b.val;
 
 var plan = sqlPlanBuilder.GetPlan();
 
+plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
+{
+    Parallelization = 1,
+    SimplifyProjection = true
+});
+
 await grain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream", plan, "sub1"));
 await grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream2", plan, "sub2"));
 //await grain3.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream3", plan, "sub2"));
@@ -119,7 +130,6 @@ await grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMes
 //await grain6.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream6", plan, "sub2"));
 //await grain7.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream7", plan, "sub2"));
 //await grain8.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream8", plan, "sub2"));
-
 
 while (true)
 {

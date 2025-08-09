@@ -61,13 +61,13 @@ namespace FlowtideDotNet.Orleans.Grains
         public async Task StartStreamAsync(StartStreamMessage startStreamMessage)
         {
             FlowtideBuilder flowtideBuilder = new FlowtideBuilder(startStreamMessage.StreamName);
-            flowtideBuilder.AddPlan(startStreamMessage.Plan);
+            flowtideBuilder.AddPlan(startStreamMessage.Plan, false);
             flowtideBuilder.AddConnectorManager(_connectorManager);
             flowtideBuilder.WithStateOptions(new Storage.StateManager.StateManagerOptions()
             {
                 MinCachePageCount = 0,
-                CachePageCount = 10,
-                MaxProcessMemory = 5 * 1024 * 1024 * 1024L,
+                CachePageCount = 300_000,
+                //MaxProcessMemory = 5 * 1024 * 1024 * 1024L,
                 //PersistentStorage = new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>("./data/" + startStreamMessage.SubstreamName, true)
                 //{
                 //    PageSize = 16 * 1024 * 1024,

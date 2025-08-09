@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Orleans\FlowtideDotNet.Orleans.csproj" />
   </ItemGroup>
 

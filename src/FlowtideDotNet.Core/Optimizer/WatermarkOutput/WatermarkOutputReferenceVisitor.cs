@@ -307,5 +307,16 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
             consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, false);
             return consistentPartitionWindowRelation;
         }
+
+        public override Relation VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, bool state)
+        {
+            subStreamRootRelation.Input = Visit(subStreamRootRelation.Input, false);
+            return subStreamRootRelation;
+        }
+
+        public override Relation VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, bool state)
+        {
+            return pullExchangeReferenceRelation;
+        }
     }
 }

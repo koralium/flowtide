@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
-        private readonly ExchangeRelation exchangeRelation;
+        internal readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
         private IObjectState<ExchangeOperatorState>? _state;

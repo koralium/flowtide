@@ -70,6 +70,7 @@ namespace FlowtideDotNet.Core.Engine
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, ColumnIterationOperator> _iterationOperators = new Dictionary<string, ColumnIterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
+        private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
@@ -133,7 +134,8 @@ namespace FlowtideDotNet.Core.Engine
             int parallelism,
             TimeSpan getTimestampInterval,
             bool useColumnStore,
-            TaskScheduler? taskScheduler = default)
+            TaskScheduler? taskScheduler = default,
+            DistributedOptions? distributedOptions = default)
         {
             this.plan = plan;
             this.dataflowStreamBuilder = dataflowStreamBuilder;
@@ -145,6 +147,7 @@ namespace FlowtideDotNet.Core.Engine
             _useColumnStore = useColumnStore;
             _queueSize = queueSize;
             _taskScheduler = taskScheduler;
+            _distributedOptions = distributedOptions;
             _doneRelations = new Dictionary<int, RelationTree>();
         }
 
@@ -714,7 +717,16 @@ namespace FlowtideDotNet.Core.Engine
             {
                 if (state != null)
                 {
-                    exchangeOperator.Sources[standardOutputExchangeReferenceRelation.TargetId].LinkTo(state);
+                    int sourceTargetId = 0;
+                    for (int i = 0; i < exchangeOperator.exchangeRelation.Targets.Count && i < standardOutputExchangeReferenceRelation.TargetId; i++)
+                    {
+                        var target = exchangeOperator.exchangeRelation.Targets[i];
+                        if (target.Type == ExchangeTargetType.StandardOutput)
+                        {
+                            sourceTargetId++;
+                        }
+                    }
+                    exchangeOperator.Sources[sourceTargetId].LinkTo(state);
                 }
                 return exchangeOperator;
             }
@@ -723,5 +735,38 @@ namespace FlowtideDotNet.Core.Engine
                 throw new InvalidOperationException("StandardOutputExchangeReferenceRelation must reference an ExchangeOperator");
             }
         }
+
+        public override IStreamVertex VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (_distributedOptions == null)
+            {
+                return Visit(subStreamRootRelation.Input, state);
+            }
+            else
+            {
+                if (_distributedOptions.SubstreamName == subStreamRootRelation.Name)
+                {
+                    return Visit(subStreamRootRelation.Input, state);
+                }
+                return null;
+            }
+        }
+
+        public override IStreamVertex VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, ITargetBlock<IStreamEvent> state)
+        {
+            if(_distributedOptions == null)
+            {
+                throw new InvalidOperationException("PullExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+            var op = _distributedOptions.PullBucketExchangeReadFactory.GetOperator(pullExchangeReferenceRelation, DefaultBlockOptions);
+            var id = _operatorId++;
+            if (state != null && op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                sourceBlock.LinkTo(state);
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
+        }
+
     }
 }

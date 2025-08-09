@@ -173,5 +173,16 @@ namespace FlowtideDotNet.Core.Optimizer
             consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
             return consistentPartitionWindowRelation;
         }
+
+        public override Relation VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, object state)
+        {
+            subStreamRootRelation.Input = Visit(subStreamRootRelation.Input, state);
+            return subStreamRootRelation;
+        }
+
+        public override Relation VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, object state)
+        {
+            return pullExchangeReferenceRelation;
+        }
     }
 }
