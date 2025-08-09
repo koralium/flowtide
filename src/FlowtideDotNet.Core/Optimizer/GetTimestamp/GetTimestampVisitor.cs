@@ -137,12 +137,15 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 }
             }
 
-            for (int i = 0; i < aggregateRelation.Measures.Count; i++)
+            if (aggregateRelation.Measures != null)
             {
-                aggregateRelation.Measures[i].Filter = replacer.Visit(aggregateRelation.Measures[i].Filter, state)!;
-                for (int k = 0; k < aggregateRelation.Measures[i].Measure.Arguments.Count; k++)
+                for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
-                    aggregateRelation.Measures[i].Measure.Arguments[k] = replacer.Visit(aggregateRelation.Measures[i].Measure.Arguments[k], state)!;
+                    aggregateRelation.Measures[i].Filter = replacer.Visit(aggregateRelation.Measures[i].Filter!, state)!;
+                    for (int k = 0; k < aggregateRelation.Measures[i].Measure.Arguments.Count; k++)
+                    {
+                        aggregateRelation.Measures[i].Measure.Arguments[k] = replacer.Visit(aggregateRelation.Measures[i].Measure.Arguments[k], state)!;
+                    }
                 }
             }
 
@@ -196,7 +199,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             joinRelation.Right = Visit(joinRelation.Right, state);
 
             var replacer = new GetTimestampReplacer(joinRelation.Left.OutputLength + joinRelation.Right.OutputLength);
-            replacer.Visit(joinRelation.Expression, state);
+            replacer.Visit(joinRelation.Expression!, state);
 
             if (replacer.ContainsGetTimestamp)
             {
@@ -204,7 +207,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                 throw new InvalidOperationException("gettimestamp is not supported in join conditions yet.");
             }
 
-            return base.VisitJoinRelation(joinRelation, state);
+            return joinRelation;
         }
 
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
@@ -216,7 +219,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             projectRelation.Input = Visit(projectRelation.Input, state);
 
             var replacer = new GetTimestampReplacer(projectRelation.Input.OutputLength);
-            
+
             for (int i = 0; i < projectRelation.Expressions.Count; i++)
             {
                 projectRelation.Expressions[i] = replacer.Visit(projectRelation.Expressions[i], state)!;

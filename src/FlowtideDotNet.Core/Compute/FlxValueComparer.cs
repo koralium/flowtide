@@ -10,8 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Flexbuffer;
 using FlexBuffers;
+using FlowtideDotNet.Core.Flexbuffer;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Core.Compute
 {
@@ -36,41 +37,69 @@ namespace FlowtideDotNet.Core.Compute
             {
                 return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
             }
-            if (b.ValueType == FlexBuffers.Type.Int) 
+            if (b.ValueType == FlexBuffers.Type.Int)
             {
                 return dec.AsDecimal.CompareTo((decimal)b.AsDouble);
             }
             return dec.ValueType - b.ValueType;
         }
 
-        public static int CompareTo(FlxValue a, FlxValue b)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static int CompareLongSameWidth(in FlxValue a, in FlxValue b, in byte width)
         {
-            var tComp = a.ValueType.CompareTo(b.ValueType);
+            if (width >= 4)
+            {
+                if (width == 4)
+                {
+                    return BitConverter.ToInt32(a._buffer, a._offset) - BitConverter.ToInt32(b._buffer, b._offset);
+                }
+                else
+                {
+                    return BitConverter.ToInt64(a.Buffer.Slice(a._offset, 8)).CompareTo(BitConverter.ToInt64(b.Buffer.Slice(b._offset, 8)));
+                }
+            }
+            else
+            {
+                if (width == 1)
+                {
+                    return a.Buffer[a._offset] - b.Buffer[b._offset];
+                }
+                return BitConverter.ToInt16(a.Buffer.Slice(a._offset, 2)) - BitConverter.ToInt16(b.Buffer.Slice(b._offset, 2));
+            }
+        }
+
+        public static int CompareTo(in FlxValue a, in FlxValue b)
+        {
+            var tComp = a._type - b._type;
             if (tComp == 0)
             {
                 // Same tpe
-                if (a.ValueType == FlexBuffers.Type.Null)
+                if (a._type == FlexBuffers.Type.Null)
                 {
                     return 0;
                 }
-                if (a.ValueType == FlexBuffers.Type.Bool)
+                if (a._type == FlexBuffers.Type.Bool)
                 {
                     return a.AsBool.CompareTo(b.AsBool);
                 }
                 // Check for string comparison
-                if (a.ValueType == FlexBuffers.Type.String)
+                if (a._type == FlexBuffers.Type.String)
                 {
                     return FlxString.Compare(a.AsFlxString, b.AsFlxString);
                 }
-                if (a.ValueType == FlexBuffers.Type.Int)
+                if (a._type == FlexBuffers.Type.Int)
                 {
+                    if (a._parentWidth == b._parentWidth)
+                    {
+                        return CompareLongSameWidth(in a, in b, in a._parentWidth);
+                    }
                     return a.AsLong.CompareTo(b.AsLong);
                 }
-                if (a.ValueType == FlexBuffers.Type.Key)
+                if (a._type == FlexBuffers.Type.Key)
                 {
                     return string.Compare(a.AsString, b.AsString);
                 }
-                if (a.ValueType == FlexBuffers.Type.Vector)
+                if (a._type == FlexBuffers.Type.Vector)
                 {
                     var avec = a.AsVector;
                     var bvec = b.AsVector;
@@ -94,13 +123,13 @@ namespace FlowtideDotNet.Core.Compute
                     }
                     return 0;
                 }
-                if (a.ValueType == FlexBuffers.Type.Blob)
+                if (a._type == FlexBuffers.Type.Blob)
                 {
                     var ablob = a.AsBlob;
                     var bblob = b.AsBlob;
                     return ablob.SequenceCompareTo(bblob);
                 }
-                if (a.ValueType == FlexBuffers.Type.Map)
+                if (a._type == FlexBuffers.Type.Map)
                 {
                     var amap = a.AsMap;
                     var bmap = b.AsMap;
@@ -135,11 +164,11 @@ namespace FlowtideDotNet.Core.Compute
                 }
                 throw new NotImplementedException();
             }
-            if (a.ValueType == FlexBuffers.Type.Decimal)
+            if (a._type == FlexBuffers.Type.Decimal)
             {
                 return CompareDecimal(a, b);
             }
-            if (b.ValueType == FlexBuffers.Type.Decimal)
+            if (b._type == FlexBuffers.Type.Decimal)
             {
                 return CompareDecimal(b, a) * -1;
             }

@@ -10,12 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager.Internal;
+
 namespace FlowtideDotNet.Storage.FileCache.Internal
 {
     public interface IFileCacheWriter : IDisposable
     {
-        void Write(long position, byte[] data);
-        byte[] Read(long position, int length);
+        void Write(long position, Memory<byte> data);
+        ReadOnlyMemory<byte> Read(long position, int length);
+        T Read<T>(long position, int length, IStateSerializer<T> serializer)
+            where T : ICacheObject;
         void Flush();
         void ClearTemporaryAllocations();
     }

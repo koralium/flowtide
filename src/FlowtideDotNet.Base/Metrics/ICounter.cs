@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Diagnostics;
-
 namespace FlowtideDotNet.Base.Metrics
 {
     /// <summary>
@@ -25,50 +23,5 @@ namespace FlowtideDotNet.Base.Metrics
         /// </summary>
         /// <param name="delta">The increment measurement.</param>
         public void Add(T delta);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The increment measurement.</param>
-        /// <param name="tag">A key-value pair tag associated with the measurement.</param>
-        public void Add(T delta, KeyValuePair<string, object?> tag);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The increment measurement.</param>
-        /// <param name="tag1">A first key-value pair tag associated with the measurement.</param>
-        /// <param name="tag2">A second key-value pair tag associated with the measurement.</param>
-        public void Add(T delta, KeyValuePair<string, object?> tag1, KeyValuePair<string, object?> tag2);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The increment measurement.</param>
-        /// <param name="tag1">A first key-value pair tag associated with the measurement.</param>
-        /// <param name="tag2">A second key-value pair tag associated with the measurement.</param>
-        /// <param name="tag3">A third key-value pair tag associated with the measurement.</param>
-        public void Add(T delta, KeyValuePair<string, object?> tag1, KeyValuePair<string, object?> tag2, KeyValuePair<string, object?> tag3);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The increment measurement.</param>
-        /// <param name="tags">A span of key-value pair tags associated with the measurement.</param>
-        public void Add(T delta, ReadOnlySpan<KeyValuePair<string, object?>> tags);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The increment measurement.</param>
-        /// <param name="tags">A list of key-value pair tags associated with the measurement.</param>
-        public void Add(T delta, params KeyValuePair<string, object?>[] tags);
-
-        /// <summary>
-        /// Record the increment value of the measurement.
-        /// </summary>
-        /// <param name="delta">The measurement value.</param>
-        /// <param name="tagList">A <see cref="T:System.Diagnostics.TagList" /> of tags associated with the measurement.</param>
-        public void Add(T delta, in TagList tagList);
     }
 }

@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using System;
 using System.Collections.Generic;
@@ -22,9 +24,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal interface IExchangeTarget
     {
-        ValueTask AddEvent(RowEvent rowEvent);
+        void NewBatch(EventBatchWeighted weightedBatch);
+        ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
 
-        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state);
+        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator);
 
         /// <summary>
         /// Called when a event batch has been partitioned.

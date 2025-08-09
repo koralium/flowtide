@@ -10,13 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Protobuf = Substrait.Protobuf;
-using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.Relations;
 using Google.Protobuf;
 using Substrait.Protobuf;
+using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
 {
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     FunctionReference = anchor,
                 };
-                foreach(var arg in scalarFunction.Arguments)
+                foreach (var arg in scalarFunction.Arguments)
                 {
                     scalar.Arguments.Add(new Protobuf.FunctionArgument()
                     {
@@ -112,8 +112,8 @@ namespace FlowtideDotNet.Substrait
 
             public override Protobuf.Expression? VisitNumericLiteral(NumericLiteral numericLiteral, SerializerVisitorState state)
             {
-                if (numericLiteral.Value % 1 == 0) 
-                { 
+                if (numericLiteral.Value % 1 == 0)
+                {
                     return new Protobuf.Expression()
                     {
                         Literal = new Protobuf.Expression.Types.Literal()
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Expression? VisitIfThen(IfThenExpression ifThenExpression, SerializerVisitorState state)
             {
                 var ifThen = new Protobuf.Expression.Types.IfThen();
-                foreach(var ifStatement in ifThenExpression.Ifs)
+                foreach (var ifStatement in ifThenExpression.Ifs)
                 {
                     ifThen.Ifs.Add(new Protobuf.Expression.Types.IfThen.Types.IfClause()
                     {
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var list = new Protobuf.Expression.Types.Literal.Types.List();
 
-                foreach(var item in arrayLiteral.Expressions)
+                foreach (var item in arrayLiteral.Expressions)
                 {
                     var itemExpr = Visit(item, state);
                     if (itemExpr == null)
@@ -226,7 +226,7 @@ namespace FlowtideDotNet.Substrait
                     Value = Visit(singularOrList.Value, state)
                 };
 
-                foreach(var opt in singularOrList.Options)
+                foreach (var opt in singularOrList.Options)
                 {
                     list.Options.Add(Visit(opt, state));
                 }
@@ -239,15 +239,15 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Expression? VisitMultiOrList(MultiOrListExpression multiOrList, SerializerVisitorState state)
             {
                 var list = new Protobuf.Expression.Types.MultiOrList();
-                
-                foreach(var val in multiOrList.Value)
+
+                foreach (var val in multiOrList.Value)
                 {
                     list.Value.Add(Visit(val, state));
                 }
                 foreach (var opt in multiOrList.Options)
                 {
                     var record = new Protobuf.Expression.Types.MultiOrList.Types.Record();
-                    foreach(var optVal in opt.Fields)
+                    foreach (var optVal in opt.Fields)
                     {
                         record.Fields.Add(Visit(optVal, state));
                     }
@@ -256,6 +256,22 @@ namespace FlowtideDotNet.Substrait
                 return new Protobuf.Expression()
                 {
                     MultiOrList = list
+                };
+            }
+
+            public override Protobuf.Expression? VisitStructExpression(StructExpression structExpression, SerializerVisitorState state)
+            {
+                var s = new Protobuf.Expression.Types.Nested.Types.Struct();
+                foreach (var field in structExpression.Fields)
+                {
+                    s.Fields.Add(Visit(field, state));
+                }
+                return new Protobuf.Expression()
+                {
+                    Nested = new Protobuf.Expression.Types.Nested()
+                    {
+                        Struct = s
+                    }
                 };
             }
         }
@@ -269,7 +285,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitReadRelation(ReadRelation readRelation, SerializerVisitorState state)
             {
                 var readRel = new Protobuf.ReadRel();
-                
+
                 if (readRelation.NamedTable != null)
                 {
                     readRel.NamedTable = new Protobuf.ReadRel.Types.NamedTable();
@@ -283,7 +299,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         var anyTypeAnchor = GetAnyTypeId(state);
                         readRel.BaseSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach(var type in readRelation.BaseSchema.Struct.Types)
+                        foreach (var type in readRelation.BaseSchema.Struct.Types)
                         {
                             readRel.BaseSchema.Struct.Types_.Add(new Protobuf.Type()
                             {
@@ -342,7 +358,7 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitFilterRelation(FilterRelation filterRelation, SerializerVisitorState state)
             {
                 var filterRel = new Protobuf.FilterRel();
-                
+
                 if (filterRelation.Condition != null)
                 {
                     var exprVisitor = new SerializerExpressionVisitor();
@@ -370,8 +386,8 @@ namespace FlowtideDotNet.Substrait
                 if (aggregateRelation.Groupings != null)
                 {
                     var exprVisitor = new SerializerExpressionVisitor();
-                    
-                    foreach(var grouping in aggregateRelation.Groupings)
+
+                    foreach (var grouping in aggregateRelation.Groupings)
                     {
                         var grp = new Protobuf.AggregateRel.Types.Grouping();
                         foreach (var groupExpr in grouping.GroupingExpressions)
@@ -400,7 +416,7 @@ namespace FlowtideDotNet.Substrait
                             };
                             if (measure.Measure.Arguments != null)
                             {
-                                foreach(var arg in measure.Measure.Arguments)
+                                foreach (var arg in measure.Measure.Arguments)
                                 {
                                     m.Measure_.Arguments.Add(new Protobuf.FunctionArgument()
                                     {
@@ -511,7 +527,7 @@ namespace FlowtideDotNet.Substrait
                 switch (joinRelation.Type)
                 {
                     case JoinType.Anti:
-                        joinRel.Type  = Protobuf.JoinRel.Types.JoinType.Anti;
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Anti;
                         break;
                     case JoinType.Semi:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Semi;
@@ -551,39 +567,39 @@ namespace FlowtideDotNet.Substrait
 
                 var exprVisitor = new SerializerExpressionVisitor();
 
-                foreach(var leftKey in mergeJoinRelation.LeftKeys)
+                for (int i = 0; i < mergeJoinRelation.LeftKeys.Count; i++)
                 {
-                    if (leftKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                    var leftKey = mergeJoinRelation.LeftKeys[i];
+                    var rightKey = mergeJoinRelation.RightKeys[i];
+                    if (leftKey is DirectFieldReference directFieldReferenceLeft &&
+                        directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
+                        rightKey is DirectFieldReference directFieldReferenceRight &&
+                        directFieldReferenceRight.ReferenceSegment is StructReferenceSegment structReferenceSegmentRight)
                     {
-                        rel.LeftKeys.Add(new Protobuf.Expression.Types.FieldReference()
+                        rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                            },
+                            Left = new Protobuf.Expression.Types.FieldReference()
+                            {
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentLeft.Field
+                                    }
                                 }
-                            }
-                        });
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("Only direct field reference is implemented");
-                    }
-                }
-                foreach (var rightKey in mergeJoinRelation.RightKeys)
-                {
-                    if (rightKey is DirectFieldReference directFieldReference &&
-                        directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
-                    {
-                        rel.RightKeys.Add(new Protobuf.Expression.Types.FieldReference()
-                        {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            },
+                            Right = new Protobuf.Expression.Types.FieldReference()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                                 {
-                                    Field = structReferenceSegment.Field
+                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                                    {
+                                        Field = structReferenceSegmentRight.Field
+                                    }
                                 }
                             }
                         });
@@ -651,7 +667,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     customRel.Filter = exprVisitor.Visit(normalizationRelation.Filter, state);
                 }
-                foreach(var k in normalizationRelation.KeyIndex)
+                foreach (var k in normalizationRelation.KeyIndex)
                 {
                     customRel.KeyIndex.Add(k);
                 }
@@ -764,14 +780,14 @@ namespace FlowtideDotNet.Substrait
                 var rel = new Protobuf.ReadRel();
                 rel.VirtualTable = new ReadRel.Types.VirtualTable();
 
-                foreach(var val in virtualTableReadRelation.Values.JsonValues)
+                var exprVisitor = new SerializerExpressionVisitor();
+                foreach (var val in virtualTableReadRelation.Values.Expressions)
                 {
-                    var s = new Protobuf.Expression.Types.Literal.Types.Struct();
-                    s.Fields.Add(new Protobuf.Expression.Types.Literal
+                    var expr = exprVisitor.Visit(val, state);
+                    if (expr?.Nested?.Struct != null)
                     {
-                        String = val
-                    });
-                    rel.VirtualTable.Values.Add(s);
+                        rel.VirtualTable.Expressions.Add(expr.Nested.Struct);
+                    }
                 }
                 if (virtualTableReadRelation.EmitSet)
                 {
@@ -783,11 +799,6 @@ namespace FlowtideDotNet.Substrait
                 {
                     Read = rel
                 };
-            }
-
-            public override Rel VisitUnwrapRelation(UnwrapRelation unwrapRelation, SerializerVisitorState state)
-            {
-                throw new NotImplementedException("Unwrap cant be serialized yet");
             }
 
             private static uint GetAnyTypeId(SerializerVisitorState state)
@@ -819,13 +830,13 @@ namespace FlowtideDotNet.Substrait
             public override Protobuf.Rel VisitWriteRelation(WriteRelation writeRelation, SerializerVisitorState state)
             {
                 var writeRel = new Protobuf.WriteRel();
-                
+
                 if (writeRelation.TableSchema != null)
                 {
-                    
+
                     writeRel.TableSchema = new Protobuf.NamedStruct();
                     writeRel.TableSchema.Names.AddRange(writeRelation.TableSchema.Names);
-                    if(writeRelation.TableSchema.Struct != null)
+                    if (writeRelation.TableSchema.Struct != null)
                     {
                         var anyTypeAnchor = GetAnyTypeId(state);
                         writeRel.TableSchema.Struct = new Protobuf.Type.Types.Struct();

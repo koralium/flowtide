@@ -10,12 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FASTER.core;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
 
@@ -23,14 +24,14 @@ namespace FlowtideDotNet.Storage.Tests
 {
     public class BPlusTreeTests : IDisposable
     {
-        private IBPlusTree<long, string> _tree;
-        StateManager.StateManagerSync stateManager;
+        private IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> _tree;
+        StateManager.StateManagerSync? stateManager;
         public BPlusTreeTests()
         {
             _tree = Init().GetAwaiter().GetResult();
         }
 
-        private async Task<IBPlusTree<long, string>> Init()
+        private async Task<IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>> Init()
         {
             var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
             localStorage.Initialize("./data/temp");
@@ -42,13 +43,15 @@ namespace FlowtideDotNet.Storage.Tests
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
-            {
-                BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
-            });
+            var tree = await nodeClient.GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree",
+                new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+                {
+                    BucketSize = 8,
+                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                    MemoryAllocator = GlobalMemoryManager.Instance
+                });
             return tree;
         }
 
@@ -63,9 +66,9 @@ namespace FlowtideDotNet.Storage.Tests
             await it.SeekFirst();
 
             int count = 0;
-            await foreach(var page in it)
+            await foreach (var page in it)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     Assert.Equal(count, kv.Key);
                     count++;

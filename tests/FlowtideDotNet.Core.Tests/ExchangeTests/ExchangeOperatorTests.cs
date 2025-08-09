@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 })))
             ];
 
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), 0));
+            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
             var initWatermarkMessage = await outputBlock.ReceiveAsync();
@@ -114,6 +114,45 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             {
                 Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
             }
+
+            await op.SendAsync(new Watermark("test", new LongWatermarkValue(123)));
+
+            // Do a checkpoint to save the data to disk
+            await op.SendAsync(new Checkpoint(1, 2));
+
+            // wait for checkpoint to complete
+            var timedSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+            await outputBlock.OutputAvailableAsync();
+            var checkpointMessage = await outputBlock.ReceiveAsync(TimeSpan.FromSeconds(1));
+
+            // Clear cache to make sure the events are deserialized when reading them
+            ClearCache();
+
+            fetchData = new ExchangeFetchDataMessage()
+            {
+                FromEventId = 0
+            };
+            await op.QueueTrigger(new TriggerEvent("exchange_0", fetchData));
+
+            Assert.NotNull(fetchData.OutEvents);
+            // Compare events from outputs
+            fetchDataRowEvents = (fetchData.OutEvents[1] as StreamMessage<StreamEventBatch>)!;
+
+            for (int i = 0; i < events.Count; i++)
+            {
+                Assert.Equal(events[i].ToJson(), fetchDataRowEvents.Data.Events[i].ToJson());
+            }
+            
+            // Index 2 will always be the watermark in this test
+            var watermark = fetchData.OutEvents[2] as Watermark;
+            Assert.NotNull(watermark);
+
+            Assert.True(watermark.Watermarks.TryGetValue("test", out var watermarkValue));
+
+            var longwatermark = watermarkValue as LongWatermarkValue;
+            Assert.NotNull(longwatermark);
+
+            Assert.Equal(123, longwatermark.Value);
         }
 
         /// <summary>
@@ -180,7 +219,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 })))
             ];
 
-            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events), 0));
+            await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
             var initWatermarkMessage = await outputBlock.ReceiveAsync();

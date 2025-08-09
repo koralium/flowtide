@@ -63,5 +63,33 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return !(left == right);
         }
+
+        /// <summary>
+        /// Create a shallow copy where this object is a new instance but the inputs are the same.
+        /// </summary>
+        /// <returns></returns>
+        public WriteRelation ShallowCopy()
+        {
+            WriteRelation copy = new WriteRelation()
+            {
+                Input = Input,
+                NamedObject = new NamedTable()
+                {
+                    Names = new List<string>(NamedObject.Names)
+                },
+                TableSchema = new NamedStruct()
+                {
+                    Names = new List<string>(TableSchema.Names)
+                }
+            };
+            if (TableSchema.Struct != null)
+            {
+                copy.TableSchema.Struct = new Struct()
+                {
+                    Types = new List<SubstraitBaseType>(TableSchema.Struct.Types)
+                };
+            }
+            return copy;
+        }
     }
 }

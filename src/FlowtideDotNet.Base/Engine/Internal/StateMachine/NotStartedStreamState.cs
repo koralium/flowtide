@@ -46,12 +46,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void EgressCheckpointDone(string name)
         {
-            
+
         }
 
         public override void Initialize(StreamStateValue previousState)
         {
-            
+            Debug.Assert(_context != null, nameof(_context));
+            _context.SetStatus(StreamStatus.Stopped);
         }
 
         public override Task OnFailure()
@@ -61,7 +62,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task StartAsync()
         {
+            Debug.Assert(_context != null);
+            _context._wantedState = StreamStateValue.Running;
             return TransitionTo(StreamStateValue.Starting);
+        }
+
+        public override Task StopAsync()
+        {
+            return Task.CompletedTask;
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

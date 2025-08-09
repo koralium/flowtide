@@ -16,13 +16,13 @@ namespace FlowtideDotNet.Core.Compute
 {
     public class ParametersInfo
     {
-        public ParametersInfo(IReadOnlyList<ParameterExpression> parameters, IReadOnlyList<int> relativeIndices)
+        public ParametersInfo(IReadOnlyList<Expression> parameters, IReadOnlyList<int> relativeIndices)
         {
             Parameters = parameters;
             RelativeIndices = relativeIndices;
         }
 
-        public IReadOnlyList<ParameterExpression> Parameters { get; }
+        public IReadOnlyList<Expression> Parameters { get; }
 
         /// <summary>
         /// Parameters and relative indices must be in sorted order

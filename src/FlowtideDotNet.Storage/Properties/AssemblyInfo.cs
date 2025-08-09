@@ -13,3 +13,6 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]

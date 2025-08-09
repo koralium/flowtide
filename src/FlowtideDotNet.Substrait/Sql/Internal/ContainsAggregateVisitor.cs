@@ -47,17 +47,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override bool VisitBinaryOperation(Expression.BinaryOp binaryOp, object? state)
         {
-            return  Visit(binaryOp.Left, state) | Visit(binaryOp.Right, state);
+            return Visit(binaryOp.Left, state) | Visit(binaryOp.Right, state);
         }
 
         protected override bool VisitCaseExpression(Expression.Case caseExpression, object? state)
         {
             var containsAggregate = false;
-            foreach(var cond in caseExpression.Conditions)
+            foreach (var cond in caseExpression.Conditions)
             {
                 containsAggregate |= Visit(cond, state);
             }
-            foreach(var result in caseExpression.Results)
+            foreach (var result in caseExpression.Results)
             {
                 containsAggregate |= Visit(result, state);
             }
@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 containsAggregate |= Visit(caseExpression.ElseResult, state);
             }
-            
+
             return containsAggregate;
         }
 
@@ -73,14 +73,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var funcType = sqlFunctionRegister.GetFunctionType(function.Name);
             bool containsAggregate = false;
-            if (funcType == FunctionType.Aggregate)
+            if (funcType == FunctionType.Aggregate && function.Over == null)
             {
                 _aggregateFunctions.Add(function);
                 containsAggregate = true;
             }
-            if (function.Args != null)
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(function.Args);
+            if (argList.Args != null)
             {
-                foreach (var arg in function.Args)
+                foreach (var arg in argList.Args)
                 {
                     if (arg is FunctionArg.Named namedFunctionArg)
                     {
@@ -91,7 +92,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 }
             }
-            
+
             return containsAggregate;
         }
 
@@ -143,7 +144,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             bool containsAggregate = false;
             containsAggregate |= Visit(inList.Expression, state);
-            foreach(var o in inList.List)
+            foreach (var o in inList.List)
             {
                 containsAggregate |= Visit(o, state);
             }

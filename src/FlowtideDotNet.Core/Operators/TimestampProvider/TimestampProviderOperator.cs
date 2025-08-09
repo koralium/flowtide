@@ -10,9 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
@@ -21,22 +25,26 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
 {
     internal class TimestampProviderState
     {
-        public long? LastSentTimestamp { get; set; } 
+        public DateTimeOffset? LastSentTimestamp { get; set; }
     }
-    internal class TimestampProviderOperator : ReadBaseOperator<TimestampProviderState>
-    {
-        private readonly TimeSpan interval;
-        private IReadOnlySet<string> _watermarks;
-        private TimestampProviderState? _state;
-        private ICounter<long>? _eventsProcessed;
 
-        public TimestampProviderOperator(TimeSpan interval, DataflowBlockOptions options) : base(options)
+    internal class TimestampProviderOperator : ReadBaseOperator
+    {
+        private readonly TimeProvider _timeProvider;
+        private readonly TimeSpan _interval;
+        private IReadOnlySet<string> _watermarks;
+        private IObjectState<TimestampProviderState>? _state;
+        private ICounter<long>? _eventsProcessed;
+        private ICounter<long>? _eventsCounter;
+
+        public TimestampProviderOperator(TimeProvider timeProvider, TimeSpan interval, DataflowBlockOptions options) : base(options)
         {
+            _timeProvider = timeProvider;
+            _interval = interval;
             _watermarks = new HashSet<string>()
             {
                 "__timestamp"
             };
-            this.interval = interval;
         }
 
         public override string DisplayName => "Timestamp provider";
@@ -57,72 +65,77 @@ namespace FlowtideDotNet.Core.Operators.TimestampProvider
             return Task.FromResult(_watermarks);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, TimestampProviderState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<TimestampProviderState>("timestamp_state");
+            if (_state.Value == null)
             {
-                _state = state;
-            }
-            else
-            {
-                _state = new TimestampProviderState();
+                _state.Value = new TimestampProviderState();
             }
             if (_eventsProcessed == null)
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            await RegisterTrigger("update", interval);
+            if (_eventsCounter == null)
+            {
+                _eventsCounter = Metrics.CreateCounter<long>("events");
+            }
+            await RegisterTrigger("update", _interval);
         }
 
-        protected override Task<TimestampProviderState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_state != null);
-            return Task.FromResult(_state);
+            await _state.Commit();
+        }
+
+        private long DateTimeToTicks(DateTimeOffset date)
+        {
+            return date.Subtract(DateTime.UnixEpoch).Ticks;
         }
 
         private async Task UpdateTimestamp(IngressOutput<StreamEventBatch> output, object? state)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(_eventsCounter != null);
 
             await output.EnterCheckpointLock();
 
-            var currentTimestamp = DateTime.UtcNow.Subtract(DateTime.UnixEpoch).Ticks;
-            if (!_state.LastSentTimestamp.HasValue)
+            IColumn[] columns = [Column.Create(MemoryAllocator)];
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+            var currentTimestamp = _timeProvider.GetUtcNow();//.Subtract(DateTime.UnixEpoch).Ticks;
+            if (!_state.Value.LastSentTimestamp.HasValue)
             {
-                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
-                {
-                    RowEvent.Create(1, 0, b =>
-                    {
-                        b.Add(currentTimestamp);
-                    })
-                }));
+                weights.Add(1);
+                iterations.Add(0);
+                columns[0].Add(new TimestampTzValue(currentTimestamp));
+
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 _eventsProcessed.Add(1);
+                _eventsCounter.Add(1);
             }
             else
             {
-                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
-                {
-                    RowEvent.Create(1, 0, b =>
-                    {
-                        b.Add(currentTimestamp);
-                    })
-                }));
-                // Remove the previous row
-                await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
-                {
-                    RowEvent.Create(-1, 0, b =>
-                    {
-                        b.Add(_state.LastSentTimestamp.Value);
-                    })
-                }));
+                weights.Add(1);
+                iterations.Add(0);
+                columns[0].Add(new TimestampTzValue(currentTimestamp));
+
+                weights.Add(-1);
+                iterations.Add(0);
+                columns[0].Add(new TimestampTzValue(_state.Value.LastSentTimestamp.Value));
+
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 _eventsProcessed.Add(2);
+                _eventsCounter.Add(2);
             }
 
-            _state.LastSentTimestamp = currentTimestamp;
+            _state.Value.LastSentTimestamp = currentTimestamp;
 
             // Set the watermark to the current timetamp
-            await output.SendWatermark(new Base.Watermark("__timestamp", currentTimestamp));
+            await output.SendWatermark(new Base.Watermark("__timestamp", LongWatermarkValue.Create(DateTimeToTicks(currentTimestamp))));
 
             output.ExitCheckpointLock();
             // Schedule a checkpoint since data has changed

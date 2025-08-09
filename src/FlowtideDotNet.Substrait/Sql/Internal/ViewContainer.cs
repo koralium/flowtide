@@ -11,27 +11,22 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
     internal class ViewContainer
     {
-        public ViewContainer(EmitData emitData, int relationId, int outputLength)
+        public ViewContainer(EmitData emitData, Relation relation, int outputLength)
         {
             EmitData = emitData;
-            RelationId = relationId;
+            Relation = relation;
             OutputLength = outputLength;
         }
 
-        public int RelationId { get; }
+        public int? RelationId { get; set; }
 
         public EmitData EmitData { get; }
-
+        public Relation Relation { get; }
         public int OutputLength { get; }
     }
 }

@@ -14,12 +14,13 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.FixedPoint
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
     /// </summary>
     /// <typeparam name="T"></typeparam>
     /// <typeparam name="TState"></typeparam>
-    public abstract class FixedPointVertex<T, TState> : IStreamVertex
+    public abstract class FixedPointVertex<T> : IStreamVertex
     {
         private readonly MultipleInputTargetHolder _ingressTarget;
         private readonly MultipleInputTargetHolder _feedbackTarget;
@@ -49,11 +50,18 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         private ILogger? _logger;
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
         private IMeter? _metrics;
+        private StreamVersionInformation? _streamVersion;
+
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
         private bool _isHealthy = true;
         private bool _sentLockingEvent;
         private int _targetPrepareCount = 0;
         private bool singleReadSource;
+        private TaskCompletionSource? _pauseSource;
+        private IMemoryAllocator? _memoryAllocator;
+        private bool _receivedInitialLoadDoneEvent;
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         public ITargetBlock<IStreamEvent> IngressTarget => _ingressTarget;
         public ITargetBlock<IStreamEvent> FeedbackTarget => _feedbackTarget;
@@ -97,17 +105,18 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.Complete();
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> IngressInCheckpoint(ILockingEvent ev)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> IngressInCheckpoint(ILockingEvent ev)
         {
             // Set fields for locking events, the counter checks how many other messages have been
             // recieved from the loop until the prepare message is recieved.
             _waitingLockingEvent = ev;
             _messageCountSinceLockingEventPrepare = 0;
+            bool isInitEvent = ev is InitWatermarksEvent;
             // Return a CheckpointPrepare message to the loop
-            yield return new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev));
+            return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(ev, isInitEvent)));
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> FeedbackInCheckpoint(ILockingEvent ev)
         {
             // Release both input targets from checkpoint so they can start to recieve data again
             _ingressTarget.ReleaseCheckpoint();
@@ -119,26 +128,38 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 _currentTime = checkpoint.NewTime;
             }
 
+            List<KeyValuePair<int, IStreamEvent>> output = new List<KeyValuePair<int, IStreamEvent>>();
             if (_latestWatermark != null)
             {
                 // Emit latest watermark if it exists
-                yield return new KeyValuePair<int, IStreamEvent>(0, _latestWatermark);
+                output.Add(new KeyValuePair<int, IStreamEvent>(0, _latestWatermark));
                 _latestWatermark = null;
+            }
+            else
+            {
+                if (_receivedInitialLoadDoneEvent)
+                {
+                    // If no watermark and we are in a checkpoint and we recieved an initial load done event, send it forward
+                    output.Add(new KeyValuePair<int, IStreamEvent>(0, new InitialDataDoneEvent()));
+                    _receivedInitialLoadDoneEvent = false;
+                }
             }
 
             // Send out the checkpoint event out from the fixed point
-            yield return new KeyValuePair<int, IStreamEvent>(0, ev);
+            output.Add(new KeyValuePair<int, IStreamEvent>(0, ev));
+            return output.ToAsyncEnumerable();
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> OnLockingPrepareEvent(LockingEventPrepare lockingEventPrepare)
         {
             _targetPrepareCount++;
 
             // Wait until all messages have been recieved from the loop
             if (_targetPrepareCount < _loopSource.LinksCount)
             {
-                yield break;
+                return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
             }
+
             _targetPrepareCount = 0;
             // Check that no other messages have been recieved, and that there is no vertex that does not have a depedent input that is not yet in checkpoint.
             if (_messageCountSinceLockingEventPrepare == 0 && (!lockingEventPrepare.OtherInputsNotInCheckpoint || singleReadSource))
@@ -146,25 +167,33 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 // Send out the locking event
                 if (_waitingLockingEvent == null)
                 {
+                    if (lockingEventPrepare.IsInitEvent)
+                    {
+                        return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
+                    }
+                    
                     throw new InvalidOperationException("Prepare locking event without a waiting checkpoint.");
                 }
                 if (!_sentLockingEvent)
                 {
                     _sentLockingEvent = true;
-                    yield return new KeyValuePair<int, IStreamEvent>(1, _waitingLockingEvent);
+                    var msgOut = _waitingLockingEvent;
                     _waitingLockingEvent = null;
+                    return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, msgOut));
                 }
+                return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
             }
             else
             {
                 _messageCountSinceLockingEventPrepare = 0;
-                yield return new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent));
+                return new SingleAsyncEnumerable<KeyValuePair<int, IStreamEvent>>(new KeyValuePair<int, IStreamEvent>(1, new LockingEventPrepare(lockingEventPrepare.LockingEvent, lockingEventPrepare.IsInitEvent)));
             }
         }
 
         public void CreateBlock()
         {
             singleReadSource = false;
+            _receivedInitialLoadDoneEvent = false;
 
             _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
             {
@@ -214,19 +243,102 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                     if (r.Key == 0)
                     {
                         var enumerator = OnIngressRecieve(streamMessage.Data, streamMessage.Time);
-                        return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) => new KeyValuePair<int, IStreamEvent>(source.Key, source.Value));
+                        if (_pauseSource != null)
+                        {
+                            enumerator = WaitForPause(enumerator);
+                        }
+                        if (streamMessage.Data is IRentable rentable)
+                        {
+                            return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
+                        else
+                        {
+                            return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
                     }
                     // Recieve from feedback
                     if (r.Key == 1)
                     {
                         _messageCountSinceLockingEventPrepare++;
                         var enumerator = OnFeedbackRecieve(streamMessage.Data, streamMessage.Time);
-                        return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) => new KeyValuePair<int, IStreamEvent>(source.Key, source.Value));
+                        if (_pauseSource != null)
+                        {
+                            enumerator = WaitForPause(enumerator);
+                        }
+                        if (streamMessage.Data is IRentable rentable)
+                        {
+                            return new AsyncEnumerableReturnRentable<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(rentable, enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
+                        else
+                        {
+                            return new AsyncEnumerableDowncast<KeyValuePair<int, StreamMessage<T>>, KeyValuePair<int, IStreamEvent>>(enumerator, (source) =>
+                            {
+                                if (source.Value.Data is IRentable rentable)
+                                {
+                                    if (source.Key == 0)
+                                    {
+                                        rentable.Rent(_egressSource.LinksCount);
+                                    }
+                                    else
+                                    {
+                                        rentable.Rent(_loopSource.LinksCount);
+                                    }
+                                }
+                                return new KeyValuePair<int, IStreamEvent>(source.Key, source.Value);
+                            });
+                        }
                     }
                 }
                 if (r.Value is Watermark watermark)
                 {
                     return HandleWatermark(r.Key, watermark);
+                }
+                if (r.Value is InitialDataDoneEvent initialDataDoneEvent)
+                {
+                    _receivedInitialLoadDoneEvent = true;
+                    return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
                 }
                 throw new NotSupportedException();
             }, new ExecutionDataflowBlockOptions()
@@ -240,7 +352,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _ingressTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
             _feedbackTarget.LinkTo(_transformBlock, new DataflowLinkOptions() { PropagateCompletion = true });
 
-            
+
             // Create egress and loop source blocks
             _egressSource.Initialize();
             _loopSource.Initialize();
@@ -250,19 +362,33 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _transformBlock.LinkTo(_loopSource.Target, x => x.Key == 1);
         }
 
-        private async IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(int targetId, Watermark watermark)
+        private IAsyncEnumerable<KeyValuePair<int, IStreamEvent>> HandleWatermark(int targetId, Watermark watermark)
         {
             _latestWatermark = watermark;
-            yield break;
+            return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
         }
 
         protected abstract IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> OnIngressRecieve(T data, long time);
 
         protected abstract IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> OnFeedbackRecieve(T data, long time);
 
-        public virtual async IAsyncEnumerable<KeyValuePair<int, T>> OnTrigger(string name, object? state)
+        public virtual IAsyncEnumerable<KeyValuePair<int, T>> OnTrigger(string name, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<KeyValuePair<int, T>>.Instance;
+        }
+
+        private async IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> WaitForPause(IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> input)
+        {
+            var task = _pauseSource?.Task;
+            if (task != null)
+            {
+                await task;
+            }
+
+            await foreach (var element in input)
+            {
+                yield return element;
+            }
         }
 
         public virtual Task DeleteAsync()
@@ -286,18 +412,14 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             return _loopSource.Links.Union(_egressSource.Links);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
+            _memoryAllocator = vertexHandler.MemoryManager;
             _name = name;
             _currentTime = newTime;
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _metrics = vertexHandler.Metrics;
-
-            TState? parsedState = default;
-            if (state.HasValue)
-            {
-                parsedState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
+            _streamVersion = streamVersionInformation;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -367,10 +489,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
                 return measurements;
             });
 
-            return InitializeOrRestore(parsedState, vertexHandler.StateClient);
+            return InitializeOrRestore(vertexHandler.StateClient);
         }
 
-        protected abstract Task InitializeOrRestore(TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
         public void Link()
         {
@@ -391,6 +513,28 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _egressSource.Setup(streamName, operatorName);
             _loopSource.Setup(streamName, operatorName);
             _feedbackTarget.Setup(operatorName);
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

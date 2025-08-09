@@ -10,9 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-using static Substrait.Protobuf.Expression.Types;
-
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
     public sealed class NumericLiteral : Literal, IEquatable<NumericLiteral>
@@ -23,7 +20,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitNumericLiteral(this, state);
+            return visitor.VisitNumericLiteral(this, state)!;
         }
 
         public override bool Equals(object? obj)

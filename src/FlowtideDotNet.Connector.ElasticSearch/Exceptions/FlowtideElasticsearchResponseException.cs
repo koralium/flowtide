@@ -10,38 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Nest;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
+using Elastic.Transport.Products.Elasticsearch;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Exceptions
 {
     public class FlowtideElasticsearchResponseException : Exception
     {
-        public FlowtideElasticsearchResponseException(IResponse response)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response)
         {
             Response = response;
         }
 
-        public FlowtideElasticsearchResponseException(IResponse response, string? message) : base(message)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response, string? message) : base(message)
         {
             Response = response;
         }
 
-        public FlowtideElasticsearchResponseException(IResponse response, string? message, Exception? innerException) : base(message, innerException)
+        public FlowtideElasticsearchResponseException(ElasticsearchResponse response, string? message, Exception? innerException) : base(message, innerException)
         {
             Response = response;
         }
 
-        protected FlowtideElasticsearchResponseException(IResponse response, SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-            Response = response;
-        }
-
-        public IResponse Response { get; }
+        public ElasticsearchResponse Response { get; }
     }
 }

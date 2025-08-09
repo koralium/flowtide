@@ -11,14 +11,15 @@
 // limitations under the License.
 
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
     public interface IStateManager
     {
         bool Initialized { get; }
-        Task InitializeAsync();
+        Task InitializeAsync(StreamVersionInformation? streamVersionInformation);
+
+        long CurrentVersion { get; }
 
         IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
 

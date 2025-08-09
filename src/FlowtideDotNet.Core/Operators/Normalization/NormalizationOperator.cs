@@ -10,33 +10,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Read;
-using FlowtideDotNet.Substrait.Relations;
-using System.Text;
-using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Core.Utils;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Serializers;
-using Microsoft.Extensions.Logging;
+using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
-using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Core.Utils;
+using System.Text;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
     /// <summary>
     /// Takes input based on a key and keeps the latest value and sends deletes on the previous value.
     /// </summary>
-    internal class NormalizationOperator : UnaryVertex<StreamEventBatch, NormalizationState>
+    internal class NormalizationOperator : UnaryVertex<StreamEventBatch>
     {
 #if DEBUG_WRITE
-        private StreamWriter allOutput;
+        private StreamWriter? allOutput;
 #endif
         private readonly NormalizationRelation normalizationRelation;
-        private IBPlusTree<string, IngressData>? _tree;
+        private IBPlusTree<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>? _tree;
         private readonly Func<RowEvent, bool>? _filter;
 
         private ICounter<long>? _eventsCounter;
@@ -45,7 +44,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         public override string DisplayName => "Normalize";
 
         public NormalizationOperator(
-            NormalizationRelation normalizationRelation, 
+            NormalizationRelation normalizationRelation,
             FunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -61,16 +60,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             return Task.CompletedTask;
         }
 
-        public override async Task<NormalizationState> OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
 #if DEBUG_WRITE
-            allOutput.WriteLine("Checkpoint");
-            await allOutput.FlushAsync();
+            allOutput!.WriteLine("Checkpoint");
+            await allOutput!.FlushAsync();
 #endif
             Debug.Assert(_tree != null, nameof(_tree));
             // Commit changes in the tree
             await _tree.Commit();
-            return new NormalizationState();
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -79,12 +77,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             _eventsProcessed.Add(msg.Events.Count);
 
             List<RowEvent> output = new List<RowEvent>();
-            foreach(var e in msg.Events)
+            foreach (var e in msg.Events)
             {
                 if (e.Weight > 0)
                 {
                     var stringBuilder = new StringBuilder();
-                    foreach(var i in normalizationRelation.KeyIndex)
+                    foreach (var i in normalizationRelation.KeyIndex)
                     {
                         stringBuilder.Append(e.GetColumn(i).ToJson);
                         stringBuilder.Append('|');
@@ -104,22 +102,22 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     await Delete(key, output);
                 }
             }
-            
+
 
 #if DEBUG_WRITE
             foreach(var e in output)
             {
-                allOutput.WriteLine($"{e.Weight} {e.ToJson()}");
+                allOutput!.WriteLine($"{e.Weight} {e.ToJson()}");
             }
-            await allOutput.FlushAsync();
+            await allOutput!.FlushAsync();
 #endif
             if (output.Count > 0)
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output);
+                yield return new StreamEventBatch(output, normalizationRelation.OutputLength);
             }
-            
+
         }
 
         protected async Task Upsert(string ke, RowEvent input, List<RowEvent> output)
@@ -150,7 +148,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             Debug.Assert(_tree != null, nameof(_tree));
 
             bool isUpdate = false;
-            Memory<byte>? previousValue = null;
+            byte[]? previousValue = null;
 
             var ingressInput = IngressData.Create(b =>
             {
@@ -197,12 +195,12 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
             if (isUpdate)
             {
-                if (!previousValue.HasValue)
+                if (previousValue == null)
                 {
                     throw new InvalidOperationException("Previous value was null, should not happen");
                 }
                 output.Add(new RowEvent(1, 0, new CompactRowData(ingressInput.Memory)));
-                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue.Value)));
+                output.Add(new RowEvent(-1, 0, new CompactRowData(previousValue)));
             }
             else if (added)
             {
@@ -212,9 +210,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         protected async Task Delete(string ke, List<RowEvent> output)
         {
+            Debug.Assert(_tree != null);
             bool isFound = false;
             IngressData? data;
-            
+
             var (op, val) = await _tree.RMW(ke, default, (input, current, found) =>
             {
                 if (found)
@@ -233,7 +232,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
         }
 
-        protected override async Task InitializeOrRestore(NormalizationState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
 #if DEBUG_WRITE
             if (!Directory.Exists("debugwrite"))
@@ -259,12 +258,14 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            _tree = await stateManagerClient.GetOrCreateTree("input", new BPlusTreeOptions<string, IngressData>()
-            {
-                Comparer = StringComparer.Ordinal,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new IngressDataStateSerializer()
-            });
+            _tree = await stateManagerClient.GetOrCreateTree("input",
+                new BPlusTreeOptions<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>()
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.Ordinal),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<IngressData>(new IngressDataStateSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
         }
 
         public override ValueTask DisposeAsync()

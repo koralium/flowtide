@@ -10,21 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
-using FlowtideDotNet.Storage.DeviceFactories;
-using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
-using FASTER.core;
-using FluentAssertions;
-using System.Diagnostics;
-using FlowtideDotNet.Core.Tests.SmokeTests.Count;
-using FlowtideDotNet.Core.Connectors;
-using Microsoft.Extensions.Logging.Console;
+using FlowtideDotNet.Storage.DeviceFactories;
+using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Serilog;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -32,9 +29,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
     {
         FlowtideBuilder differentialComputeBuilder;
         SubstraitDeserializer deserializer;
-        FlowtideDotNet.Base.Engine.DataflowStream dataflowStream;
+        FlowtideDotNet.Base.Engine.DataflowStream? dataflowStream;
         private int changesCounter = 0;
-        private DefaultStreamScheduler _streamScheduler;
+        private DefaultStreamScheduler? _streamScheduler;
         //List<LineItem>? actualData;
         public QuerySmokeTestBase()
         {
@@ -42,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             deserializer = new SubstraitDeserializer();
         }
 
-        public abstract void AddReadResolvers(IConnectorManager connectorManager);
+        protected abstract void AddReadResolvers(IConnectorManager connectorManager);
 
         public async Task DisposeAsync()
         {
@@ -60,11 +57,15 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         private async Task StartStream<TResult>(string testName, string planLocation, Action<List<TResult>> datachange, List<int> primaryKeysOutput, PlanOptimizerSettings? settings = null)
         {
+            differentialComputeBuilder = new FlowtideBuilder(testName);
             var plantext = File.ReadAllText(planLocation);
             var plan = deserializer.Deserialize(plantext);
             PlanModifier planModifier = new PlanModifier();
             planModifier.AddRootPlan(plan);
+            // Supress since write to table is required for this test
+#pragma warning disable CS0618 // Type or member is obsolete
             planModifier.WriteToTable("testoutput");
+#pragma warning restore CS0618 // Type or member is obsolete
             var modifiedPlan = planModifier.Modify();
 
             modifiedPlan = PlanOptimizer.Optimize(modifiedPlan, settings);
@@ -72,16 +73,23 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             ConnectorManager connectorManager = new ConnectorManager();
             AddReadResolvers(connectorManager);
 
-            bool gotData = false;
-
             _streamScheduler = new DefaultStreamScheduler();
             connectorManager.AddSink(new TestWriteOperatorFactory<TResult>("*", primaryKeysOutput, (rows) =>
             {
                 changesCounter++;
-                gotData = true;
                 datachange(rows);
                 return Task.CompletedTask;
             }));
+
+            var loggerFactory = LoggerFactory.Create(b =>
+            {
+                var logger = new LoggerConfiguration()
+                    .MinimumLevel.Debug()
+                    .WriteTo.File($"debugwrite/{testName.Replace("/", "_")}.log")
+                    .CreateLogger();
+                b.AddSerilog(logger);
+                b.AddDebug();
+            });
 
             var checkpointManager = new DeviceLogCommitCheckpointManager(
                 new InMemoryDeviceFactory(),
@@ -91,11 +99,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .AddPlan(modifiedPlan, false)
                 .AddConnectorManager(connectorManager)
                 .WithScheduler(_streamScheduler)
+                .WithLoggerFactory(loggerFactory)
                 .WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
                 {
-                    CachePageCount = 100000,
-                    LogDevice = logDevice,
-                    CheckpointManager = checkpointManager
+                    CachePageCount = 100000
                 })
                 .Build();
 
@@ -111,9 +118,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItem>("SelectLineItems", "./SmokeTests/SelectLineItems/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new List<int>() { 0, 1});
+            }, new List<int>() { 0, 1 });
 
-            while(changesCounter == 0)
+            while (changesCounter == 0)
             {
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
@@ -122,7 +129,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -137,6 +144,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -154,7 +162,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -176,12 +184,12 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             var lineItemsExpected = TpchData.GetLineItems()
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
-                .Where(x => x.Shipmode.Equals("truck", StringComparison.OrdinalIgnoreCase))
+                .Where(x => x.Shipmode!.Equals("truck", StringComparison.OrdinalIgnoreCase))
                 .ToList();
             Assert.Equal(lineItemsExpected.Count, actualData!.Count);
             for (int i = 0; i < lineItemsExpected.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(lineItemsExpected[i]);
+                Assert.Equivalent(lineItemsExpected[i], actualData[i]);
             }
         }
 
@@ -210,19 +218,19 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -236,6 +244,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter == 0)
             {
@@ -252,35 +261,35 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
-        public abstract Task ClearAllTables();
+        protected abstract Task ClearAllTables();
 
-        public abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
+        protected abstract Task AddLineItems(IEnumerable<LineItem> lineItems);
 
-        public abstract Task AddOrders(IEnumerable<Order> orders);
+        protected abstract Task AddOrders(IEnumerable<Order> orders);
 
-        public abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
+        protected abstract Task AddShipmodes(IEnumerable<Shipmode> shipmodes);
 
-        public abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
+        protected abstract Task UpdateShipmodes(IEnumerable<Shipmode> shipmode);
 
-        public abstract Task Crash();
+        protected abstract Task Crash();
 
-        public abstract Task Restart();
+        protected abstract Task Restart();
 
         [Fact]
         public async Task LineItemInnerJoinOrders()
@@ -307,19 +316,19 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -332,7 +341,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await StartStream<LineItemJoinOrderResult>("LineItemInnerJoinOrdersNLJ", "./SmokeTests/LineItemInnerJoinOrders/queryplan.json", rows =>
             {
                 actualData = rows;
-            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true});
+            }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
 
             while (changesCounter == 0)
             {
@@ -348,19 +357,19 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                         Linenumber = l.Linenumber,
                         Quantity = l.Quantity,
                         Custkey = r.Custkey,
-                        Orderstatus = r.Orderstatus,
+                        Orderstatus = r.Orderstatus!,
                     };
                 })
                 .OrderBy(x => x.Orderkey)
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -394,12 +403,12 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 .ThenBy(x => x.Linenumber)
                 .ToList();
 
-            actualData = actualData.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
+            actualData = actualData!.OrderBy(x => x.Orderkey).ThenBy(x => x.Linenumber).ToList();
 
             Assert.Equal(expectedData.Count, actualData!.Count);
             for (int i = 0; i < expectedData.Count; i++)
             {
-                actualData[i].Should().BeEquivalentTo(expectedData[i]);
+                Assert.Equivalent(expectedData[i], actualData[i]);
             }
         }
 
@@ -408,12 +417,13 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         {
             var truck = TpchData.GetShipmodes().First(x => x.Mode == "TRUCK");
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
-            
+
             List<StringJoinResult>? actualData = default;
             await StartStream<StringJoinResult>("LeftJoinUpdateLeftValues", "./SmokeTests/LeftJoinUpdateLeftValues/queryplan.json", rows =>
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -427,8 +437,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
+            Assert.NotNull(actualData);
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -445,7 +456,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -467,7 +478,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>() { truck });
 
@@ -484,7 +495,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]
@@ -498,6 +509,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -511,8 +523,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
+            Assert.NotNull(actualData);
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -529,7 +542,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -551,7 +564,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>() { truck });
 
@@ -568,7 +581,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]
@@ -582,6 +595,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 }, new PlanOptimizerSettings() { NoMergeJoin = true });
+            Debug.Assert(_streamScheduler != null);
 
             while (changesCounter < 1)
             {
@@ -589,7 +603,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
             }
 
-            Assert.Empty(actualData);
+            Assert.Empty(actualData!);
 
             await AddShipmodes(new List<Shipmode>() { truck });
 
@@ -605,8 +619,9 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Linenumber = 1,
                 Orderkey = 14977
             };
+            Assert.NotNull(actualData);
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
 
             await UpdateShipmodes(new List<Shipmode>(){ new Shipmode()
             {
@@ -638,7 +653,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 Orderkey = 14977
             };
             Assert.Single(actualData);
-            actualData[0].Should().BeEquivalentTo(expectedData);
+            Assert.Equivalent(expectedData, actualData[0]);
         }
 
         [Fact]
@@ -652,6 +667,8 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             {
                 actualData = rows;
             }, new List<int>() { 0, 1 });
+            Debug.Assert(_streamScheduler != null);
+            Debug.Assert(dataflowStream != null);
 
             while (changesCounter < 1)
             {
@@ -678,12 +695,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 if (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
                 {
                     graph = dataflowStream.GetDiagnosticsGraph();
-                    graph.Nodes.TryGetValue("3", out var node1);
-                    graph.Nodes.TryGetValue("5", out var node2);
-                    var node1Health = node1!.Gauges.FirstOrDefault(x => x.Name == "flowtide_health")!.Dimensions[""].Value;
-                    var node2Health = node2!.Gauges.FirstOrDefault(x => x.Name == "flowtide_health")!.Dimensions[""].Value;
 
-                    if (node1Health == 1 && node2Health == 1)
+                    var healthValues = new List<decimal>();
+                    foreach (var gauge in graph.Nodes.Select(x => x.Value.Gauges.First(x => x.Name == "flowtide_health")))
+                    {
+                        healthValues.Add(gauge.Dimensions[""].Value);
+                    }
+
+                    if (healthValues.All(x => x == 1))
                     {
                         break;
                     }

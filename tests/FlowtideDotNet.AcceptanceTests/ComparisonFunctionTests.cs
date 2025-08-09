@@ -72,7 +72,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT is_infinite(firstName) FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { val = false }));
+            AssertCurrentDataEqual(Users.Select(x => new { val = default(string) }));
         }
 
         [Fact]
@@ -140,7 +140,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     is_nan(0/0), is_nan(1/2), is_nan(userkey), is_nan(nullablestring) 
                 FROM users u");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = x.NullableString == null ? default(bool?) : true}));
+            AssertCurrentDataEqual(Users.Select(x => new { nan = true, not_nan = false, userkey = false, nullString = default(string) }));
         }
 
         [Fact]
@@ -224,6 +224,56 @@ namespace FlowtideDotNet.AcceptanceTests
                 WHERE u.visits <= 3");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.Visits <= 3).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task GreatestNoNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    greatest(u.userkey, 200, 250)
+                FROM users u");
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                return new
+                {
+                    value = Math.Max(x.UserKey, 250)
+                };
+            }));
+        }
+
+        [Fact]
+        public async Task GreatestNullable()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    greatest(u.visits, 4)
+                FROM users u");
+            await WaitForUpdate();
+
+            var act = GetActualRows();
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                if (x.Visits.HasValue)
+                {
+                    return new
+                    {
+                        value = (int?)Math.Max(x.Visits.Value, 4)
+                    };
+                }
+                return new
+                {
+                    value = default(int?)
+                };
+                
+            }));
         }
     }
 }

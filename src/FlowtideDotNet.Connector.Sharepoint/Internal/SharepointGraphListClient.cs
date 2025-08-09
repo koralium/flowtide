@@ -11,19 +11,13 @@
 // limitations under the License.
 
 using Azure.Core;
-using FlexBuffers;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Decoders;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Encoders;
-using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Kiota.Abstractions;
-using Microsoft.Kiota.Http.HttpClientLibrary.Middleware;
-using Microsoft.Kiota.Http.HttpClientLibrary.Middleware.Options;
-using System.Buffers;
-using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text;
 
@@ -58,7 +52,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             this.streamName = streamName;
             this.operatorId = operatorId;
             this.logger = logger;
-            
+
         }
 
         public async Task Initialize()
@@ -126,7 +120,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     break;
                 }
             }
-            
+
             if (response.StatusCode != System.Net.HttpStatusCode.OK)
             {
                 var err = await response.Content.ReadAsStringAsync();
@@ -172,7 +166,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             var columnsDict = await GetColumns(list);
 
             Dictionary<string, IColumnDecoder> output = new Dictionary<string, IColumnDecoder>();
-            foreach(var column in columnNames)
+            foreach (var column in columnNames)
             {
                 var encoder = GetColumnDecoder(column, columnsDict);
                 await encoder.Initialize(column, list, this, stateManagerClient.GetChildManager(column), columnsDict);
@@ -191,7 +185,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             List<IColumnEncoder> output = new List<IColumnEncoder>();
-            foreach(var column in columns)
+            foreach (var column in columns)
             {
                 var col = listColumns.Value.Find(x => x.Name?.Equals(column, StringComparison.OrdinalIgnoreCase) ?? false);
                 if (col == null)
@@ -248,6 +242,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 if (columnDefinition.PersonOrGroup != null)
                 {
                     return new GroupPersonDecoder();
+                }
+                if (columnDefinition.Number != null)
+                {
+                    return new NumberDecoder(columnDefinition.Number);
                 }
             }
 
@@ -338,9 +336,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     AdditionalData = obj
                 }
             });
-            if (item == null) 
-            { 
-                throw new InvalidOperationException("Could not create item"); 
+            if (item == null)
+            {
+                throw new InvalidOperationException("Could not create item");
             }
             return item.Id!;
         }

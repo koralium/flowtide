@@ -41,8 +41,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void Initialize(StreamStateValue previousState)
         {
+            Debug.Assert(_context != null, nameof(_context));
+            _context.CheckForPause();
             lock (_lock)
             {
+                _context.SetStatus(StreamStatus.Deleting);
                 if (_deleteTask != null && !_deleteTask.IsCompleted)
                 {
                     return;
@@ -63,14 +66,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                 });
             }
-            
+
         }
 
         private async Task DeleteEntireStream()
         {
             Debug.Assert(_context != null, nameof(_context));
-            
-            _context.ForEachBlock((key,block) =>
+
+            _context.ForEachBlock((key, block) =>
             {
                 block.Complete();
             });
@@ -87,6 +90,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 await block.DeleteAsync();
             });
+
+            _context._stateManager.Dispose();
 
             await TransitionTo(StreamStateValue.Deleted);
         }
@@ -109,6 +114,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task DeleteAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public override Task StopAsync()
+        {
+            throw new NotSupportedException("Stream is being deleted");
         }
     }
 }

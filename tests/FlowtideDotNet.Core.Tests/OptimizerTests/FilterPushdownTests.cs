@@ -16,7 +16,6 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
-using FluentAssertions;
 
 namespace FlowtideDotNet.Core.Tests.OptimizerTests
 {
@@ -137,20 +136,44 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
-                                ExtensionName = FunctionsComparison.Equal,
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
                                 Arguments = new List<Expression>()
                                 {
-                                    new DirectFieldReference()
+                                    new ScalarFunction()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
                                         {
-                                            Field = 0
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "test"
+                                            }
                                         }
                                     },
-                                    new StringLiteral()
+                                    new ScalarFunction()
                                     {
-                                        Value = "test"
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.IsNotNull,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+
+                                        }
                                     }
                                 }
                             },
@@ -166,23 +189,40 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 }
                             }
                         },
-                        Right = new ReadRelation()
+                        Right = new FilterRelation()
                         {
-                            NamedTable = new Substrait.Type.NamedTable()
+                            Condition = new ScalarFunction()
                             {
-                                Names = new List<string>(){ "table2" }
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotNull,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    }
+                                }
                             },
-                            BaseSchema = new Substrait.Type.NamedStruct()
+                            Input = new ReadRelation()
                             {
-                                Names = new List<string>(){ "c1", "c2"}
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>(){ "c1", "c2"}
+                                }
                             }
                         }
                     }
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
         [Fact]
@@ -300,20 +340,44 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
-                                ExtensionName = FunctionsComparison.Equal,
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
                                 Arguments = new List<Expression>()
                                 {
-                                    new DirectFieldReference()
+                                    new ScalarFunction()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
                                         {
-                                            Field = 0
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "test"
+                                            }
                                         }
                                     },
-                                    new StringLiteral()
+                                    new ScalarFunction()
                                     {
-                                        Value = "test"
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.IsNotNull,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+
+                                        }
                                     }
                                 }
                             },
@@ -329,23 +393,40 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 }
                             }
                         },
-                        Left = new ReadRelation()
+                        Left = new FilterRelation()
                         {
-                            NamedTable = new Substrait.Type.NamedTable()
+                            Condition = new ScalarFunction()
                             {
-                                Names = new List<string>(){ "table1" }
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotNull,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    }
+                                }
                             },
-                            BaseSchema = new Substrait.Type.NamedStruct()
+                            Input = new ReadRelation()
                             {
-                                Names = new List<string>(){ "c1", "c2"}
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>(){ "c1", "c2"}
+                                }
                             }
                         }
                     }
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
         [Fact]
@@ -379,7 +460,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Input = new JoinRelation()
                         {
                             Type = JoinType.Inner,
-                            Emit = new List<int>(){ 2 }, 
+                            Emit = new List<int>(){ 2 },
                             Expression = new ScalarFunction()
                             {
                                 ExtensionUri = FunctionsComparison.Uri,
@@ -465,20 +546,44 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
-                                ExtensionName = FunctionsComparison.Equal,
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
                                 Arguments = new List<Expression>()
                                 {
-                                    new DirectFieldReference()
+                                    new ScalarFunction()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
                                         {
-                                            Field = 0
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "test"
+                                            }
                                         }
                                     },
-                                    new StringLiteral()
+                                    new ScalarFunction()
                                     {
-                                        Value = "test"
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.IsNotNull,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+
+                                        }
                                     }
                                 }
                             },
@@ -494,23 +599,40 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 }
                             }
                         },
-                        Left = new ReadRelation()
+                        Left = new FilterRelation()
                         {
-                            NamedTable = new Substrait.Type.NamedTable()
+                            Condition = new ScalarFunction()
                             {
-                                Names = new List<string>(){ "table1" }
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotNull,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    }
+                                }
                             },
-                            BaseSchema = new Substrait.Type.NamedStruct()
+                            Input = new ReadRelation()
                             {
-                                Names = new List<string>(){ "c1", "c2"}
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table1" }
+                                },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>(){ "c1", "c2"}
+                                }
                             }
                         }
                     }
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
         [Fact]
@@ -657,23 +779,40 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 }
                             }
                         },
-                        Right = new ReadRelation()
+                        Right = new FilterRelation()
                         {
-                            NamedTable = new Substrait.Type.NamedTable()
+                            Condition = new ScalarFunction()
                             {
-                                Names = new List<string>(){ "table2" }
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotNull,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    }
+                                }
                             },
-                            BaseSchema = new Substrait.Type.NamedStruct()
+                            Input = new ReadRelation()
                             {
-                                Names = new List<string>(){ "c1", "c2"}
+                                NamedTable = new Substrait.Type.NamedTable()
+                                {
+                                    Names = new List<string>(){ "table2" }
+                                },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>(){ "c1", "c2"}
+                                }
                             }
                         }
                     }
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
 
@@ -820,15 +959,33 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                     Names = new List<string>(){ "c1", "c2"}
                                 }
                             },
-                            Right = new ReadRelation()
+                            Right = new FilterRelation()
                             {
-                                NamedTable = new Substrait.Type.NamedTable()
+                                Input = new ReadRelation()
                                 {
-                                    Names = new List<string>(){ "table2" }
+                                    NamedTable = new Substrait.Type.NamedTable()
+                                    {
+                                        Names = new List<string>(){ "table2" }
+                                    },
+                                    BaseSchema = new Substrait.Type.NamedStruct()
+                                    {
+                                        Names = new List<string>(){ "c1", "c2"}
+                                    }
                                 },
-                                BaseSchema = new Substrait.Type.NamedStruct()
+                                Condition = new ScalarFunction()
                                 {
-                                    Names = new List<string>(){ "c1", "c2"}
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.IsNotNull,
+                                    Arguments = new List<Expression>()
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -836,8 +993,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
         [Fact]
@@ -982,20 +1138,43 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
-                                ExtensionName = FunctionsComparison.Equal,
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
                                 Arguments = new List<Expression>()
                                 {
-                                    new DirectFieldReference()
+                                    new ScalarFunction()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
                                         {
-                                            Field = 0
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "test"
+                                            }
                                         }
                                     },
-                                    new StringLiteral()
+                                    new ScalarFunction()
                                     {
-                                        Value = "test"
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.IsNotNull,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -1015,20 +1194,43 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
-                                ExtensionName = FunctionsComparison.Equal,
+                                ExtensionUri = FunctionsBoolean.Uri,
+                                ExtensionName = FunctionsBoolean.And,
                                 Arguments = new List<Expression>()
                                 {
-                                    new DirectFieldReference()
+                                    new ScalarFunction()
                                     {
-                                        ReferenceSegment = new StructReferenceSegment()
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.Equal,
+                                        Arguments = new List<Expression>()
                                         {
-                                            Field = 0
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            },
+                                            new StringLiteral()
+                                            {
+                                                Value = "test"
+                                            }
                                         }
                                     },
-                                    new StringLiteral()
+                                    new ScalarFunction()
                                     {
-                                        Value = "test"
+                                        ExtensionUri = FunctionsComparison.Uri,
+                                        ExtensionName = FunctionsComparison.IsNotNull,
+                                        Arguments = new List<Expression>()
+                                        {
+                                            new DirectFieldReference()
+                                            {
+                                                ReferenceSegment = new StructReferenceSegment()
+                                                {
+                                                    Field = 0
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             },
@@ -1048,8 +1250,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
 
 
@@ -1245,25 +1446,42 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                     }
                                 }
                             },
-                            Right = new ReadRelation()
+                            Right = new FilterRelation()
                             {
-                                NamedTable = new Substrait.Type.NamedTable()
+                                Condition = new ScalarFunction()
                                 {
-                                    Names = new List<string>(){ "table2" }
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.IsNotNull,
+                                    Arguments = new List<Expression>()
+                                    {
+                                        new DirectFieldReference()
+                                        {
+                                            ReferenceSegment = new StructReferenceSegment()
+                                            {
+                                                Field = 0
+                                            }
+                                        }
+                                    }
                                 },
-                                BaseSchema = new Substrait.Type.NamedStruct()
+                                Input = new ReadRelation()
                                 {
-                                    Names = new List<string>(){ "c1", "c2"}
+                                    NamedTable = new Substrait.Type.NamedTable()
+                                    {
+                                        Names = new List<string>(){ "table2" }
+                                    },
+                                    BaseSchema = new Substrait.Type.NamedStruct()
+                                    {
+                                        Names = new List<string>(){ "c1", "c2"}
+                                    }
                                 }
                             }
                         }
                     }
-                    
+
                 }
             };
 
-            optimizedPlan.Should().BeEquivalentTo(expectedPlan,
-                opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes());
+            Assert.Equal(expectedPlan, optimizedPlan);
         }
     }
 }

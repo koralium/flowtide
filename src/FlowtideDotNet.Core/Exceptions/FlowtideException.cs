@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.Serialization;
-
 namespace FlowtideDotNet.Core.Exceptions
 {
     public class FlowtideException : Exception
@@ -25,10 +23,6 @@ namespace FlowtideDotNet.Core.Exceptions
         }
 
         public FlowtideException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
-
-        protected FlowtideException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

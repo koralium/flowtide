@@ -194,6 +194,87 @@ Returns the number of characters in a string, if the input is not a string or nu
 
 ### SQL Usage
 
-```
+```sql
 SELECT LEN(c1) FROM ...
+```
+
+## Strpos
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#strpos)
+
+Finds the index of a substring in another string. This function follows the substrait implementation and returns
+index 1 for the first character.
+
+### SQL Usage
+
+```sql
+SELECT strpos(c1, 'abc') FROM ...
+```
+
+## String split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#string_split)
+
+Splits a string into a collection of substrings based on the specified delimiter character. 
+
+_If the provided delimiter character is null, the original string will be returned as the only element in the resulting collection._
+
+_If the provided delimiter character is not a string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT string_split('a b', ' ') ...
+```
+
+## Regexp string split
+
+[Substrait definition](https://substrait.io/extensions/functions_string/#regexp_string_split)
+
+Splits a string into a collection of substrings based on the specified pattern.
+
+_If any of the arguments is not string, null will be returned._
+
+### SQL Usage
+
+```sql
+SELECT regexp_string_split('a b', '\s') ...
+```
+
+## To Json
+
+This function does not have a substrait definition.
+
+Converts an object into json stored as a string.
+
+### SQL Usage
+
+```sql
+SELECT to_json(column1) ...
+```
+
+## From Json
+
+This function does not have a substrait definition.
+
+Converts a JSON string to flowtide data objects. It is also possible to use a binary value in utf8 encoding as the input.
+
+### SQL Usage
+
+```sql
+SELECT from_json(myjsoncolumn) ...
+```
+
+## String Join
+
+Joins the elements of a list into a single string, using the specified separator between each element. The function ignores any `NULL` values in the list—only non-`NULL` elements are included in the final string.
+
+If the list is `NULL`, the function returns `NULL`. If the list is empty or contains only `NULL` values, the result is an empty string.
+
+This function is useful for concatenating list values (e.g., strings or numbers) into a readable or formatted output.
+
+### SQL Usage
+
+```sql
+SELECT string_join(', ', list_column) FROM ...
 ```

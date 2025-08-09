@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.StateManager.Internal;
 using FASTER.core;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.FasterStorage
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             var result = await m_adminSession.UpsertAsync(1, SpanByte.FromPinnedMemory(memory), token: tokenSource.Token);
             var status = result.Complete();
             handle.Dispose();
-            
+
             await TakeCheckpointAsync(includeIndex);
         }
 
@@ -53,20 +53,13 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             do
             {
                 using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-                if (includeIndex)
+                (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
+                if (!success)
                 {
-                    (success, token) = await m_persistentStorage.TakeFullCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
-                }
-                else
-                {
-                    (success, token) = await m_persistentStorage.TakeHybridLogCheckpointAsync(CheckpointType.FoldOver, cancellationToken: tokenSource.Token).ConfigureAwait(false);
-                }
-                if (!success) 
-                { 
-                    retryCount++; 
+                    retryCount++;
                     if (retryCount > 10)
                     {
-                        throw new InvalidOperationException("Failed to take checkpoint"); 
+                        throw new InvalidOperationException("Failed to take checkpoint");
                     }
                 }
             } while (!success);
@@ -80,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             return new FasterKVPersistentSession(session);
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             try
             {
@@ -92,9 +85,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             }
         }
 
-        public async ValueTask CompactAsync()
+        public ValueTask CompactAsync()
         {
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
+            return ValueTask.CompletedTask;
         }
 
         public ValueTask ResetAsync()
@@ -108,7 +102,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             await m_persistentStorage.RecoverAsync(recoverTo: checkpointVersion);
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
             var result = m_adminSession.Read(key);
             if (result.status.Found || result.status.IsPending)

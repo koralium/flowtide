@@ -74,11 +74,6 @@ namespace FlowtideDotNet.Substrait.Relations
             throw new NotImplementedException("Normalization relation is not implemented");
         }
 
-        public virtual TReturn VisitUnwrapRelation(UnwrapRelation unwrapRelation, TState state)
-        {
-            throw new NotImplementedException("Unwrap relation is not implemented");
-        }
-
         public virtual TReturn VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, TState state)
         {
             throw new NotImplementedException("Virtual table read relation is not implemented");
@@ -88,7 +83,7 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("Aggregate relation is not implemented");
         }
-        
+
         public virtual TReturn VisitIterationRelation(IterationRelation iterationRelation, TState state)
         {
             throw new NotImplementedException("Iteration relation is not implemented");
@@ -142,6 +137,11 @@ namespace FlowtideDotNet.Substrait.Relations
         public virtual TReturn VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, TState state)
         {
             throw new NotImplementedException("StandardOutputExchangeReferenceRelation is not implemented");
+        }
+
+        public virtual TReturn VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, TState state)
+        {
+            throw new NotImplementedException("ConsistentPartitionWindowRelation is not implemented");
         }
     }
 }

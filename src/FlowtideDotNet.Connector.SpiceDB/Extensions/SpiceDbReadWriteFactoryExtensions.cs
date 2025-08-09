@@ -14,12 +14,7 @@ using FlowtideDotNet.Connector.SpiceDB.Internal;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Extensions
 {
@@ -39,7 +34,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Extensions
                     return null;
                 }
                 transform?.Invoke(writeRel);
-                return new SpiceDbSink(spiceDbSinkOptions, writeRel, spiceDbSinkOptions.ExecutionMode, opt);
+                return new ColumnSpiceDbSink(spiceDbSinkOptions, spiceDbSinkOptions.ExecutionMode, writeRel, opt);
             });
             return factory;
         }
@@ -113,7 +108,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Extensions
                 }
                 indices.Add(objectIdIndex);
 
-                return new ReadOperatorInfo(new SpiceDbSource(options, readRelation, opt), new NormalizationRelation()
+                return new ReadOperatorInfo(new ColumnSpiceDbSource(options, readRelation, opt), new NormalizationRelation()
                 {
                     Input = readRelation,
                     Filter = readRelation.Filter,

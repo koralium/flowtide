@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.SqlServer.Tests
@@ -23,7 +23,7 @@ namespace FlowtideDotNet.SqlServer.Tests
         [Fact]
         public void TempTableIsTemporary()
         {
-            var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => "" }, new Substrait.Relations.WriteRelation()
+            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => "" }, new Substrait.Relations.WriteRelation()
             {
                 Input = new ReadRelation()
                 {

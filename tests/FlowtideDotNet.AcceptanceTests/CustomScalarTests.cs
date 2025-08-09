@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using Xunit.Abstractions;
 
@@ -27,16 +29,19 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task CustomStaticScalar()
         {
-            SqlFunctionRegister.RegisterScalarFunction("static", 
+            SqlFunctionRegister.RegisterScalarFunction("static",
                 (func, visitor, emitData) =>
                 {
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = "/custom.yaml",
-                        ExtensionName = "static",
-                        Arguments = args
-                    };
+                    return new Substrait.Sql.ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = "/custom.yaml",
+                            ExtensionName = "static",
+                            Arguments = args
+                        },
+                        new AnyType()
+                        );
                 });
 
             FunctionsRegister.RegisterScalarFunction("/custom.yaml", "static",
@@ -51,18 +56,39 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { v = "staticvalue" }));
         }
 
+        internal static FunctionArgumentList GetFunctionArguments(FunctionArguments arguments)
+        {
+            if (arguments is FunctionArguments.List listArguments)
+            {
+                return listArguments.ArgumentList;
+            }
+            if (arguments is FunctionArguments.None noneArguments)
+            {
+                return new FunctionArgumentList(new SqlParser.Sequence<FunctionArg>());
+            }
+            if (arguments is FunctionArguments.Subquery subQueryArgument)
+            {
+                throw new SubstraitParseException("Subquery is not supported as an argument");
+            }
+            else
+            {
+                throw new SubstraitParseException("Unknown function argument type");
+            }
+        }
+
         [Fact]
         public async Task CustomOneParameterWithExpression()
         {
             SqlFunctionRegister.RegisterScalarFunction("addnumbers",
                 (func, visitor, emitData) =>
                 {
-                    if (func.Args?.Count != 1)
+                    var argList = GetFunctionArguments(func.Args);
+                    if (argList.Args?.Count != 1)
                     {
                         throw new ArgumentException("Addnumbers must have 1 parameter");
                     }
                     List<Substrait.Expressions.Expression> args = new List<Substrait.Expressions.Expression>();
-                    if (func.Args[0] is FunctionArg.Unnamed unnamedArg)
+                    if (argList.Args[0] is FunctionArg.Unnamed unnamedArg)
                     {
                         if (unnamedArg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                         {
@@ -77,13 +103,16 @@ namespace FlowtideDotNet.AcceptanceTests
                     {
                         throw new ArgumentException("Named arguments is not supported for addnumbers");
                     }
-                    
-                    return new ScalarFunction()
-                    {
-                        ExtensionUri = "/custom.yaml",
-                        ExtensionName = "addnumbers",
-                        Arguments = args
-                    };
+
+                    return new Substrait.Sql.ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = "/custom.yaml",
+                            ExtensionName = "addnumbers",
+                            Arguments = args
+                        },
+                        new AnyType()
+                        );
                 });
 
             FunctionsRegister.RegisterScalarFunctionWithExpression("/custom.yaml", "addnumbers",

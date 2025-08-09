@@ -10,11 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
-using FASTER.core;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
 
@@ -39,12 +41,13 @@ namespace FlowtideDotNet.Storage.Tests
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             await tree.Upsert(1, "hello");
@@ -53,12 +56,12 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
-            
+
             await tree.Upsert(1, "helloOther");
 
             var (found, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
-            
+
             // Restore
             await stateManager.InitializeAsync();
 
@@ -74,7 +77,8 @@ namespace FlowtideDotNet.Storage.Tests
             (found, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
-  ;     }
+            ;
+        }
 
         [Fact]
         public async Task TestFailureAfterNewRootInBPlusTree()
@@ -93,12 +97,13 @@ namespace FlowtideDotNet.Storage.Tests
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             await tree.Upsert(0, "hello0");
@@ -151,17 +156,18 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
                     })
-                },  NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             await tree.Upsert(1, "hello");

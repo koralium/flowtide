@@ -13,7 +13,7 @@
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
-using Nest;
+using Elastic.Clients.Elasticsearch;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Tests
 {
@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
             {
                 await container.DisposeAsync();
             }
-            
+
         }
 
         private sealed class WaitUntil : IWaitUntil
@@ -53,9 +53,13 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
             await container.StartAsync();
         }
 
-        public ConnectionSettings GetConnectionSettings()
+        public ElasticsearchClientSettings GetConnectionSettings()
         {
-            return new ConnectionSettings(new Uri($"http://localhost:{container.GetMappedPublicPort(9200)}"));
+            if (container == null)
+            {
+                throw new InvalidOperationException("Container is not initialized");
+            }
+            return new ElasticsearchClientSettings(new Uri($"http://localhost:{container.GetMappedPublicPort(9200)}"));
         }
     }
 }

@@ -10,37 +10,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Operators.Set;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
-using System.Buffers;
+using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
-    internal class MockDataSinkState : IStatefulWriteState
+    internal class MockDataSink : WriteBaseOperator
     {
-        public bool InitialCheckpointDone { get; set; }
-        public long StorageSegmentId { get; set; }
-    }
-
-    internal class MockDataSink : WriteBaseOperator<MockDataSinkState>
-    {
-        private readonly Action<List<byte[]>> onDataChange;
+        private readonly WriteRelation writeRelation;
+        private readonly Action<EventBatchData> onDataChange;
         private int crashOnCheckpointCount;
-        private SortedDictionary<RowEvent, int> currentData;
         private bool watermarkRecieved = false;
+        private Action<Watermark> onWatermark;
+        private EventBatchData? _lastSentBatch;
+
+        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
+
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter? allInput;
+#endif
+
         public MockDataSink(
-            ExecutionDataflowBlockOptions executionDataflowBlockOptions, 
-            Action<List<byte[]>> onDataChange,
-            int crashOnCheckpointCount) : base(executionDataflowBlockOptions)
+            WriteRelation writeRelation,
+            ExecutionDataflowBlockOptions executionDataflowBlockOptions,
+            Action<EventBatchData> onDataChange,
+            int crashOnCheckpointCount,
+            Action<Watermark> onWatermark) : base(executionDataflowBlockOptions)
         {
-            currentData = new SortedDictionary<RowEvent, int>(new BPlusTreeStreamEventComparer());
+            this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
             this.crashOnCheckpointCount = crashOnCheckpointCount;
+            this.onWatermark = onWatermark;
         }
 
         public override string DisplayName => "Mock Data Sink";
@@ -55,65 +65,125 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.CompletedTask;
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, MockDataSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            
-            return Task.CompletedTask;
+#if DEBUG_WRITE
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt");
+            }
+#endif
+            _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
+            {
+                Comparer = new ColumnComparer(writeRelation.OutputLength),
+                KeySerializer = new ColumnStoreSerializer(writeRelation.OutputLength, MemoryAllocator),
+                ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
+                MemoryAllocator = MemoryAllocator,
+                UseByteBasedPageSizes = true
+            });
         }
 
         protected override Task OnWatermark(Watermark watermark)
         {
             watermarkRecieved = true;
+            if (onWatermark != null)
+            {
+                onWatermark(watermark);
+            }
             return base.OnWatermark(watermark);
         }
 
-        protected override Task<MockDataSinkState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             if (crashOnCheckpointCount > 0)
             {
                 crashOnCheckpointCount--;
-                throw new Exception("Crash on checkpoint");
+                throw new CrashException("Crash on checkpoint");
             }
-            if (currentData.Any(x => x.Value < 0))
-            {
-                Assert.Fail("Row exist in sink with negaive weight");
-            }
-            var nonDeletedRows = currentData.Where(x => x.Value > 0);
-            List<byte[]> output = new List<byte[]>();
 
-            foreach (var row in nonDeletedRows)
+            Debug.Assert(_tree != null);
+
+            Column[] columns = new Column[writeRelation.OutputLength];
+
+            for (int i = 0; i < writeRelation.OutputLength; i++)
             {
-                for (int i = 0; i < row.Value; i++)
+                columns[i] = new Column(MemoryAllocator);
+            }
+
+            var iterator = _tree.CreateIterator();
+            await iterator.SeekFirst();
+
+            await foreach (var page in iterator)
+            {
+                foreach (var kv in page)
                 {
-                    var compactData = (CompactRowData)row.Key.Compact(new FlexBuffer(ArrayPool<byte>.Shared)).RowData;
-                    output.Add(compactData.Span.ToArray());
+                    if (kv.Value < 0)
+                    {
+                        Assert.Fail("Row exist in sink with negaive weight: " + kv.Key.ToString());
+                    }
+                    for (int i = 0; i < kv.Key.referenceBatch.Columns.Count; i++)
+                    {
+                        var val = kv.Key.referenceBatch.Columns[i].GetValueAt(kv.Key.RowIndex, default);
+                        for (int x = 0; x < kv.Value; x++)
+                        {
+                            columns[i].Add(val);
+                        }
+                    }
                 }
             }
 
-            //var actualData = currentData.Where(x => x.Value > 0).Select(x => x.Key.Memory.ToArray()).ToList();
+            var newData = new EventBatchData(columns);
+
+            if (_lastSentBatch != null && watermarkRecieved)
+            {
+                _lastSentBatch.Dispose();
+            }
+
+            _lastSentBatch = newData;
+
+            await _tree.Commit();
+
             if (watermarkRecieved)
             {
-                onDataChange(output);
+                onDataChange(newData);
                 watermarkRecieved = false;
             }
-            
-            return Task.FromResult(new MockDataSinkState());
+
         }
 
-        protected override Task OnRecieve(StreamEventBatch msg, long time)
+        protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
-            foreach(var e in msg.Events)
+#if DEBUG_WRITE
+            allInput!.WriteLine("New batch");
+            foreach (var e in msg.Events)
             {
-                if (currentData.TryGetValue(e, out var weight))
-                {
-                    currentData[e] = weight + e.Weight;
-                }
-                else
-                {
-                    currentData.Add(e, e.Weight);
-                }
+                allInput!.WriteLine($"{e.Weight} {e.ToJson()}");
             }
-            return Task.CompletedTask;
+            await allInput.FlushAsync();
+#endif
+            Debug.Assert(_tree != null);
+            for (int i = 0; i < msg.Data.Weights.Count; i++)
+            {
+                var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
+                var weight = msg.Data.Weights[i];
+                await _tree.RMWNoResult(in rowRef, in weight, (input, current, exist) =>
+                {
+                    if (exist)
+                    {
+                        var newWeight = current + input;
+                        if (newWeight == 0)
+                        {
+                            return (newWeight, GenericWriteOperation.Delete);
+                        }
+                        return (newWeight, GenericWriteOperation.Upsert);
+                    }
+                    return (input, GenericWriteOperation.Upsert);
+                });
+            }
         }
     }
 }

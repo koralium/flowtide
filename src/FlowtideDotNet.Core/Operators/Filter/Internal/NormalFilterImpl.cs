@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.Relations;
@@ -22,12 +23,14 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
     {
         private readonly Func<RowEvent, bool> _expression;
         private readonly List<int>? _emitList;
+        private readonly FilterRelation filterRelation;
         private FlexBuffer _flexBuffer;
         public NormalFilterImpl(FilterRelation filterRelation, FunctionsRegister functionsRegister)
         {
             _expression = BooleanCompiler.Compile<RowEvent>(filterRelation.Condition, functionsRegister);
             _emitList = filterRelation.Emit;
             _flexBuffer = new FlexBuffer(ArrayPool<byte>.Shared);
+            this.filterRelation = filterRelation;
         }
 
         public Task Compact()
@@ -40,7 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
             return Task.CompletedTask;
         }
 
-        public Task InitializeOrRestore(string streamName, string operatorName, Func<string, TimeSpan?, Task> addTriggerFunc, object? state)
+        public Task InitializeOrRestore(string streamName, string operatorName, Func<string, TimeSpan?, Task> addTriggerFunc)
         {
             return Task.CompletedTask;
         }
@@ -50,7 +53,7 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
             return Task.FromResult<object?>(null);
         }
 
-        public async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             List<RowEvent> output = new List<RowEvent>();
 
@@ -86,17 +89,17 @@ namespace FlowtideDotNet.Core.Operators.Filter.Internal
                     }
                 }
             }
-            
 
             if (output.Count > 0)
             {
-                yield return new StreamEventBatch(output);
+                return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(output, filterRelation.OutputLength));
             }
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
 
-        public async IAsyncEnumerable<StreamEventBatch> OnTrigger(string triggerName, object? state)
+        public IAsyncEnumerable<StreamEventBatch> OnTrigger(string triggerName, object? state)
         {
-            yield break;
+            return EmptyAsyncEnumerable<StreamEventBatch>.Instance;
         }
     }
 }

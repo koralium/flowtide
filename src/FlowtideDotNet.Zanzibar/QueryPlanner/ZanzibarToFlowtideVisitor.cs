@@ -36,6 +36,9 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         private readonly string resourceTypeColumnName;
         private readonly string resourceIdColumnName;
 
+        private Dictionary<string, int> _iterationOutputLengths;
+        private Dictionary<string, List<IterationReferenceReadRelation>> _iterationReferenceRelations;
+
         public ZanzibarToFlowtideVisitor(
             string inputTableName,
             string subjectTypeColumnName,
@@ -52,6 +55,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             this.relationColumnName = relationColumnName;
             this.resourceTypeColumnName = resourceTypeColumnName;
             this.resourceIdColumnName = resourceIdColumnName;
+            _iterationOutputLengths = new Dictionary<string, int>();
+            _iterationReferenceRelations = new Dictionary<string, List<IterationReferenceReadRelation>>();
         }
 
         private ReadRelation GetReadRelation()
@@ -495,6 +500,17 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         {
             var input = loop.LoopRelation.Accept(this, state);
 
+            var id = $"{loop.Type}_{loop.Relation}";
+            _iterationOutputLengths.Add(id, input.OutputLength);
+
+            if (_iterationReferenceRelations.TryGetValue(id, out var existingRelations))
+            {
+                foreach (var rel in existingRelations)
+                {
+                    rel.ReferenceOutputLength = input.OutputLength;
+                }
+            }
+
             return new IterationRelation()
             {
                 LoopPlan = input,
@@ -505,10 +521,29 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         public override Relation VisitZanzibarReadLoop(ZanzibarReadLoop readLoop, object? state)
         {
-            return new IterationReferenceReadRelation()
+            var id = $"{readLoop.Type}_{readLoop.Relation}";
+            if (_iterationOutputLengths.TryGetValue(id, out var outputLength))
             {
-                IterationName = $"{readLoop.Type}_{readLoop.Relation}"
-            };
+                return new IterationReferenceReadRelation()
+                {
+                    IterationName = $"{readLoop.Type}_{readLoop.Relation}",
+                    ReferenceOutputLength = outputLength
+                };
+            }
+            else
+            {
+                if (!_iterationReferenceRelations.TryGetValue(id, out var existingRelations))
+                {
+                    existingRelations = new List<IterationReferenceReadRelation>();
+                    _iterationReferenceRelations.Add(id, existingRelations);
+                }
+                var rel = new IterationReferenceReadRelation()
+                {
+                    IterationName = $"{readLoop.Type}_{readLoop.Relation}"
+                };
+                existingRelations.Add(rel);
+                return rel;
+            }
         }
 
         public override Relation VisitZanzibarReadUserAndObjectType(ZanzibarReadUserAndObjectType readUserAndObjectType, object? state)

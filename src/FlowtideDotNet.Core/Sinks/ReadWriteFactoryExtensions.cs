@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.Sinks;
-using System.Text.RegularExpressions;
 using FlowtideDotNet.Core.Sinks.Blackhole;
+using FlowtideDotNet.Substrait.Relations;
+using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Engine
 {

@@ -20,7 +20,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
     public class SqlServerFixture : IAsyncLifetime
     {
         MsSqlContainer _msSqlContainer;
-        private TpchDbContext dbContext;
+        private TpchDbContext? dbContext;
         public SqlServerFixture()
         {
             _msSqlContainer = new MsSqlBuilder()
@@ -34,7 +34,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 var connectionStringBuilder = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
                 connectionStringBuilder.InitialCatalog = "tpch";
                 var tpchConnectionString = connectionStringBuilder.ToString();
-                return  tpchConnectionString;
+                return tpchConnectionString;
 
             }
         }
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
         public async Task InitializeAsync()
         {
             await _msSqlContainer.StartAsync();
-            
+
             var optionsBuilder = new DbContextOptionsBuilder<TpchDbContext>();
 
             var connstr = _msSqlContainer.GetConnectionString();
@@ -104,15 +104,13 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
             optionsBuilder.UseSqlServer(tpchConnectionString, b => b.MigrationsAssembly("FlowtideDotNet.SqlServer.Tests"));
             dbContext = new TpchDbContext(optionsBuilder.Options);
-            
+
             await dbContext.Database.MigrateAsync();
             await RunCommand("ALTER TABLE tpch.dbo.lineitems ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
             await RunCommand("ALTER TABLE tpch.dbo.orders ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
             await RunCommand("ALTER TABLE tpch.dbo.shipmodes ENABLE CHANGE_TRACKING WITH (TRACK_COLUMNS_UPDATED = OFF)");
 
             await RunCommand("CREATE TABLE tpch.dbo.notracking (id int PRIMARY KEY)");
-
-            //await TpchData.InsertIntoDbContext(dbContext);
         }
     }
 }

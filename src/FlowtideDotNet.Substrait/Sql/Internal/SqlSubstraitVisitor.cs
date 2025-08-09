@@ -15,11 +15,8 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
-using SqlParser.Tokens;
-using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -49,7 +46,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         public List<Relation> GetRelations(Sequence<Statement> statements)
         {
             subRelations.Clear();
-            foreach(var statement in statements)
+            foreach (var statement in statements)
             {
                 var relData = Visit(statement, default);
                 if (relData == null)
@@ -58,38 +55,64 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 subRelations.Add(relData.Relation);
             }
-            
+
             return subRelations;
         }
 
         protected override RelationData? VisitInsertStatement(Statement.Insert insert, object? state)
         {
-            var source = Visit(insert.Source, state);
+            var source = Visit(insert.InsertOperation.Source!, state);
 
             Debug.Assert(source != null);
 
             NamedStruct? tableSchema = null;
 
-            if (insert.Columns != null && insert.Columns.Count > 0)
+            tablesMetadata.TryGetTable(insert.InsertOperation.Name.Values.Select(x => x.Value).ToList(), out var existingTableMetadata);
+
+            if (insert.InsertOperation.Columns != null && insert.InsertOperation.Columns.Count > 0)
             {
                 tableSchema = new NamedStruct()
                 {
-                    Names = insert.Columns.Select(x => x.Value).ToList(),
+                    Names = insert.InsertOperation.Columns.Select(x => x.Value).ToList(),
                     Struct = new FlowtideDotNet.Substrait.Type.Struct()
                     {
-                        Types = insert.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                        Types = insert.InsertOperation.Columns.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
                     }
                 };
             }
             else
             {
                 var names = source.EmitData.GetNames();
+                var types = source.EmitData.GetTypes();
+
+                if (existingTableMetadata != null)
+                {
+                    for (int i = 0; i < names.Count; i++)
+                    {
+                        int nameIndex = -1;
+                        for (int b = 0; b < existingTableMetadata.Schema.Names.Count; b++)
+                        {
+                            if (existingTableMetadata.Schema.Names[b].Equals(names[i], StringComparison.OrdinalIgnoreCase))
+                            {
+                                nameIndex = b;
+                                break;
+                            }
+                        }
+                        if (nameIndex < 0)
+                        {
+                            throw new SubstraitParseException($"Column '{names[i]}' does not exist in table '{insert.InsertOperation.Name.ToSql()}'");
+                        }
+                        names[i] = existingTableMetadata.Schema.Names[nameIndex];
+                        types[i] = existingTableMetadata.Schema.Struct!.Types[nameIndex];
+                    }
+                }
+
                 tableSchema = new NamedStruct()
                 {
                     Names = names.ToList(),
                     Struct = new FlowtideDotNet.Substrait.Type.Struct()
                     {
-                        Types = names.Select(x => new AnyType() { Nullable = true } as SubstraitBaseType).ToList()
+                        Types = types
                     }
                 };
             }
@@ -97,7 +120,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             var writeRelation = new WriteRelation()
             {
                 Input = source.Relation,
-                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.Name.Values.Select(x => x.Value).ToList() },
+                NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
                 TableSchema = tableSchema
             };
 
@@ -123,63 +146,68 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             bool isDistributed = false;
             Expressions.FieldReference? scatterField = default;
             int? partitionCount = default;
-            if (createView.WithOptions != null)
+            if (createView.Options != null && createView.Options is CreateTableOptions.With withOptions)
             {
-                foreach(var opt in createView.WithOptions)
+
+                foreach (var opt in withOptions.OptionsList)
                 {
-                    var upperName = opt.Name.ToString().ToUpper();
-                    if (upperName == SqlTextResources.Buffered)
+                    if (opt is SqlOption.KeyValue kvOption)
                     {
-                        var val = opt.Value.ToSql();
-                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+                        var upperName = kvOption.Name.ToString().ToUpper();
+                        if (upperName == SqlTextResources.Buffered)
                         {
-                            isBuffered = true;
-                        }
-                    }
-                    else if (upperName == SqlTextResources.Distributed)
-                    {
-                        var val = opt.Value.ToSql();
-                        if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
-                        {
-                            isDistributed = true;
-                        }
-                    }
-                    else if (upperName == SqlTextResources.ScatterBy)
-                    {
-                        if (opt.Value is Value.StringBasedValue stringBasedVal)
-                        {
-                            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                            // Do a lookup on the partition by field
-                            var exprData = exprVisitor.Visit(new Expression.Identifier(new Ident(stringBasedVal.Value)), relationData.EmitData);
-                            if (exprData.Expr is Expressions.FieldReference fieldReference)
+                            var val = kvOption.Value.ToSql();
+                            if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
                             {
-                                scatterField = fieldReference;
+                                isBuffered = true;
+                            }
+                        }
+                        else if (upperName == SqlTextResources.Distributed)
+                        {
+                            var val = kvOption.Value.ToSql();
+                            if (string.Equals(val, bool.TrueString, StringComparison.OrdinalIgnoreCase))
+                            {
+                                isDistributed = true;
+                            }
+                        }
+                        else if (upperName == SqlTextResources.ScatterBy)
+                        {
+                            if (kvOption.Value is Expression.Identifier scatterIdentifier)
+                            {
+                                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                                // Do a lookup on the partition by field
+                                var exprData = exprVisitor.Visit(scatterIdentifier, relationData.EmitData);
+                                if (exprData.Expr is Expressions.FieldReference fieldReference)
+                                {
+                                    scatterField = fieldReference;
+                                }
+                                else
+                                {
+                                    throw new SubstraitParseException("SCATTER_BY expects a field reference.");
+                                }
                             }
                             else
                             {
-                                throw new SubstraitParseException("SCATTER_BY expects a field reference.");
+                                throw new SubstraitParseException("SCATTER_BY expects an identifier.");
+                            }
+                        }
+                        else if (upperName == SqlTextResources.PartitionCount)
+                        {
+                            if (int.TryParse(kvOption.Value.ToSql(), out var partitionCountValue))
+                            {
+                                partitionCount = partitionCountValue;
+                            }
+                            else
+                            {
+                                throw new SubstraitParseException($"Invalid partition count expected a number got '{kvOption.Value.ToSql()}'");
                             }
                         }
                         else
                         {
-                            throw new SubstraitParseException("SCATTER_BY expects a string based value with qoutes.");
+                            throw new SubstraitParseException($"Unknown option '{kvOption.Name}' in create view statement");
                         }
                     }
-                    else if (upperName == SqlTextResources.PartitionCount)
-                    {
-                        if (int.TryParse(opt.Value.ToSql(), out var partitionCountValue))
-                        {
-                            partitionCount = partitionCountValue;
-                        }
-                        else
-                        {
-                            throw new SubstraitParseException($"Invalid partition count expected a number got '{opt.Value.ToSql()}'");
-                        }
-                    }
-                    else
-                    {
-                        throw new SubstraitParseException($"Unknown option '{opt.Name}' in create view statement");
-                    }
+
                 }
             }
 
@@ -217,7 +245,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 };
 
                 // Add the exchange relation to a lookup table so usage of the view can add to the targets.
-                exchangeRelations.Add(createView.Name.ToSql(),new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
+                exchangeRelations.Add(createView.Name.ToSql(), new ExchangeContainer(relationData.EmitData, subRelations.Count, relation.OutputLength, exchangeRelation, subStreamName));
 
                 if (subStreamName == null)
                 {
@@ -232,7 +260,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         Name = subStreamName
                     };
                 }
-                
+
                 subRelations.Add(relation);
             }
             else
@@ -245,18 +273,27 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("PARTITION_COUNT can only be used on a distributed view");
                 }
-                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
-                subRelations.Add(relation);
+                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, relation, relation.OutputLength));
             }
-            
+
             return default;
         }
 
         protected override RelationData? VisitCreateTable(Statement.CreateTable createTable, object? state)
         {
-            var tableName = string.Join(".", createTable.Name.Values.Select(x=> x.Value));
-            var columnNames = createTable.Columns.Select(x => x.Name.Value).ToList();
-            tablesMetadata.AddTable(tableName, columnNames);
+            var tableName = string.Join(".", createTable.Element.Name.Values.Select(x => x.Value));
+            var columnNames = createTable.Element.Columns.Select(x => x.Name.Value).ToList();
+
+            NamedStruct schema = new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = createTable.Element.Columns.Select(x => SqlToSubstraitType.GetType(x.DataType)).ToList()
+                }
+            };
+
+            tablesMetadata.AddTable(tableName, schema);
             return null;
         }
 
@@ -264,8 +301,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             if (query.With != null)
             {
-                
-                
+
+
                 foreach (var with in query.With.CteTables)
                 {
                     var emitDataExtractor = new EmitDataExtractorVisitor(tablesMetadata, sqlFunctionRegister);
@@ -276,10 +313,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                     var alias = with.Alias.Name.ToSql();
                     var container = new CTEContainer(alias, cteEmitData, cteEmitData.GetNames().Count);
-                    
+
                     cteContainers.Add(alias, container);
                     var p = Visit(with.Query, state)!.Relation;
-                    
+
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {
@@ -301,7 +338,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     // With queries should be registered as views in the plan
                     // So they can be reused multiple times in the query
                     sqlPlanBuilder._planModifier.AddPlanAsView(alias, plan);
-                    tablesMetadata.AddTable(alias, cteEmitData.GetNames());
+                    tablesMetadata.AddTable(alias, cteEmitData.GetNamedStruct());
                 }
             }
             var node = Visit(query.Body, state);
@@ -310,11 +347,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 throw new InvalidOperationException("Could not create a plan from the query");
             }
-            if (query.OrderBy != null)
+            if (query.OrderBy != null && query.OrderBy.Expressions != null)
             {
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                 List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
-                foreach (var o in query.OrderBy)
+                foreach (var o in query.OrderBy.Expressions)
                 {
                     var expr = exprVisitor.Visit(o.Expression, node.EmitData);
                     var sortDirection = GetSortDirection(o);
@@ -403,7 +440,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     sortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst;
                 }
-            }   
+            }
             return sortDirection;
         }
 
@@ -423,20 +460,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (outNode == null)
             {
-                throw new NotImplementedException("Only queries that does 'FROM' with potential joins is supported at this time");
-            }
-            
-            if (select.Selection != null)
-            {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
-                outNode = new RelationData(new FilterRelation()
+                if (select.Projection != null)
                 {
-                    Input = outNode.Relation,
-                    Condition = expr.Expr
-                }, outNode.EmitData);
+                    return VisitSelectWithoutFrom(select.Projection);
+                }
+                else
+                {
+                    throw new NotImplementedException("Only queries that does 'FROM' with potential joins is supported at this time");
+                }
             }
 
+            if (select.Selection != null)
+            {
+                bool selectionContainsWindow = false;
+                ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+                selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+                if (selectionContainsWindow)
+                {   
+                    // Does not include expressions from the window functions in the emit data
+                    outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
+                }
+                else
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
+                    outNode = new RelationData(new FilterRelation()
+                    {
+                        Input = outNode.Relation,
+                        Condition = expr.Expr
+                    }, outNode.EmitData);
+                }
+            }   
 
             ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
             bool containsAggregate = select.GroupBy != null;
@@ -445,12 +499,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 containsAggregate |= containsAggregateVisitor.Visit(select.Having, default);
             }
 
+            bool containsWindow = false;
+            ContainsWindowFunctionVisitor containsWindowFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+
             if (select.Projection != null)
             {
                 foreach (var item in select.Projection)
                 {
                     containsAggregate |= containsAggregateVisitor.VisitSelectItem(item);
+                    containsWindow |= containsWindowFunctionVisitor.VisitSelectItem(item);
                 }
+            }
+
+            if (containsWindow)
+            {
+                outNode = VisitWindow(containsWindowFunctionVisitor, outNode);
             }
 
             if (containsAggregate)
@@ -463,7 +526,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 outNode = VisitProjection(select.Projection, outNode);
             }
 
-            if (select.Distinct)
+            if (select.Distinct != null)
             {
                 if (outNode == null)
                 {
@@ -486,19 +549,205 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("TOP statement is not supported without a FROM statement");
                 }
-                var literal = select.Top.Quantity?.AsLiteral()?.Value?.AsNumber();
-                if (literal == null)
+
+                if (select.Top.Quantity is TopQuantity.Constant topConstant)
                 {
-                    throw new NotSupportedException("Only numeric literal values are supported in the TOP statement");
+                    var literal = topConstant.Quantity;
+                    outNode = new RelationData(new FetchRelation()
+                    {
+                        Input = outNode.Relation,
+                        Count = (int)literal
+                    }, outNode.EmitData);
                 }
-                outNode = new RelationData(new FetchRelation()
+                else if (select.Top.Quantity is TopQuantity.TopExpression topExpression)
                 {
-                    Input = outNode.Relation,
-                    Count = int.Parse(literal.Value)
-                }, outNode.EmitData);
+                    var literal = topExpression.Expression?.AsLiteral()?.Value?.AsNumber();
+                    if (literal == null)
+                    {
+                        throw new NotSupportedException("Only numeric literal values are supported in the TOP statement");
+                    }
+                    outNode = new RelationData(new FetchRelation()
+                    {
+                        Input = outNode.Relation,
+                        Count = int.Parse(literal.Value)
+                    }, outNode.EmitData);
+                }
+                else
+                {
+                    throw new SubstraitParseException("TOP statement only supports constant values");
+                }
             }
 
             return outNode;
+        }
+
+        private RelationData VisitFilterWithWindowExpressions(Expression filter, ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        {
+            var windowResult = VisitWindow(containsWindowFunctionVisitor, parent);
+
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var expr = exprVisitor.Visit(filter, windowResult.EmitData);
+
+            var filterRelation = new FilterRelation()
+            {
+                Input = windowResult.Relation,
+                Condition = expr.Expr
+            };
+
+            List<int> emitList = new List<int>();
+            for (int i = 0; i < parent.EmitData.Count; i++)
+            {
+                emitList.Add(i);
+            }
+
+            filterRelation.Emit = emitList;
+            
+            var outNode = new RelationData(filterRelation, parent.EmitData);
+            return outNode;
+        }
+
+        /// <summary>
+        /// Helper class to keep partitions and sortings as a key for dictionary.
+        /// This allows grouping window functions that share the same partitions and sortings together
+        /// </summary>
+        private class WindowGroup
+        {
+            public WindowGroup(List<Expressions.Expression> partitionBy, List<Expressions.SortField> sortings)
+            {
+                PartitionBy = partitionBy;
+                Sortings = sortings;
+            }
+
+            public List<Expressions.Expression> PartitionBy { get; }
+            public List<Expressions.SortField> Sortings { get; }
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is not WindowGroup other)
+                {
+                    return false;
+                }
+                if (PartitionBy.Count != other.PartitionBy.Count)
+                {
+                    return false;
+                }
+                if (Sortings.Count != other.Sortings.Count)
+                {
+                    return false;
+                }
+                for (int i = 0; i < PartitionBy.Count; i++)
+                {
+                    if (!PartitionBy[i].Equals(other.PartitionBy[i]))
+                    {
+                        return false;
+                    }
+                }
+                for (int i = 0; i < Sortings.Count; i++)
+                {
+                    if (!Sortings[i].Equals(other.Sortings[i]))
+                    {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            public override int GetHashCode()
+            {
+                HashCode hashCode = new HashCode();
+
+                foreach (var partition in PartitionBy)
+                {
+                    hashCode.Add(partition);
+                }
+
+                foreach (var sort in Sortings)
+                {
+                    hashCode.Add(sort);
+                }
+
+                return hashCode.ToHashCode();
+            }
+        }
+
+        private RelationData VisitWindow(ContainsWindowFunctionVisitor containsWindowFunctionVisitor, RelationData parent)
+        {
+            var outputData = parent;
+
+            Dictionary<WindowGroup, List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>> windowOperators = 
+                new Dictionary<WindowGroup, List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>>();
+
+            // Go through the found functions, we create one relation per window function at this time
+            foreach (var windowFunction in containsWindowFunctionVisitor.WindowFunctions)
+            {
+                if (!sqlFunctionRegister.TryGetWindowMapper(windowFunction.Name, out var mapper))
+                {
+                    throw new NotSupportedException($"Window function '{windowFunction.Name}' is not supported");
+                }
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                var aggregateResponse = mapper(windowFunction, exprVisitor, outputData.EmitData);
+                var mappedWindowFunction = aggregateResponse.WindowFunction;
+                List<Expressions.Expression> partitionByExpressions = new List<Expressions.Expression>();
+                List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
+                if (windowFunction.Over is WindowType.WindowSpecType windowSpec)
+                {
+                    if (windowSpec.Spec.PartitionBy != null)
+                    {
+                        foreach (var partition in windowSpec.Spec.PartitionBy)
+                        {
+                            var visitResult = exprVisitor.Visit(partition, outputData.EmitData);
+                            partitionByExpressions.Add(visitResult.Expr);
+                        }
+                    }
+                    if (windowSpec.Spec.OrderBy != null)
+                    {
+                        foreach(var orderBy in windowSpec.Spec.OrderBy)
+                        {
+                            var expr = exprVisitor.Visit(orderBy.Expression, outputData.EmitData);
+                            var sortDirection = GetSortDirection(orderBy);
+
+                            sortFields.Add(new Expressions.SortField()
+                            {
+                                Expression = expr.Expr,
+                                SortDirection = sortDirection
+                            });
+                        }
+                    }
+
+                    var windowGrouping = new WindowGroup(partitionByExpressions, sortFields);
+
+                    if (!windowOperators.TryGetValue(windowGrouping, out var functions))
+                    {
+                        functions = new List<(Expression.Function, Expressions.WindowFunction, SubstraitBaseType)>();
+                        windowOperators.Add(windowGrouping, functions);
+                    }
+                    functions.Add((windowFunction, mappedWindowFunction, aggregateResponse.Type));
+                }
+            }
+
+            foreach(var windowGroup in windowOperators)
+            {
+                var windowRel = new ConsistentPartitionWindowRelation()
+                {
+                    Input = outputData.Relation,
+                    OrderBy = windowGroup.Key.Sortings,
+                    PartitionBy = windowGroup.Key.PartitionBy,
+                    WindowFunctions = windowGroup.Value.Select(x => x.Item2).ToList()
+                };
+
+                var emitData = outputData.EmitData.Clone();
+
+                for (int i = 0; i  < windowGroup.Value.Count; i++)
+                {
+                    emitData.Add(windowGroup.Value[i].Item1, emitData.Count, $"$window{i}", windowGroup.Value[i].Item3);
+                }
+
+
+                outputData = new RelationData(windowRel, emitData);
+            }
+
+            return outputData;
         }
 
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)
@@ -522,13 +771,21 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     GroupingExpressions = new List<Expressions.Expression>()
                 };
                 aggRel.Groupings.Add(grouping);
-                foreach (var group in select.GroupBy)
+
+                if (select.GroupBy is GroupByExpression.Expressions groupByExpressions)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                    var result = exprVisitor.Visit(group, parent.EmitData);
-                    grouping.GroupingExpressions.Add(result.Expr);
-                    aggEmitData.Add(group, emitcount, result.Name);
-                    emitcount++;
+                    foreach (var group in groupByExpressions.ColumnNames)
+                    {
+                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                        var result = exprVisitor.Visit(group, parent.EmitData);
+                        grouping.GroupingExpressions.Add(result.Expr);
+                        aggEmitData.Add(group, emitcount, result.Name, result.Type);
+                        emitcount++;
+                    }
+                }
+                else
+                {
+                    throw new SubstraitParseException("Only column names are supported in GROUP BY");
                 }
             }
 
@@ -536,11 +793,20 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+
+                Expressions.Expression? filter = default;
+                if (foundMeasure.Filter != null)
+                {
+                    filter = exprVisitor.Visit(foundMeasure.Filter, parent.EmitData).Expr;
+                }
+
+                var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
-                    Measure = mapper(foundMeasure, exprVisitor, parent.EmitData)
+                    Filter = filter,
+                    Measure = aggregateResponse.AggregateFunction
                 });
-                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}");
+                aggEmitData.Add(foundMeasure, emitcount, $"$expr{emitcount}", aggregateResponse.Type);
                 emitcount++;
             }
 
@@ -557,6 +823,65 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return new RelationData(outputRelation, aggEmitData);
         }
 
+        private RelationData? VisitSelectWithoutFrom(SqlParser.Sequence<SelectItem> selects)
+        {
+            EmitData projectEmitData = new EmitData();
+            var emitData = new EmitData();
+            List<Expressions.Expression> expressions = new List<Expressions.Expression>();
+            int outputCounter = 0;
+            foreach (var s in selects)
+            {
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                if (s is SelectItem.ExpressionWithAlias exprAlias)
+                {
+                    var condition = exprVisitor.Visit(exprAlias.Expression, emitData);
+                    expressions.Add(condition.Expr);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias, condition.Type);
+                    outputCounter++;
+                }
+                else if (s is SelectItem.UnnamedExpression unnamedExpr)
+                {
+                    var condition = exprVisitor.Visit(unnamedExpr.Expression, emitData);
+                    expressions.Add(condition.Expr);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name, condition.Type);
+                    outputCounter++;
+                }
+                else if (s is SelectItem.Wildcard)
+                {
+                    throw new NotImplementedException("Wildcard in select without from is not supported");
+                }
+                else if (s is SelectItem.QualifiedWildcard qualifiedWildcard)
+                {
+                    throw new NotImplementedException("Qualified wildcard in select without from is not supported");
+                }
+                else
+                {
+                    throw new InvalidOperationException("Unsupported select item");
+                }
+            }
+            return new RelationData(new VirtualTableReadRelation()
+            {
+                BaseSchema = new NamedStruct()
+                {
+                    Names = projectEmitData.GetNames().ToList(),
+                    Struct = new Struct()
+                    {
+                        Types = projectEmitData.GetTypes().ToList()
+                    }
+                },
+                Values = new VirtualTable()
+                {
+                    Expressions = new List<Expressions.StructExpression>()
+                    {
+                        new Expressions.StructExpression()
+                        {
+                            Fields = expressions
+                        }
+                    }
+                }
+            }, projectEmitData);
+        }
+
         private RelationData? VisitProjection(SqlParser.Sequence<SelectItem> selects, RelationData parent)
         {
             EmitData projectEmitData = new EmitData();
@@ -571,7 +896,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var condition = exprVisitor.Visit(exprAlias.Expression, parent.EmitData);
                     expressions.Add(condition.Expr);
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(exprAlias.Alias) })), outputCounter, exprAlias.Alias, condition.Type);
                     outputCounter++;
                     emitList.Add(emitCounter);
                     emitCounter++;
@@ -580,7 +905,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     var condition = exprVisitor.Visit(unnamedExpr.Expression, parent.EmitData);
                     expressions.Add(condition.Expr);
-                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name);
+                    projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name, condition.Type);
                     outputCounter++;
                     emitList.Add(emitCounter);
                     emitCounter++;
@@ -627,7 +952,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     }
                 };
                 expressions.Add(expr);
-                projectEmitData.Add(parentExpressions[i].Expression[0], outputCounter, parentExpressions[i].Name);
+                projectEmitData.Add(parentExpressions[i].Expression[0], outputCounter, parentExpressions[i].Name, parentExpressions[i].Type);
                 outputCounter++;
                 emitList.Add(emitCounter);
                 emitCounter++;
@@ -647,7 +972,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 parent = Visit(tableWithJoins.Relation, state);
             }
-            
+
             Debug.Assert(parent != null);
             if (tableWithJoins.Joins != null)
             {
@@ -655,9 +980,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     if (IsTableFunction(join.Relation))
                     {
-                        return VisitTableFunctionJoin(join, parent);
+                        parent = VisitTableFunctionJoin(join, parent);
                     }
-                    parent = VisitJoin(join, parent, state);
+                    else
+                    {
+                        parent = VisitJoin(join, parent, state);
+                    }
                     Debug.Assert(parent != null);
                 }
             }
@@ -673,7 +1001,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 table.Args != null)
             {
                 name = string.Join('.', table.Name.Values.Select(x => x.Value));
-                args = table.Args;
+                args = table.Args.Arguments;
                 return;
             }
             throw new InvalidOperationException("Table factor is not a table function");
@@ -694,9 +1022,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             };
 
             EmitData emitData = new EmitData();
-            foreach(var column in tableFunction.TableSchema.Names)
+            for (int i = 0; i < tableFunction.TableSchema.Names.Count; i++)
             {
-                emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), emitData.Count, column);
+                SubstraitBaseType type = new AnyType();
+                if (tableFunction.TableSchema.Struct != null)
+                {
+                    type = tableFunction.TableSchema.Struct.Types[i];
+                }
+                emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(tableFunction.TableSchema.Names[i]) })), i, tableFunction.TableSchema.Names[i], type);
             }
 
             return new RelationData(rel, emitData);
@@ -716,9 +1049,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 );
 
             EmitData tableFuncEmitData = new EmitData();
-            foreach (var column in tableFunction.TableSchema.Names)
+            for (int i = 0; i < tableFunction.TableSchema.Names.Count; i++)
             {
-                tableFuncEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(column) })), tableFuncEmitData.Count, column);
+                SubstraitBaseType type = new AnyType();
+                if (tableFunction.TableSchema.Struct != null)
+                {
+                    type = tableFunction.TableSchema.Struct.Types[i];
+                }
+                tableFuncEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(tableFunction.TableSchema.Names[i]) })), tableFuncEmitData.Count, tableFunction.TableSchema.Names[i], type);
             }
 
             // Create the emit data for the table function with the parent data
@@ -767,7 +1105,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 EmitData emitData = exchangeRelationsContainer.EmitData;
                 if (table.Alias != null)
                 {
-                    emitData = exchangeRelationsContainer.EmitData.CloneWithAlias(table.Alias.Name.Value);
+                    emitData = exchangeRelationsContainer.EmitData.CloneWithAlias(table.Alias.Name.Value, default);
                 }
                 // Try and find a partition_id hint
                 int? partitionId = default;
@@ -850,11 +1188,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return exchangeRelationData;
             }
 
-            if (table.WithHints != null)
-            {
-                throw new InvalidOperationException("Hints are not supported on tables at this point.");
-            }
-            
+            var tableNameParts = table.Name.Values.Select(x => x.Value).ToList();
             var tableName = string.Join('.', table.Name.Values.Select(x => x.Value));
 
             if (viewRelations.TryGetValue(tableName, out var viewContainer))
@@ -862,12 +1196,23 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 var emitData = viewContainer.EmitData;
                 if (table.Alias != null)
                 {
-                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value);
+                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value, default);
                 }
+                if (table.WithHints != null)
+                {
+                    throw new InvalidOperationException("Hints are not supported when selecting from views at this point.");
+                }
+
+                if (!viewContainer.RelationId.HasValue)
+                {
+                    viewContainer.RelationId = subRelations.Count;
+                    subRelations.Add(viewContainer.Relation);
+                }
+
                 return new RelationData(new ReferenceRelation()
                 {
                     ReferenceOutputLength = viewContainer.OutputLength,
-                    RelationId = viewContainer.RelationId
+                    RelationId = viewContainer.RelationId.Value
                 }, emitData);
             }
 
@@ -877,7 +1222,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 cteContainer.UsageCounter++;
                 if (table.Alias != null)
                 {
-                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value);
+                    emitData = emitData.CloneWithAlias(table.Alias.Name.Value, default);
+                }
+                if (table.WithHints != null)
+                {
+                    throw new InvalidOperationException("Hints are not supported when selecting from CTE views at this point.");
                 }
                 return new RelationData(new IterationReferenceReadRelation()
                 {
@@ -886,35 +1235,54 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }, emitData);
             }
 
-            if (tablesMetadata.TryGetTable(tableName, out var t))
+            if (tablesMetadata.TryGetTable(tableNameParts, out var t))
             {
                 var emitData = new EmitData();
 
-                for (int i = 0; i < t.Columns.Count; i++)
+                for (int i = 0; i < t.Schema.Names.Count; i++)
                 {
-                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Columns[i]) })), i, t.Columns[i]);
+                    SubstraitBaseType type = new AnyType();
+                    if (t.Schema.Struct != null)
+                    {
+                        type = t.Schema.Struct.Types[i];
+                    }
+                    emitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(t.Schema.Names[i]) })), i, t.Schema.Names[i], type);
                 }
 
                 if (table.Alias != null)
                 {
-                    for (int i = 0; i < t.Columns.Count; i++)
+                    for (int i = 0; i < t.Schema.Names.Count; i++)
                     {
-                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Columns[i]) })), i);
+                        emitData.AddWithAlias(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(table.Alias.Name), new Ident(t.Schema.Names[i]) })), i);
                     }
                 }
 
+                if (t.Schema.Struct == null)
+                {
+                    t.Schema.Struct = new Struct()
+                    {
+                        Types = t.Schema.Names.Select(x => new AnyType() as SubstraitBaseType).ToList()
+                    };
+                }
+                
                 var readRelation = new ReadRelation()
                 {
                     NamedTable = new FlowtideDotNet.Substrait.Type.NamedTable()
                     {
                         Names = table.Name.Values.Select(x => x.Value).ToList()
                     },
-                    BaseSchema = new FlowtideDotNet.Substrait.Type.NamedStruct()
-                    {
-                        Names = t.Columns.ToList(),
-                        Struct = new Struct() { Types = t.Columns.Select(x => new AnyType() as SubstraitBaseType).ToList() }
-                    }
+                    BaseSchema = t.Schema
                 };
+
+                if (table.WithHints != null)
+                {
+                    var options = TableOptionExtractor.ReadOptions(table.WithHints);
+                    foreach(var kv in options)
+                    {
+                        readRelation.Hint.Optimizations.Properties.Add(kv.Key, kv.Value);
+                    }
+                }
+
                 return new RelationData(readRelation, emitData);
             }
             else
@@ -969,6 +1337,34 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     throw new InvalidOperationException("Left joins must have an 'ON' expression.");
                 }
             }
+            else if (join.JoinOperator is JoinOperator.RightOuter rightJoin)
+            {
+                joinRelation.Type = JoinType.Right;
+                if (rightJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    joinRelation.Expression = condition.Expr;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Right joins must have an 'ON' expression.");
+                }
+            }
+            else if (join.JoinOperator is JoinOperator.FullOuter fullOuterJoin)
+            {
+                joinRelation.Type = JoinType.Outer;
+                if (fullOuterJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                    var condition = exprVisitor.Visit(on.Expression, joinEmitData);
+                    joinRelation.Expression = condition.Expr;
+                }
+                else
+                {
+                    throw new InvalidOperationException("Full outer joins must have an 'ON' expression.");
+                }
+            }
             else
             {
                 throw new NotImplementedException($"Join type '{join.JoinOperator!.GetType().Name}' is not yet supported in SQL mode.");
@@ -983,8 +1379,22 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             Debug.Assert(relationData != null);
             if (derived.Alias != null)
             {
+                List<string>? columnAliases = default;
+                if (derived.Alias.Columns != null)
+                {
+                    columnAliases = derived.Alias.Columns.Select(x => x.Value).ToList();
+                    if (columnAliases.Count != relationData.EmitData.Count)
+                    {
+                        throw new InvalidOperationException("Column alias count must match the number of columns in the derived table.");
+                    }
+                    if (relationData.Relation is VirtualTableReadRelation virtualTableReadRelation)
+                    {
+                        virtualTableReadRelation.BaseSchema.Names = columnAliases;
+                    }
+                }
+
                 // Append the alias to the emit data so its possible to find columns from the emit data
-                var newEmitData = relationData.EmitData.CloneWithAlias(derived.Alias.Name.Value);
+                var newEmitData = relationData.EmitData.CloneWithAlias(derived.Alias.Name.Value, columnAliases);
                 return new RelationData(relationData.Relation, newEmitData);
             }
 
@@ -993,13 +1403,59 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
         protected override RelationData? VisitSetOperation(SetExpression.SetOperation setOperation, object? state)
         {
-            if (setOperation.Op != SetOperator.Union)
+            SetOperation operation = SetOperation.Unspecified;
+            if (setOperation.Op == SetOperator.Union)
             {
-                throw new NotImplementedException($"The set operation {setOperation.Op.ToString()} is not yet supported in SQL.");
+                if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.UnionAll;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.None)
+                {
+                    operation = SetOperation.UnionDistinct;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.UnionDistinct;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
             }
-            if (setOperation.SetQuantifier != SetQuantifier.All && setOperation.SetQuantifier != SetQuantifier.None)
+            else if (setOperation.Op == SetOperator.Except)
             {
-                throw new NotImplementedException("Only union all is supported in SQL at this time.");
+                if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.MinusPrimary;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.MinusPrimaryAll;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
+            }
+            else if (setOperation.Op == SetOperator.Intersect)
+            {
+                if (setOperation.SetQuantifier == SetQuantifier.Distinct)
+                {
+                    operation = SetOperation.IntersectionMultiset;
+                }
+                else if (setOperation.SetQuantifier == SetQuantifier.All)
+                {
+                    operation = SetOperation.IntersectionMultisetAll;
+                }
+                else
+                {
+                    throw new NotImplementedException($"Set quantifier {setOperation.SetQuantifier} is not supported at this time on {setOperation.Op}.");
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Set operation {setOperation.Op} is not supported at this time.");
             }
 
             var left = Visit(setOperation.Left, state);
@@ -1015,7 +1471,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     left.Relation,
                     right.Relation
                 },
-                Operation = SetOperation.UnionAll
+                Operation = operation
             };
 
             return new RelationData(setRelation, left.EmitData);
@@ -1025,6 +1481,59 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             subStreamName = string.Join(".", beginSubStream.Name.Values.Select(x => x.Value));
             return null;
+        }
+
+        protected override RelationData VisitValuesExpression(SetExpression.ValuesExpression valuesExpression, object? state)
+        {
+            valuesExpression.Values.Rows.ForEach(row =>
+            {
+                if (row.Count != valuesExpression.Values.Rows[0].Count)
+                {
+                    throw new InvalidOperationException("All rows in a VALUES expression must have the same number of columns.");
+                }
+            });
+
+            EmitData projectEmitData = new EmitData();
+            var emitData = new EmitData();
+            var outputRows = new List<Expressions.StructExpression>();
+            bool firstRow = true;
+            int outputCounter = 0;
+            foreach (var row in valuesExpression.Values.Rows)
+            {
+                List<Expressions.Expression> expressions = new List<Expressions.Expression>();
+                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                foreach (var expr in row)
+                {
+                    var condition = exprVisitor.Visit(expr, emitData);
+                    expressions.Add(condition.Expr);
+                    if (firstRow)
+                    {
+                        projectEmitData.Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(condition.Name) })), outputCounter, condition.Name, condition.Type);
+                        outputCounter++;
+                    }
+                }
+                outputRows.Add(new Expressions.StructExpression()
+                {
+                    Fields = expressions
+                });
+                firstRow = false;
+            }
+            var relation = new VirtualTableReadRelation()
+            {
+                BaseSchema = new NamedStruct()
+                {
+                    Names = projectEmitData.GetNames().ToList(),
+                    Struct = new Struct()
+                    {
+                        Types = projectEmitData.GetTypes().ToList()
+                    }
+                },
+                Values = new VirtualTable()
+                {
+                    Expressions = outputRows
+                }
+            };
+            return new RelationData(relation, projectEmitData);
         }
     }
 }

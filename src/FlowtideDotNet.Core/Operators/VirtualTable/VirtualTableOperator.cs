@@ -10,25 +10,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.VirtualTable
 {
-    internal class VirtualTableOperator : IngressVertex<StreamEventBatch, VirtualTableState>
+    internal class VirtualTableOperator : IngressVertex<StreamEventBatch>
     {
         private readonly VirtualTableReadRelation virtualTableReadRelation;
+        private readonly IFunctionsRegister functionsRegister;
         private IReadOnlySet<string>? watermarkNames;
-        private bool hasSentInitial = false;
-
+        private IObjectState<VirtualTableState>? _state;
+        private int[] _emitList;
         public override string DisplayName => "Virtual Table";
 
-        public VirtualTableOperator(VirtualTableReadRelation virtualTableReadRelation, DataflowBlockOptions options) : base(options)
+        public VirtualTableOperator(VirtualTableReadRelation virtualTableReadRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
             this.virtualTableReadRelation = virtualTableReadRelation;
+            this.functionsRegister = functionsRegister;
+
+            if (virtualTableReadRelation.EmitSet)
+            {
+                _emitList = virtualTableReadRelation.Emit.ToArray();
+            }
+            else
+            {
+                _emitList = new int[virtualTableReadRelation.OutputLength];
+                for (int i = 0; i < virtualTableReadRelation.OutputLength; i++)
+                {
+                    _emitList[i] = i;
+                }
+            }
         }
 
         public override Task Compact()
@@ -48,52 +68,69 @@ namespace FlowtideDotNet.Core.Operators.VirtualTable
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            if (watermarkNames != null) 
+            if (watermarkNames != null)
             {
                 return Task.FromResult(watermarkNames);
             }
             throw new InvalidOperationException("Get watermarks called before initialize");
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, VirtualTableState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             watermarkNames = new HashSet<string>() { Name };
 
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<VirtualTableState>("virtual_table_state");
+            if (_state.Value == null)
             {
-                hasSentInitial = state.HasSentInitial;
+                _state.Value = new VirtualTableState()
+                {
+                    HasSentInitial = false
+                };
             }
-            
-            return Task.CompletedTask;
+
         }
 
-        protected override Task<VirtualTableState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new VirtualTableState()
-            {
-                HasSentInitial = hasSentInitial
-            });
+            Debug.Assert(_state != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            List<RowEvent> outputEvents = new List<RowEvent>();
-            foreach(var row in virtualTableReadRelation.Values.JsonValues)
+            Debug.Assert(_state?.Value != null);
+            if (_state.Value.HasSentInitial)
             {
-                // TODO: Take payload from row and fill in actual values
-                //var payload = JsonToFlexBufferConverter.Convert(row);
+                return;
+            }
+            await output.EnterCheckpointLock();
+            var emptyBatch = new EventBatchData(Array.Empty<IColumn>());
+            Column[] columns = new Column[virtualTableReadRelation.OutputLength];
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-                var vectorPayload = FlexBufferBuilder.Vector(v =>
-                {
-                    // TODO: Implement
-                });
-
-                outputEvents.Add(new RowEvent(1, 0, new CompactRowData(vectorPayload)));
-                
+            for (int i = 0; i < virtualTableReadRelation.OutputLength; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
             }
 
-            await output.SendAsync(new StreamEventBatch(outputEvents));
-            await output.SendWatermark(new Base.Watermark(Name, 1));
+            foreach (var row in virtualTableReadRelation.Values.Expressions)
+            {
+                weights.Add(1);
+                iterations.Add(0);
+                for (int i = 0; i < _emitList.Length; i++)
+                {
+                    var compiledColumnProjection = ColumnProjectCompiler.Compile(row.Fields[_emitList[i]], functionsRegister);
+                    compiledColumnProjection(emptyBatch, 0, columns[i]);
+                }
+            }
+
+            var outputBatch = new EventBatchData(columns);
+            await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputBatch)));
+            await output.SendWatermark(new Base.Watermark(Name, LongWatermarkValue.Create(1)));
+            _state.Value.HasSentInitial = true;
+            output.ExitCheckpointLock();
+            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
         }
     }
 }

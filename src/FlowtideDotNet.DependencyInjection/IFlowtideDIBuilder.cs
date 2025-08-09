@@ -10,13 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Optimizer;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -34,5 +30,24 @@ namespace FlowtideDotNet.DependencyInjection
 
         IFlowtideDIBuilder AddStorage(Action<IFlowtideStorageBuilder> storageOptions);
 
+        IFlowtideDIBuilder AddCustomOptions(Action<IServiceProvider, FlowtideBuilder> options);
+
+        /// <summary>
+        /// Sets the current entry assembly version as the stream version. A new version is created if the assembly version changes.
+        /// </summary>
+        IFlowtideDIBuilder AddVersioningFromAssembly();
+
+        /// <summary>
+        /// Sets a custom string as the stream version. A new version is created if the string changes.
+        /// </summary>
+        /// <param name="version"></param>
+        IFlowtideDIBuilder AddVersioningFromString(string version);
+
+        /// <summary>
+        /// Sets the plan hash as the stream version. A new version is created if the plan changes.
+        /// </summary>
+        IFlowtideDIBuilder AddVersioningFromPlanHash();
+
+        IFlowtideDIBuilder SetOptimizerSettings(PlanOptimizerSettings planOptimizerSettings);
     }
 }

@@ -11,14 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Connectors

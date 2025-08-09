@@ -47,5 +47,13 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Sum0 = "sum0";
         public const string Min = "min";
         public const string Max = "max";
+        public const string MinBy = "min_by";
+        public const string MaxBy = "max_by";
+
+        // Window
+        public const string RowNumber = "row_number";
+        public const string Lead = "lead";
+        public const string Lag = "lag";
+        public const string LastValue = "last_value";
     }
 }

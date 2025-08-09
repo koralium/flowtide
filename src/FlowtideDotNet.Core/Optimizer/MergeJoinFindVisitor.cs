@@ -13,12 +13,13 @@
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Optimizer
 {
     internal class MergeJoinFindVisitor : OptimizerBaseVisitor
     {
-        private bool Check(JoinRelation joinRelation, Expression expression, out DirectFieldReference? leftKey, out DirectFieldReference? rightKey)
+        internal static bool Check(JoinRelation joinRelation, Expression? expression, [NotNullWhen(true)] out DirectFieldReference? leftKey, [NotNullWhen(true)] out DirectFieldReference? rightKey)
         {
             if (expression is ScalarFunction booleanComparison &&
                 booleanComparison.ExtensionUri == FunctionsComparison.Uri &&
@@ -76,7 +77,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     Type = joinRelation.Type
                 };
             }
-            
+
             if (joinRelation.Expression is ScalarFunction andFunction &&
                 andFunction.ExtensionUri == FunctionsBoolean.Uri &&
                 andFunction.ExtensionName == FunctionsBoolean.And)
@@ -95,7 +96,7 @@ namespace FlowtideDotNet.Core.Optimizer
                 }
                 if (andFunction.Arguments.Count == 0)
                 {
-                    andFunction = null;
+                    andFunction = null!;
                 }
                 if (leftKeys.Count > 0)
                 {
@@ -111,7 +112,7 @@ namespace FlowtideDotNet.Core.Optimizer
                     };
                 }
             }
-                return base.VisitJoinRelation(joinRelation, state);
+            return base.VisitJoinRelation(joinRelation, state);
         }
     }
 }

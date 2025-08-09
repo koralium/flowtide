@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders
 
         public double Quantity { get; set; }
 
-        public string Orderstatus { get; set; }
+        public string? Orderstatus { get; set; }
 
         public long? Custkey { get; set; }
     }

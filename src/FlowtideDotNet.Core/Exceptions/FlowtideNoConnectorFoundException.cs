@@ -10,13 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Core.Exceptions
 {
     public class FlowtideNoConnectorFoundException : FlowtideException
@@ -30,10 +23,6 @@ namespace FlowtideDotNet.Core.Exceptions
         }
 
         public FlowtideNoConnectorFoundException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
-
-        protected FlowtideNoConnectorFoundException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

@@ -1,6 +1,6 @@
-
 <br />
 <p align="center">
+  <img src="./logo/flowtidelogo.svg" width="200" height="200">
   <h1 align="center">Flowtide.NET</h1>
 
   <p align="center">
@@ -10,18 +10,29 @@
   </p>
 </p>
 
-**Flowtide** is a data streaming and integration engine designed for seamless and efficient real-time data processing. It stands out by offering differential data computation, versatile connector support, SQL language support for data streams and integrations, and high-performance operations among other features. Flowtide is tailored for developers and companies looking to efficiently handle complex data transformations and integrations.
+![NuGet Version](https://img.shields.io/nuget/v/FlowtideDotNet.AspNetCore?label=FlowtideDotNet.AspNetCore&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FFlowtideDotNet.AspNetCore)
+![NuGet Version](https://img.shields.io/nuget/v/FlowtideDotNet.DependencyInjection?label=FlowtideDotNet.DependencyInjection&link=https%3A%2F%2Fwww.nuget.org%2Fpackages%2FFlowtideDotNet.DependencyInjection)
+
+**Flowtide** is a high-performance streaming SQL query engine designed for real-time data processing. Flowtide enables operations on live data streams such as joins, aggregations, windowing, and recursive queries. Use cases include event-driven architectures, ETL pipelines, and modern data-intensive applications. 
+
+![Flowtide](./images/flowtide_streaming_integration.png)
 
 ## Key Features
 
-- **Differential Data Computation**: Processes data changes differentially, enabling the construction of the current state at any given time.
-- **Versatile Connector Support**: Ready-built connectors are available for databases such as SQL Server, MongoDB, CosmosDB, Elasticsearch, etc., with the possibility to build your own connectors.
+- **Versatile Connector Support**: Ready-built connectors are available for databases such as SQL Server, MongoDB, CosmosDB, Elasticsearch, etc., with the possibility to build your own connectors in .NET.
 - **SQL Language Support**: Write your data streams and integrations using SQL, making complex data handling accessible and manageable.
 - **High-Performance Operations**: Supports various operations such as projection, filtering, joining, aggregation, and recursion, enabling complex data transformations.
 - **Integrated Checkpointing System**: Features a custom storage solution with a built-in checkpointing system to ensure data integrity and support full rollback capabilities on failure.
 - **Larger than RAM Support**: Writes data to temporary storage on disk to manage data streams larger than the system's memory.
 - **Materialize Data**: Easily materialize data from one or multiple sources into a destination, enabling architectures such as CQRS.
 - **Vector Clock Watermark System**: Notifies when rows from the source system have been processed by the stream, informing users when the data has been transferred.
+
+## UI for easy monitoring
+
+Flowtide exposes all its metrics using .NET [Meter](https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.metrics.meter?view=net-9.0).
+So it is possible to build grafana dashboards or use the built-in UI to visualize your stream.
+
+![Flowtide](./images/flowtideui.png)
 
 ## Getting started
 
@@ -146,3 +157,10 @@ app.UseFlowtideUI("/stream");
 
 app.Run();
 ```
+
+## .NET Foundation
+
+This project is supported by the [.NET Foundation](https://www.dotnetfoundation.org).
+
+This project has adopted the code of conduct defined by the Contributor Covenant to clarify expected behavior in our community.
+For more information see the [.NET Foundation Code of Conduct](https://dotnetfoundation.org/code-of-conduct).

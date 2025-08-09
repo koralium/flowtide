@@ -6,7 +6,11 @@ These are the versions that will currently be updated with security updates:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.10.x  | :white_check_mark: |
+| 0.14.x  | :white_check_mark: |
+| 0.13.x  | :x:                |
+| 0.12.x  | :x:                |
+| 0.11.x  | :x:                |
+| 0.10.x  | :x:                |
 | 0.9.x   | :x:                |
 
 ## Reporting a Vulnerability

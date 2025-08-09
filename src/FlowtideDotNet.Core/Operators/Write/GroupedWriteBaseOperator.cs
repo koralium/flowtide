@@ -11,12 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Vertices.Egress;
-using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Compute.Group;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Serializers;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Write
 {
@@ -25,10 +25,9 @@ namespace FlowtideDotNet.Core.Operators.Write
     /// 
     /// </summary>
     /// <typeparam name="TState"></typeparam>
-    public abstract class GroupedWriteBaseOperator<TState> : EgressVertex<StreamEventBatch, TState>
-        where TState: IStatefulWriteState
+    public abstract class GroupedWriteBaseOperator : EgressVertex<StreamEventBatch>
     {
-        private IBPlusTree<GroupedStreamEvent, int>? _tree;
+        private IBPlusTree<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>? _tree;
         private Func<GroupedStreamEvent, GroupedStreamEvent, int>? _comparer;
         private IComparer<RowEvent>? _streamEventComparer;
 
@@ -74,9 +73,9 @@ namespace FlowtideDotNet.Core.Operators.Write
             List<RowEvent> events = new List<RowEvent>();
 
             bool breakAll = false;
-            await foreach(var page in iterator)
+            await foreach (var page in iterator)
             {
-                foreach(var kv in page)
+                foreach (var kv in page)
                 {
                     if (_comparer!(kv.Key, seekEvent) != 0)
                     {
@@ -85,7 +84,7 @@ namespace FlowtideDotNet.Core.Operators.Write
                     }
                     if (kv.Value > 0)
                     {
-                        
+
                         var ev = new RowEvent(kv.Value, 0, kv.Key.RowData);
                         events.Add(ev);
                     }
@@ -115,34 +114,35 @@ namespace FlowtideDotNet.Core.Operators.Write
             return await GetGroup(streamEvent);
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             var primaryKeyColumns = await GetPrimaryKeyColumns();
 
             _streamEventComparer = new StreamEventComparer(GroupIndexCreator.CreateComparer<RowEvent>(primaryKeyColumns));
             _comparer = GroupIndexCreator.CreateComparer<GroupedStreamEvent>(primaryKeyColumns);
 
-            _tree = await stateManagerClient.GetOrCreateTree("output", new BPlusTreeOptions<GroupedStreamEvent, int>() 
-            { 
-                Comparer = new GroupedStreamEventComparer(_comparer),
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new GroupedStreamEventBPlusTreeSerializer()
-            });
+            _tree = await stateManagerClient.GetOrCreateTree("output",
+                new BPlusTreeOptions<GroupedStreamEvent, int, ListKeyContainer<GroupedStreamEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<GroupedStreamEvent>(new GroupedStreamEventComparer(_comparer)),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<GroupedStreamEvent>(new GroupedStreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
 
-            await Initialize(restoreTime, state, stateManagerClient);
+            await Initialize(restoreTime, stateManagerClient);
         }
 
-        protected abstract Task Initialize(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task Initialize(long restoreTime, IStateManagerClient stateManagerClient);
 
-        protected override async Task<TState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_tree != null, nameof(_tree));
             await _tree.Commit();
-            var newState = await Checkpoint(checkpointTime);
-            return newState;
+            await Checkpoint(checkpointTime);
         }
 
-        protected abstract Task<TState> Checkpoint(long checkpointTime);
+        protected abstract Task Checkpoint(long checkpointTime);
 
         public override ValueTask DisposeAsync()
         {

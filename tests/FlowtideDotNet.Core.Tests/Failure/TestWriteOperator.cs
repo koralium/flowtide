@@ -10,11 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.Failure
@@ -24,10 +25,10 @@ namespace FlowtideDotNet.Core.Tests.Failure
         public bool InitialCheckpointDone { get; set; }
         public long StorageSegmentId { get; set; }
     }
-    internal class TestWriteOperator : GroupedWriteBaseOperator<TestWriteState>
+    internal class TestWriteOperator : GroupedWriteBaseOperator
     {
-        private TestWriteState currentState;
-        private SortedSet<RowEvent> modified;
+        private IObjectState<TestWriteState>? currentState;
+        private SortedSet<RowEvent>? modified;
         List<int> primaryKeyIds;
         private readonly Func<IReadOnlyList<DataChange>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -53,20 +54,22 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         public override string DisplayName => "Write";
 
-        protected override async Task<TestWriteState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            if (!currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+            if (!currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();
 
-                currentState.InitialCheckpointDone = true;
+                currentState.Value.InitialCheckpointDone = true;
             }
-            return currentState;
+            await currentState.Commit();
         }
 
         private async Task SendData()
         {
+            Debug.Assert(modified != null, nameof(modified));
             List<DataChange> output = new List<DataChange>();
             foreach (var m in modified)
             {
@@ -93,20 +96,20 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return ValueTask.FromResult<IReadOnlyList<int>>(primaryKeyIds);
         }
 
-        protected override Task Initialize(long restoreTime, TestWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            currentState = state;
-            if (state == null)
+            currentState = await stateManagerClient.GetOrCreateObjectStateAsync<TestWriteState>("test_state");
+            if (currentState.Value == null)
             {
-                currentState = new TestWriteState();
+                currentState.Value = new TestWriteState();
             }
             modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
-            return Task.CompletedTask;
         }
 
         protected override async Task OnWatermark(Watermark watermark)
         {
-            if (currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+            if (currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();
@@ -115,6 +118,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(modified != null, nameof(modified));
             foreach (var e in msg.Events)
             {
                 var primaryKeyValue = e.GetColumn(0);

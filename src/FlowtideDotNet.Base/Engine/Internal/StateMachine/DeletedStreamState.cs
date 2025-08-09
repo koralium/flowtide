@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
+
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
     internal class DeletedStreamState : StreamStateMachineState
@@ -40,6 +42,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override void Initialize(StreamStateValue previousState)
         {
+            Debug.Assert(_context != null, nameof(_context));
+            _context.SetStatus(StreamStatus.Deleted);
         }
 
         public override Task OnFailure()
@@ -50,6 +54,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task StartAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public override Task StopAsync()
+        {
+            throw new NotSupportedException("Stream already deleted");
         }
 
         public override Task TriggerCheckpoint(bool isScheduled = false)

@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             if (ifThenExpression.Ifs != null)
             {
-                foreach(var ifClause in ifThenExpression.Ifs)
+                foreach (var ifClause in ifThenExpression.Ifs)
                 {
                     ifClause.If.Accept(this, state);
                     ifClause.Then.Accept(this, state);
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             if (scalarFunction.Arguments != null)
             {
-                foreach(var arg in scalarFunction.Arguments)
+                foreach (var arg in scalarFunction.Arguments)
                 {
                     arg.Accept(this, state);
                 }
@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Substrait.Expressions
             }
             if (singularOrList.Options != null)
             {
-                foreach(var opt in singularOrList.Options)
+                foreach (var opt in singularOrList.Options)
                 {
                     opt.Accept(this, state);
                 }
@@ -110,18 +110,18 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             if (multiOrList.Value != null)
             {
-                foreach(var e in multiOrList.Value)
+                foreach (var e in multiOrList.Value)
                 {
                     e.Accept(this, state);
                 }
             }
             if (multiOrList.Options != null)
             {
-                foreach(var record in multiOrList.Options)
+                foreach (var record in multiOrList.Options)
                 {
                     if (record.Fields != null)
                     {
-                        foreach(var field in record.Fields)
+                        foreach (var field in record.Fields)
                         {
                             field.Accept(this, state);
                         }
@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             if (mapNestedExpression.KeyValues != null)
             {
-                foreach(var kv in mapNestedExpression.KeyValues)
+                foreach (var kv in mapNestedExpression.KeyValues)
                 {
                     Visit(kv.Key, state);
                     Visit(kv.Value, state);
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             if (listNestedExpression.Values != null)
             {
-                foreach(var val in listNestedExpression.Values)
+                foreach (var val in listNestedExpression.Values)
                 {
                     Visit(val, state);
                 }
@@ -159,6 +159,23 @@ namespace FlowtideDotNet.Substrait.Expressions
         public virtual TOutput? VisitCastExpression(CastExpression castExpression, TState state)
         {
             castExpression.Expression.Accept(this, state);
+            return default;
+        }
+
+        public virtual TOutput? VisitStructExpression(StructExpression structExpression, TState state)
+        {
+            if (structExpression.Fields != null)
+            {
+                foreach (var field in structExpression.Fields)
+                {
+                    field.Accept(this, state);
+                }
+            }
+            return default;
+        }
+
+        public virtual TOutput? VisitBinaryLiteral(BinaryLiteral binaryLiteral, TState state)
+        {
             return default;
         }
     }

@@ -10,16 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Azure.Core;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
@@ -37,22 +32,23 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             _graphClient = new GraphServiceClient(_sharepointSourceOptions.TokenCredential);
             _prefix = prefix ?? "";
         }
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
+            string fullName = string.Join(".", tableName);
             TryLoadSharepointData();
             if (_listResponse == null || _listResponse.Value == null)
             {
                 throw new InvalidOperationException("Could not fetch sharepoint information");
             }
 
-            if (!tableName.StartsWith(_prefix))
+            if (!fullName.StartsWith(_prefix))
             {
                 tableMetadata = null;
                 return false;
             }
-            tableName = tableName.Substring(_prefix.Length);
+            fullName = fullName.Substring(_prefix.Length);
 
-            var list = _listResponse.Value.Find(x => x.Name == tableName);
+            var list = _listResponse.Value.Find(x => x.Name == fullName);
             if (list == null)
             {
                 tableMetadata = null;
@@ -125,6 +121,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             }
 
             List<string> columnNames = new List<string>();
+            List<SubstraitBaseType> types = new List<SubstraitBaseType>();
 
             foreach (var column in columns.Value)
             {
@@ -133,15 +130,24 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     continue;
                 }
                 columnNames.Add(column.Name);
+                types.Add(new AnyType());
             }
             columnNames.Add("_fields");
+            types.Add(new AnyType());
 
             if (list.Name == null)
             {
                 throw new InvalidOperationException("List name is null");
             }
 
-            var metadata = new TableMetadata(list.Name, columnNames);
+            var metadata = new TableMetadata(list.Name, new NamedStruct()
+            {
+                Names = columnNames,
+                Struct = new Struct()
+                {
+                    Types = types
+                }
+            });
             _tables.Add(list.Id, metadata);
             return metadata;
         }

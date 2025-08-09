@@ -18,10 +18,16 @@ namespace FlowtideDotNet.Substrait.Type
         Int32 = 1,
         Any = 2,
         Date = 3,
-        Fp64 = 4,
-        Int64 = 5,
-        Bool = 6,
-        Fp32 = 7,
-        Decimal = 8
+        Int64 = 4,
+        Fp32 = 5,
+        Fp64 = 6,
+        Bool = 7,
+        Decimal = 8,
+        Struct = 9,
+        Map = 10,
+        List = 11,
+        Binary = 12,
+        TimestampTz = 13,
+        Null = 14
     }
 }

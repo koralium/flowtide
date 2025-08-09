@@ -33,14 +33,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Dictionary<int, long> TargetsEventCounter { get; set; } = new Dictionary<int, long>();
     }
 
-    internal class ExchangeOperator : PartitionVertex<StreamEventBatch, ExchangeOperatorState>, IStreamEgressVertex
+    internal class ExchangeOperator : PartitionVertex<StreamEventBatch>, IStreamEgressVertex
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
-        internal readonly ExchangeRelation exchangeRelation;
+        private readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
-        private ExchangeOperatorState? _state;
+        private IObjectState<ExchangeOperatorState>? _state;
 
         public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             switch (exchangeRelation.ExchangeKind.Type)
             {
                 case ExchangeKindType.Broadcast:
-                    _executor = new BroadcastExecutor();
+                    _executor = new BroadcastExecutor(exchangeRelation);
                     break;
                 case ExchangeKindType.Scatter:
                     _executor = new ScatterExecutor(exchangeRelation, functionsRegister);
@@ -61,20 +61,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private static int CalculateTargetNumber(ExchangeRelation exchangeRelation)
         {
-            return exchangeRelation.Targets.Count(x => x.Type == ExchangeTargetType.StandardOutput);
+            return exchangeRelation.Targets.Where(x => x.Type == ExchangeTargetType.StandardOutput).Count();
         }
 
         public override string DisplayName => "Exchange";
 
-        protected override async Task InitializeOrRestore(ExchangeOperatorState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
-            if (state == null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
+            if (_state.Value == null)
             {
-                state = new ExchangeOperatorState();
+                _state.Value = new ExchangeOperatorState();
             }
-            _state = state;
 
-            await _executor.Initialize(exchangeRelation, stateManagerClient, state);
+            await _executor.Initialize(exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {
@@ -89,17 +89,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override async Task QueueTrigger(TriggerEvent triggerEvent)
         {
             // Check if it is a request to fetch data from a pull bucket
-            if (triggerEvent.State is ExchangeFetchDataMessage exchangeFetchDataRequest &&
-                triggerEvent.Name.StartsWith(PullBucketRequestTriggerPrefix))
+            if (triggerEvent.State is ExchangeFetchDataMessage exchangeFetchDataRequest)
             {
-                var exchangeIdString = triggerEvent.Name.Substring(PullBucketRequestTriggerPrefix.Length);
-                if (int.TryParse(exchangeIdString, out var exchangeId))
+                if (triggerEvent.Name.StartsWith(PullBucketRequestTriggerPrefix))
                 {
-                    await _executor.GetPullBucketData(exchangeId, exchangeFetchDataRequest);
-                }
-                else
-                {
-                    throw new InvalidOperationException("Invalid exchange target id, it must be an integer value");
+                    var exchangeIdString = triggerEvent.Name.Substring(PullBucketRequestTriggerPrefix.Length);
+                    if (int.TryParse(exchangeIdString, out var exchangeId))
+                    {
+                        await _executor.GetPullBucketData(exchangeId, exchangeFetchDataRequest);
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Invalid exchange target id, it must be an integer value");
+                    }
                 }
             }
             if (triggerEvent.State is CheckpointRequestedMessage)
@@ -113,12 +115,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override async Task OnLockingEvent(ILockingEvent lockingEvent)
         {
+            Debug.Assert(_state != null);
             await _executor.OnLockingEvent(lockingEvent);
 
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
-                var checkpointData = await OnCheckpoint();
-                checkpointEvent.AddState(Name, checkpointData);
+                await OnCheckpoint();
+                await _state.Commit();
             }
 
             if (_checkpointDone != null)
@@ -147,11 +150,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _checkpointDone = checkpointDone;
         }
 
-        private async Task<ExchangeOperatorState> OnCheckpoint()
+        private async Task OnCheckpoint()
         {
-            Debug.Assert(_state != null);
-            await _executor.AddCheckpointState(_state);
-            return _state;
+            Debug.Assert(_state?.Value != null);
+            await _executor.AddCheckpointState(_state.Value);
         }
     }
 }

@@ -10,9 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
-using static Substrait.Protobuf.Expression.Types;
-
 namespace FlowtideDotNet.Substrait.Expressions.Literals
 {
     public sealed class ArrayLiteral : Literal, IEquatable<ArrayLiteral>
@@ -23,7 +20,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitArrayLiteral(this, state);
+            return visitor.VisitArrayLiteral(this, state)!;
         }
 
         public override bool Equals(object? obj)
@@ -45,7 +42,7 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
         {
             var code = new HashCode();
             code.Add(Type);
-            foreach(var expr in Expressions)
+            foreach (var expr in Expressions)
             {
                 code.Add(expr);
             }

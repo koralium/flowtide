@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
         }
     }
 
-    internal class FailureIngress : ReadBaseOperator<object>
+    internal class FailureIngress : ReadBaseOperator
     {
         public FailureIngress(DataflowBlockOptions options) : base(options)
         {
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return Task.FromResult<IReadOnlySet<string>>(watermarks);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
@@ -74,14 +74,12 @@ namespace FlowtideDotNet.Core.Tests.Failure
             ScheduleCheckpoint(TimeSpan.FromSeconds(1));
             await output.EnterCheckpointLock();
 
-            _ = RunTask( async (output, o) =>
+            _ = RunTask(async (output, o) =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(10));
             });
 
             throw new Exception();
-
-            output.ExitCheckpointLock();
         }
     }
 }

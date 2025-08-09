@@ -1,0 +1,27 @@
+﻿CREATE TABLE [dbo].[Streams](
+	[StreamKey] [int] IDENTITY(1,1) NOT NULL,
+	[UniqueStreamName] [nvarchar](150) NOT NULL,
+	[LastSuccessfulVersion] [int] NOT NULL,
+ CONSTRAINT [PK_Streams2] PRIMARY KEY CLUSTERED 
+(
+	[StreamKey] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+
+CREATE TABLE [dbo].[StreamPages](
+	[Id] [bigint] IDENTITY(1,1) NOT NULL,
+	[PageKey] [uniqueidentifier] NOT NULL,
+	[StreamKey] [int] NOT NULL,
+	[PageId] [bigint] NOT NULL,
+	[Payload] [varbinary](max) NOT NULL,
+	[Version] [int] NOT NULL,
+ CONSTRAINT [PK_StreamPages] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+
+ALTER TABLE [dbo].[StreamPages]  WITH NOCHECK ADD  CONSTRAINT [FK_StreamPages_Streams] FOREIGN KEY([StreamKey])
+REFERENCES [dbo].[Streams] ([StreamKey])
+
+ALTER TABLE [dbo].[StreamPages] CHECK CONSTRAINT [FK_StreamPages_Streams]

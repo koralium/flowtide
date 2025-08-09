@@ -18,21 +18,16 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Azure.Cosmos;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.CosmosDB.Internal
 {
-    internal class CosmosDbSinkState : IStatefulWriteState
-    {
-        public long StorageSegmentId { get; set; }
-    }
-    internal class CosmosDbSink : GroupedWriteBaseOperator<CosmosDbSinkState>
+    internal class CosmosDbSink : GroupedWriteBaseOperator
     {
         private readonly FlowtideCosmosOptions cosmosOptions;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private Container? m_container;
         private Func<RowEvent, PartitionKey>? m_eventToPartitionKey;
@@ -50,10 +45,9 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
 
         public override string DisplayName => "CosmosDB Sink";
 
-        protected override async Task<CosmosDbSinkState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
             await FlushAsync();
-            return new CosmosDbSinkState();
         }
 
         private async Task CompleteTasks(List<Task<ResponseMessage>> tasks, List<MemoryStream> activeStreams)
@@ -73,13 +67,13 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             finally
             {
                 // Always dispose the memory streams to not have memory leaks
-                foreach(var stream in activeStreams)
+                foreach (var stream in activeStreams)
                 {
                     stream.Dispose();
                 }
                 activeStreams.Clear();
             }
-            
+
         }
 
         private async Task FlushAsync()
@@ -102,7 +96,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             int operationCount = 0;
             await foreach (var page in iterator)
             {
-                
+
                 foreach (var kv in page)
                 {
                     operationCount++;
@@ -110,7 +104,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
 
                     var (rows, isDeleted) = await this.GetGroup(kv.Key);
 
-                    
+
                     if (rows.Count > 1)
                     {
                         var lastRow = rows.Last();
@@ -121,7 +115,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                     }
                     else if (rows.Count == 1)
                     {
-                        
+
                         MemoryStream stream = new MemoryStream();
                         m_serializer.Write(stream, rows[0]);
                         tasks.Add(m_container.UpsertItemStreamAsync(stream, pk));
@@ -214,7 +208,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             {
                 m_eventToPartitionKey = CreatePartitionKeyExtractFunction(pkIndex);
             }
-            
+
 
             // Find the id field
             List<int> primaryKeyIndices = new List<int>();
@@ -276,7 +270,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
             };
         }
 
-        protected override async Task Initialize(long restoreTime, CosmosDbSinkState? state, FlowtideDotNet.Storage.StateManager.IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, FlowtideDotNet.Storage.StateManager.IStateManagerClient stateManagerClient)
         {
             if (m_cosmosClient == null)
             {
@@ -287,12 +281,14 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
 
-            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
-            {
-                Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
-            });
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary",
+                new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer!),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
 
             // Clear the modified tree in case of a crash
             await m_modified.Clear();
@@ -321,7 +317,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
                 m_cosmosClient.Dispose();
                 m_cosmosClient = null;
             }
-            
+
             return base.DisposeAsync();
         }
     }

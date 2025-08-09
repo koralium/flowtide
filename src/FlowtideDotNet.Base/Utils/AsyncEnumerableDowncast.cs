@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Base.Utils
 
             public ValueTask DisposeAsync()
             {
-                
+
                 return enumerator.DisposeAsync();
             }
 

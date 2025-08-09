@@ -13,7 +13,7 @@
 
 namespace FlowtideDotNet.Substrait.Type
 {
-    internal class Fp32Type : SubstraitBaseType
+    public class Fp32Type : SubstraitBaseType
     {
         public override SubstraitType Type => SubstraitType.Fp32;
     }

@@ -10,22 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree.Internal;
+
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreePageIterator<K, V> : IEnumerable<KeyValuePair<K, V>>
+    public interface IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IEnumerable<KeyValuePair<K, V>>, ILockableObject
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         /// <summary>
         /// Saves the current page, allows the user to modify values on the page and then trigger a save.
         /// </summary>
         /// <returns></returns>
-        ValueTask SavePage();
+        ValueTask SavePage(bool checkForResize);
 
-        List<K> Keys { get; }
+        /// <summary>
+        /// Get the current leaf node, should only be used for very specific scenarios.
+        /// </summary>
+        LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
 
-        List<V> Values { get; }
+        TKeyContainer Keys { get; }
 
-        void EnterLock();
-
-        void ExitLock();
+        TValueContainer Values { get; }
     }
 }

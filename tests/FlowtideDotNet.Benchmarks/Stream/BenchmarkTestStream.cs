@@ -11,16 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
-using Perfolizer.Horology;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks.Stream
 {
@@ -54,7 +47,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
             }
         }
 
-        protected override IPersistentStorage CreatePersistentStorage(string testName)
+        protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
             return new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/{testName}/fasterkv", true));
         }

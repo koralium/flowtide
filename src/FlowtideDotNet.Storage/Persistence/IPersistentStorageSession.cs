@@ -10,14 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager.Internal;
+
 namespace FlowtideDotNet.Storage.Persistence
 {
     public interface IPersistentStorageSession : IDisposable
     {
-        ValueTask<byte[]> Read(long key);
+        ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer)
+            where T : ICacheObject;
 
-        Task Write(long key, byte[] value);
+        ValueTask<ReadOnlyMemory<byte>> Read(long key);
+
+        Task Write(long key, SerializableObject value);
 
         Task Delete(long key);
+
+        Task Commit();
     }
 }

@@ -42,13 +42,13 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override int GetHashCode()
         {
             var code = new HashCode();
-            
-            foreach(var value in Value)
+
+            foreach (var value in Value)
             {
                 code.Add(value);
             }
 
-            foreach(var option in Options)
+            foreach (var option in Options)
             {
                 code.Add(option);
             }

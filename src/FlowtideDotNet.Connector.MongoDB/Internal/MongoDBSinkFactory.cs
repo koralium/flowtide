@@ -14,12 +14,6 @@ using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.MongoDB.Internal
@@ -35,7 +29,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MongoDBSink(options, writeRelation, options.ExecutionMode, dataflowBlockOptions);
+            return new MongoDBSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }

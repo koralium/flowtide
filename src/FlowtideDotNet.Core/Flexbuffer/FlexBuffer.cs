@@ -12,6 +12,7 @@
 
 using System.Buffers;
 using System.Collections;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -21,13 +22,13 @@ namespace FlexBuffers
     public class FlexBuffer
     {
         [Flags]
-        public enum Options: byte
+        public enum Options : byte
         {
             None = 0,
             ShareKeys = 1,
             ShareStrings = 1 << 1,
             ShareKeyVectors = 1 << 2,
-        } 
+        }
         private readonly List<StackValue> _stack = new List<StackValue>();
         private readonly Dictionary<string, ulong> _stringCache = new Dictionary<string, ulong>();
         private readonly Dictionary<string, ulong> _keyCache = new Dictionary<string, ulong>();
@@ -81,7 +82,7 @@ namespace FlexBuffers
             buffer.AddNull();
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(long value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 10);
@@ -113,7 +114,7 @@ namespace FlexBuffers
             buffer.Add(value);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(double value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 10);
@@ -121,7 +122,7 @@ namespace FlexBuffers
             buffer.Add(value);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(bool value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 3);
@@ -129,7 +130,7 @@ namespace FlexBuffers
             buffer.Add(value);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(string value)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, (ulong)value.Length + 2);
@@ -137,7 +138,7 @@ namespace FlexBuffers
             buffer.Add(value);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(long x, long y)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 20);
@@ -148,7 +149,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(long x, long y, long z)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 28);
@@ -160,7 +161,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(long x, long y, long z, long w)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 36);
@@ -173,7 +174,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(ulong x, ulong y)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 20);
@@ -184,7 +185,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(ulong x, ulong y, ulong z)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 28);
@@ -196,7 +197,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(ulong x, ulong y, ulong z, ulong w)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 36);
@@ -209,7 +210,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(double x, double y)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 20);
@@ -220,7 +221,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(double x, double y, double z)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 28);
@@ -232,7 +233,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(double x, double y, double z, double w)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, 36);
@@ -245,7 +246,7 @@ namespace FlexBuffers
             buffer.EndVector(start, true, true);
             return buffer.Finish();
         }
-        
+
         public static byte[] SingleValue(byte[] blob)
         {
             var buffer = new FlexBuffer(ArrayPool<byte>.Shared, (ulong)blob.Length + 10);
@@ -256,7 +257,7 @@ namespace FlexBuffers
 
         public static byte[] From(IEnumerable value, Options options = Options.ShareKeys | Options.ShareStrings | Options.ShareKeyVectors)
         {
-            var buffer = new FlexBuffer(ArrayPool<byte>.Shared, options:options);
+            var buffer = new FlexBuffer(ArrayPool<byte>.Shared, options: options);
             buffer.NewObject();
             if (value is IDictionary dictionary)
             {
@@ -264,9 +265,9 @@ namespace FlexBuffers
             }
             else
             {
-                buffer.AddDynamicVector(value);    
+                buffer.AddDynamicVector(value);
             }
-            
+
             return buffer.Finish();
         }
 
@@ -276,7 +277,7 @@ namespace FlexBuffers
             {
                 FinishBuffer();
             }
-
+            Debug.Assert(_bytes != null);
             var result = new byte[_offset];
             Buffer.BlockCopy(_bytes, 0, result, 0, (int)_offset);
             pool.Return(_bytes);
@@ -289,7 +290,7 @@ namespace FlexBuffers
         {
             if (_finished)
             {
-                throw  new Exception("FlexBuffer is already finished");
+                throw new Exception("FlexBuffer is already finished");
             }
 
             if (_stack.Count != 1)
@@ -300,13 +301,13 @@ namespace FlexBuffers
             var value = _stack[0];
 
             var byteWidth = Align(value.ElementWidth(_offset, 0));
-            
+
             Write(value, byteWidth);
             Write(value.StoredPackedType());
             Write(byteWidth);
             _finished = true;
         }
-        
+
         internal Type AddNull()
         {
             _stack.Add(StackValue.Null());
@@ -318,7 +319,7 @@ namespace FlexBuffers
             _stack.Add(StackValue.Value(value));
             return Type.Int;
         }
-        
+
         internal Type AddIndirect(long value)
         {
             var type = Type.IndirectInt;
@@ -335,7 +336,7 @@ namespace FlexBuffers
             _stack.Add(StackValue.Value(value));
             return Type.Uint;
         }
-        
+
         internal Type AddIndirect(ulong value)
         {
             var type = Type.IndirectUInt;
@@ -346,13 +347,13 @@ namespace FlexBuffers
             _stack.Add(StackValue.Value(valueOffset, bitWidth, type));
             return type;
         }
-        
+
         internal Type Add(double value)
         {
             _stack.Add(StackValue.Value(value));
             return Type.Float;
         }
-        
+
         internal Type AddIndirect(double value)
         {
             var type = Type.IndirectFloat;
@@ -363,7 +364,7 @@ namespace FlexBuffers
             _stack.Add(StackValue.Value(valueOffset, bitWidth, type));
             return type;
         }
-        
+
         internal Type Add(bool value)
         {
             _stack.Add(StackValue.Value(value));
@@ -402,6 +403,7 @@ namespace FlexBuffers
             Write(length, byteWidth);
             var stringOffset = _offset;
             var newOffset = NewOffset(length + 1);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)length);
             _bytes[(int)newOffset - 1] = 0;
             _offset = newOffset;
@@ -432,8 +434,8 @@ namespace FlexBuffers
             Align(bitWidth);
             var stringOffset = _offset;
             var newOffset = NewOffset((ulong)copyLength + 1);
-            
-            
+
+            Debug.Assert(_bytes != null);
             span.Slice(offsetStart, copyLength).CopyTo(_bytes.AsSpan().Slice((int)_offset));
             _bytes[(int)newOffset - 1] = 0;
             _offset = newOffset;
@@ -482,7 +484,7 @@ namespace FlexBuffers
                         var map = flxValue.AsMap;
                         var start = StartVector();
 
-                        for(int i = 0; i < map.Keys.Length; i++)
+                        for (int i = 0; i < map.Keys.Length; i++)
                         {
                             AddKey(map.Keys[i].AsString);
                             Add(map.Values[i]);
@@ -556,9 +558,10 @@ namespace FlexBuffers
             var bitWidth = BitWidthUtil.Width(length);
             var byteWidth = Align(bitWidth);
             Write(value.Length, byteWidth);
-            
+
             var newOffset = NewOffset(length);
             var blobOffset = _offset;
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(value, 0, _bytes, (int)_offset, value.Length);
             _offset = newOffset;
             _stack.Add(StackValue.Value(blobOffset, bitWidth, Type.Blob));
@@ -607,7 +610,7 @@ namespace FlexBuffers
             }
             EndVector(start, typed, false);
         }
-        
+
         private void AddDynamicMap(IDictionary values)
         {
             var start = StartVector();
@@ -627,7 +630,7 @@ namespace FlexBuffers
             foreach (var key in keyStrings)
             {
                 AddKey(key);
-                AddDynamic(values[key]);
+                AddDynamic(values[key]!);
             }
 
             SortAndEndMap(start);
@@ -641,7 +644,7 @@ namespace FlexBuffers
             }
 
             var sorted = true;
-            for (var i = start; i < _stack.Count - 2; i+=2)
+            for (var i = start; i < _stack.Count - 2; i += 2)
             {
                 if (ShouldFlip(_stack[i], _stack[i + 2]))
                 {
@@ -671,7 +674,7 @@ namespace FlexBuffers
                         _stack[flipIndex + 1] = _stack[i + 1];
                         _stack[i] = k;
                         _stack[i + 1] = v;
-                        
+
                     }
                 }
             }
@@ -717,6 +720,7 @@ namespace FlexBuffers
             {
                 throw new Exception($"Stack values are not keys {v1} | {v2}");
             }
+            Debug.Assert(_bytes != null);
 
             byte c1, c2;
             var index = 0;
@@ -778,7 +782,7 @@ namespace FlexBuffers
                     throw new Exception($"Unexpected type of {value}");
             }
         }
-        
+
         internal void AddKey(string value)
         {
             if (_options.HasFlag(Options.ShareKeys) && _keyCache.ContainsKey(value))
@@ -790,6 +794,7 @@ namespace FlexBuffers
             var length = (ulong)bytes.Length;
             var keyOffset = _offset;
             var newOffset = NewOffset(length + 1);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)length);
             _offset = newOffset;
             _stack.Add(StackValue.Value(keyOffset, BitWidth.Width8, Type.Key));
@@ -801,11 +806,11 @@ namespace FlexBuffers
 
         private byte Align(BitWidth width)
         {
-            var byteWidth = 1UL << (int) width;
+            var byteWidth = 1UL << (int)width;
             _offset += BitWidthUtil.PaddingSize(_offset, byteWidth);
-            return (byte) byteWidth;
+            return (byte)byteWidth;
         }
-        
+
         private void Write(StackValue value, ulong width)
         {
             var newOffset = NewOffset(width);
@@ -824,42 +829,47 @@ namespace FlexBuffers
             else
             {
                 var bytes = value.IsFloat32 && width == 4 ? BitConverter.GetBytes((float)value.AsDouble) : BitConverter.GetBytes(value.AsULong);
-                var count = Math.Min((ulong)bytes.Length, width); 
+                var count = Math.Min((ulong)bytes.Length, width);
+                Debug.Assert(_bytes != null);
                 Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             }
             _offset = newOffset;
         }
-        
+
         private void Write(byte value)
         {
             var newOffset = NewOffset(1);
+            Debug.Assert(_bytes != null);
             _bytes[_offset] = value;
             _offset = newOffset;
         }
-        
+
         private void Write(long value, ulong width)
         {
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
-            var count = Math.Min((ulong)bytes.Length, width); 
+            var count = Math.Min((ulong)bytes.Length, width);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
-        
+
         private void Write(ulong value, ulong width)
         {
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
-            var count = Math.Min((ulong)bytes.Length, width); 
+            var count = Math.Min((ulong)bytes.Length, width);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
-        
+
         private void Write(double value, ulong width)
         {
             var newOffset = NewOffset(width);
             var bytes = BitConverter.GetBytes(value);
-            var count = Math.Min((ulong)bytes.Length, width); 
+            var count = Math.Min((ulong)bytes.Length, width);
+            Debug.Assert(_bytes != null);
             Buffer.BlockCopy(bytes, 0, _bytes, (int)_offset, (int)count);
             _offset = newOffset;
         }
@@ -878,7 +888,7 @@ namespace FlexBuffers
                 var prevBytes = _bytes;
                 _bytes = pool.Rent((int)_size); // new byte[_size];
                 Array.Clear(_bytes);
-
+                Debug.Assert(prevBytes != null);
                 Buffer.BlockCopy(prevBytes, 0, _bytes, 0, (int)_offset);
                 pool.Return(prevBytes);
             }
@@ -895,7 +905,7 @@ namespace FlexBuffers
         {
             var vecLen = _stack.Count - start;
             var vec = CreateVector(start, vecLen, 1, typed, fix);
-            
+
             _stack.RemoveRange(_stack.Count - vecLen, vecLen);
             _stack.Add(vec);
             return (int)vec.AsLong;
@@ -908,7 +918,7 @@ namespace FlexBuffers
             if (keys != null)
             {
                 var elemWidth = keys.Value.ElementWidth(_offset, 0);
-                if ((int) elemWidth > (int) bitWidth)
+                if ((int)elemWidth > (int)bitWidth)
                 {
                     bitWidth = elemWidth;
                 }
@@ -917,10 +927,10 @@ namespace FlexBuffers
             }
 
             var vectorType = Type.Key;
-            for (var i = start; i < _stack.Count; i+=step)
+            for (var i = start; i < _stack.Count; i += step)
             {
                 var elemWidth = _stack[i].ElementWidth(_offset, i + prefixElems);
-                if ((int) elemWidth > (int) bitWidth)
+                if ((int)elemWidth > (int)bitWidth)
                 {
                     bitWidth = elemWidth;
                 }
@@ -973,7 +983,7 @@ namespace FlexBuffers
                 }
             }
 
-            
+
             if (keys != null)
             {
                 return StackValue.Value(vloc, bitWidth, Type.Map);
@@ -984,15 +994,16 @@ namespace FlexBuffers
                 var type = TypesUtil.ToTypedVector(vectorType, (byte)(fix ? vecLen : 0));
                 return StackValue.Value(vloc, bitWidth, type);
             }
-            
+
             return StackValue.Value(vloc, bitWidth, Type.Vector);
         }
     }
 
     internal class OffsetArrayComparer : IEqualityComparer<long[]>
     {
-        public bool Equals(long[] x, long[] y)
+        public bool Equals(long[]? x, long[]? y)
         {
+            Debug.Assert(x != null && y != null);
             if (x.Length != y.Length)
             {
                 return false;
@@ -1014,7 +1025,7 @@ namespace FlexBuffers
             {
                 unchecked
                 {
-                    result = (int) (result * 23 + obj[i]);
+                    result = (int)(result * 23 + obj[i]);
                 }
             }
             return result;

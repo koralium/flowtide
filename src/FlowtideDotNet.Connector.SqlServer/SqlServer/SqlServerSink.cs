@@ -10,35 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.SqlServer;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Storage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using Microsoft.Data.SqlClient;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
+using Microsoft.Data.SqlClient;
 using System.Data;
-using System.Threading.Tasks.Dataflow;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using FlowtideDotNet.Connector.SqlServer.SqlServer;
-using FlowtideDotNet.Connector.SqlServer;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.SqlServer
 {
-    public class SqlServerSinkState : IStatefulWriteState
-    {
-        public long StorageSegmentId { get; set; }
-    }
-    public class SqlServerSink : GroupedWriteBaseOperator<SqlServerSinkState>
+    public class SqlServerSink : GroupedWriteBaseOperator
     {
         private readonly string tmpTableName;
         private readonly Func<string> connectionStringFunc;
         private readonly SqlServerSinkOptions sqlServerSinkOptions;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private SqlConnection? connection;
         private IReadOnlyList<int>? m_primaryKeys;
@@ -62,7 +57,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
         public override string DisplayName => "SQL Server Sink";
 
-        protected override async Task<SqlServerSinkState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
             Debug.Assert(m_modified != null);
             Debug.Assert(m_dataTable != null);
@@ -121,7 +116,6 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 m_hasModified = false;
                 Logger.DatabaseUpdateComplete(StreamName, Name);
             }
-            return new SqlServerSinkState();
         }
 
         private async Task LoadPrimaryKeys()
@@ -252,17 +246,19 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return m_primaryKeys!;
         }
 
-        protected override async Task Initialize(long restoreTime, SqlServerSinkState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
             await LoadMetadata();
             Debug.Assert(PrimaryKeyComparer != null);
             // Create a tree for storing modified data.
-            m_modified = await stateManagerClient.GetOrCreateTree<RowEvent, int>("temporary", new Storage.Tree.BPlusTreeOptions<RowEvent, int>()
-            {
-                Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
-            });
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary",
+                new Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             // Clear the modified tree in case of a crash
             await m_modified.Clear();
         }

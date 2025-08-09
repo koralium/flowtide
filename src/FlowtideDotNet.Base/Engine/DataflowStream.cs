@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using FlowtideDotNet.Base.Metrics;
-using System.Text.Json;
 
 namespace FlowtideDotNet.Base.Engine
 {
@@ -27,9 +26,13 @@ namespace FlowtideDotNet.Base.Engine
 
         public StreamStateValue State => streamContext.currentState;
 
-        public StreamStatus Status => streamContext.GetStatus();
+        public StreamStateValue WantedState => streamContext._wantedState;
+
+        public StreamStatus Status => streamContext.Status;
 
         public IStreamScheduler Scheduler => streamContext._streamScheduler;
+
+        public FlowtideHealth Health => streamContext.Health;
 
         public Task StartAsync()
         {
@@ -51,16 +54,16 @@ namespace FlowtideDotNet.Base.Engine
                 await StartAsync();
                 PeriodicTimer periodicTimer = new PeriodicTimer(TimeSpan.FromMilliseconds(10));
                 int count = 0;
-                while (await periodicTimer.WaitForNextTickAsync())
+                while (await periodicTimer.WaitForNextTickAsync() && State != StreamStateValue.NotStarted)
                 {
                     await streamScheduler.Tick();
                     count++;
-
+                    
                     if (count % 1000 == 0)
                     {
 #if DEBUG_WRITE
                         var graph = GetDiagnosticsGraph();
-                        var str = JsonSerializer.Serialize(graph, new JsonSerializerOptions()
+                        var str = System.Text.Json.JsonSerializer.Serialize(graph, new System.Text.Json.JsonSerializerOptions()
                         {
                             WriteIndented = true
                         });
@@ -111,6 +114,21 @@ namespace FlowtideDotNet.Base.Engine
         public StreamGraph GetDiagnosticsGraph()
         {
             return streamContext.GetGraph();
+        }
+
+        public Task StopAsync()
+        {
+            return streamContext.StopAsync();
+        }
+
+        public void Pause()
+        {
+            streamContext.Pause();
+        }
+
+        public void Resume()
+        {
+            streamContext.Resume();
         }
     }
 }

@@ -24,11 +24,19 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.mockDatabase = mockDatabase;
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (mockDatabase.Tables.TryGetValue(tableName, out var mockTable))
+            string fullName = string.Join(".", tableName);
+            if (mockDatabase.Tables.TryGetValue(fullName, out var mockTable))
             {
-                tableMetadata = new TableMetadata(tableName, mockTable.Columns);
+                tableMetadata = new TableMetadata(fullName, new Substrait.Type.NamedStruct()
+                {
+                    Names = mockTable.Columns.ToList(),
+                    Struct = new Substrait.Type.Struct()
+                    {
+                        Types = mockTable.Types.ToList()
+                    }
+                });
                 return true;
             }
             tableMetadata = null;

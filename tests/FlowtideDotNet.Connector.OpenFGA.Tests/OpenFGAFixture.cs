@@ -13,11 +13,6 @@
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Containers;
 using OpenFga.Sdk.Client;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.OpenFGA.Tests
 {
@@ -32,7 +27,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 .WithPortBinding(8081, false)
                 .WithPortBinding(3000, false)
                 .WithCommand("run")
-                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("HTTP server listening on '0.0.0.0:8080'..."));
+                .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("starting HTTP server"));
             _container = builder.Build();
         }
         public async Task DisposeAsync()

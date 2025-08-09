@@ -12,9 +12,11 @@
 
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -33,7 +35,7 @@ namespace SqlSampleWithUI
         }
     }
 
-    public class DummyReadOperator : ReadBaseOperator<object>
+    public class DummyReadOperator : ReadBaseOperator
     {
         public DummyReadOperator(DataflowBlockOptions options) : base(options)
         {
@@ -56,37 +58,47 @@ namespace SqlSampleWithUI
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { "dummy" });
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
 
-        protected override Task<object> OnCheckpoint(long checkpointTime)
+        protected override Task OnCheckpoint(long checkpointTime)
         {
             return Task.FromResult(new object());
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            for (int i = 0; i < 1_000_000; i++)
+            
+            for (int i = 0; i < 10_000; i++)
             {
                 await output.EnterCheckpointLock();
+                var memoryManager = MemoryAllocator;
+                IColumn[] columns = new IColumn[16];
+                PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
-                List<RowEvent> o = new List<RowEvent>();
+
+                for (int b = 0; b < 16; b++)
+                {
+                    columns[b] = Column.Create(memoryManager);
+                }
+
                 for (int k = 0; k < 100; k++)
                 {
-                    o.Add(RowEvent.Create(1, 0, b =>
+                    weights.Add(1);
+                    iterations.Add(0);
+                    for (int z = 0; z < 16; z++)
                     {
-                        for (int z = 0; z < 16; z++)
-                        {
-                            b.Add(123);
-                        }
-                    }));
+                        columns[z].Add(new Int64Value((i * 100) + k));
+                    }
                 }
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 output.ExitCheckpointLock();
-                ScheduleCheckpoint(TimeSpan.FromSeconds(1));
+
             }
+            ScheduleCheckpoint(TimeSpan.FromSeconds(1));
         }
     }
 }

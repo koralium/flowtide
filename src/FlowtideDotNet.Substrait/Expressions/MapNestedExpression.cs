@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitMapNestedExpression(this, state);
+            return visitor.VisitMapNestedExpression(this, state)!;
         }
 
         public override bool Equals(object? obj)
@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach(var keyValue in KeyValues)
+            foreach (var keyValue in KeyValues)
             {
                 code.Add(keyValue);
             }

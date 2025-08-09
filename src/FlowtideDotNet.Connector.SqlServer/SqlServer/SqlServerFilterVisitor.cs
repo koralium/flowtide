@@ -37,7 +37,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
     {
         private readonly ReadRelation readRelation;
 
-        
+
 
         public SqlServerFilterVisitor(ReadRelation readRelation)
         {
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 return null;
             }
             List<string> values = new List<string>();
-            for(int i = 0; i < singularOrList.Options.Count; i++)
+            for (int i = 0; i < singularOrList.Options.Count; i++)
             {
                 var v = Visit(singularOrList.Options[i], state);
                 if (v == null)
@@ -139,7 +139,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         private FilterResult? VisitAndFunction(ScalarFunction andFunction, object? state)
         {
             List<string> resolved = new List<string>();
-            foreach(var expr in andFunction.Arguments)
+            foreach (var expr in andFunction.Arguments)
             {
                 var result = Visit(expr, state);
                 if (result == null)
@@ -154,9 +154,9 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 {
                     resolved.Add(result.Content);
                 }
-                
+
             }
-            return new (string.Join(" AND ", resolved), true);
+            return new(string.Join(" AND ", resolved), true);
         }
 
         public override FilterResult? VisitBoolLiteral(BoolLiteral boolLiteral, object? state)
@@ -220,9 +220,9 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 {
                     resolved.Add($"{result.Content} = 1");
                 }
-                
+
             }
-            return new (string.Join(" OR ", resolved), true);
+            return new(string.Join(" OR ", resolved), true);
         }
 
         public override FilterResult? VisitNullLiteral(NullLiteral nullLiteral, object? state)
@@ -233,10 +233,10 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         public override FilterResult? VisitIfThen(IfThenExpression ifThenExpression, object? state)
         {
             List<string> resolved = new List<string>();
-            foreach(var ifThenStatement in ifThenExpression.Ifs)
+            foreach (var ifThenStatement in ifThenExpression.Ifs)
             {
                 var ifstatement = Visit(ifThenStatement.If, state);
-                var thenstatement = Visit(ifThenExpression.Else, state);
+                var thenstatement = Visit(ifThenStatement.Then, state);
 
                 if (ifstatement == null || thenstatement == null)
                 {
@@ -250,7 +250,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 {
                     resolved.Add($"WHEN {ifstatement.Content} = 1 THEN {thenstatement.Content}");
                 }
-                
+
             }
 
             string? elseString = default;
@@ -267,7 +267,7 @@ namespace FlowtideDotNet.SqlServer.SqlServer
 
             StringBuilder stringBuilder = new StringBuilder();
             stringBuilder.AppendLine("CASE");
-            foreach(var line in resolved)
+            foreach (var line in resolved)
             {
                 stringBuilder.AppendLine(line);
             }

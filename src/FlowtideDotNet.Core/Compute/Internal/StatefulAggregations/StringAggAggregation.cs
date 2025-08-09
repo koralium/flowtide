@@ -12,19 +12,14 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
-using System.Threading.Tasks;
-using static SqlParser.Ast.Statement;
 
 namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 {
@@ -32,13 +27,13 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
     {
         private readonly int keyLength;
 
-        public StringAggAggregationSingleton(IBPlusTree<RowEvent, int> tree, int keyLength)
+        public StringAggAggregationSingleton(IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> tree, int keyLength)
         {
             Tree = tree;
             this.keyLength = keyLength;
         }
         public int KeyLength => keyLength;
-        public IBPlusTree<RowEvent, int> Tree { get; }
+        public IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> Tree { get; }
         public string? Seperator { get; set; }
 
         public bool AreKeyEqual(RowEvent x, RowEvent y)
@@ -105,14 +100,16 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             return FlxValue.FromBytes(FlexBuffer.SingleValue(sb.ToString()));
         }
 
-        private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient)
+        private static async Task<StringAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int>()
-            {
-                Comparer = new ListAggAggregationInsertComparer(groupingLength + 1),
-                KeySerializer = new StreamEventBPlusTreeSerializer(),
-                ValueSerializer = new IntSerializer()
-            });
+            var tree = await stateManagerClient.GetOrCreateTree("stringaggtree",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(new ListAggAggregationInsertComparer(groupingLength + 1)),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    MemoryAllocator = memoryAllocator
+                });
 
             return new StringAggAggregationSingleton(tree, groupingLength);
         }

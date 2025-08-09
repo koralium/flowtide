@@ -12,15 +12,8 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Sources.Generic;
-using FluentAssertions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Tests.GenericDataTests
 {
@@ -49,9 +42,9 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             return Task.FromResult(new List<string> { "UserKey" });
         }
 
-        public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes)
+        public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
-            await foreach(var userChange in changes)
+            await foreach (var userChange in changes)
             {
                 if (!userChange.IsDeleted)
                 {
@@ -92,8 +85,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 await stream.SchedulerTick();
             }
 
-            sink.users.Values.OrderBy(x => x.UserKey).Should()
-                .BeEquivalentTo(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey));
+            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
 
             var firstUser = stream.Users[0];
             stream.DeleteUser(firstUser);
@@ -108,8 +100,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 await stream.SchedulerTick();
             }
 
-            sink.users.Values.OrderBy(x => x.UserKey).Should()
-                .BeEquivalentTo(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey));
+            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
         }
     }
 }

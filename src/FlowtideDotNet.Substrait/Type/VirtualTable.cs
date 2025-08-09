@@ -11,13 +11,13 @@
 // limitations under the License.
 
 
-using Substrait.Protobuf;
+using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Type
 {
     public sealed class VirtualTable : IEquatable<VirtualTable>
     {
-        public List<string> JsonValues { get; set; }
+        public required List<StructExpression> Expressions { get; set; }
 
         public override bool Equals(object? obj)
         {
@@ -28,13 +28,13 @@ namespace FlowtideDotNet.Substrait.Type
         public bool Equals(VirtualTable? other)
         {
             return other != null &&
-                   JsonValues.SequenceEqual(other.JsonValues);
+                   Expressions.SequenceEqual(other.Expressions);
         }
 
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach (var value in JsonValues)
+            foreach (var value in Expressions)
             {
                 code.Add(value);
             }

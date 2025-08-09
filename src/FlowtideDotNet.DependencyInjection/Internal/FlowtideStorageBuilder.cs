@@ -11,14 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.DependencyInjection;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Internal
 {
@@ -33,7 +29,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             this.services = services;
         }
 
-        public IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions)
+        public IFlowtideStorageBuilder SetCompression(StateSerializeOptions serializeOptions)
         {
             services.AddKeyedSingleton(name, serializeOptions);
             return this;
@@ -52,17 +48,39 @@ namespace FlowtideDotNet.DependencyInjection.Internal
             return this;
         }
 
+        public IFlowtideStorageBuilder SetFileCacheFactory(IFileCacheFactory fileCacheFactory)
+        {
+            services.AddKeyedSingleton(name, fileCacheFactory);
+            return this;
+        }
+
+        public IFlowtideStorageBuilder SetFileCacheFactory<TFileCacheFactory>()
+            where TFileCacheFactory : class, IFileCacheFactory
+        {
+            services.AddKeyedSingleton<IFileCacheFactory, TFileCacheFactory>(name);
+            return this;
+        }
+
         public bool UseReadCache { get; set; }
 
         public long? MaxProcessMemory { get; set; }
+
+        public int MinPageCount { get; set; } = 1000;
+
+        public IServiceCollection ServiceCollection => services;
+
+        public string Name => name;
+
+        public int? MaxPageCount { get; set; }
 
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
             var serializeOptions = serviceProvider.GetKeyedService<StateSerializeOptions>(name);
             var fileCacheOptions = serviceProvider.GetKeyedService<FileCacheOptions>(name);
+            var fileCacheFactory = serviceProvider.GetKeyedService<IFileCacheFactory>(name);
 
-            if (MaxProcessMemory == null)
+            if (MaxProcessMemory == null && MaxPageCount == null)
             {
                 var memoryInfo = GC.GetGCMemoryInfo();
                 MaxProcessMemory = (long)(memoryInfo.TotalAvailableMemoryBytes * 0.8);
@@ -79,8 +97,21 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 SerializeOptions = serializeOptions,
                 UseReadCache = UseReadCache,
                 TemporaryStorageOptions = fileCacheOptions,
-                MaxProcessMemory = MaxProcessMemory.Value,
+                MaxProcessMemory = MaxProcessMemory ?? -1,
+                MinCachePageCount = MinPageCount,
+                FileCacheFactory = fileCacheFactory,
+                CachePageCount = MaxPageCount ?? 1000
             };
+        }
+
+        public IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func)
+        {
+            services.AddKeyedSingleton(name, (provider, name) =>
+            {
+                return func(provider);
+            });
+
+            return this;
         }
     }
 }

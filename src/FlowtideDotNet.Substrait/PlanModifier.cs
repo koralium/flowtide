@@ -10,9 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Modifier;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Substrait.Modifier;
 
 namespace FlowtideDotNet.Substrait
 {
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Substrait
         }
 
         [Obsolete("Use inserts with SQL instead")]
-        public PlanModifier WriteToTable(string tableName) 
+        public PlanModifier WriteToTable(string tableName)
         {
             _writeToTables.Add(tableName);
             return this;
@@ -140,10 +140,16 @@ namespace FlowtideDotNet.Substrait
             RootRelation? oldRootRel = null;
             foreach (var rootPlan in _rootPlans)
             {
-                
+                Dictionary<int, int> oldRelationToNewMap = new Dictionary<int, int>();
+                for (int i = 0; i < rootPlan.Relations.Count; i++)
+                {
+                    oldRelationToNewMap.Add(i, i + newPlan.Relations.Count);
+                }
+                var referenceRemapVisitor = new ReferenceRemapVisitor(oldRelationToNewMap);
                 for (int i = 0; i < rootPlan.Relations.Count; i++)
                 {
                     var relation = rootPlan.Relations[i];
+                    referenceRemapVisitor.Visit(relation, default);
                     if (relation is RootRelation rootRelation)
                     {
                         oldRootRel = rootRelation;

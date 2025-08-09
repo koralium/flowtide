@@ -1,8 +1,18 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using Authzed.Api.V1;
 using Grpc.Core;
-using System.Buffers.Text;
 using System.Diagnostics;
-using System.Text;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
 {
@@ -32,14 +42,14 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
 
             var metadata = new Metadata();
-            metadata.Add("Authorization", "Bearer somerandomkeyhere");
+            metadata.Add("Authorization", $"Bearer {nameof(TestInsert)}");
             var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
             var schema = await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
 
-            var stream = new SpiceDbTestStream("testinsert", spiceDbFixture.GetChannel(), true, false);
+            var stream = new SpiceDbTestStream(nameof(TestInsert), spiceDbFixture.GetChannel(), true, false);
             stream.Generate(1000);
             await stream.StartStream(@"
                 INSERT INTO spicedb
@@ -62,6 +72,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     RelationshipFilter = new RelationshipFilter()
                     {
                         ResourceType = "document"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
                     }
                 }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
 
@@ -72,7 +86,85 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 await Task.Delay(10);
             }
             Assert.Equal(1000, existing.Count);
-            
+        }
+
+        [Fact]
+        public async Task TestInsertThenDelete()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata();
+            metadata.Add("Authorization", $"Bearer {nameof(TestInsertThenDelete)}");
+            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = schemaText
+            }, metadata);
+            var schema = await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
+
+            var stream = new SpiceDbTestStream(nameof(TestInsertThenDelete), spiceDbFixture.GetChannel(), true, false);
+            stream.Generate(1000);
+            await stream.StartStream(@"
+                INSERT INTO spicedb
+                SELECT
+                'user' as subject_type,
+                userkey as subject_id,
+                'reader' as relation,
+                'document' as resource_type,
+                orderkey as resource_id
+                FROM orders
+            ");
+
+            var permissionService = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            List<ReadRelationshipsResponse>? existing;
+            while (true)
+            {
+                existing = await permissionService.ReadRelationships(new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
+
+                if (existing.Count >= 1000)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
+            Assert.Equal(1000, existing.Count);
+
+            var firstOrder = stream.Orders[0];
+            stream.DeleteOrder(firstOrder);
+
+            while (true)
+            {
+                await stream.SchedulerTick();
+                existing = await permissionService.ReadRelationships(new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
+
+                if (existing.Count == 999)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+            }
+            Assert.Equal(999, existing.Count);
         }
 
         [Fact]
@@ -82,7 +174,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
 
             var metadata = new Metadata();
-            metadata.Add("Authorization", "Bearer somerandomkeyhere");
+            metadata.Add("Authorization", $"Bearer {nameof(TestRead)}");
             var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
@@ -113,7 +205,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             });
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
 
-            var stream = new SpiceDbTestStream("testread", spiceDbFixture.GetChannel(), false, true);
+            var stream = new SpiceDbTestStream(nameof(TestRead), spiceDbFixture.GetChannel(), false, true);
 
             await stream.StartStream(@"
                 CREATE TABLE spicedb (
@@ -198,7 +290,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
 
             var metadata = new Metadata();
-            metadata.Add("Authorization", "Bearer somerandomkeyhere");
+            metadata.Add("Authorization", $"Bearer {nameof(TestReadPermissions)}");
             var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
@@ -251,7 +343,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
             var viewPermissionPlan = SpiceDbToFlowtide.Convert(schemaText, "document", "view", "spicedb");
 
-            var stream = new SpiceDbTestStream("testreadpermissions", spiceDbFixture.GetChannel(), false, true);
+            var stream = new SpiceDbTestStream(nameof(TestReadPermissions), spiceDbFixture.GetChannel(), false, true);
             stream.SqlPlanBuilder.AddPlanAsView("authdata", viewPermissionPlan);
 
             await stream.StartStream(@"
@@ -264,7 +356,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     resource_id
                 FROM authdata
             ");
-            
+
             await stream.WaitForUpdate();
             var actual = stream.GetActualRowsAsVectors();
             Assert.Equal(2, actual.Count);
@@ -278,7 +370,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata
             {
-                { "Authorization", "Bearer somerandomkeyhere" }
+                { "Authorization", $"Bearer {nameof(TestReadPermissionsRecursive)}" }
             };
             await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
@@ -395,7 +487,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
             var viewPermissionPlan = SpiceDbToFlowtide.Convert(schemaText, "organization", "can_view", "spicedb");
 
-            var stream = new SpiceDbTestStream("testreadpermissionsrecursive", spiceDbFixture.GetChannel(), false, true);
+            var stream = new SpiceDbTestStream(nameof(TestReadPermissionsRecursive), spiceDbFixture.GetChannel(), false, true);
             stream.SqlPlanBuilder.AddPlanAsView("authdata", viewPermissionPlan);
 
             await stream.StartStream(@"
@@ -449,11 +541,30 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
 
             var metadata = new Metadata();
-            metadata.Add("Authorization", "Bearer somerandomkeyhere");
+            metadata.Add("Authorization", $"Bearer {nameof(TestInsertDeleteExisting)}");
             var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
+
+            var stream = new SpiceDbTestStream(
+                nameof(TestInsertDeleteExisting),
+                spiceDbFixture.GetChannel(),
+                true,
+                false,
+                new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document",
+                        OptionalRelation = "reader"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                });
+            stream.Generate(10);
 
             var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
 
@@ -479,26 +590,30 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                     }
                 }
             });
+            writeRequest.Updates.Add(new RelationshipUpdate()
+            {
+                Operation = RelationshipUpdate.Types.Operation.Touch,
+                Relationship = new Relationship()
+                {
+                    Subject = new SubjectReference()
+                    {
+                        Object = new ObjectReference()
+                        {
+                            ObjectType = "user",
+                            ObjectId = stream.Orders[0].UserKey.ToString()
+                        }
+                    },
+                    Relation = "reader",
+                    Resource = new ObjectReference()
+                    {
+                        ObjectType = "document",
+                        ObjectId = stream.Orders[0].OrderKey.ToString()
+                    }
+                }
+            });
+
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
 
-            var stream = new SpiceDbTestStream(
-                "testinsertdeleteexisting", 
-                spiceDbFixture.GetChannel(), 
-                true, 
-                false,
-                new ReadRelationshipsRequest()
-                {
-                    RelationshipFilter = new RelationshipFilter()
-                    {
-                        ResourceType = "document",
-                        OptionalRelation = "reader"
-                    },
-                    Consistency = new Consistency()
-                    {
-                        FullyConsistent = true
-                    }
-                });
-            stream.Generate(10);
             await stream.StartStream(@"
                 INSERT INTO spicedb
                 SELECT
@@ -539,6 +654,27 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             }
             Assert.Equal(10, existing.Count);
 
+        }
+
+        [Fact]
+        public void NonExistingStopTypeThrowsError()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            Assert.Throws<ArgumentException>(() => SpiceDbToFlowtide.Convert(schemaText, "document", "view", "spicedb", "nonexisting"));
+        }
+
+        [Fact]
+        public void NonExistingResourceTypeThrowsError()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            Assert.Throws<ArgumentException>(() => SpiceDbToFlowtide.Convert(schemaText, "nonexisting", "view", "spicedb"));
+        }
+
+        [Fact]
+        public void RelationDoesNotExistOnResourceType()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            Assert.Throws<InvalidOperationException>(() => SpiceDbToFlowtide.Convert(schemaText, "document", "nonexisting", "spicedb"));
         }
     }
 }

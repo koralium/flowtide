@@ -55,7 +55,10 @@ namespace FlowtideDotNet.Core.Engine
                 if (keyIndex == -1)
                 {
                     readRelation.BaseSchema.Names.Add("_key");
-                    readRelation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.Add(new AnyType() { Nullable = false });
+                    }
                     keyIndex = readRelation.BaseSchema.Names.Count - 1;
                 }
 

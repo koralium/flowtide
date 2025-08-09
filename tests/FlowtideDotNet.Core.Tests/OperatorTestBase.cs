@@ -25,17 +25,16 @@ using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using Microsoft.EntityFrameworkCore.ChangeTracking.Internal;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Tests
 {
     /// <summary>
     /// Base class for testing operators
     /// </summary>
-    public abstract class OperatorTestBase : IDisposable
+    public abstract class OperatorTestBase
     {
-        private StateManagerSync? stateManager;
+        private StateManagerSync<StreamState>? _stateManager;
         internal FunctionsRegister FunctionsRegister { get; private set; }
 
         public OperatorTestBase()
@@ -46,33 +45,22 @@ namespace FlowtideDotNet.Core.Tests
 
         public async Task InitializeOperator(IStreamVertex @operator)
         {
-            if (stateManager != null)
-            {
-                stateManager.Dispose();
-            }
             @operator.Setup("stream", "1");
             @operator.CreateBlock();
             @operator.Link();
             var metrics = new StreamMetrics("stream");
             var statemanagermeter = new Meter("statemanager");
-            var statemanager = new StateManagerSync<StreamState>(new StateManagerOptions()
-            {
-                PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-                {
-                    
-                })
-            }, new DebugLoggerProvider().CreateLogger("state"), statemanagermeter, "stream");
-            stateManager = statemanager;
-            await statemanager.InitializeAsync();
-            var vertexHandler = new VertexHandler("stream", "1", (time) => { }, (p1, p2, t) => Task.CompletedTask, metrics.GetOrCreateVertexMeter("1", () => ""), statemanager.GetOrCreateClient("1"), new LoggerFactory());
-            await @operator.Initialize("1", 0, 0, default, vertexHandler);
+            _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions(), new DebugLoggerProvider().CreateLogger("state"), statemanagermeter, "stream");
+            await _stateManager.InitializeAsync();
+            var vertexHandler = new VertexHandler("stream", "1", (time) => { }, (p1, p2, t) => Task.CompletedTask, metrics.GetOrCreateVertexMeter("1", () => ""), _stateManager.GetOrCreateClient("1"), new LoggerFactory(), new OperatorMemoryManager("sream", "op", new Meter("stream")));
+            await @operator.Initialize("1", 0, 0, vertexHandler, null);
         }
 
-        public void Dispose()
+        public void ClearCache()
         {
-            if (stateManager != null)
+            if (_stateManager != null)
             {
-                stateManager.Dispose();
+                _stateManager.ClearCache();
             }
         }
     }

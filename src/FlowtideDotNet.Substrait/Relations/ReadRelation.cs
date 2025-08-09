@@ -75,5 +75,32 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             return !(left == right);
         }
+
+        public ReadRelation Copy()
+        {
+            var schema = new NamedStruct()
+            {
+                Names = BaseSchema.Names.ToList(),
+                Nullable = BaseSchema.Nullable,
+            };
+            if (BaseSchema.Struct != null)
+            {
+                schema.Struct = new Struct()
+                {
+                    Types = BaseSchema.Struct.Types.ToList()
+                };
+            }
+            return new ReadRelation
+            {
+                BaseSchema = schema,
+                NamedTable = new NamedTable()
+                {
+                    Names = NamedTable.Names.ToList()
+                },
+                Filter = Filter,
+                Emit = Emit,
+                Hint = Hint.Clone()
+            };
+        }
     }
 }

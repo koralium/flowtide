@@ -22,7 +22,7 @@ namespace FlowtideDotNet.AspNetCore
         private readonly string _comparePath;
         private readonly string _nextComparePath;
 
-        public UiMiddleware(RequestDelegate next, UiMiddlewareState uiMiddlewareState) 
+        public UiMiddleware(RequestDelegate next, UiMiddlewareState uiMiddlewareState)
         {
             _next = next;
             this.uiMiddlewareState = uiMiddlewareState;
@@ -48,6 +48,10 @@ namespace FlowtideDotNet.AspNetCore
                 if (remaining.Equals("/api/diagnostics"))
                 {
                     return uiMiddlewareState.DiagnosticsEndpoint.Invoke(httpContext);
+                }
+                if (remaining == "/pause" || remaining == "/resume")
+                {
+                    return _next(httpContext);
                 }
                 return uiMiddlewareState.ReactEndpoint.Invoke(httpContext);
             }

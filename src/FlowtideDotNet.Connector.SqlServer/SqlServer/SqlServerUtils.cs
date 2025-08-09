@@ -10,87 +10,277 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core;
 using FlexBuffers;
-using Microsoft.Data.SqlClient;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
+using Microsoft.Data.SqlClient;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Text;
-using Microsoft.Extensions.Primitives;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Substrait.Tests.SqlServer
 {
-    internal static class SqlServerUtils
+    internal static partial class SqlServerUtils
     {
-        public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadRelation readRelation)
+        public static List<Action<SqlDataReader, IColumn>> GetColumnEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
         {
-            List<Action<SqlDataReader, IFlexBufferVectorBuilder>> columns = new List<Action<SqlDataReader, IFlexBufferVectorBuilder>>();
-            for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
+            List<Action<SqlDataReader, IColumn>> output = new List<Action<SqlDataReader, IColumn>>();
+            for (int i = 0; i < dbColumns.Count; i++)
             {
-                var type = readRelation.BaseSchema.Struct.Types[i];
-
+                var column = dbColumns[i];
                 int index = i;
-                switch (type.Type)
+                switch (column.DataTypeName)
                 {
-                    case Type.SubstraitType.String:
-                        columns.Add((reader, builder) =>
-                        {
-                            builder.Add(reader.GetString(index));
-                        });
-                        break;
-                    case Type.SubstraitType.Int32:
-                        columns.Add((reader, builder) =>
+                    case "nchar":
+                    case "char":
+                    case "varchar":
+                    case "nvarchar":
+                    case "ntext":
+                    case "text":
+                    case "xml":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new StringValue(reader.GetString(index)));
+                        });
+                        break;
+                    case "tinyint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            column.Add(new Int64Value(reader.GetByte(index)));
+                        });
+                        break;
+                    case "smallint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
                                 return;
                             }
 
-                            builder.Add(reader.GetInt32(index));
+                            column.Add(new Int64Value(reader.GetInt16(index)));
                         });
                         break;
-                    case Type.SubstraitType.Int64:
-                        columns.Add((reader, builder) =>
+                    case "int":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
                                 return;
                             }
 
-                            builder.Add(reader.GetInt64(index));
+                            column.Add(new Int64Value(reader.GetInt32(index)));
                         });
                         break;
-                    case Type.SubstraitType.Date:
-                        columns.Add((reader, builder) =>
+                    case "money":
+                    case "decimal":
+                        output.Add((reader, column) =>
                         {
                             if (reader.IsDBNull(index))
                             {
-                                builder.AddNull();
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DecimalValue(reader.GetDecimal(index)));
+                        });
+                        break;
+                    case "date":
+                    case "datetime":
+                    case "smalldatetime":
+                    case "datetime2":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
                                 return;
                             }
                             var dateTime = reader.GetDateTime(index);
-                            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds() * 1000;
-                            builder.Add(unixTime);
+                            column.Add(new TimestampTzValue(dateTime));
+                        });
+                        break;
+                    case "datetimeoffset":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var dateTimeOffset = reader.GetDateTimeOffset(index);
+                            column.Add(new TimestampTzValue(dateTimeOffset));
+                        });
+                        break;
+                    case "time":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var time = reader.GetTimeSpan(index);
+                            column.Add(new Int64Value(time.Ticks));
+                        });
+                        break;
+                    case "bit":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+                            var boolean = reader.GetBoolean(index);
+                            column.Add(new BoolValue(boolean));
+                        });
+                        break;
+                    case "bigint":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new Int64Value(reader.GetInt64(index)));
+                        });
+                        break;
+                    case "real":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetFloat(index)));
+                        });
+                        break;
+                    case "float":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            column.Add(new DoubleValue(reader.GetDouble(index)));
+                        });
+                        break;
+                    case "uniqueidentifier":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var guid = reader.GetGuid(index);
+                            column.Add(new StringValue(guid.ToString()));
+                        });
+                        break;
+                    case "binary":
+                    case "varbinary":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
+                        });
+                        break;
+                    case "image":
+                        output.Add((reader, column) =>
+                        {
+                            if (reader.IsDBNull(index))
+                            {
+                                column.Add(NullValue.Instance);
+                                return;
+                            }
+
+                            var binary = reader.GetSqlBinary(index);
+                            column.Add(new BinaryValue(binary.Value));
                         });
                         break;
                     default:
-                        throw new NotImplementedException($"{type.Type}");
+                        throw new NotImplementedException(column.DataTypeName);
                 }
             }
-            return (reader) =>
+            return output;
+        }
+
+        public static SubstraitBaseType GetSubstraitType(string dataTypeName)
+        {
+            switch (dataTypeName.ToLower())
             {
-                return RowEvent.Create(1, 0, builder =>
-                {
-                    for (int i = 0; i < columns.Count; i++)
-                    {
-                        columns[i](reader, builder);
-                    }
-                });
-            };
+                case "nchar":
+                case "char":
+                case "varchar":
+                case "nvarchar":
+                case "ntext":
+                case "text":
+                case "xml":
+                    return new StringType();
+                case "tinyint":
+                case "smallint":
+                case "int":
+                    return new Int64Type();
+                case "money":
+                case "decimal":
+                    return new DecimalType();
+                case "date":
+                case "datetime":
+                case "smalldatetime":
+                case "datetime2":
+                    return new TimestampType();
+                case "time":
+                    return new Int64Type();
+                case "bit":
+                    return new BoolType();
+                case "bigint":
+                    return new Int64Type();
+                case "real":
+                    return new Fp64Type();
+                case "float":
+                    return new Fp64Type();
+                case "uniqueidentifier":
+                    return new StringType();
+                case "binary":
+                case "varbinary":
+                    return new BinaryType();
+                case "image":
+                    return new BinaryType();
+                default:
+                    return new AnyType();
+            }
         }
 
         public static Func<SqlDataReader, RowEvent> GetStreamEventCreator(ReadOnlyCollection<DbColumn> dbColumns)
@@ -327,6 +517,46 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return stringBuilder.ToString();
         }
 
+        public static string CreateInitialPartitionedSelectStatement(ReadRelation readRelation, PartitionMetadata partitionMetadata, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
+        {
+            var stringBuilder = new StringBuilder();
+            var cols = string.Join(", ", readRelation.BaseSchema.Names.Select(x => $"[{x}]"));
+            var table = string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]"));
+
+            stringBuilder.AppendLine($"SELECT {cols}");
+            stringBuilder.AppendLine($"FROM {table}");
+
+            string? filters = filter;
+            if (includePkParameters)
+            {
+                var pkFilters = GetInitialLoadWhereStatement(primaryKeys);
+
+                if (filters != null)
+                {
+                    filters = $"({filters}) AND ({pkFilters})";
+                }
+                else
+                {
+                    filters = pkFilters;
+                }
+            }
+
+            if (filters != null)
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId AND {filters}");
+            }
+            else
+            {
+                stringBuilder.AppendLine($"WHERE $PARTITION.{partitionMetadata.PartitionFunction}({partitionMetadata.PartitionColumn}) = @PartitionId");
+            }
+
+            stringBuilder.AppendLine($"ORDER BY {string.Join(", ", primaryKeys)}");
+            stringBuilder.AppendLine($"OFFSET 0 ROWS FETCH NEXT {batchSize} ROWS ONLY");
+
+            return stringBuilder.ToString();
+
+        }
+
         public static string CreateInitialSelectStatement(ReadRelation readRelation, List<string> primaryKeys, int batchSize, bool includePkParameters, string? filter)
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -359,7 +589,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 stringBuilder.AppendLine($"WHERE {filters}");
             }
 
-            string orderBys = string.Join(", ", primaryKeys);
+            string orderBys = string.Join(", ", primaryKeys.Select(x => $"[{x}]"));
             stringBuilder.AppendLine(" ORDER BY " + orderBys);
             stringBuilder.AppendLine(" OFFSET 0 ROWS FETCH NEXT " + batchSize + " ROWS ONLY");
 
@@ -391,6 +621,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             List<string> primaryKeyEquals = new List<string>();
             List<string> columnSelects = new List<string>();
+            if (readRelation.BaseSchema.Struct == null)
+            {
+                throw new FlowtideException("Struct must be defined in the base schema for SQL Server.");
+            }
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
             {
                 if (primaryKeys.Contains(readRelation.BaseSchema.Names[i], StringComparer.OrdinalIgnoreCase))
@@ -533,8 +767,20 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return await reader.ReadAsync();
         }
 
-        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection)
+        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection, IReadOnlyList<string> table)
         {
+            if (table.Count == 3)
+            {
+                var originalDatabase = sqlConnection.Database;
+                try
+                {
+                    await sqlConnection.ChangeDatabaseAsync(table[0]);
+                }
+                finally
+                {
+                    await sqlConnection.ChangeDatabaseAsync(originalDatabase);
+                }
+            }
             using var cmd = sqlConnection.CreateCommand();
             cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
 
@@ -547,6 +793,22 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             else
             {
                 throw new InvalidOperationException("Could not get change tracking version from sql server.");
+            }
+        }
+
+        public static async Task<long> GetServerTimestamp(SqlConnection sqlConnection)
+        {
+            using var cmd = sqlConnection.CreateCommand();
+            cmd.CommandText = "SELECT SYSDATETIMEOFFSET()";
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                var dateTimeOffset = reader.GetDateTimeOffset(0);
+                return dateTimeOffset.ToUniversalTime().Ticks;
+            }
+            else
+            {
+                throw new InvalidOperationException("Could not get server timestamp from sql server.");
             }
         }
 
@@ -643,7 +905,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             SELECT COLUMN_NAME
             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
             WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + QUOTENAME(CONSTRAINT_NAME)), 'IsPrimaryKey') = 1
-            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema ORDER BY ORDINAL_POSITION";
 
             using var command = connection.CreateCommand();
             command.CommandText = cmd;
@@ -657,6 +919,179 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 output.Add(reader.GetString(0));
             }
             return output;
+        }
+
+        public static async Task<List<int>> GetPrimaryKeyOrdinals(SqlConnection connection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await connection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT ORDINAL_POSITION
+            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+            WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + QUOTENAME(CONSTRAINT_NAME)), 'IsPrimaryKey') = 1
+            AND TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static async Task<List<string>> GetColumns(SqlConnection connection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+            string? db = null;
+            string? schema = null;
+            string? table = null;
+            if (splitName.Length == 3)
+            {
+                db = splitName[0];
+                schema = splitName[1];
+                table = splitName[2];
+            }
+            else if (splitName.Length == 2)
+            {
+                schema = splitName[0];
+                table = splitName[1];
+            }
+            else if (splitName.Length == 1)
+            {
+                schema = "dbo";
+                table = splitName[0];
+            }
+            else
+            {
+                throw new InvalidOperationException("Table name must be in one of the following formats: database.schema.tablename, schema.tablename, or tablename (defaulting to schema 'dbo').");
+            }
+            if (db != null)
+            {
+                await connection.ChangeDatabaseAsync(db);
+            }
+            
+            var cmd = @"
+            SELECT COLUMN_NAME
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema
+            ORDER BY ORDINAL_POSITION";
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+            var output = new List<string>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetString(0));
+            }
+            return output;
+        }
+
+        public static async Task<List<int>> GetColumnOrdinals(SqlConnection connection, string tableFullName)
+        {
+
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await connection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT ORDINAL_POSITION
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = @tableName AND TABLE_SCHEMA = @schema";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", table));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static Action<DataRow, bool, EventBatchData, int> GetDataRowFromColumnsFunc(
+            IReadOnlyCollection<DbColumn> columns,
+            IReadOnlyList<int> primaryKeys,
+            DataValueContainer dataValueContainer,
+            bool includeOperation)
+        {
+            var columnList = columns.ToList();
+            var mapFuncs = GetColumnsToDataTableValueMaps(columnList, dataValueContainer);
+            var columnNames = columnList.Select(x => x.ColumnName).ToList();
+            return (row, isDeleted, batch, index) =>
+            {
+                if (isDeleted)
+                {
+                    if (includeOperation)
+                    {
+                        row["md_operation"] = "D";
+                    }
+                    
+                    // Set only primaryKeys
+                    for (int i = 0; i < columnNames.Count; i++)
+                    {
+                        if (primaryKeys.Contains(i))
+                        {
+                            row[columnNames[i]] = mapFuncs[i](batch, index);
+                        }
+                        else
+                        {
+                            row[columnNames[i]] = DBNull.Value;
+                        }
+                    }
+                    return;
+                }
+
+                if (includeOperation)
+                {
+                    row["md_operation"] = "I";
+                }
+                
+                for (int i = 0; i < columnNames.Count; i++)
+                {
+                    var val = mapFuncs[i](batch, index);
+                    if (val == null)
+                    {
+                        val = DBNull.Value;
+                    }
+                    else
+                    {
+                        row[columnNames[i]] = val;
+                    }
+                }
+            };
         }
 
         public static Action<DataTable, bool, RowEvent> GetDataRowMapFunc(IReadOnlyCollection<DbColumn> columns, IReadOnlyList<int> primaryKeys)
@@ -751,9 +1186,95 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return (outdata, pkValues);
         }
 
-        public static List<Func<RowEvent, object>> GetDataTableValueMaps(List<DbColumn> columns)
+        public static async Task<IEnumerable<int>> GetPartitionIds(SqlConnection connection, ReadRelation relation)
         {
-            List<Func<RowEvent, object>> output = new List<Func<RowEvent, object>>();
+            var schema = relation.NamedTable.Names[1];
+            var tableName = relation.NamedTable.Names[2];
+
+            var cmd = @"SELECT 
+                    p.partition_number AS partition_id
+                FROM sys.partitions p
+                JOIN sys.tables t ON p.object_id = t.object_id
+                JOIN sys.indexes i ON p.object_id = i.object_id AND p.index_id = i.index_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE t.name = @tableName
+                  AND i.index_id < 2
+                  AND s.name = @schema
+                ORDER BY partition_id;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            var output = new List<int>();
+            while (await reader.ReadAsync())
+            {
+                output.Add(reader.GetInt32(0));
+            }
+
+            return output;
+        }
+
+        public static async Task<PartitionMetadata?> GetPartitionMetadata(SqlConnection connection, ReadRelation relation)
+        {
+            GetSchemaAndName(relation, out var schema, out var tableName);
+
+            var cmd = @"SELECT
+                    ps.name AS partition_scheme,
+                    pf.name AS partition_function,
+                    c.name AS partition_column,
+                    t.name AS table_name,
+                    s.name AS schema_name,
+                  ic.partition_ordinal
+                FROM sys.indexes i  
+                JOIN sys.partition_schemes ps ON i.data_space_id = ps.data_space_id
+                JOIN sys.partition_functions pf ON ps.function_id = pf.function_id
+                JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                JOIN sys.tables t ON i.object_id = t.object_id
+                JOIN sys.schemas s ON t.schema_id = s.schema_id
+                WHERE i.index_id < 2 -- clustered index or heap
+                  AND t.name = @tableName
+                  AND s.name = @schema
+                  AND ic.partition_ordinal = 1;";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.Add(new SqlParameter("tableName", tableName));
+            command.Parameters.Add(new SqlParameter("schema", schema));
+            using var reader = await command.ExecuteReaderAsync();
+
+            if (await reader.ReadAsync())
+            {
+
+                return new PartitionMetadata(
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    reader.GetString(2),
+                    reader.GetString(3),
+                    reader.GetString(4),
+                    reader.GetByte(5));
+            }
+
+            return null;
+        }
+
+        public static List<Func<EventBatchData, int, object?>> GetColumnsToDataTableValueMaps(List<DbColumn> columns, DataValueContainer dataValueContainer)
+        {
+            List<Func<EventBatchData, int, object?>> output = new List<Func<EventBatchData, int, object?>>();
+            for (int i = 0; i < columns.Count; i++)
+            {
+                output.Add(GetColumnToDataTableValueMap(columns[i], dataValueContainer, i));
+            }
+            return output;
+
+        }
+
+        public static List<Func<RowEvent, object?>> GetDataTableValueMaps(List<DbColumn> columns)
+        {
+            List<Func<RowEvent, object?>> output = new List<Func<RowEvent, object?>>();
 
             for (int i = 0; i < columns.Count; i++)
             {
@@ -762,9 +1283,257 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return output;
         }
 
+        public static Func<EventBatchData, int, object?> GetColumnToDataTableValueMap(DbColumn dbColumn, DataValueContainer dataValueContainer, int columnIndex)
+        {
+            var t = dbColumn.DataType;
+
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
+
+            if (t.Equals(typeof(string)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return dataValueContainer.AsString.ToString();
+                    }
+                    // Json as fallback
+                    using MemoryStream stream = new();
+                    using Utf8JsonWriter utf8JsonWriter = new Utf8JsonWriter(stream);
+                    batch.Columns[columnIndex].WriteToJson(in utf8JsonWriter, index);
+                    return Encoding.UTF8.GetString(stream.ToArray());
+                };
+            }
+            if (t.Equals(typeof(int)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(DateTime)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong).DateTime;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset().DateTime;
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
+                };
+            }
+            if (t.Equals(typeof(DateTimeOffset)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return DateTimeOffset.UnixEpoch.AddTicks(dataValueContainer.AsLong);
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Timestamp)
+                    {
+                        return dataValueContainer.AsTimestamp.ToDateTimeOffset();
+                    }
+                    throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
+                };
+            }
+            if (t.Equals(typeof(double))) // float
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(float))) // real
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsDouble;
+                };
+            }
+            if (t.Equals(typeof(decimal)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Double)
+                    {
+                        return (decimal)dataValueContainer.AsDouble;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return (decimal)dataValueContainer.AsLong;
+                    }
+                    return dataValueContainer.AsDecimal;
+                };
+            }
+            if (t.Equals(typeof(bool)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Boolean)
+                    {
+                        return dataValueContainer.AsBool;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.Int64)
+                    {
+                        return dataValueContainer.AsLong > 0;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        var stringVal = dataValueContainer.AsString.ToString();
+                        if (stringVal.Equals("true", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return true;
+                        }
+                        if (stringVal.Equals("false", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return false;
+                        }
+                    }
+                    throw new NotSupportedException("Bool can only support bool or int values");
+                };
+            }
+            if (t.Equals(typeof(short)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(long)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(Guid)))
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    if (dataValueContainer.Type == ArrowTypeId.String)
+                    {
+                        return new Guid(dataValueContainer.AsString.ToString());
+                    }
+                    else
+                    {
+                        var blob = dataValueContainer.AsBinary;
+                        return new Guid(blob);
+                    }
+                };
+            }
+            if (t.Equals(typeof(byte))) // tiny int
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return dataValueContainer.AsLong;
+                };
+            }
+            if (t.Equals(typeof(byte[]))) // binary
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+                    return dataValueContainer.AsBinary.ToArray();
+                };
+            }
+            if (t.Equals(typeof(TimeSpan))) // time(7)
+            {
+                return (batch, index) =>
+                {
+                    batch.Columns[columnIndex].GetValueAt(index, dataValueContainer, default);
+                    if (dataValueContainer.IsNull)
+                    {
+                        return null;
+                    }
+
+                    return TimeSpan.FromTicks(dataValueContainer.AsLong);
+                };
+            }
+
+            throw new NotImplementedException();
+        }
+
         public static Func<RowEvent, object?> GetDataTableValueMap(DbColumn dbColumn, int index)
         {
             var t = dbColumn.DataType;
+
+            if (t == null)
+            {
+                throw new FlowtideException("Could not get data type from SQL Server");
+            }
 
             if (t.Equals(typeof(string)))
             {
@@ -775,7 +1544,11 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     {
                         return null;
                     }
-                    return c.AsString;
+                    if (c.ValueType == FlexBuffers.Type.String)
+                    {
+                        return c.AsString;
+                    }
+                    return c.ToJson;
                 };
             }
             if (t.Equals(typeof(int)))
@@ -963,7 +1736,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     return TimeSpan.FromTicks(c.AsLong);
                 };
             }
-         
+
             throw new NotImplementedException();
         }
 
@@ -973,16 +1746,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             for (int i = 0; i < primaryKeys.Count; i++)
             {
                 string pkName = primaryKeys[i];
-                string pkValue = $"@{pkName}";
+                string pkValue = $"@pk{i}";
 
                 List<string> comparators = new List<string>();
-                comparators.Add("(" + pkName + " > " + pkValue + ")");
+                comparators.Add("([" + pkName + "] > " + pkValue + ")");
 
                 for (int k = i - 1; k >= 0; k--)
                 {
                     string innerPkName = primaryKeys[k];
-                    String innerPkValue = $"@{innerPkName}";
-                    comparators.Add("(" + innerPkName + " = " + innerPkValue + ")");
+                    String innerPkValue = $"@pk{k}";
+                    comparators.Add("([" + innerPkName + "] = " + innerPkValue + ")");
                 }
 
                 if (comparators.Count == 1)
@@ -997,6 +1770,78 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             string output = "(" + string.Join(" OR ", primaryKeyComparators) + ")";
             return output;
+        }
+
+        public static async Task<bool> IsView(SqlConnection sqlConnection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            await sqlConnection.ChangeDatabaseAsync(db);
+
+            var cmd = @"
+            SELECT type_desc 
+            FROM Sys.objects o
+            JOIN Sys.schemas s ON s.schema_id = o.schema_id
+            WHERE o.name = @name AND s.name = @schema";
+
+            using var command = sqlConnection.CreateCommand();
+            command.CommandText = cmd;
+            command.Parameters.AddWithValue("name", table);
+            command.Parameters.AddWithValue("schema", schema);
+
+            var value = await command.ExecuteScalarAsync();
+            return (string?)value == "VIEW";
+        }
+
+        public static async Task<int> GetRowCount(SqlConnection sqlConnection, string tableFullName)
+        {
+            var splitName = tableFullName.Split('.');
+
+            if (splitName.Length != 3)
+            {
+                throw new InvalidOperationException("Table name must contain database.schema.tablename");
+            }
+
+            var db = splitName[0];
+            var schema = splitName[1];
+            var table = splitName[2];
+
+            using var command = sqlConnection.CreateCommand();
+            command.CommandText = $@"SELECT COUNT(*) FROM [{db}].[{schema}].[{table}]";
+            var count = await command.ExecuteScalarAsync();
+            return (int?)count ?? -1;
+        }
+
+        private static void GetSchemaAndName(ReadRelation relation, out string schema, out string tableName)
+        {
+            if (relation.NamedTable.Names.Count > 3)
+            {
+                throw new InvalidOperationException("Incorrect number of sql table name parts");
+            }
+            else if (relation.NamedTable.Names.Count == 3)
+            {
+                schema = relation.NamedTable.Names[1];
+                tableName = relation.NamedTable.Names[2];
+            }
+            else if (relation.NamedTable.Names.Count == 2)
+            {
+                schema = relation.NamedTable.Names[0];
+                tableName = relation.NamedTable.Names[1];
+            }
+            else
+            {
+                schema = "dbo";
+                tableName = relation.NamedTable.Names[0];
+            }
         }
     }
 }

@@ -10,9 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
-using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     {
         internal static System.Linq.Expressions.MethodCallExpression CompareRef(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
-            MethodInfo? compareMethod = typeof(FlxValueRefComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
             Debug.Assert(compareMethod != null);
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             if (fieldReference is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                var method = typeof(JoinStreamEvent).GetMethod("GetColumnRef");
+                var method = typeof(JoinStreamEvent).GetMethod("GetColumn");
 
                 if (method == null)
                 {
@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         // Used in reflection
 #pragma warning disable IDE0051 // Remove unused private members
-        private static bool EqualImplementation(in FlxValueRef x, in FlxValueRef y)
+        private static bool EqualImplementation(in FlxValue x, in FlxValue y)
 #pragma warning restore IDE0051 // Remove unused private members
         {
             // If either is null, return null
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 return false;
             }
-            else if (FlxValueRefComparer.CompareTo(x, y) == 0)
+            else if (FlxValueComparer.CompareTo(x, y) == 0)
             {
                 return true;
             }

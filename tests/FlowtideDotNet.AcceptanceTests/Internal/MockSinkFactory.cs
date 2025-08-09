@@ -10,33 +10,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
     internal class MockSinkFactory : RegexConnectorSinkFactory
     {
-        private readonly Action<List<byte[]>> onDataUpdate;
+        private readonly Action<EventBatchData> onDataUpdate;
+        private readonly Action<Watermark> onWatemrark;
         private readonly int egressCrashOnCheckpointCount;
 
-        public MockSinkFactory(string regexPattern, Action<List<byte[]>> onDataUpdate, int egressCrashOnCheckpointCount) : base(regexPattern)
+        public MockSinkFactory(string regexPattern, Action<EventBatchData> onDataUpdate, int egressCrashOnCheckpointCount, Action<Watermark> onwatermark) : base(regexPattern)
         {
             this.onDataUpdate = onDataUpdate;
             this.egressCrashOnCheckpointCount = egressCrashOnCheckpointCount;
+            this.onWatemrark = onwatermark;
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new MockDataSink(dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount);
+            return new MockDataSink(writeRelation, dataflowBlockOptions, onDataUpdate, egressCrashOnCheckpointCount, onWatemrark);
         }
     }
 }

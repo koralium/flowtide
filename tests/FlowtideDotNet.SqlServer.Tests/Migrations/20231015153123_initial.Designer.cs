@@ -13,7 +13,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Migrations
 {
     [DbContext(typeof(TpchDbContext))]
     [Migration("20231015153123_initial")]
-    partial class initial
+    partial class InitialMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

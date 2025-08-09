@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Optimizer
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 var relation = plan.Relations[i];
-                var newRelation = this.Visit(relation, null);
+                var newRelation = this.Visit(relation, null!);
 
                 plan.Relations[i] = newRelation;
             }
@@ -163,15 +163,15 @@ namespace FlowtideDotNet.Core.Optimizer
             return standardOutputExchangeReferenceRelation;
         }
 
-        public override Relation VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, object state)
+        public override Relation VisitVirtualTableReadRelation(VirtualTableReadRelation virtualTableReadRelation, object state)
         {
-            subStreamRootRelation.Input = Visit(subStreamRootRelation.Input, state);
-            return subStreamRootRelation;
+            return virtualTableReadRelation;
         }
 
-        public override Relation VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, object state)
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
         {
-            return pullExchangeReferenceRelation;
+            consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);
+            return consistentPartitionWindowRelation;
         }
     }
 }

@@ -10,7 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
@@ -21,15 +23,20 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public GenericTableProvider(string name)
         {
-            _tableMetadata = new TableMetadata(name, typeof(T).GetProperties().Select(x =>
+            var schema = BatchConverter.GetBatchConverter(typeof(T)).GetSchema();
+            schema.Names.Add("__key");
+            if (schema.Struct != null)
             {
-                return x.Name;
-            }).ToList());
+                schema.Struct.Types.Add(new StringType());
+            }
+            
+            _tableMetadata = new TableMetadata(name, schema);
         }
 
-        public bool TryGetTableInformation(string tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+        public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
-            if (tableName.Equals(_tableMetadata.Name, StringComparison.OrdinalIgnoreCase))
+            var fullName = string.Join(".", tableName);
+            if (fullName.Equals(_tableMetadata.Name, StringComparison.OrdinalIgnoreCase))
             {
                 tableMetadata = _tableMetadata;
                 return true;

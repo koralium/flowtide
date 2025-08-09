@@ -10,32 +10,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Elastic.Clients.Elasticsearch;
+using Elastic.Clients.Elasticsearch.Mapping;
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.CosmosDB.Tests;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Engine;
-using Nest;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Connector.ElasticSearch.Tests
 {
     internal class ElasticsearchTestStream : FlowtideTestStream
     {
         private readonly ElasticSearchFixture elasticSearchFixture;
-        private readonly Action<IProperties>? customMapping;
+        private readonly Action<Properties>? customMapping;
+        private readonly Func<ElasticsearchClient, WriteRelation, string, Task>? onInitialDataSent;
+        private readonly Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent;
 
-        public ElasticsearchTestStream(ElasticSearchFixture elasticSearchFixture, string testName, Action<IProperties>? customMapping = null) : base(testName)
+        public ElasticsearchTestStream(
+            ElasticSearchFixture elasticSearchFixture,
+            string testName,
+            Action<Properties>? customMapping = null,
+            Func<ElasticsearchClient, WriteRelation, string, Task>? onInitialDataSent = null,
+            Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent = null)
+            : base(testName)
         {
             this.elasticSearchFixture = elasticSearchFixture;
             this.customMapping = customMapping;
+            this.onInitialDataSent = onInitialDataSent;
+            this.onDataSent = onDataSent;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManager)
         {
             connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
             {
-                ConnectionSettings = elasticSearchFixture.GetConnectionSettings(),
-                CustomMappings = customMapping
+                ConnectionSettings = elasticSearchFixture.GetConnectionSettings,
+                CustomMappings = customMapping,
+                OnDataSent = onDataSent,
+                OnInitialDataSent = onInitialDataSent
             });
         }
     }

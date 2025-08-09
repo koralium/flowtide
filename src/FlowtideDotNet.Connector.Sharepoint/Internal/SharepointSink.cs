@@ -22,7 +22,6 @@ using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
-using Substrait.Protobuf;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
@@ -35,7 +34,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private readonly SharepointSinkOptions sinkOptions;
         private SharepointGraphListClient? sharepointGraphListClient;
         private readonly WriteRelation writeRelation;
-        private IBPlusTree<string, string>? _existingObjectsTree;
+        private IBPlusTree<string, string, ListKeyContainer<string>, ListValueContainer<string>>? _existingObjectsTree;
         private List<IColumnEncoder>? encoders;
         private List<int>? primaryKeyIndices;
         private List<IColumnEncoder>? primaryKeyEncoders;
@@ -54,7 +53,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         protected override Task<MetadataResult> SetupAndLoadMetadataAsync()
         {
             primaryKeyIndices = new List<int>();
-            foreach(var pk in primaryKeys)
+            foreach (var pk in primaryKeys)
             {
                 var index = writeRelation.TableSchema.Names.FindIndex(x => x.Equals(pk, StringComparison.OrdinalIgnoreCase));
 
@@ -68,9 +67,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             return Task.FromResult(new MetadataResult(primaryKeyIndices));
         }
 
-        protected override async Task InitializeOrRestore(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            await base.InitializeOrRestore(restoreTime, state, stateManagerClient);
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
             Debug.Assert(primaryKeyIndices != null);
 
             if (_eventsCounter == null)
@@ -80,12 +79,14 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
             this.sharepointGraphListClient = new SharepointGraphListClient(sinkOptions, StreamName, Name, Logger);
             await sharepointGraphListClient.Initialize();
-            _existingObjectsTree = await stateManagerClient.GetOrCreateTree("object_ids_tmp", new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<string, string>()
-            {
-                Comparer = StringComparer.OrdinalIgnoreCase,
-                KeySerializer = new StringSerializer(),
-                ValueSerializer = new StringSerializer()
-            });
+            _existingObjectsTree = await stateManagerClient.GetOrCreateTree("object_ids_tmp",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<string, string, ListKeyContainer<string>, ListValueContainer<string>>()
+                {
+                    Comparer = new BPlusTreeListComparer<string>(StringComparer.OrdinalIgnoreCase),
+                    KeySerializer = new KeyListSerializer<string>(new StringSerializer()),
+                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             listId = await sharepointGraphListClient.GetListId(writeRelation.NamedObject.DotSeperated);
             encoders = await sharepointGraphListClient.GetColumnEncoders(writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema.Names, stateManagerClient);
 
@@ -129,7 +130,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             Debug.Assert(primaryKeyIndices != null);
             Debug.Assert(primaryKeyEncoders != null);
             StringBuilder stringBuilder = new StringBuilder();
-            for(int i = 0; i < primaryKeyIndices.Count; i++)
+            for (int i = 0; i < primaryKeyIndices.Count; i++)
             {
                 stringBuilder.Append(primaryKeyEncoders[i].GetKeyValueFromColumn(row.GetColumn(primaryKeyIndices[i])));
             }
@@ -155,13 +156,13 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             List<(string key, string batchId, Operation operation, string content)> requests = new List<(string key, string batchId, Operation operation, string content)>();
 
             int rowCounter = 0;
-            await foreach(var row in rows)
+            await foreach (var row in rows)
             {
                 rowCounter++;
                 // Get the combined key identifer to lookup existing objects if the row already exists and needs to be upserted instead
                 var pkVal = GetKeyFromRow(row.Row);
                 var (found, id) = await _existingObjectsTree.GetValue(pkVal);
-                
+
                 if (!row.IsDeleted)
                 {
                     var obj = new Dictionary<string, object>();

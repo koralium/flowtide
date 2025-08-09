@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
         }
     }
 
-    internal class TestIngress : ReadBaseOperator<object>
+    internal class TestIngress : ReadBaseOperator
     {
         public TestIngress(DataflowBlockOptions options) : base(options)
         {
@@ -60,7 +61,7 @@ namespace FlowtideDotNet.Core.Tests.Failure
             return Task.FromResult<IReadOnlySet<string>>(watermarks);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             return Task.CompletedTask;
         }
@@ -82,8 +83,8 @@ namespace FlowtideDotNet.Core.Tests.Failure
             await output.SendAsync(new StreamEventBatch(new List<RowEvent>()
             {
                 streamEvent
-            }));
-            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", 1));
+            }, 3));
+            await output.SendWatermark(new FlowtideDotNet.Base.Watermark("test", LongWatermarkValue.Create(1)));
             output.ExitCheckpointLock();
             await this.RegisterTrigger("on_check", TimeSpan.FromSeconds(5));
             this.ScheduleCheckpoint(TimeSpan.FromSeconds(1));

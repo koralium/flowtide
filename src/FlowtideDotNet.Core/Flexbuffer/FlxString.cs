@@ -10,15 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text;
+
 namespace FlowtideDotNet.Core.Flexbuffer
 {
     public ref struct FlxString
     {
-        private readonly Span<byte> span;
+        private readonly ReadOnlySpan<byte> span;
 
         public ReadOnlySpan<byte> Span => span;
 
-        public FlxString(Span<byte> span)
+        public FlxString(ReadOnlySpan<byte> span)
         {
             this.span = span;
         }
@@ -36,6 +38,11 @@ namespace FlowtideDotNet.Core.Flexbuffer
         public static int CompareIgnoreCase(in FlxString v1, in FlxString v2)
         {
             return Utf8Utility.CompareToOrdinalIgnoreCaseUtf8(v1.span, v2.span);
+        }
+
+        public override string ToString()
+        {
+            return Encoding.UTF8.GetString(span);
         }
     }
 }

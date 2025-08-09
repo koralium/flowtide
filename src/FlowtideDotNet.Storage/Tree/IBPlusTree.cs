@@ -27,11 +27,15 @@ namespace FlowtideDotNet.Storage.Tree
 
     public delegate (V? result, GenericWriteOperation operation) GenericWriteFunction<V>(V? input, V? current, bool exists);
 
-    public interface IBPlusTree<K, V>
+    public interface IBPlusTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         ValueTask Upsert(in K key, in V value);
 
         ValueTask Delete(in K key);
+
+        ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function);
 
         ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function);
 
@@ -39,7 +43,9 @@ namespace FlowtideDotNet.Storage.Tree
 
         ValueTask<(bool found, K? key)> GetKey(in K key);
 
-        IBPlusTreeIterator<K, V> CreateIterator();
+        IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator();
+
+        IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator();
 
         /// <summary>
         /// For debugging purposes only
@@ -56,5 +62,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         /// <returns></returns>
         ValueTask Clear();
+
+        long CacheMisses { get; }
     }
 }

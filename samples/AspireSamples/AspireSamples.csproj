@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>9bedb11b-ff43-40d6-8fc0-98cd540ac163</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="9.1.0" />
+    <PackageReference Include="Aspire.Hosting.Azure" Version="9.1.0" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="9.1.0" />
+    <PackageReference Include="Aspire.Hosting.Elasticsearch" Version="9.1.0-preview.1.25121.10" />
+    <PackageReference Include="Aspire.Hosting.MongoDB" Version="9.1.0" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="9.1.0" />
+    <PackageReference Include="Bogus" Version="35.6.2" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <PackageReference Include="Spectre.Console.Cli" Version="0.49.1" />
+    <PackageReference Include="Stowage" Version="2.0.1" />
+  </ItemGroup>
+	
+	<Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\DeltaLakeSourceUsage\DeltaLakeSourceUsage.csproj" />
+    <ProjectReference Include="..\MongoDbToConsoleSample\MongoDbToConsoleSample.csproj" />
+    <ProjectReference Include="..\SqlServerToElasticProductionSample\SqlServerToElasticProductionSample.csproj" />
+    <ProjectReference Include="..\SqlServerToSqlServerStream\SqlServerToSqlServerStream.csproj" />
+  </ItemGroup>
+
+</Project>

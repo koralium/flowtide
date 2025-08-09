@@ -10,11 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -23,13 +28,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         public int LatestOffset { get; set; }
     }
-    internal class MockDataSourceOperator : ReadBaseOperator<MockDataSourceState>
+    internal class MockDataSourceOperator : ReadBaseOperator
     {
         private readonly ReadRelation readRelation;
         private readonly MockDatabase mockDatabase;
         private HashSet<string> _watermarkNames;
         private MockTable _table;
-        private int _lastestOffset;
+        private IObjectState<MockDataSourceState>? _state;
+        private BatchConverter _batchConverter;
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -39,6 +45,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
             _watermarkNames = new HashSet<string>() { readRelation.NamedTable.DotSeperated };
+            _batchConverter = BatchConverter.GetBatchConverter(_table.Type, readRelation.BaseSchema.Names);
         }
 
         public override string DisplayName => "Mock data source";
@@ -50,35 +57,72 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
+            Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
+            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
             bool sentData = false;
-            List<RowEvent> o = new List<RowEvent>();
+
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
             foreach (var operation in operations)
             {
-                o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
+                _batchConverter.AppendToColumns(operation.Object, columns);
 
-                if (o.Count > 100)
+                iterations.Add(1);
+                if (operation.IsDelete)
+                {
+                    weights.Add(-1);
+                }
+                else
+                {
+                    weights.Add(1);
+                }
+
+                if (weights.Count > 100)
                 {
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(o));
-                    o = new List<RowEvent>();
+                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+
+                    columns = new Column[readRelation.OutputLength];
+                    for (int i = 0; i < readRelation.OutputLength; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
                 }
             }
 
-            if (o.Count > 0)
+            if (weights.Count > 0)
             {
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }
-            _lastestOffset = fetchedOffset;
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
+            }
+            _state.Value.LatestOffset = fetchedOffset;
 
             if (sentData)
             {
-                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
-                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
             }
-            
+
             output.ExitCheckpointLock();
         }
 
@@ -90,7 +134,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (triggerName == "crash")
             {
-                RunTask((output, state) => throw new Exception("crash"));
+                RunTask((output, state) => throw new CrashException("crash"));
             }
             return Task.CompletedTask;
         }
@@ -100,45 +144,81 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return Task.FromResult<IReadOnlySet<string>>(_watermarkNames);
         }
 
-        protected override Task InitializeOrRestore(long restoreTime, MockDataSourceState? state, IStateManagerClient stateManagerClient)
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            if (state != null)
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<MockDataSourceState>("mock_data_source_state");
+            if (_state.Value == null)
             {
-                _lastestOffset = state.LatestOffset;
+                _state.Value = new MockDataSourceState();
             }
-            RegisterTrigger("crash");
-            return Task.CompletedTask;
+            await RegisterTrigger("crash");
         }
 
-        protected override Task<MockDataSourceState> OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return Task.FromResult(new MockDataSourceState() { LatestOffset = _lastestOffset });
+            Debug.Assert(_state?.Value != null);
+            await _state.Commit();
         }
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
-            var (operations, fetchedOffset) = _table.GetOperations(_lastestOffset);
+            var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
 
-            List<RowEvent> o = new List<RowEvent>();
-            foreach(var operation in operations)
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
             {
-                o.Add(MockTable.ToStreamEvent(operation, readRelation.BaseSchema.Names));
-                //o.Add(new StreamEvent(1, 0, operation.Vector));
+                columns[i] = new Column(MemoryAllocator);
+            }
 
-                if (o.Count > 100)
+            foreach (var operation in operations)
+            {
+                _batchConverter.AppendToColumns(operation.Object, columns);
+
+                iterations.Add(1);
+                if (operation.IsDelete)
                 {
-                    await output.SendAsync(new StreamEventBatch(o));
-                    o = new List<RowEvent>();
+                    weights.Add(-1);
+                }
+                else
+                {
+                    weights.Add(1);
+                }
+
+                if (weights.Count > 100)
+                {
+                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+
+                    columns = new Column[readRelation.OutputLength];
+                    for (int i = 0; i < readRelation.OutputLength; i++)
+                    {
+                        columns[i] = new Column(MemoryAllocator);
+                    }
+                    weights = new PrimitiveList<int>(MemoryAllocator);
+                    iterations = new PrimitiveList<uint>(MemoryAllocator);
                 }
             }
 
-            if (o.Count > 0)
+            if (weights.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(o));
+                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
             }
-            _lastestOffset = fetchedOffset;
-            await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, fetchedOffset));
+            else
+            {
+                weights.Dispose();
+                iterations.Dispose();
+                foreach (var column in columns)
+                {
+                    column.Dispose();
+                }
+            }
+            _state.Value.LatestOffset = fetchedOffset;
+            
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
             this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));

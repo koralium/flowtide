@@ -14,18 +14,18 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Egress
 {
-    public abstract class EgressVertex<T, TState> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
+    public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
     {
         private Action<string>? _checkpointDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
@@ -33,18 +33,33 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
         private IHistogram<float>? _latencyHistogram;
+        private IMemoryAllocator? _memoryAllocator;
 
-        public string Name { get; private set; }
+        private string? _name;
+        private string? _streamName;
+        private IMeter? _metrics;
+        private ILogger? _logger;
 
-        protected string StreamName { get; private set; }
+        private TaskCompletionSource? _pauseSource;
 
-        protected IMeter Metrics { get; private set; }
+        private StreamVersionInformation? _streamVersion;
+        public StreamVersionInformation? StreamVersion => _streamVersion;
+
+        public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
+
+        protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
+
+        protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after initialize or setup method calls");
 
         public abstract string DisplayName { get; }
 
-        public ILogger Logger { get; private set; }
+        public long CurrentCheckpointId { get; private set; }
+
+        public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
         protected CancellationToken CancellationToken => _cancellationTokenSource?.Token ?? throw new InvalidOperationException("Cancellation token can only be fetched after initialization.");
+
+        protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
         protected EgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
@@ -56,11 +71,11 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
-                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, OnRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
         }
 
@@ -77,7 +92,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.RecievedWatermarkWithoutSourceOperator(StreamName, Name);
             }
-            
+
             return OnWatermark(watermark);
         }
 
@@ -110,8 +125,8 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            var newState = await OnCheckpoint(checkpointEvent.CheckpointTime);
-            checkpointEvent.AddState(Name, newState);
+            CurrentCheckpointId = checkpointEvent.CheckpointTime;
+            await OnCheckpoint(checkpointEvent.CheckpointTime);
         }
 
         public virtual Task OnTrigger(string name, object? state)
@@ -119,7 +134,16 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             return Task.CompletedTask;
         }
 
-        protected abstract Task<TState> OnCheckpoint(long checkpointTime);
+        protected abstract Task OnCheckpoint(long checkpointTime);
+
+        private async Task HandleRecieve(T msg, long time)
+        {
+            await OnRecieve(msg, time).ConfigureAwait(false);
+            if (msg is IRentable rentable)
+            {
+                rentable.Return();
+            }
+        }
 
         protected abstract Task OnRecieve(T msg, long time);
 
@@ -138,18 +162,16 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _targetBlock.Fault(exception);
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
-             _cancellationTokenSource = new CancellationTokenSource();
-            Name = name;
-            StreamName = vertexHandler.StreamName;
-            Metrics = vertexHandler.Metrics;
-            TState? dState = default;
-            if (state.HasValue)
-            {
-                dState = JsonSerializer.Deserialize<TState>(state.Value);
-            }
-            Logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _memoryAllocator = vertexHandler.MemoryManager;
+            _cancellationTokenSource = new CancellationTokenSource();
+            _name = name;
+            _streamName = vertexHandler.StreamName;
+            _metrics = vertexHandler.Metrics;
+            _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
+            _streamVersion = streamVersionInformation;
+            CurrentCheckpointId = newTime;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -178,7 +200,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             });
             _latencyHistogram = Metrics.CreateHistogram<float>("latency");
 
-            return InitializeOrRestore(restoreTime, dState, vertexHandler.StateClient);
+            return InitializeOrRestore(restoreTime, vertexHandler.StateClient);
         }
 
         protected void SetHealth(bool healthy)
@@ -186,7 +208,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _isHealthy = healthy;
         }
 
-        protected abstract Task InitializeOrRestore(long restoreTime, TState? state, IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
 
         public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, IStreamEvent messageValue, ISourceBlock<IStreamEvent>? source, bool consumeToAccept)
         {
@@ -214,7 +236,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
                 _cancellationTokenSource.Dispose();
                 _cancellationTokenSource = null;
             }
-            
+
             return ValueTask.CompletedTask;
         }
 
@@ -231,13 +253,44 @@ namespace FlowtideDotNet.Base.Vertices.Egress
 
         public void Setup(string streamName, string operatorName)
         {
-            Name = operatorName;
-            StreamName = streamName;
+            _name = operatorName;
+            _streamName = streamName;
         }
 
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return Enumerable.Empty<ITargetBlock<IStreamEvent>>();
+        }
+
+        protected ValueTask CheckForPause()
+        {
+            if (_pauseSource != null)
+            {
+                return new ValueTask(_pauseSource.Task);
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        public void Pause()
+        {
+            if (_pauseSource == null)
+            {
+                _pauseSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            }
+        }
+
+        public void Resume()
+        {
+            if (_pauseSource != null)
+            {
+                _pauseSource.SetResult();
+                _pauseSource = null;
+            }
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

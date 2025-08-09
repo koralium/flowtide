@@ -67,7 +67,10 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
         public override Expression? VisitIfThen(IfThenExpression ifThenExpression, object state)
         {
-            ifThenExpression.Else = Visit(ifThenExpression.Else, state)!;
+            if (ifThenExpression.Else != null)
+            {
+                ifThenExpression.Else = Visit(ifThenExpression.Else, state);
+            }
 
             for (int i = 0; i < ifThenExpression.Ifs.Count; i++)
             {
@@ -89,7 +92,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
         public override Expression? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, object state)
         {
-            for (int i = 0; i < mapNestedExpression.KeyValues.Count; i++) 
+            for (int i = 0; i < mapNestedExpression.KeyValues.Count; i++)
             {
                 mapNestedExpression.KeyValues[i] = new KeyValuePair<Expression, Expression>(
                     Visit(mapNestedExpression.KeyValues[i].Key, state)!,

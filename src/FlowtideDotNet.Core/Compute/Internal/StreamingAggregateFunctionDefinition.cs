@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Linq.Expressions;
@@ -81,14 +82,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> UpdateStateFunc { get; }
 
         public override Task<IAggregateContainer> CreateContainer(
-            int groupingLength, 
-            IStateManagerClient stateManagerClient, 
-            AggregateFunction aggregateFunction, 
-            ParametersInfo parametersInfo, 
-            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor, 
-            ParameterExpression eventParameter, 
-            ParameterExpression stateParameter, 
-            ParameterExpression weightParameter, 
+            int groupingLength,
+            IStateManagerClient stateManagerClient,
+            IMemoryAllocator memoryAllocator,
+            AggregateFunction aggregateFunction,
+            ParametersInfo parametersInfo,
+            ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo> visitor,
+            ParameterExpression eventParameter,
+            ParameterExpression stateParameter,
+            ParameterExpression weightParameter,
             ParameterExpression groupingKeyParameter)
         {
             var mapFunc = UpdateStateFunc(aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter);

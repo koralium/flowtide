@@ -13,12 +13,9 @@
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Substrait.Type;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
@@ -32,9 +29,44 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             this.spiceDbSinkOptions = spiceDbSinkOptions;
         }
 
+        /// <summary>
+        /// Modify the plan to add cast to string infront of each column to make sure all data are strings
+        /// </summary>
+        /// <param name="writeRelation"></param>
+        /// <returns></returns>
+        public override Relation ModifyPlan(WriteRelation writeRelation)
+        {
+            List<Expression> expressions = new List<Expression>();
+            List<int> emit = new List<int>();
+            var emitStart = writeRelation.Input.OutputLength;
+            for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
+            {
+                emit.Add(emitStart + i);
+                expressions.Add(new CastExpression()
+                {
+                    Expression = new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment()
+                        {
+                            Field = i
+                        }
+                    },
+                    Type = new StringType()
+                });
+            }
+
+            writeRelation.Input = new ProjectRelation()
+            {
+                Emit = emit,
+                Input = writeRelation.Input,
+                Expressions = expressions
+            };
+            return writeRelation;
+        }
+
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new SpiceDbSink(spiceDbSinkOptions, writeRelation, spiceDbSinkOptions.ExecutionMode, dataflowBlockOptions);
+            return new ColumnSpiceDbSink(spiceDbSinkOptions, spiceDbSinkOptions.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }

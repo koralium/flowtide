@@ -49,7 +49,42 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new [] { new { list = Orders.Select(x => x.OrderKey).ToList() } });
+            AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => x.OrderKey).ToList() } });
+        }
+
+        [Fact]
+        public async Task ListAggWithUpdate()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_agg(firstName)
+                FROM users
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            GenerateUsers(1);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            var firstUser = Users[0];
+            firstUser.FirstName = "Aaa";
+            AddOrUpdateUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
+
+            DeleteUser(firstUser);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { list = Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } });
         }
 
         [Fact]
@@ -64,7 +99,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 ");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(new[] { new { list = Orders.Select(x => new KeyValuePair<string, int>(x.OrderKey.ToString(), x.OrderKey)).ToList() } });
+            var expectedList = Orders.Select(x => new Dictionary<int, int>() { { x.OrderKey, x.OrderKey } }).ToList();
+            AssertCurrentDataEqual(new[] { new { list = expectedList } });
         }
 
         [Fact]
@@ -104,6 +140,96 @@ namespace FlowtideDotNet.AcceptanceTests
             var rows2 = GetActualRows();
 
             Assert.Equal(999, rows2.Count);
+        }
+
+        [Fact]
+        public async Task ListUnionDistinctAgg()
+        {
+            await StartStream(@"
+                CREATE VIEW testdata AS
+                SELECT 
+                list('a', 'b') as list
+                UNION ALL
+                SELECT
+                list('b', 'c') as list;
+
+                INSERT INTO output 
+                SELECT 
+                    list_union_distinct_agg(list)
+                FROM testdata
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new {list = new List<string>(){ "a", "b", "c" }}
+            });
+        }
+
+        [Fact]
+        public async Task ListUnionDistinctAggUnionType()
+        {
+            await StartStream(@"
+                CREATE VIEW testdata AS
+                SELECT 
+                list('a', 2) as list
+                UNION ALL
+                SELECT
+                list(2, 'c') as list;
+
+                INSERT INTO output 
+                SELECT 
+                    list_union_distinct_agg(list)
+                FROM testdata
+                ");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new {list = new List<object>(){ 2, "a", "c" }}
+            });
+        }
+
+        [Fact]
+        public async Task ListSortAscendingNullLast()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_sort_asc_null_last(list(orderkey, userkey))
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                list = (new List<int>() { x.OrderKey, x.UserKey }).OrderBy(x => x).ToList()
+            } );
+
+            AssertCurrentDataEqual(expectedList);
+        }
+
+        [Fact]
+        public async Task ListFirstDifference()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    list_first_difference(list(orderkey, userkey), list(orderkey, 5)) as val
+                FROM orders
+                ");
+
+            await WaitForUpdate();
+
+            var expectedList = Orders.Select(x => new
+            {
+                val = x.UserKey
+            });
+
+            AssertCurrentDataEqual(expectedList);
         }
     }
 }

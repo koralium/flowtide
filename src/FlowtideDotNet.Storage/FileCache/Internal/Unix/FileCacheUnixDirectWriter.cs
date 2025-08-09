@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
@@ -43,7 +45,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         [DllImport("libc")]
         private static extern IntPtr strerror(int errnum);
 
-        private static string GetErrorMessage(int errorCode)
+        private static string? GetErrorMessage(int errorCode)
         {
             return Marshal.PtrToStringAnsi(strerror(errorCode));
         }
@@ -81,29 +83,11 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             }
         }
 
-        public void Write(long position, byte[] data)
+        public unsafe void Write(long position, Memory<byte> data)
         {
             lock (_lock)
             {
-                var alignedLength = (data.Length + alignment - 1) / alignment * alignment;
-
-                if (alignedBuffer == null)
-                {
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
-
-                if (alignedLength > alignedBuffer.Size)
-                {
-                    alignedBuffer.Dispose();
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
-
-                if (position % alignment != 0)
-                {
-                    throw new ArgumentException("Position must be aligned to block size.");
-                }
-                Marshal.Copy(data, 0, alignedBuffer.Buffer, data.Length);
-                IntPtr bytesWritten = pwrite(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+                IntPtr bytesWritten = pwrite(fileDescriptor, (nint)data.Pin().Pointer, (IntPtr)data.Length, (IntPtr)position);
                 if (bytesWritten.ToInt64() <= 0)
                 {
                     int errorCode = Marshal.GetLastWin32Error();
@@ -113,37 +97,39 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             }
         }
 
-        public byte[] Read(long position, int length)
+        public ReadOnlyMemory<byte> Read(long position, int length)
         {
             lock (_lock)
             {
-                if (position % alignment != 0)
-                {
-                    throw new ArgumentException("Offset must be aligned to block size.");
-                }
-                var alignedLength = (length + alignment - 1) / alignment * alignment;
-
-                if (alignedBuffer == null)
-                {
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
-
-                if (alignedLength > alignedBuffer.Size)
-                {
-                    alignedBuffer.Dispose();
-                    alignedBuffer = new AlignedBuffer(alignedLength, alignment);
-                }
-
-                IntPtr bytesRead = pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
-                if (bytesRead.ToInt64() <= 0)
-                {
-                    return Array.Empty<byte>(); // End of file or error
-                }
+                ReadIntoAlignedBuffer_NoLock(position, length);
 
                 byte[] buffer = new byte[length];
                 Marshal.Copy(alignedBuffer.Buffer, buffer, 0, length);
                 return buffer;
             }
+        }
+
+        [MemberNotNull(nameof(alignedBuffer))]
+        private void ReadIntoAlignedBuffer_NoLock(long position, int length)
+        {
+            if (position % alignment != 0)
+            {
+                throw new ArgumentException("Offset must be aligned to block size.");
+            }
+            var alignedLength = (length + alignment - 1) / alignment * alignment;
+
+            if (alignedBuffer == null)
+            {
+                alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+            }
+
+            if (alignedLength > alignedBuffer.Size)
+            {
+                (alignedBuffer as IDisposable).Dispose();
+                alignedBuffer = new AlignedBuffer(alignedLength, alignment);
+            }
+
+            IntPtr bytesRead = pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
         }
 
         public void Flush()
@@ -157,7 +143,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             {
                 if (alignedBuffer != null)
                 {
-                    alignedBuffer.Dispose();
+                    (alignedBuffer as IDisposable).Dispose();
                     alignedBuffer = null;
                 }
             }
@@ -171,7 +157,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 {
                     if (alignedBuffer != null)
                     {
-                        alignedBuffer.Dispose();
+                        (alignedBuffer as IDisposable).Dispose();
                         alignedBuffer = null;
                     }
                     if (fileDescriptor != -1)
@@ -193,6 +179,17 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public T Read<T>(long position, int length, IStateSerializer<T> serializer) where T : ICacheObject
+        {
+            lock (_lock)
+            {
+                ReadIntoAlignedBuffer_NoLock(position, length);
+
+                return serializer.Deserialize(alignedBuffer.Memory, length);
+            }
+            throw new NotImplementedException();
         }
     }
 }

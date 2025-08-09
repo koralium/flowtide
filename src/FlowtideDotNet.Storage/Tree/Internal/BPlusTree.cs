@@ -11,41 +11,50 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal partial class BPlusTree<K, V> : IBPlusTree<K, V>
+    internal partial class BPlusTree<K, V, TKeyContainer, TValueContainer> : IBPlusTree<K, V, TKeyContainer, TValueContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
-        private readonly BPlusTreeOptions<K, V> m_options;
-        internal IComparer<K> m_keyComparer;
+        private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
+        internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
+        private bool m_isByteBased;
+        private int byteMinSize;
+        private bool m_usePreviousPointer;
 
-        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V> options) 
+        public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
             Debug.Assert(options.BucketSize.HasValue);
+            Debug.Assert(options.PageSizeBytes.HasValue);
             this.m_stateClient = stateClient;
             this.m_options = options;
             minSize = options.BucketSize.Value / 3;
             this.m_keyComparer = options.Comparer;
+            m_isByteBased = options.UseByteBasedPageSizes;
+            byteMinSize = (options.PageSizeBytes.Value) / 3;
+            m_usePreviousPointer = options.UsePreviousPointers;
         }
+
+        public long CacheMisses => m_stateClient.CacheMisses;
 
         public Task InitializeAsync()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             if (m_stateClient.Metadata == null)
             {
                 var rootId = m_stateClient.GetNewPageId();
-                var root = new LeafNode<K, V>(rootId);
-                m_stateClient.Metadata = new BPlusTreeMetadata()
-                {
-                    Root = rootId,
-                    BucketLength = m_options.BucketSize.Value,
-                    Left = rootId
-                };
+
+                var emptyKeyContainer = m_options.KeySerializer.CreateEmpty();
+                var emptyValueContainer = m_options.ValueSerializer.CreateEmpty();
+                var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeyContainer, emptyValueContainer);
+                m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
                 m_stateClient.AddOrUpdate(rootId, root);
             }
             return Task.CompletedTask;
@@ -54,20 +63,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async Task<string> Print()
         {
             Debug.Assert(m_stateClient.Metadata != null);
-            var root = (BaseNode<K>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root, "PrintRoot"))!;
+            var root = (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root))!;
 
             var builder = new StringBuilder();
             builder.AppendLine("digraph g {");
             builder.AppendLine("splines=line");
             builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K>)(await m_stateClient.GetValue(id, "GetPrint"))!);
+            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id))!);
             builder.AppendLine("}");
             return builder.ToString();
         }
 
         public ValueTask Upsert(in K key, in V value)
         {
-            var writeTask = GenericWrite(key, value, (input, current, found) =>
+            var writeTask = GenericWrite(in key, in value, (input, current, found) =>
             {
                 return (input, GenericWriteOperation.Upsert);
             });
@@ -91,7 +100,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Delete(in K key)
         {
-            var deleteTask = GenericWrite(key, default, (input, current, found) =>
+            var deleteTask = GenericWrite(in key, default, (input, current, found) =>
             {
                 if (found)
                 {
@@ -120,12 +129,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask<(bool found, V? value)> GetValue_Internal(K key)
         {
             var leaf = await SearchRoot(key, m_keyComparer);
-            var index = leaf.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, leaf.keys);
             if (index < 0)
             {
                 return (false, default);
             }
-            return (true, leaf.values[index]);
+            return (true, leaf.values.Get(index));
         }
 
         public ValueTask<(bool found, K? key)> GetKey(in K key)
@@ -136,17 +145,27 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private async ValueTask<(bool found, K? key)> GetKey_Internal(K key)
         {
             var leaf = await SearchRoot(key, m_keyComparer);
-            var index = leaf.keys.BinarySearch(key, m_keyComparer);
+            var index = m_keyComparer.FindIndex(key, leaf.keys);
             if (index < 0)
             {
                 return (false, default);
             }
-            return (true, leaf.keys[index]);
+            return (true, leaf.keys.Get(index));
         }
 
-        public IBPlusTreeIterator<K, V> CreateIterator()
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateIterator()
         {
-            return new BPlusTreeIterator<K, V>(this);
+            return new BPlusTreeIterator<K, V, TKeyContainer, TValueContainer>(this);
+        }
+
+        public IBPlusTreeIterator<K, V, TKeyContainer, TValueContainer> CreateBackwardIterator()
+        {
+            return new BPlusTreeBackwardIterator<K, V, TKeyContainer, TValueContainer>(this);
+        }
+
+        public ValueTask<GenericWriteOperation> RMWNoResult(in K key, in V? value, in GenericWriteFunction<V> function)
+        {
+            return GenericWrite(in key, in value, in function);
         }
 
         public ValueTask<(GenericWriteOperation operation, V? result)> RMW(in K key, in V? value, in GenericWriteFunction<V> function)
@@ -163,7 +182,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             var func = function;
             var container = new RMWContainer();
-            var operation = await GenericWrite(key, value, (input, current, found) =>
+            var operation = await GenericWrite(in key, value, (input, current, found) =>
             {
                 var (result, op) = func(input, current, found);
                 container.Value = result;
@@ -176,18 +195,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask Clear()
         {
             Debug.Assert(m_options.BucketSize.HasValue);
+            Debug.Assert(m_options.PageSizeBytes.HasValue);
             // Clear the current state from the state storage
             await m_stateClient.Reset(true);
 
             // Create a new root leaf
             var rootId = m_stateClient.GetNewPageId();
-            var root = new LeafNode<K, V>(rootId);
-            m_stateClient.Metadata = new BPlusTreeMetadata()
-            {
-                Root = rootId,
-                BucketLength = m_options.BucketSize.Value,
-                Left = rootId
-            };
+            var emptyKeys = m_options.KeySerializer.CreateEmpty();
+            var emptyValues = m_options.ValueSerializer.CreateEmpty();
+            var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeys, emptyValues);
+            m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
             m_stateClient.AddOrUpdate(rootId, root);
         }
     }

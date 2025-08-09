@@ -15,7 +15,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Read
 {
-    public abstract class ReadBaseOperator<TState> : IngressVertex<StreamEventBatch, TState>
+    public abstract class ReadBaseOperator : IngressVertex<StreamEventBatch>
     {
         protected ReadBaseOperator(DataflowBlockOptions options) : base(options)
         {

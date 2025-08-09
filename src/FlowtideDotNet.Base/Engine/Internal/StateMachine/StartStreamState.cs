@@ -11,9 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
-using System.Text.Json;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
@@ -74,6 +72,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._logger.StartingStream(_context.streamName);
+
+            if (_context.Status != StreamStatus.Failing)
+            {
+                // We only set starting if we are not failing.
+                // Failure goes directly to running if everything is ok.
+                _context.SetStatus(StreamStatus.Starting);
+            }
 
             if (previousState == StreamStateValue.NotStarted)
             {
@@ -143,8 +148,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context.EnableTriggerRegistration();
 
             // Initialize state
-            await _context._stateManager.InitializeAsync();
+            await _context._stateManager.InitializeAsync(_context._streamVersionInformation);
             _context._lastState = _context._stateManager.Metadata;
+            _context._startCheckpointVersion = _context._stateManager.CurrentVersion;
             if (_context._lastState == null)
             {
                 _context._lastState = await _context.stateHandler.LoadLatestState(_context.streamName);
@@ -158,10 +164,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context._streamVersionInformation != null)
                 {
                     _context._logger.CheckingStreamHashConsistency(_context.streamName);
-                    if (_context._streamVersionInformation.Version != _context._lastState.StrreamVersion)
-                    {
-                        throw new InvalidOperationException("Stream version missmatch, the version stored in storage is different than the version used.");
-                    }
                     if (_context._streamVersionInformation.Hash != _context._lastState.StreamHash)
                     {
                         throw new InvalidOperationException("Stream plan hash stored in storage is different than the hash used.");
@@ -190,59 +192,68 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._logger.InitializingPropagatorBLocks(_context.streamName);
                 foreach (var block in _context.propagatorBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
                         { "operator", block.Key }
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    VertexHandler vertexHandler = new VertexHandler(
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
+                        _context.loggerFactory,
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
 
                 _context._logger.InitializingEgressBlocks(_context.streamName);
                 foreach (var block in _context.egressBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
                         { "operator", block.Key }
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    VertexHandler vertexHandler = new VertexHandler(
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
+                        _context.loggerFactory,
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
                 }
 
                 _context._logger.InitializingIngressBlocks(_context.streamName);
                 foreach (var block in _context.ingressBlocks)
                 {
-                    JsonElement? blockState = null;
-                    if (_context._lastState != null && _context._lastState.OperatorStates.TryGetValue(block.Key, out var state))
-                    {
-                        blockState = state;
-                    }
                     TagList tags = new TagList()
                     {
                         { "stream", _context.streamName },
                         { "operator", block.Key }
                     };
                     var blockStateClient = _context._stateManager.GetOrCreateClient(block.Key, tags);
-                    VertexHandler vertexHandler = new VertexHandler(_context.streamName, block.Key, _context.TryScheduleCheckpointIn, _context.AddTrigger, _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName), blockStateClient, _context.loggerFactory);
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, blockState, vertexHandler);
+                    VertexHandler vertexHandler = new VertexHandler(
+                        _context.streamName,
+                        block.Key,
+                        _context.TryScheduleCheckpointIn,
+                        _context.AddTrigger,
+                        _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
+                        blockStateClient,
+                        _context.loggerFactory,
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
             }
-            catch(Exception e)
+            catch (Exception e)
             {
 
                 await _context.OnFailure(e);
@@ -276,6 +287,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 ingress.Value.DoLockingEvent(new InitWatermarksEvent());
             }
+        }
+
+        public override Task StopAsync()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            _context._wantedState = StreamStateValue.NotStarted;
+            return Task.CompletedTask;
         }
     }
 }

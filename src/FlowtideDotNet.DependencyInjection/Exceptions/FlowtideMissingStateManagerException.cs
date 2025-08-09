@@ -11,12 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Exceptions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection.Exceptions
 {
@@ -31,10 +25,6 @@ namespace FlowtideDotNet.DependencyInjection.Exceptions
         }
 
         public FlowtideMissingStateManagerException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
-
-        protected FlowtideMissingStateManagerException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
         }
     }

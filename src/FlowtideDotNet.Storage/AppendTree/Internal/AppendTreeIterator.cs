@@ -12,26 +12,21 @@
 
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.AppendTree.Internal
 {
-    internal class AppendTreeIterator<K, V> : IAppendTreeIterator<K, V>
+    internal class AppendTreeIterator<K, V, TKeyContainer, TValueContainer> : IAppendTreeIterator<K, V, TKeyContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
         private sealed class Enumerator : IAsyncEnumerator<KeyValuePair<K, V>>
         {
-            private readonly AppendTree<K, V> _tree;
-            private LeafNode<K, V> _node;
+            private readonly AppendTree<K, V, TKeyContainer, TValueContainer> _tree;
+            private LeafNode<K, V, TKeyContainer, TValueContainer> _node;
             private int _index;
             private bool _started;
 
-            public Enumerator(AppendTree<K, V> tree, LeafNode<K, V> node, int index)
+            public Enumerator(AppendTree<K, V, TKeyContainer, TValueContainer> tree, LeafNode<K, V, TKeyContainer, TValueContainer> node, int index)
             {
                 _tree = tree;
                 _node = node;
@@ -43,13 +38,17 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             private KeyValuePair<K, V> GetCurrent()
             {
                 _node.EnterWriteLock();
-                var result = new KeyValuePair<K, V>(_node.keys[_index], _node.values[_index]);
+                var result = new KeyValuePair<K, V>(_node.keys.Get(_index), _node.values.Get(_index));
                 _node.ExitWriteLock();
                 return result;
             }
 
             public ValueTask DisposeAsync()
             {
+                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
+                {
+                    _node.Return();
+                }
                 return ValueTask.CompletedTask;
             }
 
@@ -76,7 +75,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             private async ValueTask<bool> FetchNewPage()
             {
-                _node = ((await _tree.GetChildNode(_node.next)) as LeafNode<K, V>)!;
+                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
+                {
+                    _node.Return();
+                }
+                _node = ((await _tree.GetChildNode(_node.next)) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
                 _index = 0;
                 if (_node.keys.Count == 0)
                 {
@@ -86,11 +89,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             }
         }
 
-        private readonly AppendTree<K, V> _tree;
-        private LeafNode<K, V>? _node;
+        private readonly AppendTree<K, V, TKeyContainer, TValueContainer> _tree;
+        private LeafNode<K, V, TKeyContainer, TValueContainer>? _node;
         private int? _index;
 
-        public AppendTreeIterator(AppendTree<K, V> tree)
+        public AppendTreeIterator(AppendTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             _tree = tree;
         }
@@ -104,24 +107,28 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             return new Enumerator(_tree, _node, _index.Value);
         }
 
-        public ValueTask Seek(in K key, in IComparer<K>? searchComparer = null)
+        public ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
         {
             // Do async seek directly right now
-            return Seek_Slow(key, searchComparer);
+            var comparer = searchComparer == null ? _tree.m_keyComparer : searchComparer;
+            return Seek_Slow(key, comparer);
         }
 
-        private async ValueTask Seek_Slow(K key, IComparer<K>? searchComparer)
+        private async ValueTask Seek_Slow(K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
-            var comparer = searchComparer == null ? _tree.m_keyComparer : searchComparer;
-            _node = await _tree.FindLeafNode(key, comparer);
+            _node = await _tree.FindLeafNode(key, searchComparer);
             _node.EnterWriteLock();
-            var i = _node.keys.BinarySearch(key, searchComparer);
+            var i = searchComparer.FindIndex(key, _node.keys);
             _node.ExitWriteLock();
             if (i < 0)
             {
                 i = ~i;
             }
             _index = i;
+        }
+
+        public void Dispose()
+        {
         }
     }
 }

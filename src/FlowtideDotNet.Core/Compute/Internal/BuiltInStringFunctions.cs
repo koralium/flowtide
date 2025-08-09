@@ -13,6 +13,7 @@
 using FlexBuffers;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System.Buffers;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;

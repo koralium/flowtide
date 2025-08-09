@@ -11,17 +11,17 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.Extensions;
-using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.Storage.StateManager;
-using FlowtideDotNet.Substrait.Sql;
-using SqlSampleWithUI;
+using FlowtideDotNet.Core.Sinks;
 using FlowtideDotNet.DependencyInjection;
-using FlowtideDotNet.Core.Sources.Generic;
+using SqlSampleWithUI;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Map flowtide pause options to enable pausing and resuming from configuration
+builder.Services.AddOptions<FlowtidePauseOptions>()
+    .Bind(builder.Configuration.GetSection("flowtide"));
 
 var sqlText = @"
 CREATE TABLE testtable (
@@ -33,10 +33,9 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT t.val FROM testtable t
+SELECT map('a', t.val) FROM testtable t
 LEFT JOIN other o
-ON t.val = o.val
-WHERE t.val = 123;
+ON t.val = o.val;
 ";
 
 builder.Services.AddFlowtideStream("test")
@@ -44,11 +43,13 @@ builder.Services.AddFlowtideStream("test")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
-    connectorManager.AddSink(new DummyWriteFactory("*"));
+    connectorManager.AddConsoleSink("*");
 })
 .AddStorage(b =>
 {
     b.AddTemporaryDevelopmentStorage();
+    b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
+    b.MinPageCount = 0;
 });
 
 builder.Services.AddCors();
@@ -63,8 +64,6 @@ app.UseCors(b =>
 });
 
 app.UseHealthChecks("/health");
-
 app.UseFlowtideUI("/");
-
 
 app.Run();

@@ -12,9 +12,12 @@
 
 using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Exceptions;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Debug;
@@ -40,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void Dispose()
         {
-            
+
         }
 
         public long GetFileSize(int segment)
@@ -48,7 +51,7 @@ namespace FlowtideDotNet.Storage.Tests
             return 0;
         }
 
-        public void Initialize(long segmentSize, LightEpoch epoch = null, bool omitSegmentIdFromFilename = false)
+        public void Initialize(long segmentSize, LightEpoch epoch = null!, bool omitSegmentIdFromFilename = false)
         {
         }
 
@@ -64,7 +67,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void RemoveSegment(int segment)
         {
-            
+
         }
 
         public void RemoveSegmentAsync(int segment, AsyncCallback callback, IAsyncResult result)
@@ -73,7 +76,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void Reset()
         {
-            
+
         }
 
         public bool Throttle()
@@ -83,7 +86,7 @@ namespace FlowtideDotNet.Storage.Tests
 
         public void TruncateUntilAddress(long toAddress)
         {
-            
+
         }
 
         public void TruncateUntilAddressAsync(long toAddress, AsyncCallback callback, IAsyncResult result)
@@ -148,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tests
             return device.GetFileSize(segment);
         }
 
-        public void Initialize(long segmentSize, LightEpoch epoch = null, bool omitSegmentIdFromFilename = false)
+        public void Initialize(long segmentSize, LightEpoch epoch = null!, bool omitSegmentIdFromFilename = false)
         {
             device.Initialize(segmentSize, epoch, omitSegmentIdFromFilename);
         }
@@ -243,17 +246,18 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = new WriteFailureDevice(),
                         MemorySize = 128,
                         PageSize = 128,
-                        
+
                     })
-            }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
+                }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
-            var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             await tree.Upsert(3, "hello");
@@ -295,30 +299,31 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 512,
 
                     })
-            }, logger, new Meter($"storage"), "storage");
+                }, logger, new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
-            var tree = await client.GetOrCreateTree<long, string>("tree", new Tree.BPlusTreeOptions<long, string>()
+            var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
             {
                 BucketSize = 8,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new StringSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
 
             for (int i = 0; i < 4096; i++)
             {
                 await tree.Upsert(i, "hello");
             }
-            
+
             await tree.Commit();
             await manager.CheckpointAsync();
             manager.ClearCache();
 
             device.readFailure = true;
-            
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
             {
                 await tree.GetValue(7);
             });

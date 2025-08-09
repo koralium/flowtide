@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
@@ -74,5 +69,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
           Level = LogLevel.Information,
           Message = "Database update complete in stream: `{stream}`, operator: `{operatorId}`")]
         public static partial void DatabaseUpdateComplete(this ILogger logger, string stream, string operatorId);
+
+        [LoggerMessage(
+            EventId = 10,
+            Level = LogLevel.Trace,
+            Message = "Selecting changes from {tableName} in stream: `{stream}`, operator: `{operatorId}`")]
+        public static partial void SelectingChanges(this ILogger logger, string tableName, string stream, string operatorId);
     }
 }

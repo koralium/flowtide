@@ -10,15 +10,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
+    public class ColumnFunctionDefinition
+    {
+        public ColumnFunctionDefinition(
+            string uri,
+            string name,
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc)
+        {
+            Uri = uri;
+            Name = name;
+            MapFunc = mapFunc;
+        }
+
+        public string Uri { get; }
+
+        public string Name { get; }
+
+        public Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> MapFunc { get; }
+    }
+
     public class FunctionDefinition
     {
         public FunctionDefinition(
-            string uri, 
-            string name, 
+            string uri,
+            string name,
             Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
             Uri = uri;

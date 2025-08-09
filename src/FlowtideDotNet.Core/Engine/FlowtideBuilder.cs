@@ -10,16 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
+using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging;
 using FlowtideDotNet.Substrait;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
-using FlowtideDotNet.Core.Compute;
-using FlowtideDotNet.Core.Compute.Internal;
-using System.Diagnostics;
-using FlowtideDotNet.Core.Connectors;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -30,13 +34,15 @@ namespace FlowtideDotNet.Core.Engine
         private IConnectorManager? _connectorManager;
         private IReadWriteFactory? _readWriteFactory;
         private IStateHandler? _stateHandler;
-        private StateManagerOptions? _stateManagerOptions;
         private int _queueSize = 100;
         private FunctionsRegister _functionsRegister;
         private int _parallelism = 1;
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
-        private DistributedOptions? _distributedOptions;
+        private bool _useColumnStore = true;
+        private string _version = "";
+        private bool _useHashPlanAsVersion = false;
+        private bool _isCheckFailureRegistered = false;
 
         public FlowtideBuilder(string streamName)
         {
@@ -48,13 +54,13 @@ namespace FlowtideDotNet.Core.Engine
 
         public IFunctionsRegister FunctionsRegister => _functionsRegister;
 
-        public FlowtideBuilder AddPlan(Plan plan, bool optimize = true)
+        public FlowtideBuilder AddPlan(Plan plan, bool optimize = true, PlanOptimizerSettings? planOptimizerSettings = default)
         {
             if (optimize)
             {
-                plan = Optimizer.PlanOptimizer.Optimize(plan);
+                plan = Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
             }
-            
+
             _plan = plan;
             return this;
         }
@@ -91,15 +97,67 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder WithNotificationReciever(IStreamNotificationReciever notificationReciever)
+        public FlowtideBuilder WithCheckpointListener(ICheckpointListener listener)
         {
-            dataflowStreamBuilder.WithNotificationReciever(notificationReciever);
+            dataflowStreamBuilder.AddCheckpointListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithStateChangeListener(IStreamStateChangeListener listener)
+        {
+            dataflowStreamBuilder.AddStateChangeListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithCheckpointListener<T>()
+            where T : ICheckpointListener, new()
+        {
+            dataflowStreamBuilder.AddCheckpointListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithStateChangeListener<T>()
+            where T : IStreamStateChangeListener, new()
+        {
+            dataflowStreamBuilder.AddStateChangeListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener(IFailureListener listener)
+        {
+            dataflowStreamBuilder.AddFailureListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithCheckFailureListener(ICheckFailureListener listener)
+        {
+            _isCheckFailureRegistered = true;
+            dataflowStreamBuilder.AddCheckFailureListener(listener);
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener<T>()
+            where T : IFailureListener, new()
+        {
+            dataflowStreamBuilder.AddFailureListener(new T());
+            return this;
+        }
+
+        public FlowtideBuilder WithFailureListener(Action<Exception?> exceptionAction)
+        {
+            dataflowStreamBuilder.AddFailureListener(new CustomExceptionStrategy(exceptionAction));
             return this;
         }
 
         public FlowtideBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
         {
             dataflowStreamBuilder.WithLoggerFactory(loggerFactory);
+            return this;
+        }
+
+        public FlowtideBuilder WithPauseMonitor(IOptionsMonitor<FlowtidePauseOptions> pauseMonitor)
+        {
+            dataflowStreamBuilder.WithPauseMonitor(pauseMonitor);
             return this;
         }
 
@@ -133,9 +191,42 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder SetDistributedOptions(DistributedOptions distributedOptions)
+        public FlowtideBuilder ColumnStore(bool use)
         {
-            _distributedOptions = distributedOptions;
+            _useColumnStore = use;
+            return this;
+        }
+
+        public FlowtideBuilder SetVersion(string version)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(version);
+            _version = version;
+            return this;
+        }
+
+        public FlowtideBuilder SetHashPlanAsVersion()
+        {
+            _useHashPlanAsVersion = true;
+            return this;
+        }
+
+        public FlowtideBuilder WithCheckLogger(LogLevel logLevel = LogLevel.Warning)
+        {
+            if (dataflowStreamBuilder.LoggerFactory == null)
+            {
+                throw new InvalidOperationException("LoggerFactory is not set. Cannot add check logger.");
+            }
+            WithCheckFailureListener(new LoggerCheckFailureListener(dataflowStreamBuilder.LoggerFactory.CreateLogger<LoggerCheckFailureListener>(), logLevel));
+            return this;
+        }
+
+        /// <summary>
+        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// </summary>
+        /// <returns></returns>
+        public FlowtideBuilder WithCheckActivityLogger()
+        {
+            WithCheckFailureListener(new ActivityCheckFailureListener());
             return this;
         }
 
@@ -168,8 +259,15 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new InvalidOperationException("No connector manager or ReadWriteFactory has been added.");
             }
+
             var hash = ComputePlanHash();
-            dataflowStreamBuilder.SetVersionInformation(1, hash);
+
+            if (_useHashPlanAsVersion)
+            {
+                SetVersion(hash);
+            }
+
+            dataflowStreamBuilder.SetVersionInformation(hash, _version);
 
             // Modify plan
             if (_connectorManager != null)
@@ -179,16 +277,30 @@ namespace FlowtideDotNet.Core.Engine
             }
 
             SubstraitVisitor visitor = new SubstraitVisitor(
-                _plan, 
-                dataflowStreamBuilder, 
-                _connectorManager, 
+                _plan,
+                dataflowStreamBuilder,
+                _connectorManager,
                 _readWriteFactory,
-                _queueSize, 
-                _functionsRegister, 
-                _parallelism, 
+                _queueSize,
+                _functionsRegister,
+                _parallelism,
                 _getTimestampInterval,
-                _taskScheduler,
-                _distributedOptions);
+                _useColumnStore,
+                _taskScheduler);
+
+            // Set the notification receiver to the function register to allow check functions get access to it.
+            _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);
+
+            if (!_isCheckFailureRegistered)
+            {
+                // This should perhaps be moved in the future to some validation step
+                if (CheckFunctionFinder.CheckPlan(_plan) &&
+                    dataflowStreamBuilder.LoggerFactory != null)
+                {
+                    var checkFunctionLogger = dataflowStreamBuilder.LoggerFactory.CreateLogger("FlowtideDotNet.Core.Engine.CheckFunctionFinder");
+                    checkFunctionLogger.LogWarning("Check function found in plan, but no check failure listener is registered.");
+                }
+            }
 
             visitor.BuildPlan();
 

@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.dataflow;
+using FlowtideDotNet.Storage;
 using System.Diagnostics;
-using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.FixedPoint
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             this.executionDataflowBlockOptions = executionDataflowBlockOptions;
         }
 
-        internal ITargetBlock<KeyValuePair<int, IStreamEvent>> Target => _block;
+        internal ITargetBlock<KeyValuePair<int, IStreamEvent>> Target => _block!;
 
         internal IEnumerable<ITargetBlock<IStreamEvent>> Links => _links.Select(x => x.Item1);
 
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public void Initialize()
         {
             _block = new TransformBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>(x => x.Value, executionDataflowBlockOptions);
-            
+
             if (_links.Count > 1)
             {
                 // If there are more than 1 link, we must broadcast the message to all targets
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
-            return null;
+            return default!;
         }
 
         public void ReleaseReservation(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target)
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
             _operatorName = operatorName;
         }
 
-        public Task Initialize(string name, long restoreTime, long newTime, JsonElement? state, IVertexHandler vertexHandler)
+        public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             throw new NotImplementedException();
         }
@@ -146,6 +146,19 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         public ValueTask DisposeAsync()
         {
             throw new NotImplementedException();
+        }
+
+        public void Pause()
+        {
+        }
+
+        public void Resume()
+        {
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
         }
     }
 }

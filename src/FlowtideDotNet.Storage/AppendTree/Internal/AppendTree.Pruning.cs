@@ -11,15 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Tree.Internal;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.AppendTree.Internal
 {
-    internal partial class AppendTree<K, V>
+    internal partial class AppendTree<K, V, TKeyContainer, TValueContainer>
     {
         /// <summary>
         /// Prunes the tree until this key.
@@ -44,10 +39,10 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         private async ValueTask Prune_AfterGetRoot(IBPlusTreeNode? rootNode, K key)
         {
             // We only prune if entire l
-            if (rootNode is LeafNode<K, V> leafNode)
+            if (rootNode is LeafNode<K, V, TKeyContainer, TValueContainer> leafNode)
             {
                 leafNode.EnterWriteLock();
-                var index = leafNode.keys.BinarySearch(key, m_keyComparer);
+                var index = m_keyComparer.FindIndex(key, leafNode.keys);
                 if (index < 0)
                 {
                     index = ~index;
@@ -56,7 +51,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 leafNode.values.RemoveRange(0, index);
                 leafNode.ExitWriteLock();
             }
-            else if (rootNode is InternalNode<K, V> internalNode)
+            else if (rootNode is InternalNode<K, V, TKeyContainer> internalNode)
             {
                 int i = await TryPruneInternalNode(internalNode, key, 0, false);
                 if (i > 0)
@@ -68,7 +63,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 }
                 if (internalNode.children.Count == 0)
                 {
-                    var newRoot = new LeafNode<K, V>(m_stateClient.GetNewPageId());
+                    var newRoot = new LeafNode<K, V, TKeyContainer, TValueContainer>(m_stateClient.GetNewPageId(), m_options.KeySerializer.CreateEmpty(), m_options.ValueSerializer.CreateEmpty());
                     m_stateClient.Metadata!.Root = newRoot.Id;
                     m_stateClient.Delete(internalNode.Id);
                     m_stateClient.AddOrUpdate(newRoot.Id, newRoot);
@@ -83,7 +78,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                     {
                         // Loop to clean up any single child internal nodes
                         var newRoot = await GetChildNode(newRootId);
-                        if (newRoot is InternalNode<K, V> newRootInternal &&
+                        if (newRoot is InternalNode<K, V, TKeyContainer> newRootInternal &&
                             newRootInternal.children.Count == 1)
                         {
                             newRootId = newRootInternal.children[0];
@@ -102,9 +97,13 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                     m_stateClient.AddOrUpdate(internalNode.Id, internalNode);
                 }
             }
+            if (rootNode != null)
+            {
+                ReturnNode(rootNode);
+            }
         }
 
-        private async Task<int> TryPruneInternalNode(InternalNode<K, V> internalNode, K key, int depth, bool pruneAll)
+        private async Task<int> TryPruneInternalNode(InternalNode<K, V, TKeyContainer> internalNode, K key, int depth, bool pruneAll)
         {
             // Check if we are at the depth that all children are leaf nodes
             if (depth == m_rightInternalNodes.Count - 1)
@@ -122,7 +121,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 {
                     for (; i < internalNode.keys.Count; i++)
                     {
-                        if (m_keyComparer.Compare(internalNode.keys[i], key) <= 0)
+                        if (m_keyComparer.CompareTo(internalNode.keys.Get(i), key) <= 0)
                         {
                             m_stateClient.Delete(internalNode.children[i]);
                         }
@@ -143,11 +142,12 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                     if (pruneAll)
                     {
                         await Prune_internalNode(childNode, key, depth + 1, pruneAll);
+                        ReturnNode(childNode);
                         continue;
                     }
                     // Check if all leafs can be pruned in this tree
                     if (i < internalNode.keys.Count &&
-                        m_keyComparer.Compare(internalNode.keys[i], key) <= 0)
+                        m_keyComparer.CompareTo(internalNode.keys.Get(i), key) <= 0)
                     {
                         await Prune_internalNode(childNode, key, depth + 1, true);
                     }
@@ -155,9 +155,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                     {
                         if (!await Prune_internalNode(childNode, key, depth + 1, false))
                         {
+                            ReturnNode(childNode);
                             break;
                         }
                     }
+                    ReturnNode(childNode);
                 }
                 return i;
             }
@@ -171,11 +173,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         /// <returns></returns>
         private async ValueTask<bool> Prune_internalNode(IBPlusTreeNode? node, K key, int depth, bool pruneAll)
         {
-            if (node is LeafNode<K, V> leafNode)
+            if (node is LeafNode<K, V, TKeyContainer, TValueContainer> leafNode)
             {
                 // This code should not be reached, but it is here for completeness, if one wants to prune inside of a leaf node
                 leafNode.EnterWriteLock();
-                var index = leafNode.keys.BinarySearch(key, m_keyComparer);
+                var index = m_keyComparer.FindIndex(key, leafNode.keys);
                 if (index < 0)
                 {
                     index = ~index;
@@ -195,7 +197,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
                 }
                 return false;
             }
-            else if (node is InternalNode<K, V> internalNode)
+            else if (node is InternalNode<K, V, TKeyContainer> internalNode)
             {
                 int i = await TryPruneInternalNode(internalNode, key, depth, pruneAll);
                 if (i > 0)

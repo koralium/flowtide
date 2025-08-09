@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.PartitionVertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -21,7 +22,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Partition
 {
-    internal class PartitionOperator : PartitionVertex<StreamEventBatch, object>
+    internal class PartitionOperator : PartitionVertex<StreamEventBatch>
     {
         private readonly int targetNumber;
         private readonly Func<RowEvent, uint> _partitionFunction;
@@ -37,21 +38,23 @@ namespace FlowtideDotNet.Core.Operators.Partition
 
         public override string DisplayName => "Partition";
 
-        protected override Task InitializeOrRestore(object? state, IStateManagerClient stateManagerClient)
+        protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
-            if (_eventsProcessed == null) 
-            {                 
+            if (_eventsProcessed == null)
+            {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
             return Task.CompletedTask;
         }
 
-        protected override async IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
+        protected override IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time)
         {
             Debug.Assert(_eventsProcessed != null);
             _eventsProcessed.Add(data.Events.Count);
-            foreach(var e in data.Events)
+            int columnCount = 0;
+            foreach (var e in data.Events)
             {
+                columnCount = e.Length;
                 var hash = _partitionFunction(e);
                 var partitionId = hash % targetNumber;
                 if (outputs[partitionId] == null)
@@ -60,14 +63,21 @@ namespace FlowtideDotNet.Core.Operators.Partition
                 }
                 outputs[partitionId]!.Add(e);
             }
+
+            List<KeyValuePair<int, StreamMessage<StreamEventBatch>>> output = new List<KeyValuePair<int, StreamMessage<StreamEventBatch>>>();
             for (int i = 0; i < targetNumber; i++)
             {
                 if (outputs[i] != null)
                 {
-                    yield return new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!), time));
+                    output.Add(new KeyValuePair<int, StreamMessage<StreamEventBatch>>(i, new StreamMessage<StreamEventBatch>(new StreamEventBatch(outputs[i]!, columnCount), time)));
                     outputs[i] = null;
                 }
             }
+            if (output.Count > 0)
+            {
+                return output.ToAsyncEnumerable();
+            }
+            return EmptyAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>>.Instance;
         }
     }
 }

@@ -10,27 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Core.Tests.SmokeTests;
 using EFCore.BulkExtensions;
-using Microsoft.EntityFrameworkCore;
-using FlowtideDotNet.Substrait.Sql;
-using FluentAssertions;
-using FlowtideDotNet.Substrait;
-using FlowtideDotNet.Substrait.Relations;
-using FlowtideDotNet.Substrait.Expressions;
-using FlowtideDotNet.Substrait.Type;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
-using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging.Abstractions;
-using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Tests.SmokeTests;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Type;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics.Metrics;
-using FlowtideDotNet.Core.Connectors;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 {
@@ -42,31 +41,31 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             this.sqlServerFixture = sqlServerFixture;
         }
 
-        public override async Task AddLineItems(IEnumerable<LineItem> lineItems)
+        protected override async Task AddLineItems(IEnumerable<LineItem> lineItems)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(lineItems);
         }
 
-        public override async Task AddOrders(IEnumerable<Order> orders)
+        protected override async Task AddOrders(IEnumerable<Order> orders)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(orders);
         }
 
-        public override void AddReadResolvers(IConnectorManager connectorManager)
+        protected override void AddReadResolvers(IConnectorManager connectorManager)
         {
             connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
             {
                 var name = rel.NamedTable.Names[0];
-                return $"tpch.dbo.{name}";
+                return new List<string>() { "tpch", "dbo", name };
             });
         }
 
-        public override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
+        protected override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
         {
             await sqlServerFixture.DbContext.BulkInsertAsync(shipmodes);
         }
 
-        public override async Task ClearAllTables()
+        protected override async Task ClearAllTables()
         {
             var context = sqlServerFixture.DbContext;
             await context.LineItems.ExecuteDeleteAsync();
@@ -74,7 +73,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             await context.Shipmodes.ExecuteDeleteAsync();
         }
 
-        public override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
+        protected override async Task UpdateShipmodes(IEnumerable<Shipmode> shipmode)
         {
             await sqlServerFixture.DbContext.BulkUpdateAsync(shipmode);
         }
@@ -87,10 +86,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             sqlPlanBuilder.Sql("SELECT orderKey FROM tpch.dbo.orders");
             var plan = sqlPlanBuilder.GetPlan();
 
-            plan.Should().BeEquivalentTo(
-                new Plan()
-                {
-                    Relations = new List<Relation>()
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
                     {
                         new ProjectRelation()
                         {
@@ -121,23 +119,24 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                                     {
                                         Types = new List<Substrait.Type.SubstraitBaseType>()
                                         {
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType(),
-                                            new AnyType()
+                                            new Int64Type(),
+                                            new Int64Type(),
+                                            new StringType(),
+                                            new Fp64Type(),
+                                            new TimestampType(),
+                                            new StringType(),
+                                            new StringType(),
+                                            new Int64Type(),
+                                            new StringType()
                                         }
                                     }
                                 }
                             }
                         }
                     },
-                }, opt => opt.AllowingInfiniteRecursion().IncludingNestedObjects().ThrowingOnMissingMembers().RespectingRuntimeTypes()
-                );
+            };
+
+            Assert.Equal(expected, plan);
         }
 
         [Fact]
@@ -166,12 +165,12 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         }
 
-        public override Task Crash()
+        protected override Task Crash()
         {
             return sqlServerFixture.StopAsync();
         }
 
-        public override Task Restart()
+        protected override Task Restart()
         {
             return sqlServerFixture.StartAsync();
         }
@@ -215,21 +214,24 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             StreamMetrics streamMetrics = new StreamMetrics("stream");
             var nodeMetrics = streamMetrics.GetOrCreateVertexMeter("node1", () => "node1");
 
+            var streamMemoryManager = new StreamMemoryManager("stream");
+            var memoryManager = streamMemoryManager.CreateOperatorMemoryManager("op");
+
             var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
             {
 
             }, (v1, v2, time) =>
             {
                 return Task.CompletedTask;
-            }, nodeMetrics, stateClient, new NullLoggerFactory());
-            var sink = new SqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+            }, nodeMetrics, stateClient, new NullLoggerFactory(), memoryManager);
+            var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
             sink.Setup("mergejoinstream", "op");
             sink.CreateBlock();
             sink.Link();
 
-            
-            await sink.Initialize("1", 0, 0, null, vertexHandler);
+
+            await sink.Initialize("1", 0, 0, vertexHandler, null);
 
             await sink.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new List<RowEvent>()
             {
@@ -237,7 +239,9 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                 {
                     b.Add(1);
                 })
-            }), 0));
+            }, 1), 0));
+
+            await sink.SendAsync(new Watermark("test", LongWatermarkValue.Create(1)));
 
             await sink.SendAsync(new Checkpoint(0, 1));
 
@@ -252,7 +256,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                         return reader.Read();
                     });
 
-                if(hasRow)
+                if (hasRow)
                 {
                     break;
                 }

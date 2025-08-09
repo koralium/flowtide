@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.ListUnionDistinctAgg;
 using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Core.Compute.Internal.TableFunctions;
 
@@ -20,7 +22,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
         public static void AddListFunctions(FunctionsRegister functionsRegister)
         {
             ListAggAggregation.Register(functionsRegister);
+            ColumnListAggAggregation.Register(functionsRegister);
             UnnestTableFunction.AddBuiltInUnnestFunction(functionsRegister);
+            Columnar.Functions.TableFunctions.UnnestFunction.AddBuiltInUnnestFunction(functionsRegister);
+            ListUnionDistinctAggAggregation.Register(functionsRegister);
         }
     }
 }

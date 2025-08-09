@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FastMember;
+using FlowtideDotNet.Substrait.Type;
 using System.ComponentModel.DataAnnotations;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -30,15 +31,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 var tableMembers = TypeAccessor.Create(typeof(T)).GetMembers();
                 List<int> keyIndices = new List<int>();
+                List<SubstraitBaseType> types = new List<SubstraitBaseType>();
                 for (int i = 0; i < tableMembers.Count; i++)
                 {
                     var attr = tableMembers[i].GetAttribute(typeof(KeyAttribute), false);
+                    types.Add(MockTable.GetSubstraitType(tableMembers[i].Type));
                     if (attr != null)
                     {
                         keyIndices.Add(i);
                     }
                 }
-                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices);
+                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types, typeof(T));
                 Tables.Add(tableName, mockTable);
             }
             return mockTable;

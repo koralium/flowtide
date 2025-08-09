@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal
 {
@@ -26,5 +21,17 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
            Level = LogLevel.Warning,
            Message = "Person or group not found: `{error}`, stream `{stream}`, operator `{operatorId}`")]
         public static partial void PersonOrGroupNotFound(this ILogger logger, string error, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 2,
+           Level = LogLevel.Trace,
+           Message = "Before checkpoint in delta, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void BeforeCheckpointInDelta(this ILogger logger, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 3,
+           Level = LogLevel.Trace,
+           Message = "Fetching delta, stream `{stream}`, operator `{operatorId}`")]
+        public static partial void FetchingDelta(this ILogger logger, string stream, string operatorId);
     }
 }

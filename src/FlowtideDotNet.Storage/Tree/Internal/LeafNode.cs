@@ -14,16 +14,20 @@ using System.Text;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class LeafNode<K, V> : BaseNode<K>
+    public class LeafNode<K, V, TKeyContainer, TValueContainer> : BaseNode<K, TKeyContainer>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
 
-        public List<V> values;
+        public TValueContainer values;
 
         public long next;
 
-        public LeafNode(long id) : base(id)
+        public long previous;
+
+        public LeafNode(long id, TKeyContainer keyContainer, TValueContainer valueContainer) : base(id, keyContainer)
         {
-            values = new List<V>();
+            values = valueContainer;
         }
 
         public void InsertAt(in K key, in V value, in int position)
@@ -37,7 +41,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public void UpdateValueAt(in int index, in V value)
         {
             this.EnterWriteLock();
-            values[index] = value;
+            values.Update(index, value);
             this.ExitWriteLock();
         }
 
@@ -49,7 +53,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             this.ExitWriteLock();
         }
 
-        public override Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K>>> lookupFunc)
+        public override Task Print(StringBuilder stringBuilder, Func<long, ValueTask<BaseNode<K, TKeyContainer>>> lookupFunc)
         {
             stringBuilder.Append($"node{Id}");
             stringBuilder.Append($"[label = <");
@@ -57,11 +61,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             stringBuilder.Append("<table border=\"0\" cellborder=\"1\" cellspacing=\"0\">");
             stringBuilder.Append("<tr>");
             //stringBuilder.Append("<td port=\"f0\"></td>");
-
+            if (previous != 0)
+            {
+                stringBuilder.Append("<td port=\"fb\" rowspan=\"2\"></td>");
+            }
+            
             for (int i = 0; i < keys.Count; i++)
             {
                 stringBuilder.Append("<td>");
-                stringBuilder.Append(keys[i]);
+                stringBuilder.Append(keys.Get(i));
                 stringBuilder.Append("</td>");
             }
             stringBuilder.Append("<td port=\"f0\" rowspan=\"2\"></td>");
@@ -72,7 +80,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             for (int i = 0; i < values.Count; i++)
             {
                 stringBuilder.Append("<td>");
-                stringBuilder.Append(values[i]);
+                stringBuilder.Append(values.Get(i));
                 stringBuilder.Append("</td>");
             }
             stringBuilder.Append("</tr>");
@@ -89,7 +97,30 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 stringBuilder.AppendLine($"\"node{Id}\":f1 -> \"node{next}\" [constraint=false];");
             }
+            if (previous > 0)
+            {
+                stringBuilder.AppendLine($"\"node{Id}\":fb -> \"node{previous}\" [constraint=false];");
+            }
             return Task.CompletedTask;
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                values.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        public override int GetByteSize()
+        {
+            return keys.GetByteSize() + values.GetByteSize();
+        }
+
+        public override int GetByteSize(int start, int end)
+        {
+            return keys.GetByteSize(start, end) + values.GetByteSize(start, end);
         }
     }
 }

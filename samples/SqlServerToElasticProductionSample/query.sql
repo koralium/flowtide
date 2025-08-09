@@ -1,6 +1,6 @@
 ﻿INSERT INTO docs
 SELECT 
-  docid as _id,
-  docid, 
-  name
-FROM demo.dbo.docs;
+	orderkey as _id, orderdate, firstname, lastname
+FROM test.dbo.orders o
+LEFT JOIN test.dbo.users u
+ON o.userkey = u.userkey;

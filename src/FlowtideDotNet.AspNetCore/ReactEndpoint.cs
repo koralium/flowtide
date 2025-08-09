@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using Microsoft.AspNetCore.Http;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace FlowtideDotNet.AspNetCore
@@ -31,7 +32,7 @@ namespace FlowtideDotNet.AspNetCore
 
         private readonly string m_rootPath;
         private readonly string m_apiPath;
-        private readonly Dictionary<string, PageCache> _pathCache;
+        private readonly ConcurrentDictionary<string, PageCache> _pathCache;
 
         public ReactEndpoint(string rootPath)
         {
@@ -47,7 +48,7 @@ namespace FlowtideDotNet.AspNetCore
                 m_apiPath += "/";
             }
 
-            _pathCache = new Dictionary<string, PageCache>();
+            _pathCache = new ConcurrentDictionary<string, PageCache>();
         }
 
         private static string TranslatePath(string path)
@@ -59,9 +60,14 @@ namespace FlowtideDotNet.AspNetCore
             }
             else
             {
-                secondLastDotIndex = path.LastIndexOf('.', path.LastIndexOf('.') - 1);
+                var dotLastIndex = path.LastIndexOf('.');
+                if (dotLastIndex == -1)
+                {
+                    return "Not found";
+                }
+                secondLastDotIndex = path.LastIndexOf('.', dotLastIndex - 1);
             }
-            
+
 
             if (secondLastDotIndex != -1)
             {
@@ -168,7 +174,7 @@ namespace FlowtideDotNet.AspNetCore
                 }
                 byte[] outputBytes = Encoding.UTF8.GetBytes(txt);
 
-                _pathCache.Add(requestPath, new PageCache(httpContext.Response.ContentType!, outputBytes));
+                _pathCache.AddOrUpdate(requestPath, new PageCache(httpContext.Response.ContentType!, outputBytes), (key, old) => old);
                 return httpContext.Response.Body.WriteAsync(outputBytes, 0, outputBytes.Length);
             }
             else
@@ -177,7 +183,7 @@ namespace FlowtideDotNet.AspNetCore
                 stream.CopyTo(memoryStream);
                 var bytes = memoryStream.ToArray();
 
-                _pathCache.Add(requestPath, new PageCache(httpContext.Response.ContentType!, bytes));
+                _pathCache.AddOrUpdate(requestPath, new PageCache(httpContext.Response.ContentType!, bytes), (key, old) => old);
                 return httpContext.Response.Body.WriteAsync(bytes, 0, bytes.Length);
             }
         }

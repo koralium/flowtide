@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -24,6 +26,8 @@ namespace FlowtideDotNet.Connector.Kafka
         /// <returns></returns>
         Task Initialize(ReadRelation readRelation);
 
+        RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes);
+
         /// <summary>
         /// Deserializes the value bytes into a stream event.
         /// The deserializer must determine if its a delete or insert and return the appropriate stream event.
@@ -32,6 +36,6 @@ namespace FlowtideDotNet.Connector.Kafka
         /// <param name="valueBytes"></param>
         /// <param name="keyBytes"></param>
         /// <returns></returns>
-        RowEvent Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes);
+        void Deserialize(IFlowtideKafkaKeyDeserializer keyDeserializer, byte[]? valueBytes, byte[]? keyBytes, IColumn[] columns, PrimitiveList<int> weights);
     }
 }

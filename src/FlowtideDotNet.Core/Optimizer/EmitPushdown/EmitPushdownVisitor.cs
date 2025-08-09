@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
     internal class EmitPushdownVisitor : OptimizerBaseVisitor
     {
         private Dictionary<int, List<ReferenceRelation>> referenceRelations;
-        
+
         public EmitPushdownVisitor(Dictionary<int, List<ReferenceRelation>> referenceRelations)
         {
             this.referenceRelations = referenceRelations;
@@ -65,7 +65,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     for (int k = lastField; k < emitField; k++)
                     {
                         readRelation.BaseSchema.Names.RemoveAt(lastField);
-                        readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        if (readRelation.BaseSchema.Struct != null)
+                        {
+                            readRelation.BaseSchema.Struct.Types.RemoveAt(lastField);
+                        }
                         relativeOffset++;
                     }
                     lastField = usageList[i] - relativeOffset + 1;
@@ -73,7 +76,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
 
                 if (readRelation.Filter != null)
@@ -99,7 +105,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 if (lastField < readRelation.BaseSchema.Names.Count)
                 {
                     readRelation.BaseSchema.Names.RemoveRange(lastField, readRelation.BaseSchema.Names.Count - lastField);
-                    readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    if (readRelation.BaseSchema.Struct != null)
+                    {
+                        readRelation.BaseSchema.Struct.Types.RemoveRange(lastField, readRelation.BaseSchema.Struct.Types.Count - lastField);
+                    }
                 }
             }
             return readRelation;
@@ -115,20 +124,24 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 var input = aggregateRelation.Input;
                 var usageVisitor = new ExpressionFieldUsageVisitor(aggregateRelation.Input.OutputLength);
-                foreach(var measure in aggregateRelation.Measures)
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            usageVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                usageVisitor.Visit(arg, default);
+                            }
+                        }
+                        if (measure.Filter != null)
+                        {
+                            usageVisitor.Visit(measure.Filter, default);
                         }
                     }
-                    if (measure.Filter != null)
-                    {
-                        usageVisitor.Visit(measure.Filter, default);
-                    }
                 }
+
                 if (aggregateRelation.Groupings != null)
                 {
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -139,24 +152,27 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
-                
+
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
 
                 var inputEmitResult = CreateInputEmitList(input, usedFields);
 
                 var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
-                foreach (var measure in aggregateRelation.Measures)
+                if (aggregateRelation.Measures != null)
                 {
-                    if (measure.Measure.Arguments != null)
+                    foreach (var measure in aggregateRelation.Measures)
                     {
-                        foreach (var arg in measure.Measure.Arguments)
+                        if (measure.Measure.Arguments != null)
                         {
-                            replaceVisitor.Visit(arg, default);
+                            foreach (var arg in measure.Measure.Arguments)
+                            {
+                                replaceVisitor.Visit(arg, default);
+                            }
                         }
-                    }
-                    if (measure.Filter != null)
-                    {
-                        replaceVisitor.Visit(measure.Filter, default);
+                        if (measure.Filter != null)
+                        {
+                            replaceVisitor.Visit(measure.Filter, default);
+                        }
                     }
                 }
 
@@ -222,10 +238,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 }
 
                 var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
-                
+
                 if (projectRelation.EmitSet)
                 {
-                    foreach(var field in projectRelation.Emit!)
+                    foreach (var field in projectRelation.Emit!)
                     {
                         if (field < input.OutputLength)
                         {
@@ -383,9 +399,41 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 List<int> leftEmit = new List<int>();
                 List<int> rightEmit = new List<int>();
 
+                Dictionary<int, int> leftEmitToInternal = new Dictionary<int, int>();
+                if (joinRelation.Left.EmitSet)
+                {
+                    for (int i = 0; i < joinRelation.Left.Emit.Count; i++)
+                    {
+                        leftEmitToInternal.Add(i, joinRelation.Left.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < joinRelation.Left.OutputLength; i++)
+                    {
+                        leftEmitToInternal.Add(i, i);
+                    }
+                }
+
+                Dictionary<int, int> rightEmitToInternal = new Dictionary<int, int>();
+                if (joinRelation.Right.EmitSet)
+                {
+                    for (int i = 0; i < joinRelation.Right.Emit.Count; i++)
+                    {
+                        rightEmitToInternal.Add(i, joinRelation.Right.Emit[i]);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < joinRelation.Right.OutputLength; i++)
+                    {
+                        rightEmitToInternal.Add(i, i);
+                    }
+                }
+
                 foreach (var field in leftUsage)
                 {
-                    leftEmit.Add(field);
+                    leftEmit.Add(leftEmitToInternal[field]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
@@ -394,10 +442,11 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 {
                     var rightIndex = field - joinRelation.Left.OutputLength;
 
-                    rightEmit.Add(rightIndex);
+                    rightEmit.Add(rightEmitToInternal[rightIndex]);
                     oldToNew.Add(field, replacementCounter);
                     replacementCounter += 1;
                 }
+
                 if (leftEmit.Count < joinRelation.Left.OutputLength)
                 {
                     joinRelation.Left.Emit = leftEmit;
@@ -440,7 +489,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
             var inputLength = mergeJoinRelation.Left.OutputLength + mergeJoinRelation.Right.OutputLength;
-            
+
             if (mergeJoinRelation.Left is ReferenceRelation leftReference)
             {
                 var projectRel = new ProjectRelation()
@@ -459,16 +508,16 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 };
                 mergeJoinRelation.Right = projectRel;
             }
-            
+
             if (inputLength > mergeJoinRelation.OutputLength)
             {
                 var usageVisitor = new ExpressionFieldUsageVisitor(mergeJoinRelation.Left.OutputLength);
                 // Visit all possible field references
-                foreach(var leftFieldKey in mergeJoinRelation.LeftKeys)
+                foreach (var leftFieldKey in mergeJoinRelation.LeftKeys)
                 {
                     usageVisitor.Visit(leftFieldKey, default);
                 }
-                foreach(var rightFieldKey in mergeJoinRelation.RightKeys)
+                foreach (var rightFieldKey in mergeJoinRelation.RightKeys)
                 {
                     usageVisitor.Visit(rightFieldKey, default);
                 }
@@ -495,6 +544,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                         }
                     }
                 }
+
 
                 leftUsage = leftUsage.Distinct().OrderBy(x => x).ToList();
                 rightUsage = rightUsage.Distinct().OrderBy(x => x).ToList();
@@ -543,9 +593,9 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                     replacementCounter += 1;
                 }
 
-                foreach(var field in rightUsage)
+                foreach (var field in rightUsage)
                 {
-                    var rightIndex = field- mergeJoinRelation.Left.OutputLength;
+                    var rightIndex = field - mergeJoinRelation.Left.OutputLength;
 
                     rightEmit.Add(rightEmitToInternal[rightIndex]);
                     oldToNew.Add(field, replacementCounter);
@@ -592,6 +642,230 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 }
             }
             return base.VisitMergeJoinRelation(mergeJoinRelation, state);
+        }
+
+        public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
+        {
+            if (filterRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationReferenceReadRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input is IterationRelation)
+            {
+                return filterRelation;
+            }
+            if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
+            {
+                var input = filterRelation.Input;
+
+                var usageVisitor = new ExpressionFieldUsageVisitor(filterRelation.Input.OutputLength);
+                if (filterRelation.Condition != null)
+                {
+                    usageVisitor.Visit(filterRelation.Condition, default);
+                }
+
+                if (!usageVisitor.CanOptimize)
+                {
+                    return filterRelation;
+                }
+
+                var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+                if (filterRelation.EmitSet)
+                {
+                    foreach (var field in filterRelation.Emit!)
+                    {
+                        if (field < input.OutputLength)
+                        {
+                            // Add all fields that are in the emit that are from the input
+                            if (!usedFields.Contains(field))
+                            {
+                                usedFields.Add(field);
+                            }
+                        }
+                    }
+                }
+
+                if (usedFields.Count <= input.OutputLength)
+                {
+                    var inputEmitResult = CreateInputEmitList(input, usedFields);
+                    var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+                    if (filterRelation.Condition != null)
+                    {
+                        replaceVisitor.Visit(filterRelation.Condition, default);
+                    }
+
+                    if (filterRelation.EmitSet)
+                    {
+                        var diff = input.OutputLength - inputEmitResult.Emit.Count;
+                        for (int i = 0; i < filterRelation.Emit.Count; i++)
+                        {
+                            if (filterRelation.Emit[i] >= input.OutputLength)
+                            {
+                                filterRelation.Emit[i] = filterRelation.Emit[i] - diff;
+                            }
+                            else
+                            {
+                                if (inputEmitResult.OldToNew.TryGetValue(filterRelation.Emit[i], out var newMapping))
+                                {
+                                    filterRelation.Emit[i] = newMapping;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Could not find new mapping during optmization.");
+                                }
+                            }
+
+                        }
+                    }
+
+                    input.Emit = inputEmitResult.Emit;
+                }
+
+
+            }
+            return base.VisitFilterRelation(filterRelation, state);
+        }
+
+        public override Relation VisitBufferRelation(BufferRelation bufferRelation, object state)
+        {
+            if (bufferRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.Input is IterationReferenceReadRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.Input is IterationRelation)
+            {
+                return bufferRelation;
+            }
+            if (bufferRelation.EmitSet)
+            {
+                List<int> emitList = new List<int>();
+                for (int i = 0; i < bufferRelation.Emit.Count; i++)
+                {
+                    emitList.Add(i);
+                }
+                bufferRelation.Input.Emit = bufferRelation.Emit;
+                bufferRelation.Emit = emitList;
+            }
+
+            return base.VisitBufferRelation(bufferRelation, state);
+        }
+
+        public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
+        {
+            if (consistentPartitionWindowRelation.Input is ReferenceRelation referenceRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+            if (consistentPartitionWindowRelation.Input is IterationReferenceReadRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+            if (consistentPartitionWindowRelation.Input is IterationRelation)
+            {
+                return consistentPartitionWindowRelation;
+            }
+
+            var usageVisitor = new ExpressionFieldUsageVisitor(consistentPartitionWindowRelation.Input.OutputLength);
+
+            foreach(var sortField in consistentPartitionWindowRelation.OrderBy)
+            {
+                usageVisitor.Visit(sortField.Expression, default);
+            }
+            
+            foreach(var partition in consistentPartitionWindowRelation.PartitionBy)
+            {
+                usageVisitor.Visit(partition, default);
+            }
+            
+            foreach(var func in consistentPartitionWindowRelation.WindowFunctions)
+            {
+                foreach(var arg in func.Arguments)
+                {
+                    usageVisitor.Visit(arg, default);
+                }
+            }
+
+            var input = consistentPartitionWindowRelation.Input;
+
+            var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+
+            if (consistentPartitionWindowRelation.EmitSet)
+            {
+                foreach (var field in consistentPartitionWindowRelation.Emit!)
+                {
+                    if (field < input.OutputLength)
+                    {
+                        usedFields.Add(field);
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < consistentPartitionWindowRelation.Input.OutputLength; i++)
+                {
+                    usedFields.Add(i);
+                }
+            }
+
+            usedFields = usedFields.Distinct().ToList();
+
+            var inputEmitResult = CreateInputEmitList(input, usedFields);
+
+            var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+
+            foreach (var sortField in consistentPartitionWindowRelation.OrderBy)
+            {
+                replaceVisitor.Visit(sortField.Expression, default);
+            }
+
+            foreach (var partition in consistentPartitionWindowRelation.PartitionBy)
+            {
+                replaceVisitor.Visit(partition, default);
+            }
+
+            foreach (var func in consistentPartitionWindowRelation.WindowFunctions)
+            {
+                foreach (var arg in func.Arguments)
+                {
+                    replaceVisitor.Visit(arg, default);
+                }
+            }
+
+            if (consistentPartitionWindowRelation.EmitSet)
+            {
+                var diff = input.OutputLength - inputEmitResult.Emit.Count;
+                for (int i = 0; i < consistentPartitionWindowRelation.Emit.Count; i++)
+                {
+                    if (consistentPartitionWindowRelation.Emit[i] >= input.OutputLength)
+                    {
+                        consistentPartitionWindowRelation.Emit[i] = consistentPartitionWindowRelation.Emit[i] - diff;
+                    }
+                    else
+                    {
+                        if (inputEmitResult.OldToNew.TryGetValue(consistentPartitionWindowRelation.Emit[i], out var newMapping))
+                        {
+                            consistentPartitionWindowRelation.Emit[i] = newMapping;
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Could not find new mapping during optmization.");
+                        }
+                    }
+                }
+            }
+
+            input.Emit = inputEmitResult.Emit;
+
+            return base.VisitConsistentPartitionWindowRelation(consistentPartitionWindowRelation, state);
         }
     }
 }

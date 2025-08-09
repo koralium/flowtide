@@ -56,15 +56,15 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             var expr = referenceSegment switch
             {
-                StructReferenceSegment { Field: >= 0 } structReferenceSegment => 
+                StructReferenceSegment { Field: >= 0 } structReferenceSegment =>
                     System.Linq.Expressions.Expression.Call(
-                        expression, 
-                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        expression,
+                        expression.Type.GetMethod(nameof(FlxValue.GetVectorValue)) ?? throw new MissingMethodException(nameof(FlxValue)),
                         System.Linq.Expressions.Expression.Constant(structReferenceSegment.Field)),
-                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment => 
+                MapKeyReferenceSegment { Key: not null } mapKeyReferenceSegment =>
                     System.Linq.Expressions.Expression.Call(
-                        expression, 
-                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)), 
+                        expression,
+                        expression.Type.GetMethod(nameof(FlxValue.GetMapValue)) ?? throw new MissingMethodException(nameof(FlxValue)),
                         System.Linq.Expressions.Expression.Constant(mapKeyReferenceSegment.Key)),
                 _ => throw new NotImplementedException($"The {nameof(referenceSegment)} must be a {nameof(StructReferenceSegment)} with a positive {nameof(StructReferenceSegment.Field)} or a {nameof(MapKeyReferenceSegment)} with a non-null {nameof(MapKeyReferenceSegment.Key)}"),
             };
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             System.Linq.Expressions.Expression? elseStatement = default;
             if (ifThenExpression.Else != null)
             {
-                elseStatement = Visit(ifThenExpression.Else, state);
+                elseStatement = Visit(ifThenExpression.Else, state)!;
             }
             else
             {
@@ -123,12 +123,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
             for (int i = ifThenExpression.Ifs.Count - 1; i >= 0; i--)
             {
                 var ifClause = ifThenExpression.Ifs[i];
-                var ifStatement = Visit(ifClause.If, state);
-                var thenStatement = Visit(ifClause.Then, state);
+                var ifStatement = Visit(ifClause.If, state)!;
+                var thenStatement = Visit(ifClause.Then, state)!;
 
                 if (ifStatement.Type.Equals(typeof(FlxValue)))
                 {
-                    MethodInfo toBoolMethod = typeof(FlxValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    MethodInfo? toBoolMethod = typeof(FlxValueBoolFunctions).GetMethod("ToBool", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+                    Debug.Assert(toBoolMethod != null);
                     ifStatement = System.Linq.Expressions.Expression.Call(toBoolMethod, ifStatement);
                 }
 
@@ -140,7 +141,8 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         private static System.Linq.Expressions.MethodCallExpression ToArrayExpr(System.Linq.Expressions.Expression array)
         {
-            MethodInfo toArrayMethod = typeof(FlxValueArrayFunctions).GetMethod("CreateArray", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? toArrayMethod = typeof(FlxValueArrayFunctions).GetMethod("CreateArray", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(toArrayMethod != null);
             return System.Linq.Expressions.Expression.Call(toArrayMethod, array);
         }
 
@@ -193,7 +195,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 Arguments = new List<Substrait.Expressions.Expression>()
             };
 
-            foreach(var opt in singularOrList.Options)
+            foreach (var opt in singularOrList.Options)
             {
                 scalarFunction.Arguments.Add(new ScalarFunction()
                 {
@@ -227,6 +229,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Debug.Assert(newObjectMethod != null);
             Debug.Assert(startVectorMethod != null);
             Debug.Assert(addKeyMethod != null);
+            Debug.Assert(sortAndEndMapMethod != null);
+            Debug.Assert(addValueMethod != null);
+            Debug.Assert(finishMethod != null);
+            Debug.Assert(flxValueFromBytesMethod != null);
+            Debug.Assert(flxValueToStringMethod != null);
 
             var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
             var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");
@@ -235,17 +242,17 @@ namespace FlowtideDotNet.Core.Compute.Internal
             blockExpressions.Add(System.Linq.Expressions.Expression.Call(builderConstant, newObjectMethod));
             // Start the vector and assign vector start variable
             blockExpressions.Add(System.Linq.Expressions.Expression.Assign(vectorStartVariable, System.Linq.Expressions.Expression.Call(builderConstant, startVectorMethod)));
-            
+
             // Add all the key value pairs to the map
             for (int i = 0; i < mapNestedExpression.KeyValues.Count; i++)
             {
-                   var keyValue = mapNestedExpression.KeyValues[i];
+                var keyValue = mapNestedExpression.KeyValues[i];
                 var key = keyValue.Key;
                 var value = keyValue.Value;
 
-                var keyExpr = Visit(key, state);
+                var keyExpr = Visit(key, state)!;
 
-                var valueExpr = Visit(value, state);
+                var valueExpr = Visit(value, state)!;
 
                 var addKeyCall = System.Linq.Expressions.Expression.Call(builderConstant, addKeyMethod, System.Linq.Expressions.Expression.Call(flxValueToStringMethod, keyExpr));
                 blockExpressions.Add(addKeyCall);
@@ -282,6 +289,10 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Debug.Assert(newObjectMethod != null);
             Debug.Assert(startVectorMethod != null);
             Debug.Assert(addKeyMethod != null);
+            Debug.Assert(addValueMethod != null);
+            Debug.Assert(endVectorMethod != null);
+            Debug.Assert(finishMethod != null);
+            Debug.Assert(flxValueFromBytesMethod != null);
 
             var vectorStartVariable = System.Linq.Expressions.Expression.Variable(typeof(int), "vectorStart");
             var bytesVariable = System.Linq.Expressions.Expression.Variable(typeof(byte[]), "bytes");
@@ -295,7 +306,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             for (int i = 0; i < listNestedExpression.Values.Count; i++)
             {
                 var value = listNestedExpression.Values[i];
-                var valueExpr = Visit(value, state);
+                var valueExpr = Visit(value, state)!;
                 var addValueCall = System.Linq.Expressions.Expression.Call(builderConstant, addValueMethod, valueExpr);
                 blockExpressions.Add(addValueCall);
             }

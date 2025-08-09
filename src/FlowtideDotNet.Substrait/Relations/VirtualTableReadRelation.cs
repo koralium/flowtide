@@ -17,13 +17,17 @@ namespace FlowtideDotNet.Substrait.Relations
     public sealed class VirtualTableReadRelation : Relation, IEquatable<VirtualTableReadRelation>
     {
         public required NamedStruct BaseSchema { get; set; }
-        
+
         public required VirtualTable Values { get; set; }
 
         public override int OutputLength
         {
             get
             {
+                if (EmitSet)
+                {
+                    return Emit.Count;
+                }
                 return BaseSchema.Names.Count;
             }
         }

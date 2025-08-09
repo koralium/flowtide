@@ -10,19 +10,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Buffers;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Storage.StateManager.Internal
 {
     internal static class StateClientMetadataSerializer
     {
-        public static StateClientMetadata<T> Deserialize<T>(IMemoryOwner<byte> bytes, int length)
+        public static StateClientMetadata<T> Deserialize<T>(ReadOnlyMemory<byte> bytes, int length)
         {
-            var slice = bytes.Memory.Span.Slice(0, length);
+            var slice = bytes.Span.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
             var deserializedValue = JsonSerializer.Deserialize<StateClientMetadata<T>>(ref reader);
-            bytes.Dispose();
+            Debug.Assert(deserializedValue != null);
             return deserializedValue;
         }
 

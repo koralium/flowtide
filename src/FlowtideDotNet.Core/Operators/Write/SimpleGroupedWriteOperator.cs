@@ -18,7 +18,6 @@ using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -66,31 +65,31 @@ namespace FlowtideDotNet.Core.Operators.Write
     /// <summary>
     /// Helper class to implement a write operator that groups values by primary keys.
     /// </summary>
-    public abstract class SimpleGroupedWriteOperator : GroupedWriteBaseOperator<SimpleWriteState>
+    public abstract class SimpleGroupedWriteOperator : GroupedWriteBaseOperator
     {
         private MetadataResult? m_metadataResult;
-        private IBPlusTree<RowEvent, int>? m_modified;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_modified;
         private bool m_hasModified;
         private readonly ExecutionMode m_executionMode;
-        private SimpleWriteState? _state;
+        private IObjectState<SimpleWriteState>? _state;
         private Watermark? _latestWatermark;
         private ICounter<long>? _eventsProcessed;
-        private IBPlusTree<RowEvent, int>? m_existingData;
+        private IBPlusTree<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>? m_existingData;
 
         protected SimpleGroupedWriteOperator(ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.m_executionMode = executionMode;
         }
 
-        protected override async Task<SimpleWriteState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             if (m_executionMode == ExecutionMode.OnCheckpoint ||
-                (m_executionMode == ExecutionMode.Hybrid && !_state.SentInitialData))
+                (m_executionMode == ExecutionMode.Hybrid && !_state.Value.SentInitialData))
             {
                 await SendData();
             }
-            return _state;
+            await _state.Commit();
         }
 
         private async Task SendData()
@@ -104,14 +103,14 @@ namespace FlowtideDotNet.Core.Operators.Write
                 await m_modified.Clear();
                 m_hasModified = false;
             }
-            if (_state!.SentInitialData == false)
+            if (_state!.Value!.SentInitialData == false)
             {
                 await OnInitialDataSent();
-                _state.SentInitialData = true;
+                _state.Value.SentInitialData = true;
             }
         }
 
-        private static async IAsyncEnumerable<KeyValuePair<RowEvent, int>> IteratePerRow(IBPlusTreeIterator<RowEvent, int> iterator)
+        private static async IAsyncEnumerable<KeyValuePair<RowEvent, int>> IteratePerRow(IBPlusTreeIterator<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>> iterator)
         {
             await foreach (var page in iterator)
             {
@@ -127,7 +126,7 @@ namespace FlowtideDotNet.Core.Operators.Write
             Debug.Assert(m_modified != null);
             Debug.Assert(m_existingData != null);
             Debug.Assert(PrimaryKeyComparer != null);
-            
+
             var treeIterator = m_modified.CreateIterator();
             var existingIterator = m_existingData.CreateIterator();
             await treeIterator.SeekFirst();
@@ -201,7 +200,7 @@ namespace FlowtideDotNet.Core.Operators.Write
                 }
             }
 
-            if (!_state!.SentInitialData &&
+            if (!_state!.Value!.SentInitialData &&
                 FetchExistingData)
             {
                 await foreach (var row in DeleteExistingData())
@@ -220,10 +219,10 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected override Task OnWatermark(Watermark watermark)
         {
-            Debug.Assert(_state != null);
+            Debug.Assert(_state?.Value != null);
             _latestWatermark = watermark;
             if (m_executionMode == ExecutionMode.OnWatermark ||
-                (m_executionMode == ExecutionMode.Hybrid && _state.SentInitialData))
+                (m_executionMode == ExecutionMode.Hybrid && _state.Value.SentInitialData))
             {
                 return SendData();
             }
@@ -243,14 +242,14 @@ namespace FlowtideDotNet.Core.Operators.Write
 
         protected ValueTask<(bool found, RowEvent key)> GetExistingDataRow(RowEvent e)
         {
-            if (m_existingData != null && !_state!.SentInitialData && FetchExistingData)
+            if (m_existingData != null && !_state!.Value!.SentInitialData && FetchExistingData)
             {
                 return m_existingData.GetKey(e);
             }
             return ValueTask.FromResult((false, default(RowEvent)));
         }
 
-        protected override async Task Initialize(long restoreTime, SimpleWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
             Debug.Assert(PrimaryKeyComparer != null);
             if (m_metadataResult == null)
@@ -261,38 +260,40 @@ namespace FlowtideDotNet.Core.Operators.Write
             {
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
-            if (state != null)
+
+            _state = await stateManagerClient.GetOrCreateObjectStateAsync<SimpleWriteState>("simple_write_state");
+            if (_state.Value == null)
             {
-                _state = state;
-            }
-            else
-            {
-                _state = new SimpleWriteState()
+                _state.Value = new SimpleWriteState()
                 {
                     SentInitialData = false
                 };
             }
-            m_modified = await stateManagerClient.GetOrCreateTree("temporary", new BPlusTreeOptions<RowEvent, int>()
-            {
-                Comparer = PrimaryKeyComparer,
-                ValueSerializer = new IntSerializer(),
-                KeySerializer = new StreamEventBPlusTreeSerializer()
-            });
+            m_modified = await stateManagerClient.GetOrCreateTree("temporary",
+                new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                {
+                    Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                    ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                    KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                    MemoryAllocator = MemoryAllocator
+                });
             await m_modified.Clear();
 
-            if (FetchExistingData && !_state!.SentInitialData)
+            if (FetchExistingData && !_state!.Value.SentInitialData)
             {
                 // Create a tree to store existing data in the destination
                 // This will be used to check written data to existing data if it should be removed from the destination.
-                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data", new BPlusTreeOptions<RowEvent, int>()
-                {
-                    Comparer = PrimaryKeyComparer,
-                    ValueSerializer = new IntSerializer(),
-                    KeySerializer = new StreamEventBPlusTreeSerializer()
-                });
+                m_existingData = await stateManagerClient.GetOrCreateTree("existing_data",
+                    new BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
+                    {
+                        Comparer = new BPlusTreeListComparer<RowEvent>(PrimaryKeyComparer),
+                        ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
+                        KeySerializer = new KeyListSerializer<RowEvent>(new StreamEventBPlusTreeSerializer()),
+                        MemoryAllocator = MemoryAllocator
+                    });
 
                 Logger.FetchingExistingDataInDataSource(StreamName, Name);
-                await foreach(var row in GetExistingData())
+                await foreach (var row in GetExistingData())
                 {
                     await m_existingData.Upsert(row, 1);
                 }

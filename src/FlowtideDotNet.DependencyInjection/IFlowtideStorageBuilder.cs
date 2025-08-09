@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.StateManager;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -35,10 +30,23 @@ namespace FlowtideDotNet.DependencyInjection
         /// </summary>
         long? MaxProcessMemory { get; set; }
 
+        /// <summary>
+        /// Only in use if MaxProcessMemory is not set.
+        /// </summary>
+        int? MaxPageCount { get; set; }
+
+        int MinPageCount { get; set; }
+
         IFlowtideStorageBuilder SetPersistentStorage(IPersistentStorage persistentStorage);
 
         IFlowtideStorageBuilder SetPersistentStorage<TStorage>() where TStorage : class, IPersistentStorage;
 
-        IFlowtideStorageBuilder SetCompressionFunction(StateSerializeOptions serializeOptions);
+        IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func);
+
+        IFlowtideStorageBuilder SetCompression(StateSerializeOptions serializeOptions);
+
+        IServiceCollection ServiceCollection { get; }
+
+        string Name { get; }
     }
 }

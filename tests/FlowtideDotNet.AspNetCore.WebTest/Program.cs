@@ -10,12 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.Engine;
-using FlowtideDotNet.Substrait;
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.AspNetCore.WebTest;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Substrait;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,20 +27,23 @@ connectorManager.AddSink(new DummyWriteFactory("*"));
 
 PlanModifier planModifier = new PlanModifier();
 planModifier.AddRootPlan(plan);
+// Test is running a query plan that uses deprecated method.
+#pragma warning disable CS0618 // Type or member is obsolete
 planModifier.WriteToTable("dummy");
+#pragma warning restore CS0618 // Type or member is obsolete
 plan = planModifier.Modify();
 
-builder.Services.AddFlowtideStream(b =>
-{
-    b.AddPlan(plan);
-    b.AddConnectorManager(connectorManager);
-    b.WithStateOptions(new FlowtideDotNet.Storage.StateManager.StateManagerOptions()
+builder.Services.AddFlowtideStream("stream")
+    .AddPlan(plan)
+    .AddConnectors(c =>
     {
-        PersistentStorage = new FileCachePersistentStorage(new FlowtideDotNet.Storage.FileCacheOptions()
-        {
-        })
+        c.AddSource(new DummyReadFactory("*"));
+        c.AddSink(new DummyWriteFactory("*"));
+    })
+    .AddStorage(s =>
+    {
+        s.AddTemporaryDevelopmentStorage();
     });
-});
 
 // Add services to the container.
 builder.Services.AddRazorPages();

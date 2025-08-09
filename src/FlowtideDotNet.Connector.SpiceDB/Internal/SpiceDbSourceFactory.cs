@@ -13,14 +13,8 @@
 using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Internal
@@ -101,7 +95,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
-            return new SpiceDbSource(options, readRelation, dataflowBlockOptions);
+            return new ColumnSpiceDbSource(options, readRelation, dataflowBlockOptions);
         }
     }
 }

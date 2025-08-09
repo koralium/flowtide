@@ -13,28 +13,23 @@
 using FlowtideDotNet.Base.Vertices.Egress;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
-using FlowtideDotNet.SqlServer.SqlServer;
+using FlowtideDotNet.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 {
     internal class SqlServerSinkFactory : AbstractConnectorSinkFactory
     {
         private readonly SqlServerSinkOptions sqlServerSinkOptions;
-        private HashSet<string>? _tableNames;
+        private readonly SqlServerTableProvider _sqlServerTableProvider;
 
         public SqlServerSinkFactory(SqlServerSinkOptions sqlServerSinkOptions)
         {
             this.sqlServerSinkOptions = sqlServerSinkOptions;
+            _sqlServerTableProvider = new SqlServerTableProvider(sqlServerSinkOptions.ConnectionStringFunc, sqlServerSinkOptions.UseDatabaseDefinedInConnectionStringOnly);
         }
 
         /// <summary>
@@ -51,16 +46,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override bool CanHandle(WriteRelation writeRelation)
         {
-            if (_tableNames == null)
-            {
-                _tableNames = LoadAvailableTablesList().GetAwaiter().GetResult();
-            }
-            return _tableNames.Contains(writeRelation.NamedObject.DotSeperated);
+            return _sqlServerTableProvider.TryGetTableInformation(writeRelation.NamedObject.Names, out _);
         }
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new SqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
+            return new ColumnSqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
         }
     }
 }

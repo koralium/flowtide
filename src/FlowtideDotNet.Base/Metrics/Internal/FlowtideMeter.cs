@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
 
         public ICounter<T> CreateCounter<T>(string name, string? unit = null, string? description = null) where T : struct
         {
-            return new FlowtideCounter<T>(meter.CreateCounter<T>(GetMeasurementName(name), unit, description), GetTagList());
+            return new FlowtideCounter<T>(meter, GetMeasurementName(name), GetTagList());
         }
 
         public IHistogram<T> CreateHistogram<T>(string name, string? unit = null, string? description = null) where T : struct
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
             {
                 var m = observeValue();
                 TagList outputTags = new TagList();
-                foreach(var t in m.Tags)
+                foreach (var t in m.Tags)
                 {
                     outputTags.Add(t);
                 }
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Base.Metrics.Internal
             {
                 List<Measurement<T>> output = new List<Measurement<T>>();
                 var values = observeValues();
-                foreach(var val in values)
+                foreach (var val in values)
                 {
                     TagList outputTags = new TagList();
                     foreach (var t in val.Tags)

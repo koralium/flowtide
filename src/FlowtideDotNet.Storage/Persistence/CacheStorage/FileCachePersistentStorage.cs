@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.CacheStorage
@@ -18,29 +19,28 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
     {
         private readonly bool _ignoreDispose;
         private long _version;
-        private FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
+        internal FlowtideDotNet.Storage.FileCache.FileCache m_fileCache;
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
-            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent");
+            m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
             this._ignoreDispose = ignoreDispose;
         }
 
         public long CurrentVersion => _version;
 
-        public ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
+        public virtual async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
-            Write(1, metadata);
+            await Write(1, metadata);
             _version++;
-            return ValueTask.CompletedTask;
         }
 
-        public ValueTask CompactAsync()
+        public virtual ValueTask CompactAsync()
         {
             return ValueTask.CompletedTask;
         }
 
-        public IPersistentStorageSession CreateSession()
+        public virtual IPersistentStorageSession CreateSession()
         {
             return new FileCachePersistentSession(m_fileCache);
         }
@@ -61,35 +61,35 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             m_fileCache.Dispose();
         }
 
-        public Task InitializeAsync()
+        public virtual Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             return Task.CompletedTask;
         }
 
-        public ValueTask RecoverAsync(long checkpointVersion)
+        public virtual ValueTask RecoverAsync(long checkpointVersion)
         {
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask ResetAsync()
+        public virtual ValueTask ResetAsync()
         {
             return ValueTask.CompletedTask;
         }
 
-        public bool TryGetValue(long key, [NotNullWhen(true)] out byte[]? value)
+        public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
             if (m_fileCache.Exists(key))
             {
-                value = m_fileCache.Read(key);
+                value = m_fileCache.ReadSync(key);
                 return true;
             }
             value = default;
             return false;
         }
 
-        public ValueTask Write(long key, byte[] value)
+        public virtual ValueTask Write(long key, byte[] value)
         {
-            m_fileCache.WriteAsync(key, value);
+            m_fileCache.Write(key, new SerializableObject(value));
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
         }

@@ -11,7 +11,12 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
@@ -21,6 +26,11 @@ namespace FlowtideDotNet.Core.Compute
 {
     public interface IFunctionsRegister
     {
+        void RegisterColumnScalarFunction(
+            string uri,
+            string name,
+            Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc);
+
         /// <summary>
         /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
         /// </summary>
@@ -43,14 +53,23 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="uri"></param>
         /// <param name="name"></param>
         void RegisterStreamingAggregateFunction(
-            string uri, 
+            string uri,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc);
 
 
-        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient);
-        
+        delegate Task<T> AggregateInitializeFunction<T>(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator);
+
+        delegate System.Linq.Expressions.Expression ColumnAggregateMapFunction(
+            AggregateFunction function,
+            ColumnParameterInfo parametersInfo,
+            ColumnarExpressionVisitor visitor,
+            ParameterExpression stateParameters,
+            ParameterExpression weightParameter,
+            ParameterExpression singletonAccess,
+            ParameterExpression groupingKeyParameter);
+
         delegate System.Linq.Expressions.Expression AggregateMapFunction(
             AggregateFunction function,
             ParametersInfo parametersInfo,
@@ -61,6 +80,8 @@ namespace FlowtideDotNet.Core.Compute
             ParameterExpression groupingKeyParameter);
 
         delegate ValueTask<FlxValue> AggregateStateToValueFunction<T>(byte[]? state, RowEvent groupingKey, T singleton);
+
+        delegate ValueTask ColumnAggregateStateToValueFunction<T>(ColumnReference state, ColumnRowReference groupingKey, T singleton, ColumnStore.Column outputColumn);
 
         /// <summary>
         /// Register a stateful aggregate function.
@@ -83,9 +104,20 @@ namespace FlowtideDotNet.Core.Compute
             AggregateMapFunction mapFunc,
             AggregateStateToValueFunction<T> stateToValueFunc);
 
+        void RegisterStatefulColumnAggregateFunction<T>(
+            string uri,
+            string name,
+            AggregateInitializeFunction<T> initializeFunction,
+            Action<T> disposeFunction,
+            Func<T, Task> commitFunction,
+            ColumnAggregateMapFunction mapFunc,
+            ColumnAggregateStateToValueFunction<T> stateToValueFunc);
+
         bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
 
         bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
+
+        bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition);
 
         /// <summary>
         /// Register a table function, this is the low level call which requires the user to visit the expressions with the visitor.
@@ -96,9 +128,15 @@ namespace FlowtideDotNet.Core.Compute
         /// <param name="mapFunc"></param>
         void RegisterTableFunction(
             string uri,
-            string name, 
+            string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
 
         bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
+
+        bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
+
+        internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
+
+        IFunctionServices FunctionServices { get; }
     }
 }

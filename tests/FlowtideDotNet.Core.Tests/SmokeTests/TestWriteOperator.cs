@@ -10,15 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlexBuffers;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
-using FlexBuffers;
 using FlowtideDotNet.Substrait.Relations;
-using System.Text;
-using System.Threading.Tasks.Dataflow;
-using System.Text.Json;
+using System.Diagnostics;
 using System.Globalization;
+using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Tests.SmokeTests
 {
@@ -27,10 +28,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         public bool InitialCheckpointDone { get; set; }
         public long StorageSegmentId { get; set; }
     }
-    internal class TestWriteOperator<T> : GroupedWriteBaseOperator<TestWriteState>
+    internal class TestWriteOperator<T> : GroupedWriteBaseOperator
     {
-        private TestWriteState currentState;
-        private SortedSet<RowEvent> modified;
+        private IObjectState<TestWriteState>? currentState;
+        private SortedSet<RowEvent>? modified;
         List<int> primaryKeyIds;
         private readonly Func<List<T>, Task> onValueChange;
         private readonly WriteRelation writeRelation;
@@ -47,16 +48,17 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
 
         public override string DisplayName => "Write";
 
-        protected override async Task<TestWriteState> Checkpoint(long checkpointTime)
+        protected override async Task Checkpoint(long checkpointTime)
         {
-            if (!currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+            if (!currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();
 
-                currentState.InitialCheckpointDone = true;
+                currentState.Value.InitialCheckpointDone = true;
             }
-            return currentState;
+            await currentState.Commit();
         }
 
         private T Deserialize(RowEvent ev)
@@ -86,13 +88,14 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             };
             options.Converters.Add(new DateTimeConverter());
             var val = JsonSerializer.Deserialize<T>(str, options);
-
+            Debug.Assert(val != null, nameof(val));
             return val;
         }
 
         private async Task SendData()
         {
-            //List<DataChange> output = new List<DataChange>();
+            Debug.Assert(modified != null, nameof(modified));
+
             foreach (var m in modified)
             {
                 StringBuilder keyBuilder = new StringBuilder();
@@ -101,7 +104,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
                     keyBuilder.Append(m.GetColumn(primaryKeyIndex).ToJson);
-                    if ((i+ 1) < primaryKeyIds.Count)
+                    if ((i + 1) < primaryKeyIds.Count)
                     {
                         keyBuilder.Append("|");
                     }
@@ -112,7 +115,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 if (rows.Count >= 1 && !isDeleted)
                 {
                     List<T> newDataList = new List<T>();
-                    foreach(var ev in rows)
+                    foreach (var ev in rows)
                     {
                         newDataList.Add(Deserialize(ev));
                     }
@@ -134,28 +137,32 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             return ValueTask.FromResult<IReadOnlyList<int>>(primaryKeyIds);
         }
 
-        protected override Task Initialize(long restoreTime, TestWriteState? state, IStateManagerClient stateManagerClient)
+        protected override async Task Initialize(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            currentState = state;
-            if (state == null)
+            currentState = await stateManagerClient.GetOrCreateObjectStateAsync<TestWriteState>("test_state");
+            if (currentState.Value == null)
             {
-                currentState = new TestWriteState();
+                currentState.Value = new TestWriteState();
             }
             modified = new SortedSet<RowEvent>(PrimaryKeyComparer);
-            return Task.CompletedTask;
         }
 
         protected override async Task OnWatermark(Watermark watermark)
         {
-            if (currentState.InitialCheckpointDone)
+            Debug.Assert(currentState?.Value != null, nameof(currentState));
+
+            if (currentState.Value.InitialCheckpointDone)
             {
                 // Send data
                 await SendData();
             }
+            await currentState.Commit();
         }
 
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
+            Debug.Assert(modified != null, nameof(modified));
+
             foreach (var e in msg.Events)
             {
                 var primaryKeyValue = e.GetColumn(0);

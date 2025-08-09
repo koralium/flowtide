@@ -10,15 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Storage.StateManager;
 
 namespace FlowtideDotNet.Storage.AppendTree.Internal
 {
-    internal class AppendTreeMetadata
+    internal class AppendTreeMetadata : IStorageMetadata
     {
         public int BucketLength { get; set; }
         public long Root { get; set; }
@@ -30,5 +26,8 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         public long Left { get; set; }
 
         public long Right { get; set; }
+
+        public int Depth { get; set; }
+        public bool Updated { get; set; }
     }
 }

@@ -15,12 +15,6 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using Substrait.Protobuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
@@ -38,6 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             var table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
+            var emit = readRelation.Emit?.ToList();
             List<int> pks = new List<int>();
             foreach (var primaryKeyIndex in table.PrimaryKeyIndices)
             {
@@ -51,16 +46,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     readRelation.BaseSchema.Names.Add(table.Columns[primaryKeyIndex]);
                     if (readRelation.BaseSchema.Struct == null)
                     {
-                        readRelation.BaseSchema.Struct = new Struct();
+                        readRelation.BaseSchema.Struct = new Struct()
+                        {
+                            Types = new List<SubstraitBaseType>()
+                        };
                     }
                     readRelation.BaseSchema.Struct.Types.Add(new AnyType());
                     pks.Add(readRelation.BaseSchema.Names.Count - 1);
                 }
             }
 
+            List<int> readEmit = new List<int>();
+            for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
+            {
+                readEmit.Add(i);
+            }
+            readRelation.Emit = readEmit;
+
             return new NormalizationRelation()
             {
-                Emit = readRelation.Emit,
+                Emit = emit,
                 Filter = readRelation.Filter,
                 Input = readRelation,
                 KeyIndex = pks

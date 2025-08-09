@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -29,6 +31,15 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream("INSERT INTO output SELECT firstName || lastName as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + x.LastName }));
+        }
+
+        [Fact]
+        public async Task SelectWithConcatFunctionName()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT concat(firstName, ' ', lastName) as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { Name = x.FirstName + " " + x.LastName }));
         }
 
         [Fact]
@@ -66,7 +77,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Name = x.TrimmableNullableString?.Trim() }));
         }
-        
+
         [Fact]
         public async Task SelectWithLTrim()
         {
@@ -119,7 +130,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectWithSubstringNoLength()
         {
             GenerateData(1000);
-            await StartStream($"INSERT INTO output SELECT substring(firstName, 2) as Name FROM users");
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 3) as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2) }));
         }
@@ -128,7 +139,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectWithSubstringWithLength()
         {
             GenerateData(1000);
-            await StartStream($"INSERT INTO output SELECT substring(firstName, 2, 2) as Name FROM users");
+            await StartStream($"INSERT INTO output SELECT substring(firstName, 3, 2) as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.Substring(2, Math.Min(2, x.FirstName.Length - 2)) }));
         }
@@ -177,6 +188,68 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream("INSERT INTO output SELECT LEN(TrimmableNullableString) as length FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { Length = x.TrimmableNullableString?.Length ?? default(int?) }));
+        }
+
+        [Fact]
+        public async Task SelectWithStrPos()
+        {
+            GenerateData();
+            var start = Users[0].FirstName!.Substring(1, 2);
+            await StartStream($"INSERT INTO output SELECT strpos(firstName, '{start}') as Name FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
+        }
+
+        [Fact]
+        public async Task StringSplit()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT string_split(concat(firstName, ' ', lastName), ' ') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = ($"{x.FirstName} {x.LastName}").Split(' ') }));
+        }
+
+        [Fact]
+        public async Task RegexStringSplit()
+        {
+            var pattern = @"\s";
+            GenerateData();
+            await StartStream($"INSERT INTO output SELECT regexp_string_split(concat(firstName, ' ', lastName), '{pattern}') as NameParts FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { NameParts = Regex.Split($"{x.FirstName} {x.LastName}", pattern) }));
+        }
+
+        [Fact]
+        public async Task ToJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT to_json(map('firstName', firstName, 'lastName', lastName)) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = JsonSerializer.Serialize(new {firstName = x.FirstName, lastName = x.LastName}) }));
+        }
+
+        [Fact]
+        public async Task FromJsonWithMap()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT from_json(to_json(map('firstName', firstName, 'lastName', lastName))) as json FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { json = new Dictionary<string, object?>() { { "firstName", x.FirstName }, { "lastName", x.LastName } } }));
+        }
+
+        [Fact]
+        public async Task StringJoin()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output 
+            SELECT string_join(',', list(firstName, lastName)) FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x => new { val = $"{x.FirstName},{x.LastName}" }));
         }
     }
 }

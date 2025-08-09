@@ -11,19 +11,14 @@
 // limitations under the License.
 
 using FASTER.core;
-using FlowtideDotNet.Storage.AppendTree.Internal;
 using FlowtideDotNet.Storage.Comparers;
-using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.Append
 {
@@ -39,7 +34,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             }
         }
 
-        private async Task<IAppendTree<long, long>> CreateTree(int bucketSize = 8, string path = "./data/temp", bool deleteOnClose = true, int cachePageCount = 1000000)
+        private async Task<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateTree(int bucketSize = 8, string path = "./data/temp", bool deleteOnClose = true, int cachePageCount = 1000000)
         {
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
@@ -49,12 +44,13 @@ namespace FlowtideDotNet.Storage.Tests.Append
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateAppendTree<long, long>("tree", new Tree.BPlusTreeOptions<long, long>()
+            var tree = await nodeClient.GetOrCreateAppendTree("tree", new Tree.BPlusTreeOptions<long, long, ListKeyContainer<long>, ListValueContainer<long>>()
             {
                 BucketSize = bucketSize,
-                Comparer = new LongComparer(),
-                KeySerializer = new LongSerializer(),
-                ValueSerializer = new LongSerializer()
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<long>(new LongSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
             });
             return tree;
         }
@@ -191,7 +187,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             {
                 Directory.Delete("./data/temp/testcommit", true);
             }
-            
+
             var tree = await CreateTree(1, "./data/temp/testcommit", false);
 
             await tree.Append(1, 1);
@@ -238,7 +234,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             await iterator.Seek(0);
 
             int counter = 0;
-            await foreach(var kv in iterator)
+            await foreach (var kv in iterator)
             {
                 Assert.Equal(counter, kv.Key);
                 Assert.Equal(counter, kv.Value);

@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Flexbuffer
     {
         public static void Emit(FlxVector vec1, List<int> emit)
         {
-            
+
             var span = vec1.Span;
             for (int i = 0; i < vec1.Length; i++)
             {
@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.Flexbuffer
                             sizeWidth <<= 1;
                             size = (int)FlxValue.ReadULong(span, indirectOffset - sizeWidth, (byte)sizeWidth);
                         }
-                        
+
                         break;
                     case FlexBuffers.Type.Vector:
-                        
+
 
                         break;
                 }
@@ -57,37 +57,37 @@ namespace FlowtideDotNet.Core.Flexbuffer
             var val = vv.AsLong;
             var vv2 = vec1[1];
             var vals = vv2.AsString;
-            vec1._buffer.Slice(0, vec1childrenstart).CopyTo(buffer);
+            vec1._buffer.AsSpan().Slice(0, vec1childrenstart).CopyTo(buffer);
 
             var vec2childrenstart = vec2._offset + vec2._byteWidth;
-            vec2._buffer.Slice(0, vec2childrenstart).CopyTo(buffer.AsMemory().Slice(vec1childrenstart));
+            vec2._buffer.AsSpan().Slice(0, vec2childrenstart).CopyTo(buffer.AsSpan().Slice(vec1childrenstart));
 
             //var vec1Table = vec1._buffer.Slice(vec1childrenstart, (vec1._offset + vec1._length * vec1._byteWidth + vec1.Length) - vec1childrenstart);
 
             for (int i = 0; i < vec1.Length; i++)
             {
-                var type = vec1._buffer.Span[vec1._offset + vec1._length * vec1._byteWidth + i];
+                var type = vec1._buffer[vec1._offset + vec1._length * vec1._byteWidth + i];
                 var t = (FlexBuffers.Type)(type >> 2);
                 var elemOffset = vec1._offset + (i * vec1._byteWidth);
                 switch (t)
                 {
                     case FlexBuffers.Type.String:
                     case FlexBuffers.Type.Vector:
-                        int indirectOffset = FlxValue.ComputeIndirectOffset(vec1._buffer.Span, elemOffset, vec1._byteWidth);
+                        int indirectOffset = FlxValue.ComputeIndirectOffset(vec1._buffer, elemOffset, vec1._byteWidth);
                         break;
                 }
             }
 
             for (int i = 0; i < vec2.Length; i++)
             {
-                var type = vec2._buffer.Span[vec2._offset + vec2._length * vec2._byteWidth + i];
+                var type = vec2._buffer[vec2._offset + vec2._length * vec2._byteWidth + i];
                 var t = (FlexBuffers.Type)(type >> 2);
                 var elemOffset = vec2._offset + (i * vec2._byteWidth);
                 switch (t)
                 {
                     case FlexBuffers.Type.String:
                     case FlexBuffers.Type.Vector:
-                        int indirectOffset = FlxValue.ComputeIndirectOffset(vec2._buffer.Span, elemOffset, vec2._byteWidth);
+                        int indirectOffset = FlxValue.ComputeIndirectOffset(vec2._buffer, elemOffset, vec2._byteWidth);
                         var newOffset = indirectOffset + vec1childrenstart;
                         break;
                 }

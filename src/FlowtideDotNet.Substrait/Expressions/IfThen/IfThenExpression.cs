@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
 
         public override TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state)
         {
-            return visitor.VisitIfThen(this, state);
+            return visitor.VisitIfThen(this, state)!;
         }
 
         public override bool Equals(object? obj)
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         public override int GetHashCode()
         {
             var code = new HashCode();
-            foreach(var ifClause in Ifs)
+            foreach (var ifClause in Ifs)
             {
                 code.Add(ifClause);
             }

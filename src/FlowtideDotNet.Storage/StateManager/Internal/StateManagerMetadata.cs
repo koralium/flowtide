@@ -48,6 +48,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         /// </summary>
         public ulong PageCommitsAtLastCompaction { get; set; }
 
+        public int RentCount => int.MaxValue;
+
+        public bool RemovedFromCache { get; set; }
+
         public void EnterWriteLock()
         {
             throw new NotImplementedException();
@@ -56,6 +60,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public void ExitWriteLock()
         {
             throw new NotImplementedException();
+        }
+
+        public bool TryRent()
+        {
+            return true;
+        }
+
+        public void Return()
+        {
         }
     }
 }

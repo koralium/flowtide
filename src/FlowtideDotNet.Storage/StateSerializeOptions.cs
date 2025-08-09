@@ -12,10 +12,26 @@
 
 namespace FlowtideDotNet.Storage
 {
+    public enum CompressionType
+    {
+        None = 0,
+        Zstd = 1
+    };
+
+    public enum CompressionMethod
+    {
+        /// <summary>
+        /// Compresses the entire page
+        /// </summary>
+        Page = 0,
+    }
+
     public class StateSerializeOptions
     {
-        public Func<Stream, Stream>? CompressFunc { get; set; }
+        public CompressionType CompressionType { get; set; }
 
-        public Func<Stream, Stream>? DecompressFunc { get; set; }
+        public CompressionMethod CompressionMethod { get; set; }
+
+        public int? CompressionLevel { get; set; }
     }
 }

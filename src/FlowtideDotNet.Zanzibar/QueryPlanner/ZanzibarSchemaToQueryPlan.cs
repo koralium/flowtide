@@ -11,11 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {
@@ -23,6 +18,20 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
     {
         public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, HashSet<string> stopTypes)
         {
+            if (!schema.Types.ContainsKey(type))
+            {
+                throw new ArgumentException($"Type {type} is not in the schema");
+            }
+            if (stopTypes.Count > 0)
+            {
+                foreach (var stopType in stopTypes)
+                {
+                    if (!schema.Types.ContainsKey(stopType))
+                    {
+                        throw new ArgumentException($"Stop type {stopType} is not in the schema");
+                    }
+                }
+            }
             return new ZanzibarFlowtideConvertVisitor(schema, stopTypes).Parse(type, relation);
         }
     }

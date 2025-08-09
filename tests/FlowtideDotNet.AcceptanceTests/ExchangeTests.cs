@@ -50,7 +50,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
 
             await StartStream(@"
-            CREATE VIEW dataview WITH (DISTRIBUTED = true, SCATTER_BY = 'userkey', PARTITION_COUNT=2) AS
+            CREATE VIEW dataview WITH (DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT=2) AS
             SELECT userkey FROM users;
 
             CREATE VIEW data_partition0 AS

@@ -10,124 +10,222 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
+using System.Buffers.Binary;
+using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal class BPlusTreeSerializer<K, V> : IStateSerializer<IBPlusTreeNode>
+    internal class BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer> : IStateSerializer<IBPlusTreeNode>
+        where TKeyContainer : IKeyContainer<K>
+        where TValueContainer : IValueContainer<V>
     {
-        private readonly IBplusTreeSerializer<K> _keySerializer;
-        private readonly IBplusTreeSerializer<V> _valueSerializer;
+        private readonly IBPlusTreeKeySerializer<K, TKeyContainer> _keySerializer;
+        private readonly IBplusTreeValueSerializer<V, TValueContainer> _valueSerializer;
+        private readonly IMemoryAllocator _memoryAllocator;
+        private readonly BPlusTreeSerializerCheckpointContext _serializeContext;
 
         public BPlusTreeSerializer(
-            IBplusTreeSerializer<K> keySerializer,
-            IBplusTreeSerializer<V> valueSerializer
+            IBPlusTreeKeySerializer<K, TKeyContainer> keySerializer,
+            IBplusTreeValueSerializer<V, TValueContainer> valueSerializer,
+            IMemoryAllocator memoryAllocator
             )
         {
-            this._keySerializer = keySerializer;
-            this._valueSerializer = valueSerializer;
+            _keySerializer = keySerializer;
+            _valueSerializer = valueSerializer;
+            _memoryAllocator = memoryAllocator;
+            _serializeContext = new BPlusTreeSerializerCheckpointContext();
         }
 
-        public IBPlusTreeNode Deserialize(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata)
+            where TMetadata : IStorageMetadata
         {
-            var arr = bytes.Memory.ToArray();
-            using var memoryStream = new MemoryStream(arr);
-            Stream readStream = memoryStream;
-            if (stateSerializeOptions.DecompressFunc != null)
+            if (metadata is StateClientMetadata<BPlusTreeMetadata> treeMetadata &&
+                treeMetadata.Metadata != null)
             {
-                readStream = stateSerializeOptions.DecompressFunc(memoryStream);
-            }
-            bytes.Dispose();
-            using var reader = new BinaryReader(readStream);
+                // Initialize context that will update the list of written page ids.
+                _serializeContext.Initialize(treeMetadata.Metadata.KeyMetadataPages, checkpointWriter);
+                await _keySerializer.CheckpointAsync(_serializeContext);
 
-            var typeId = reader.ReadByte();
+                if (_serializeContext.ListUpdated)
+                {
+                    treeMetadata.Metadata.Updated = true;
+                }
+
+                _serializeContext.Initialize(treeMetadata.Metadata.ValueMetadataPages, checkpointWriter);
+                await _valueSerializer.CheckpointAsync(_serializeContext);
+
+                if (_serializeContext.ListUpdated)
+                {
+                    treeMetadata.Metadata.Updated = true;
+                }
+
+                return;
+            }
+        }
+
+        public async Task InitializeAsync<TMetadata>(IStateSerializerInitializeReader reader, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
+        {
+            if (metadata is StateClientMetadata<BPlusTreeMetadata> treeMetadata)
+            {
+                IReadOnlyList<long> keyMetadataPages;
+                IReadOnlyList<long> valueMetadataPages;
+
+                if (treeMetadata.Metadata != null)
+                {
+                    keyMetadataPages = treeMetadata.Metadata.KeyMetadataPages;
+                    valueMetadataPages = treeMetadata.Metadata.ValueMetadataPages;
+                }
+                else
+                {
+                    keyMetadataPages = ImmutableList<long>.Empty;
+                    valueMetadataPages = ImmutableList<long>.Empty;
+                }
+
+                // Initialize the key serializer
+                var keyContext = new BPlusTreeSerializerInitializeContext(reader, keyMetadataPages);
+                await _keySerializer.InitializeAsync(keyContext);
+
+                // Initialize the value serializer
+                var valueContext = new BPlusTreeSerializerInitializeContext(reader, valueMetadataPages);
+                await _valueSerializer.InitializeAsync(valueContext);
+
+                return;
+            }
+        }
+
+        public IBPlusTreeNode Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        {
+            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
+            if (!sequenceReader.TryRead(out byte typeId))
+            {
+                throw new Exception("Could not read typeId");
+            }
 
             if (typeId == 2)
             {
-                var id = reader.ReadInt64();
-                var leaf = new LeafNode<K, V>(id);
-                leaf.next = reader.ReadInt64();
+                if (!sequenceReader.TryReadLittleEndian(out long id))
+                {
+                    throw new Exception("Could not read id");
+                }
 
-                _keySerializer.Deserialize(reader, leaf.keys);
-                _valueSerializer.Deserialize(reader, leaf.values);
+                if (!sequenceReader.TryReadLittleEndian(out long leafNext))
+                {
+                    throw new Exception("Could not read leafNext");
+                }
+
+                if (!sequenceReader.TryReadLittleEndian(out long leafPrevious))
+                {
+                    throw new Exception("Could not read leafPrevious");
+                }
+
+                var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
+                var valueContainer = _valueSerializer.Deserialize(ref sequenceReader);
+
+                if (sequenceReader.UnreadSpan.Length > 0)
+                {
+                    throw new Exception("Did not read all bytes");
+                }
+
+                var leaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(id, keyContainer, valueContainer);
+                leaf.next = leafNext;
+                leaf.previous = leafPrevious;
                 return leaf;
             }
             if (typeId == 3)
             {
-                var id = reader.ReadInt64();
-
-                var parent = new InternalNode<K, V>(id);
-
-                _keySerializer.Deserialize(reader, parent.keys);
-
-                var childrenLength = reader.ReadInt32();
-                for (int i = 0; i < childrenLength; i++)
+                if (!sequenceReader.TryReadLittleEndian(out long id))
                 {
-                    var childId = reader.ReadInt64();
-                    parent.children.Add(childId);
+                    throw new Exception("Could not read id");
                 }
+
+                var keyContainer = _keySerializer.Deserialize(ref sequenceReader);
+
+                if (!sequenceReader.TryReadLittleEndian(out int childrenByteLength))
+                {
+                    throw new Exception("Could not read childrenByteLength");
+                }
+
+                var childrenMemory = _memoryAllocator.Allocate(childrenByteLength, 64);
+                if (!sequenceReader.TryCopyTo(childrenMemory.Memory.Span.Slice(0, childrenByteLength)))
+                {
+                    throw new Exception("Could not read children data");
+                }
+                sequenceReader.Advance(childrenByteLength);
+
+                if (sequenceReader.UnreadSpan.Length > 0)
+                {
+                    throw new Exception("Did not read all bytes");
+                }
+
+                var childrenList = new PrimitiveList<long>(childrenMemory, childrenByteLength / sizeof(long), _memoryAllocator);
+
+                var parent = new InternalNode<K, V, TKeyContainer>(id, keyContainer, childrenList);
 
                 return parent;
             }
             throw new NotImplementedException();
         }
 
-        public ICacheObject DeserializeCacheObject(IMemoryOwner<byte> bytes, int length, StateSerializeOptions stateSerializeOptions)
+        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
         {
-            return Deserialize(bytes, length, stateSerializeOptions);
+            return Deserialize(bytes, length);
         }
 
-        public byte[] Serialize(in IBPlusTreeNode value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in IBPlusTreeNode value)
         {
-            using var memoryStream = new MemoryStream();
-            Stream writeMemStream = memoryStream;
-            if (stateSerializeOptions.CompressFunc != null)
+            if (value is LeafNode<K, V, TKeyContainer, TValueContainer> leaf)
             {
-                writeMemStream = stateSerializeOptions.CompressFunc(memoryStream);
+                var headerSpan = bufferWriter.GetSpan(25);
+                headerSpan[0] = 2;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), leaf.Id);
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(9), leaf.next);
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(17), leaf.previous);
+                bufferWriter.Advance(25);
+
+                _keySerializer.Serialize(bufferWriter, leaf.keys);
+                _valueSerializer.Serialize(bufferWriter, leaf.values);
+                return;
             }
-            using var writer = new BinaryWriter(writeMemStream);
-            if (value is LeafNode<K, V> leaf)
+            if (value is InternalNode<K, V, TKeyContainer> parent)
             {
-                // Write type id
-                writer.Write((byte)2);
+                var headerSpan = bufferWriter.GetSpan(9);
+                headerSpan[0] = 3;
+                BinaryPrimitives.WriteInt64LittleEndian(headerSpan.Slice(1), parent.Id);
+                bufferWriter.Advance(9);
 
-                writer.Write(leaf.Id);
-                writer.Write(leaf.next);
+                _keySerializer.Serialize(bufferWriter, parent.keys);
 
-                _keySerializer.Serialize(writer, leaf.keys);
-                _valueSerializer.Serialize(writer, leaf.values);
-
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
-            }
-            if (value is InternalNode<K, V> parent)
-            {
-                writer.Write((byte)3);
-                writer.Write(parent.Id);
-
-                _keySerializer.Serialize(writer, parent.keys);
-
-                writer.Write(parent.children.Count);
-                for (int i = 0; i < parent.children.Count; i++)
-                {
-                    writer.Write(parent.children[i]);
-                }
-                writer.Flush();
-                writeMemStream.Close();
-                return memoryStream.ToArray();
+                var childrenLengthSpan = bufferWriter.GetSpan(4);
+                var childrenSpan = parent.children.SlicedMemory.Span;
+                BinaryPrimitives.WriteInt32LittleEndian(childrenLengthSpan, childrenSpan.Length);
+                bufferWriter.Advance(4);
+                bufferWriter.Write(childrenSpan);
+                return;
             }
             throw new NotImplementedException();
         }
 
-        public byte[] Serialize(in ICacheObject value, in StateSerializeOptions stateSerializeOptions)
+        public void Serialize(in IBufferWriter<byte> bufferWriter, in ICacheObject value)
         {
             if (value is IBPlusTreeNode node)
             {
-                return Serialize(node, stateSerializeOptions);
+                Serialize(bufferWriter, node);
+                return;
             }
             throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+        }
+
+        public void ClearTemporaryAllocations()
+        {
         }
     }
 }

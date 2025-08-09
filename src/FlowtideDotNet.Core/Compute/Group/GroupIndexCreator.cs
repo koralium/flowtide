@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -19,7 +20,8 @@ namespace FlowtideDotNet.Core.Compute.Group
     {
         private static System.Linq.Expressions.MethodCallExpression Compare(System.Linq.Expressions.Expression a, System.Linq.Expressions.Expression b)
         {
-            MethodInfo compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            MethodInfo? compareMethod = typeof(FlxValueComparer).GetMethod("CompareTo", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static);
+            Debug.Assert(compareMethod != null);
             return System.Linq.Expressions.Expression.Call(compareMethod, a, b);
         }
 
@@ -28,6 +30,7 @@ namespace FlowtideDotNet.Core.Compute.Group
             ParameterExpression left = Expression.Parameter(typeof(T));
             ParameterExpression right = Expression.Parameter(typeof(T));
             var method = typeof(T).GetMethod("GetColumn");
+            Debug.Assert(method != null);
 
             List<Expression> comparisons = new List<Expression>();
             for (int i = 0; i < primaryKeys.Count; i++)
@@ -39,10 +42,10 @@ namespace FlowtideDotNet.Core.Compute.Group
                 var comparison = Compare(propertyAccessorLeft, propertyAccessorRight);
                 comparisons.Add(comparison);
             }
-            
+
             if (comparisons.Count == 1)
             {
-                var lambda = Expression.Lambda<Func<T, T, int>>(comparisons.FirstOrDefault(), left, right);
+                var lambda = Expression.Lambda<Func<T, T, int>>(comparisons.First(), left, right);
                 return lambda.Compile();
             }
             else if (comparisons.Count > 1)

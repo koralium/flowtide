@@ -1,0 +1,10 @@
+﻿### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_list.yaml'
+
+# basic: Basic examples without any special cases
+list_sort_asc_null_last([3, 2, 1]::LIST<i32>) = [1, 2, 3]::LIST<i32>
+list_sort_asc_null_last(['c', 'a']::LIST<str>) = ['a', 'c']::LIST<str>
+
+# null_input: Examples with null as input
+list_sort_asc_null_last([3, 2, null]::LIST<i32>) = [2, 3, null]::LIST<i32>
+list_sort_asc_null_last([null, 3, 2]::LIST<i32>) = [2, 3, null]::LIST<i32>
