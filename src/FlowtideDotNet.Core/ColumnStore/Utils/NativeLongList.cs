@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = newPtr;
                     _longData = (long*)_data;
                 }
-                _dataLength = _memoryOwner.Memory.Length / sizeof(long);
+                _dataLength = newLength;
             }
         }
 
