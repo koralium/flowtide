@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using mimalloc;
 using System.Buffers;
 using System.Diagnostics.Metrics;
 using System.Runtime.InteropServices;
@@ -23,7 +22,6 @@ namespace FlowtideDotNet.Storage.Memory
     /// </summary>
     public unsafe class GlobalMemoryManager : IMemoryAllocator
     {
-        internal static readonly void* NullPtr = (void*)0;
         public static readonly GlobalMemoryManager Instance = new GlobalMemoryManager();
         private long _allocatedMemory;
         private long _freedMemory;
@@ -52,63 +50,41 @@ namespace FlowtideDotNet.Storage.Memory
         }
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var alignedsize = (size + alignment - 1) & ~(alignment - 1);
-            var goodSize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
-
-            var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
-            if (ptr == NullPtr)
-            {
-                throw new InvalidOperationException("Could not allocate memory");
-            }
-            RegisterAllocationToMetrics(goodSize);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, goodSize, (nuint)alignment, this);
+            var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+            RegisterAllocationToMetrics(size);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
         }
 
         public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
         {
-            var alignedsize = (size + alignment - 1) & ~(alignment - 1);
-            alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
-
             if (memory is NativeCreatedMemoryOwner native)
             {
                 var previousLength = native.length;
-                if (alignedsize == previousLength)
-                {
-                    return memory;
-                }
-                var newPtr = MiMalloc.mi_realloc_aligned(native.ptr, (nuint)alignedsize, (nuint)alignment);
-                if (newPtr == NullPtr)
-                {
-                    throw new InvalidOperationException("Could not reallocate memory");
-                }
+                var newPtr = NativeMemory.AlignedRealloc(native.ptr, (nuint)size, (nuint)alignment);
                 if (newPtr == native.ptr)
                 {
-                    var diff = alignedsize - previousLength;
+                    var diff = size - previousLength;
                     RegisterAllocationToMetrics(diff);
                 }
                 else
                 {
-                    RegisterAllocationToMetrics(alignedsize);
+                    RegisterAllocationToMetrics(size);
                     RegisterFreeToMetrics(previousLength);
                 }
                 native.ptr = newPtr;
-                native.length = alignedsize;
+                native.length = size;
                 return native;
             }
             else
             {
-                var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)alignedsize);
-                if (ptr == NullPtr)
-                {
-                    throw new InvalidOperationException("Could not allocate memory");
-                }
-                RegisterAllocationToMetrics(alignedsize);
+                var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
+                RegisterAllocationToMetrics(size);
                 RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
                 var existingMemory = memory.Memory;
-                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, alignedsize));
+                NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
                 memory.Dispose();
-                return NativeCreatedMemoryOwnerFactory.Get(ptr, alignedsize, (nuint)alignment, this);
+                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
             }
         }
 
