@@ -160,10 +160,6 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
         {
-            if (Name == "28")
-            {
-
-            }
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
             Debug.Assert(_partitionIterator != null);
