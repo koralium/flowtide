@@ -228,7 +228,9 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
 
-            await m_persistentStorage.CompactAsync();
+            ulong changesSinceLastCompaction = m_metadata.PageCommits - m_metadata.PageCommitsAtLastCompaction;
+
+            await m_persistentStorage.CompactAsync(changesSinceLastCompaction, PageCommits);
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 

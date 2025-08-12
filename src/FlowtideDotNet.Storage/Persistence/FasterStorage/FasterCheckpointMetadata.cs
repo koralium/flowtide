@@ -29,19 +29,20 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
     {
         public long LastCheckpointVersion { get; }
         public byte[]? Metadata { get; }
-
+        public long ChangesSinceLastCompact { get; set; } = 0;
         public List<CheckpointInfo> PreviousCheckpoints { get; }
 
-        public FasterCheckpointMetadata(byte[]? metadata, long lastCheckpointVersion, List<CheckpointInfo> previousCheckpoints)
+        public FasterCheckpointMetadata(byte[]? metadata, long lastCheckpointVersion, long changesSinceLastCompact, List<CheckpointInfo> previousCheckpoints)
         {
             Metadata = metadata;
             PreviousCheckpoints = previousCheckpoints;
             LastCheckpointVersion = lastCheckpointVersion;
+            ChangesSinceLastCompact = changesSinceLastCompact;
         }
 
         public FasterCheckpointMetadata Update(byte[] newMetadata, long lastCheckpointVersion)
         {
-            return new FasterCheckpointMetadata(newMetadata, lastCheckpointVersion, PreviousCheckpoints);
+            return new FasterCheckpointMetadata(newMetadata, lastCheckpointVersion, ChangesSinceLastCompact, PreviousCheckpoints);
         }
 
         public void Serialize(IBufferWriter<byte> bufferWriter)
@@ -51,10 +52,14 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
                 throw new InvalidOperationException("Metadata cannot be null when serializing FasterCheckpointMetadata.");
             }
 
-            var writeLength = 8 + 4 + Metadata.Length + 4 + (24 * PreviousCheckpoints.Count);
+            var writeLength = 8 + 8 + 4 + Metadata.Length + 4 + (24 * PreviousCheckpoints.Count);
             var span = bufferWriter.GetSpan(writeLength);
 
             BinaryPrimitives.WriteInt64LittleEndian(span, LastCheckpointVersion);
+            span = span.Slice(8);
+
+            // Write the changes since last compact
+            BinaryPrimitives.WriteInt64LittleEndian(span, ChangesSinceLastCompact);
             span = span.Slice(8);
 
             // Write the length of the metadata
@@ -86,6 +91,12 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             if (!reader.TryReadLittleEndian(out long lastCheckpointVersion))
             {
                 throw new InvalidOperationException("Invalid last checkpoint version");
+            }
+
+            // Read the changes since last compact
+            if (!reader.TryReadLittleEndian(out long changesSinceLastCompact))
+            {
+                throw new InvalidOperationException("Invalid changes since last compact");
             }
 
             // Read the length of the metadata
@@ -134,7 +145,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
                 });
             }
 
-            return new FasterCheckpointMetadata(metadata, lastCheckpointVersion, previousCheckpoints);
+            return new FasterCheckpointMetadata(metadata, lastCheckpointVersion, changesSinceLastCompact, previousCheckpoints);
         }
     }
 }

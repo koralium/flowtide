@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             m_functions = new Functions();
             m_persistentStorage = new FasterKV<long, SpanByte>(settings);
             m_adminSession = m_persistentStorage.For(m_functions).NewSession(m_functions);
-            _checkpointMetadata = new FasterCheckpointMetadata(null, 0, []);
+            _checkpointMetadata = new FasterCheckpointMetadata(null, 0, 0, []);
         }
 
         public long CurrentVersion => m_persistentStorage.CurrentVersion;
@@ -117,8 +117,26 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             }
         }
 
-        public ValueTask CompactAsync()
+        public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
+            // Remove old checkpoints
+            for (int i = 0; i < _checkpointMetadata.PreviousCheckpoints.Count - 1; i++)
+            {
+                m_persistentStorage.CheckpointManager.Purge(_checkpointMetadata.PreviousCheckpoints[i].checkpointToken);
+                _checkpointMetadata.PreviousCheckpoints.RemoveAt(i);
+                i--;
+            }
+            if (_checkpointMetadata.LastCheckpointVersion == 1)
+            {
+                return ValueTask.CompletedTask;
+            }
+            _checkpointMetadata.ChangesSinceLastCompact += (long)changesSinceLastCompact;
+            var compactionThreshold = (long)(pageCount * 0.5);
+            if (_checkpointMetadata.ChangesSinceLastCompact < compactionThreshold)
+            {
+                return ValueTask.CompletedTask;
+            }
+
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
             return ValueTask.CompletedTask;
         }

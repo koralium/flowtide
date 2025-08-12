@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
     public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
     {
         private Action<string>? _checkpointDone;
+        private Action<string>? _dependenciesDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
@@ -112,6 +113,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
+            DependenciesDone();
         }
 
         private Task HandleLockingEvent(ILockingEvent lockingEvent)
@@ -132,6 +134,18 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public virtual Task OnTrigger(string name, object? state)
         {
             return Task.CompletedTask;
+        }
+
+        private void DependenciesDone()
+        {
+            if (_dependenciesDone != null && Name != null)
+            {
+                _dependenciesDone(Name);
+            }
+            else
+            {
+                throw new InvalidOperationException("Dependencies done function is not set or Name is null. Ensure that CreateBlocks has been called before calling this method.");
+            }
         }
 
         protected abstract Task OnCheckpoint(long checkpointTime);
@@ -216,9 +230,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             return _targetBlock.OfferMessage(messageHeader, messageValue, source, consumeToAccept);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
+            _dependenciesDone = dependenciesDone;
         }
 
         public abstract Task Compact();
