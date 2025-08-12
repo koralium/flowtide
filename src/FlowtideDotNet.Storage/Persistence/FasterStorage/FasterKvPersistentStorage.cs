@@ -138,6 +138,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             }
 
             m_adminSession.Compact(m_persistentStorage.Log.SafeReadOnlyAddress, CompactionType.Lookup);
+            _checkpointMetadata.ChangesSinceLastCompact = 0;
             return ValueTask.CompletedTask;
         }
 
