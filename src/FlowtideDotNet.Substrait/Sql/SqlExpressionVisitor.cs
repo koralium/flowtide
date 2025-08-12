@@ -771,6 +771,40 @@ namespace FlowtideDotNet.Substrait.Sql
             }
         }
 
+        protected override ExpressionData VisitIsDistinctFrom(IsDistinctFrom isDistinctFrom, EmitData state)
+        {
+            var expr1 = Visit(isDistinctFrom.Expression1, state);
+            var expr2 = Visit(isDistinctFrom.Expression2, state);
+
+            return new ExpressionData(new ScalarFunction()
+            {
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.IsDistinctFrom,
+                Arguments = new List<Expressions.Expression>()
+                {
+                    expr1.Expr,
+                    expr2.Expr
+                }
+            }, $"${expr1.Name}_{expr2.Name}_isdistinctfrom", new BoolType());
+        }
+
+        protected override ExpressionData VisitIsNotDistinctFrom(IsNotDistinctFrom isNotDistinctFrom, EmitData state)
+        {
+            var expr1 = Visit(isNotDistinctFrom.Expression1, state);
+            var expr2 = Visit(isNotDistinctFrom.Expression2, state);
+
+            return new ExpressionData(new ScalarFunction()
+            {
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.IsNotDistinctFrom,
+                Arguments = new List<Expressions.Expression>()
+                {
+                    expr1.Expr,
+                    expr2.Expr
+                }
+            }, $"${expr1.Name}_{expr2.Name}_isdistinctfrom", new BoolType());
+        }
+
         protected override ExpressionData VisitLike(Like like, EmitData state)
         {
             if (like.Expression == null)

@@ -25,10 +25,10 @@ namespace FlowtideDotNet.Storage.Memory
         }
         private static ObjectPool<NativeCreatedMemoryOwner> _pool = new DefaultObjectPool<NativeCreatedMemoryOwner>(new ObjectPoolProvider(), 10000);
 
-        public static NativeCreatedMemoryOwner Get(void* ptr, int length, nuint alignment, IMemoryAllocator operatorMemoryManager)
+        public static NativeCreatedMemoryOwner Get(void* ptr, int length, IMemoryAllocator operatorMemoryManager)
         {
             var mem = new NativeCreatedMemoryOwner();
-            mem.Assign(ptr, length, alignment, operatorMemoryManager);
+            mem.Assign(ptr, length, operatorMemoryManager);
             return mem;
             //var memory = _pool.Get();
             //memory.Assign(ptr, length);

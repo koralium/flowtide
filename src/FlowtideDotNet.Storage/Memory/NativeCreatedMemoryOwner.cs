@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using mimalloc;
 using System.Buffers;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -19,19 +19,17 @@ namespace FlowtideDotNet.Storage.Memory
     {
         internal void* ptr;
         internal int length;
-        private nuint alignment;
         private IMemoryAllocator? memoryManager;
 
         public NativeCreatedMemoryOwner()
         {
         }
 
-        public void Assign(void* ptr, int length, nuint alignment, IMemoryAllocator memoryManager)
+        public void Assign(void* ptr, int length, IMemoryAllocator memoryManager)
         {
             this.ptr = ptr;
             this.length = length;
             this.memoryManager = memoryManager;
-            this.alignment = alignment;
         }
 
         public override Span<byte> GetSpan()
@@ -52,7 +50,7 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (ptr != null)
             {
-                MiMalloc.mi_free_aligned(ptr, alignment);
+                NativeMemory.AlignedFree(ptr);
                 memoryManager!.RegisterFreeToMetrics(length);
                 ptr = null;
                 length = 0;
