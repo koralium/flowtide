@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
             catch (HttpRequestException ex)
             {
-                /// 404 is ok to ignore
+                // 404 is ok to ignore
                 if (ex.StatusCode != System.Net.HttpStatusCode.NotFound)
                 {
                     throw;
