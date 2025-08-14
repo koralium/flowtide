@@ -234,7 +234,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var vecIndex = Vector256.Create(0, 1, 2, 3, 4, 5, 6, 7);
                 var vecStride = Vector256.Create(8);
 
-                fixed (int* spanPtr = span)
+                fixed (int* spanPtr = span.Slice(index))
                 {
                     var end = count - 8;
                     for (; i < end; i += 8)
