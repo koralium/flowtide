@@ -392,7 +392,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal abstract StateManagerMetadata NewMetadata();
 
-        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null)
+        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
             bool newMetadata = false;
             Setup();
@@ -408,7 +408,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     m_metadata = m_metadataSerializer.Deserialize(metadataBytes.Value, metadataBytes.Value.Length);
                 }
-                await m_persistentStorage.RecoverAsync(m_metadata.CheckpointVersion).ConfigureAwait(false);
+                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
             }
             else
             {

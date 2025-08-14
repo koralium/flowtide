@@ -202,5 +202,62 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.Equal("hello", val);
             ;
         }
+
+        [Fact]
+        public async Task TestRestoreTwoCheckpointsBack()
+        {
+            var device = Devices.CreateLogDevice("./data/tmp/persistent");
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    {
+                        LogDevice = device,
+                        CheckpointDir = "./data/tmp/persistent",
+                        RemoveOutdatedCheckpoints = false
+                    })
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
+
+            await stateManager.InitializeAsync();
+
+            var nodeClient = stateManager.GetOrCreateClient("node1");
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+            {
+                BucketSize = 8,
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
+            });
+
+            await tree.Upsert(1, "hello");
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            await tree.Upsert(1, "helloOther");
+
+            var (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+
+            // Restore to latest checkpoint
+            await stateManager.InitializeAsync();
+            (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            // Restore to the previous checkpoint
+            await stateManager.InitializeAsync(checkpointVersion: 1);
+
+            (found, val) = await tree.GetValue(1);
+
+            Assert.Equal("hello", val);
+            ;
+        }
     }
 }
