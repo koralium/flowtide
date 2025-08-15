@@ -248,7 +248,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             List<System.Linq.Expressions.Expression> arrInitExpressions = new List<System.Linq.Expressions.Expression>();
             foreach (var expr in listNestedExpression.Values)
             {
-                arrInitExpressions.Add(expr.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer()))));
+                var result = expr.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer())));
+                if (result.Type != typeof(IDataValue))
+                {
+                    result = System.Linq.Expressions.Expression.Convert(result, typeof(IDataValue));
+                }
+                arrInitExpressions.Add(result);
             }
             var newArrayExpr = System.Linq.Expressions.Expression.NewArrayInit(typeof(IDataValue), arrInitExpressions);
 
