@@ -14,6 +14,7 @@ using EFCore.BulkExtensions;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Connector.SqlServer;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
@@ -28,6 +29,8 @@ using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Polly.Retry;
+using Polly;
 using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 
@@ -53,11 +56,24 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
 
         protected override void AddReadResolvers(IConnectorManager connectorManager)
         {
-            connectorManager.AddSqlServerSource(() => sqlServerFixture.ConnectionString, (rel) =>
-            {
-                var name = rel.NamedTable.Names[0];
-                return new List<string>() { "tpch", "dbo", name };
-            });
+            connectorManager.AddSqlServerSource(
+                new SqlServerSourceOptions()
+                {
+                    ConnectionStringFunc = () => sqlServerFixture.ConnectionString,
+                    TableNameTransform = (rel) =>
+                    {
+                        var name = rel.NamedTable.Names[0];
+                        return new List<string>() { "tpch", "dbo", name };
+                    },
+                    ResiliencePipeline = new ResiliencePipelineBuilder()
+                        .AddRetry(new RetryStrategyOptions
+                        {
+                            MaxRetryAttempts = 1
+                        })
+                        .Build()
+
+
+                });
         }
 
         protected override async Task AddShipmodes(IEnumerable<Shipmode> shipmodes)
