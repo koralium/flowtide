@@ -72,7 +72,6 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
                         })
                         .Build()
 
-
                 });
         }
 
