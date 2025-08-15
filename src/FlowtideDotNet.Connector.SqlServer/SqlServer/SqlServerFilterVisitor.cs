@@ -176,14 +176,12 @@ namespace FlowtideDotNet.SqlServer.SqlServer
         public override FilterResult? VisitCastExpression(CastExpression castExpression, object? state)
         {
             var inner = castExpression.Expression.Accept(this, state);
-            
-            if (castExpression.Type.Type == Substrait.Type.SubstraitType.TimestampTz)
-            {
+
             if (inner == null)
             {
                 return null;
             }
-            
+
             if (castExpression.Type.Type == Substrait.Type.SubstraitType.TimestampTz)
             {
                 return new FilterResult($"CAST({inner.Content} AS DATETIME)", false);
