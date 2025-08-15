@@ -179,7 +179,14 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             
             if (castExpression.Type.Type == Substrait.Type.SubstraitType.TimestampTz)
             {
-                return new FilterResult($"CAST({inner?.Content} AS DATETIME)", false);
+            if (inner == null)
+            {
+                return null;
+            }
+            
+            if (castExpression.Type.Type == Substrait.Type.SubstraitType.TimestampTz)
+            {
+                return new FilterResult($"CAST({inner.Content} AS DATETIME)", false);
             }
 
             return default;
