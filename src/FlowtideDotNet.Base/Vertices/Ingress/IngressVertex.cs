@@ -506,5 +506,16 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             return Task.CompletedTask;
         }
+
+        protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)
+        {
+            Debug.Assert(_ingressState?._vertexHandler != null, nameof(_ingressState._vertexHandler));
+
+            if (_ingressState._vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot fail and rollback before initialize is called");
+            }
+            return _ingressState._vertexHandler.FailAndRollback(exception, restoreVersion);
+        }
     }
 }

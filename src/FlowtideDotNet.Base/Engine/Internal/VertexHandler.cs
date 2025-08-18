@@ -22,6 +22,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
         private readonly string operatorName;
         private readonly Action<TimeSpan> checkpointFunc;
         private readonly Func<string, string, TimeSpan?, Task> registerTrigger;
+        private readonly Func<Exception, long?, Task> failRollbackFunc;
 
         public VertexHandler(
             string streamName,
@@ -31,7 +32,8 @@ namespace FlowtideDotNet.Base.Engine.Internal
             IMeter metrics,
             IStateManagerClient stateClient,
             ILoggerFactory loggerFactory,
-            IOperatorMemoryManager memoryManager)
+            IOperatorMemoryManager memoryManager,
+            Func<Exception, long?, Task> failRollbackFunc)
         {
             StreamName = streamName;
             this.operatorName = operatorName;
@@ -41,6 +43,7 @@ namespace FlowtideDotNet.Base.Engine.Internal
             StateClient = stateClient;
             LoggerFactory = loggerFactory;
             MemoryManager = memoryManager;
+            this.failRollbackFunc = failRollbackFunc;
         }
 
         public string StreamName { get; }
@@ -54,6 +57,11 @@ namespace FlowtideDotNet.Base.Engine.Internal
         public IOperatorMemoryManager MemoryManager { get; }
 
         public string OperatorId => operatorName;
+
+        public Task FailAndRollback(Exception exception, long? restoreVersion = null)
+        {
+            return failRollbackFunc(exception, restoreVersion);
+        }
 
         public Task RegisterTrigger(string name, TimeSpan? scheduledInterval = null)
         {

@@ -223,7 +223,13 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             }, (v1, v2, time) =>
             {
                 return Task.CompletedTask;
-            }, nodeMetrics, stateClient, new NullLoggerFactory(), memoryManager);
+            }, 
+            nodeMetrics, 
+            stateClient, 
+            new NullLoggerFactory(), 
+            memoryManager,
+            (exception, version) => Task.CompletedTask);
+
             var sink = new ColumnSqlServerSink(new Connector.SqlServer.SqlServerSinkOptions() { ConnectionStringFunc = () => sqlServerFixture.ConnectionString }, writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
             sink.Setup("mergejoinstream", "op");

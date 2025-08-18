@@ -65,6 +65,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly DataflowStreamOptions _dataflowStreamOptions;
         internal readonly IStreamMemoryManager _streamMemoryManager;
         private readonly Meter _contextMeter;
+        internal long? _restoreCheckpointVersion;
 
         internal StreamState? _lastState;
         internal long producingTime = 0;
@@ -283,8 +284,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 this._state = state;
                 this._state.SetContext(this);
             }
-            this._state.Initialize(previous);
-            return Task.CompletedTask;
+            return this._state.Initialize(previous);
         }
 
         public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
@@ -763,6 +763,22 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _state!.Resume();
                 }
             }
+        }
+
+        internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
+        {
+            lock (_checkpointLock)
+            {
+                if (restoreVersion.HasValue)
+                {
+                    if (_restoreCheckpointVersion.HasValue && _restoreCheckpointVersion.Value > restoreVersion.Value)
+                    {
+                        _restoreCheckpointVersion = restoreVersion.Value;
+                    }
+                }
+            }
+            
+            return OnFailure(exception);
         }
     }
 }

@@ -176,7 +176,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.CheckForPause();
@@ -192,7 +192,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_initialBatchTask != null)
                 {
-                    return;
+                    return Task.CompletedTask;
+                }
+
+                lock (_context._checkpointLock)
+                {
+                    // Reset the checkpoint version after the stream is in a running state
+                    _context._restoreCheckpointVersion = default;
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -231,6 +237,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     })
                     .Unwrap();
             }
+            return Task.CompletedTask;
         }
 
         public override Task OnFailure()

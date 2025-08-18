@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             TransitionTo(StreamStateValue.Running);
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override async Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._logger.StartingStream(_context.streamName);
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             if (previousState == StreamStateValue.NotStarted)
             {
-                StartStream().GetAwaiter().GetResult();
+                await StartStream();
             }
             else
             {
@@ -147,6 +147,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Enable trigger registration
             _context.EnableTriggerRegistration();
 
+
+            long? restoreVersion;
+            lock (_context._checkpointLock)
+            {
+                restoreVersion = _context._restoreCheckpointVersion;
+            }
+
             // Initialize state
             await _context._stateManager.InitializeAsync(_context._streamVersionInformation);
             _context._lastState = _context._stateManager.Metadata;
@@ -206,7 +213,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
                         blockStateClient,
                         _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                        _context.FailAndRollback);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
 
@@ -227,7 +235,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
                         blockStateClient,
                         _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                        _context.FailAndRollback);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                     block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
                 }
@@ -249,7 +258,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._streamMetrics.GetOrCreateVertexMeter(block.Key, () => block.Value.DisplayName),
                         blockStateClient,
                         _context.loggerFactory,
-                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key));
+                        _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
+                        _context.FailAndRollback);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
                 }
             }

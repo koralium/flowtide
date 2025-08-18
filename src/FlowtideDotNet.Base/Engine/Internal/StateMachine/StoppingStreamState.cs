@@ -169,13 +169,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null);
             _context.CheckForPause();
             _context.SetStatus(StreamStatus.Stopping);
             _context._logger.StoppingStream(_context.streamName);
             _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
+            return Task.CompletedTask;
         }
 
         public override async Task OnFailure()
