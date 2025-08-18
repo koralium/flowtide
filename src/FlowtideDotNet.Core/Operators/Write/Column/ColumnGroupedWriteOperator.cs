@@ -65,6 +65,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         public IReadOnlyList<int> PrimaryKeyColumns => m_primaryKeyColumns ?? throw new InvalidOperationException("Must be called after initialize and restore");
 
+        protected ExistingRowComparer ExistingRowComparer => m_existingRowComparer ?? throw new InvalidOperationException("ExistingRowComparer not yet initialized");
+
         public override Task Compact()
         {
             return Task.CompletedTask;
@@ -302,6 +304,16 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         protected virtual IAsyncEnumerable<EventBatchData> GetExistingData()
         {
             return new EmptyAsyncEnumerable<EventBatchData>();
+        }
+
+        protected ValueTask<(bool found, ColumnRowReference key)> GetExistingDataRow(ColumnRowReference e)
+        {
+            Debug.Assert(m_hasSentInitialData != null);
+            if (m_existingData != null && !m_hasSentInitialData.Value && FetchExistingData)
+            {
+                return m_existingData.GetKey(e);
+            }
+            return ValueTask.FromResult((false, default(ColumnRowReference)));
         }
 
         private async Task SendData()

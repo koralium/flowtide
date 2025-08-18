@@ -17,7 +17,7 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
-    internal class ExistingRowComparer
+    public class ExistingRowComparer
     {
         private readonly DataValueContainer _leftContainer;
         private readonly DataValueContainer _rightContainer;
