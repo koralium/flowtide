@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             _version++;
         }
 
-        public virtual ValueTask CompactAsync()
+        public virtual ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
             return ValueTask.CompletedTask;
         }
