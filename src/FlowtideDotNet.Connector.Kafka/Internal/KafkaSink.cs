@@ -62,7 +62,6 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             _primaryKeys = new List<int>() { keyIndex };
             _primaryKeyIndex = keyIndex;
             _writeRelation = writeRelation;
-            _flowtideKafkaSinkOptions = flowtideKafkaSinkOptions;
         }
 
         public override string DisplayName => "Kafka Sink";
