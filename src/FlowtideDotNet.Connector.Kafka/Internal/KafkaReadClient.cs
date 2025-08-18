@@ -86,53 +86,6 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             return beforeStartOffsets;
         }
 
-        public IEnumerable<RowEvent> ReadInitial()
-        {
-            Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
-            Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions, currentOffsets);
-
-            // Set all the partition offsets to start at -1 incase there is no data.
-            foreach (var kv in beforeStartOffsets)
-            {
-                currentOffsets[kv.Key] = -1;
-            }
-
-            while (true)
-            {
-                var result = _consumer.Consume(TimeSpan.FromMilliseconds(100));
-                if (result != null)
-                {
-                    // Parse the result
-                    currentOffsets[result.Partition.Value] = result.Offset.Value;
-                    var ev = this.valueDeserializer.Deserialize(keyDeserializer, result.Message.Value, result.Message.Key);
-                    yield return ev;
-                }
-                if (result == null)
-                {
-                    bool offsetsReached = true;
-                    foreach (var kv in beforeStartOffsets)
-                    {
-                        if (currentOffsets.TryGetValue(kv.Key, out var currentOffset))
-                        {
-                            if (currentOffset < kv.Value)
-                            {
-                                offsetsReached = false;
-                                break;
-                            }
-                        }
-                        else
-                        {
-                            offsetsReached = false;
-                        }
-                    }
-                    if (offsetsReached)
-                    {
-                        break;
-                    }
-                }
-            }
-        }
-
         public IEnumerable<EventBatchData> ReadInitial(int columnCount, IMemoryAllocator memoryAllocator)
         {
             Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
@@ -170,7 +123,6 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                         }
                         weights.Clear();
                     }
-                    //yield return ev;
                 }
                 if (result == null)
                 {
