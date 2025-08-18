@@ -267,7 +267,6 @@ namespace FlowtideDotNet.Storage.Tests
             (found, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
-            ;
         }
     }
 }
