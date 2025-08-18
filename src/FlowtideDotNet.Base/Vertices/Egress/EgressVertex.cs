@@ -144,7 +144,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             }
             else
             {
-                throw new InvalidOperationException("Dependencies done function is not set or Name is null. Ensure that CreateBlocks has been called before calling this method.");
+                throw new InvalidOperationException("Dependencies done function is not set or Name is null. Ensure that the vertex has been properly initialized before calling this method.");
             }
         }
 
