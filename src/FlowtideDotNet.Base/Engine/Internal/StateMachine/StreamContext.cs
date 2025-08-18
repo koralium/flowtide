@@ -606,6 +606,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 activity.Stop();
                 activity.Dispose();
             }
+
+            lock (_checkpointLock)
+            {
+                if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
+                {
+                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
+                }
+            }
             
             _logger.StreamError(e, streamName);
             lock (_contextLock)
@@ -783,6 +791,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     {
                         _restoreCheckpointVersion = restoreVersion.Value;
                     }
+                }
+                else if (_restoreCheckpointVersion == null || _restoreCheckpointVersion > _stateManager.LastCompletedCheckpointVersion)
+                {
+                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
                 }
             }
             

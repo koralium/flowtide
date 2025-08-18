@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
 
             // Initialize state
-            await _context._stateManager.InitializeAsync(_context._streamVersionInformation);
+            await _context._stateManager.InitializeAsync(_context._streamVersionInformation, restoreVersion);
             _context._lastState = _context._stateManager.Metadata;
             _context._startCheckpointVersion = _context._stateManager.CurrentVersion;
             if (_context._lastState == null)
