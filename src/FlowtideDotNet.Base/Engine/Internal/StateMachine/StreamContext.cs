@@ -574,6 +574,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal void EgressDependenciesDone(string name)
+        {
+            lock (_contextLock)
+            {
+                _state!.EgressDependenciesDone(name);
+            }
+        }
+
         internal Task TriggerCheckpoint(bool isScheduled = false)
         {
             lock (_contextLock)

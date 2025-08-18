@@ -101,6 +101,8 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long CurrentVersion => m_persistentStorage?.CurrentVersion ?? 0;
 
+        public long LastCompletedCheckpointVersion { get; private set; }
+
         private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;
@@ -221,6 +223,7 @@ namespace FlowtideDotNet.Storage.StateManager
             }
 
             await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
+            LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
         }
 
         public async Task Compact()
@@ -228,7 +231,9 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
 
-            await m_persistentStorage.CompactAsync();
+            ulong changesSinceLastCompaction = m_metadata.PageCommits - m_metadata.PageCommitsAtLastCompaction;
+
+            await m_persistentStorage.CompactAsync(changesSinceLastCompaction, PageCommits);
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 
@@ -390,7 +395,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal abstract StateManagerMetadata NewMetadata();
 
-        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null)
+        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
             bool newMetadata = false;
             Setup();
@@ -406,7 +411,8 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     m_metadata = m_metadataSerializer.Deserialize(metadataBytes.Value, metadataBytes.Value.Length);
                 }
-                await m_persistentStorage.RecoverAsync(m_metadata.CheckpointVersion).ConfigureAwait(false);
+                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
+                LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
             }
             else
             {
@@ -421,6 +427,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     newMetadata = true;
                 }
                 await m_persistentStorage.ResetAsync();
+                LastCompletedCheckpointVersion = 0;
             }
 
             // Reset cached values in the state clients

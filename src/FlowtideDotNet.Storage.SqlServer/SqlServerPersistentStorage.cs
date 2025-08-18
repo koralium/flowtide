@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             }
         }
 
-        public async ValueTask CompactAsync()
+        public async ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
 #if DEBUG_WRITE
             _debugWriter!.WriteCall();

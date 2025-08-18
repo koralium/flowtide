@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private Task? _runningTask;
         private HashSet<string>? nonInitEgresses;
+        private HashSet<string>? nonDependenciesEgresses;
 
         public override Task AddTrigger(string operatorName, string triggerName, TimeSpan? schedule = null)
         {
@@ -51,10 +52,29 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             lock (_context._checkpointLock)
             {
                 Debug.Assert(nonInitEgresses != null, nameof(nonInitEgresses));
+                Debug.Assert(nonDependenciesEgresses != null, nameof(nonDependenciesEgresses));
                 nonInitEgresses.Remove(name);
 
                 // Check if all egresses has done their checkpoint
-                if (nonInitEgresses.Count == 0)
+                if (nonInitEgresses.Count == 0 && nonDependenciesEgresses.Count == 0)
+                {
+                    _context._logger.WatermarkSystemInitialized(_context.streamName);
+                    InitEventsDone();
+                }
+            }
+        }
+
+        public override void EgressDependenciesDone(string name)
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            lock (_context._checkpointLock)
+            {
+                Debug.Assert(nonInitEgresses != null, nameof(nonInitEgresses));
+                Debug.Assert(nonDependenciesEgresses != null, nameof(nonDependenciesEgresses));
+                nonDependenciesEgresses.Remove(name);
+
+                // Check if all egresses has done their checkpoint
+                if (nonInitEgresses.Count == 0 && nonDependenciesEgresses.Count == 0)
                 {
                     _context._logger.WatermarkSystemInitialized(_context.streamName);
                     InitEventsDone();
@@ -238,7 +258,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
                         _context.FailAndRollback);
                     await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
-                    block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone);
+                    block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
                 }
 
                 _context._logger.InitializingIngressBlocks(_context.streamName);
@@ -293,6 +313,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Since a source can be joined with itself some blocks will get the same watermark from multiple inputs.
             _context._logger.InitializingWatermarkSystem(_context.streamName);
             nonInitEgresses = _context.egressBlocks.Keys.ToHashSet();
+            nonDependenciesEgresses = _context.egressBlocks.Keys.ToHashSet();
             foreach (var ingress in _context.ingressBlocks)
             {
                 ingress.Value.DoLockingEvent(new InitWatermarksEvent());

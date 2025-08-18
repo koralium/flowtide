@@ -117,6 +117,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 FullLoadMaxRowCount = _options.FullLoadMaxRowCount,
                 FullReloadInterval = _options.FullReloadInterval,
                 ChangeTrackingInterval = _options.ChangeTrackingInterval,
+                ResiliencePipeline = _options.ResiliencePipeline,
             };
 
             var isChangeTrackingEnabled = await SqlServerUtils.IsChangeTrackingEnabled(connection, fullName);

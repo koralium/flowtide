@@ -148,6 +148,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Do nothing
         }
 
+        public override void EgressDependenciesDone(string name)
+        {
+            // Do nothing
+        }
+
         public override Task TriggerCheckpoint(bool isScheduled = false)
         {
             Debug.Assert(_context != null, nameof(_context));
