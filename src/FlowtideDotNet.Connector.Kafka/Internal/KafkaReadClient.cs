@@ -12,6 +12,9 @@
 
 using Confluent.Kafka;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
@@ -128,6 +131,84 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     }
                 }
             }
+        }
+
+        public IEnumerable<EventBatchData> ReadInitial(int columnCount, IMemoryAllocator memoryAllocator)
+        {
+            Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
+            Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions, currentOffsets);
+
+            // Set all the partition offsets to start at -1 incase there is no data.
+            foreach (var kv in beforeStartOffsets)
+            {
+                currentOffsets[kv.Key] = -1;
+            }
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
+            Column[] columns = new Column[columnCount];
+            for (int i = 0; i < columnCount; i++)
+            {
+                columns[i] = Column.Create(memoryAllocator);
+            }
+
+            while (true)
+            {
+                var result = _consumer.Consume(TimeSpan.FromMilliseconds(100));
+                if (result != null)
+                {
+                    // Parse the result
+                    currentOffsets[result.Partition.Value] = result.Offset.Value;
+                    this.valueDeserializer.Deserialize(keyDeserializer, result.Message.Value, result.Message.Key, columns, weights);
+
+                    if (weights.Count >= 100)
+                    {
+                        yield return new EventBatchData(columns);
+                        columns = new Column[columnCount];
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            columns[i] = Column.Create(memoryAllocator);
+                        }
+                        weights.Clear();
+                    }
+                    //yield return ev;
+                }
+                if (result == null)
+                {
+                    bool offsetsReached = true;
+                    foreach (var kv in beforeStartOffsets)
+                    {
+                        if (currentOffsets.TryGetValue(kv.Key, out var currentOffset))
+                        {
+                            if (currentOffset < kv.Value)
+                            {
+                                offsetsReached = false;
+                                break;
+                            }
+                        }
+                        else
+                        {
+                            offsetsReached = false;
+                        }
+                    }
+                    if (offsetsReached)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            if (weights.Count > 0)
+            {
+                yield return new EventBatchData(columns);
+            }
+            else
+            {
+                for (int i = 0; i < columnCount; i++)
+                {
+                    columns[i].Dispose();
+                }
+            }
+            weights.Dispose();
         }
     }
 }
