@@ -68,6 +68,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         protected override void Checkpoint(long checkpointTime)
         {
+            // No checkpointing required for KafkaSink as it does not maintain operator state.
         }
 
         protected override bool FetchExistingData => _flowtideKafkaSinkOptions.FetchExistingConfig != null;
