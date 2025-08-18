@@ -21,6 +21,8 @@ namespace FlowtideDotNet.Storage.StateManager
 
         long CurrentVersion { get; }
 
+        long LastCompletedCheckpointVersion { get; }
+
         IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
 
         Task Compact();

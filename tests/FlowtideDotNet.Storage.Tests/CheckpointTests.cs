@@ -206,7 +206,11 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestRestoreTwoCheckpointsBack()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistent");
+            if (Directory.Exists("./data/tmp/persistentrestoretwo"))
+            {
+                Directory.Delete("./data/tmp/persistentrestoretwo", true);
+            }
+            var device = Devices.CreateLogDevice("./data/tmp/persistentrestoretwo");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
@@ -219,6 +223,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }, NullLogger.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
+            Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
             var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
@@ -236,6 +241,8 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
+
             await tree.Upsert(1, "helloOther");
 
             var (found, val) = await tree.GetValue(1);
@@ -245,14 +252,17 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
 
             // Restore to latest checkpoint
             await stateManager.InitializeAsync();
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
             (found, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore to the previous checkpoint
             await stateManager.InitializeAsync(checkpointVersion: 1);
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
 
             (found, val) = await tree.GetValue(1);
 
