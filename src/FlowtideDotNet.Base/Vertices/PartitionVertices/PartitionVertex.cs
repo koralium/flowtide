@@ -406,5 +406,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             }
             return _vertexHandler.FailAndRollback(exception, restoreVersion);
         }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

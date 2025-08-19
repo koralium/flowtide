@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // and have recieved correct restore checkpoint version before going to starting.
                 await StopAndDispose();
             }
-            catch(Exception e)
+            catch(Exception)
             {
                 _isFailing = false;
                 await Initialize(previousState);
@@ -105,6 +105,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+
+            // Call failure for all blocks
+            if (_context._restoreCheckpointVersion.HasValue)
+            {
+                await _context.ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.OnFailure(_context._restoreCheckpointVersion.Value);
+                });
+            }
 
             await _context.ForEachBlockAsync(async (key, block) =>
             {

@@ -321,5 +321,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             }
             return _vertexHandler.FailAndRollback(exception, restoreVersion);
         }
+
+        public Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

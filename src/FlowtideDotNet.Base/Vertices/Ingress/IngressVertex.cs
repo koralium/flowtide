@@ -542,5 +542,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         {
             _dependenciesDone = dependenciesDone;
         }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
