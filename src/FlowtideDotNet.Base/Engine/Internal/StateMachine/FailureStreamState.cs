@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -100,7 +101,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context.ForEachBlock((key, block) =>
             {
-                block.Fault(new Exception($"Faulting block due to stream failure."));
+                block.Fault(new BlockStopException($"Faulting block due to stream failure."));
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });

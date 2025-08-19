@@ -50,6 +50,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         private int _taskIdCounter;
         private ILogger? _logger;
         private bool _isHealthy = true;
+        private Action<string>? _dependenciesDone;
 
         public string Name { get; private set; }
 
@@ -64,6 +65,8 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         public ILogger Logger => _logger ?? throw new NotSupportedException("Logging must be done after Initialize");
 
         protected IMemoryAllocator MemoryAllocator => _ingressState?._vertexHandler?.MemoryManager ?? throw new NotSupportedException("Initialize must be called before accessing memory allocator");
+
+        protected bool AutoCompleteDependencies { get; set; } = true;
 
         protected IngressVertex(DataflowBlockOptions options)
         {
@@ -217,11 +220,16 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 }
                 await OnCheckpoint(checkpoint.CheckpointTime);
                 await output.SendLockingEvent(lockingEvent);
+                if (AutoCompleteDependencies)
+                {
+                    SetDependenciesDone();
+                }
             }
             if (lockingEvent is InitWatermarksEvent initWatermark)
             {
                 var names = await GetWatermarkNames();
                 await output.SendLockingEvent(initWatermark.AddWatermarkNames(names));
+                SetDependenciesDone();
             }
 
             if (!isStopStreamEvent)
@@ -232,6 +240,18 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         }
 
         protected abstract Task<IReadOnlySet<string>> GetWatermarkNames();
+
+        protected void SetDependenciesDone()
+        {
+            if (_dependenciesDone != null)
+            {
+                _dependenciesDone(Name);
+            }
+            else
+            {
+                throw new InvalidOperationException("Dependencies done function is not set, cannot mark dependencies as done");
+            }
+        }
 
         public void DoLockingEvent(ILockingEvent lockingEvent)
         {
@@ -516,6 +536,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
                 throw new NotSupportedException("Cannot fail and rollback before initialize is called");
             }
             return _ingressState._vertexHandler.FailAndRollback(exception, restoreVersion);
+        }
+
+        void IStreamIngressVertex.SetDependenciesDoneFunction(Action<string> dependenciesDone)
+        {
+            _dependenciesDone = dependenciesDone;
         }
     }
 }

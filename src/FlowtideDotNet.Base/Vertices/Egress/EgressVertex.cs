@@ -14,6 +14,7 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Base.Vertices.Ingress;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         private CancellationTokenSource? _cancellationTokenSource;
         private IHistogram<float>? _latencyHistogram;
         private IMemoryAllocator? _memoryAllocator;
+        private IVertexHandler? _vertexHandler;
 
         private string? _name;
         private string? _streamName;
@@ -186,6 +188,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _streamVersion = streamVersionInformation;
             CurrentCheckpointId = newTime;
+            _vertexHandler = vertexHandler;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -306,6 +309,17 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public virtual Task BeforeSaveCheckpoint()
         {
             return Task.CompletedTask;
+        }
+
+        protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)
+        {
+            Debug.Assert(_vertexHandler != null, nameof(_vertexHandler));
+
+            if (_vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot fail and rollback before initialize is called");
+            }
+            return _vertexHandler.FailAndRollback(exception, restoreVersion);
         }
     }
 }

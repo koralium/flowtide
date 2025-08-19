@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
+            // Start at version 1, since version 0 is reserved for empty state
+            _version = 1;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
             this._ignoreDispose = ignoreDispose;
         }

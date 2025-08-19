@@ -405,7 +405,9 @@ namespace FlowtideDotNet.Storage.StateManager
             m_lruTable.Clear();
             await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, streamVersionInformation)).ConfigureAwait(false);
 
-            if (m_persistentStorage.TryGetValue(1, out var metadataBytes))
+            // Check that metadata exist, also that the checkpoint version is larger than 0
+            // If zero we revert back to an empty state
+            if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
             {
                 lock (m_lock)
                 {

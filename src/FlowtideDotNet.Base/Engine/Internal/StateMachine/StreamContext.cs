@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
@@ -593,6 +594,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
+            // Ingore block stop exceptions
+            // Since they are sent by the failure state to stop running blocks
+            if (IsBlockStopException(e))
+            {
+                return Task.CompletedTask;
+            }
             var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
 
             if (activity != null)
@@ -625,6 +632,23 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 return _state!.OnFailure();
             }
+        }
+
+        private bool IsBlockStopException(Exception? exception)
+        {
+            if (exception == null)
+            {
+                return false;
+            }
+            if (exception is BlockStopException)
+            {
+                return true;
+            }
+            if (exception is AggregateException aggregate)
+            {
+                return aggregate.InnerExceptions.Any(IsBlockStopException);
+            }
+            return false;
         }
 
         internal Task StartAsync()
@@ -787,12 +811,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (restoreVersion.HasValue)
                 {
-                    if (_restoreCheckpointVersion.HasValue && _restoreCheckpointVersion.Value > restoreVersion.Value)
+                    if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > restoreVersion.Value)
                     {
                         _restoreCheckpointVersion = restoreVersion.Value;
                     }
                 }
-                else if (_restoreCheckpointVersion == null || _restoreCheckpointVersion > _stateManager.LastCompletedCheckpointVersion)
+                else if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion > _stateManager.LastCompletedCheckpointVersion)
                 {
                     _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
                 }
