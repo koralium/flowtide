@@ -816,7 +816,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _restoreCheckpointVersion = restoreVersion.Value;
                     }
                 }
-                else if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion > _stateManager.LastCompletedCheckpointVersion)
+                else if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
                 {
                     _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
                 }
