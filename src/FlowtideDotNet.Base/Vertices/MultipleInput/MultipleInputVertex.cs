@@ -810,5 +810,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         {
             return Task.CompletedTask;
         }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

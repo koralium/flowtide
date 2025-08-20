@@ -136,6 +136,25 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 RunTask((output, state) => throw new CrashException("crash"));
             }
+            else if (triggerName == "ingress_no_autocomplete_dependencies")
+            {
+                AutoCompleteDependencies = false;
+            }
+            else if (triggerName == "ingress_fail_and_rollback")
+            {
+                if (state is long restoreVersion)
+                {
+                    FailAndRollback(new CrashException("crash"), restoreVersion: restoreVersion);
+                }
+                else
+                {
+                    FailAndRollback(new CrashException("crash"));
+                }
+            }
+            else if (triggerName == "ingress_dependencies_done")
+            {
+                SetDependenciesDone();
+            }
             return Task.CompletedTask;
         }
 
@@ -152,6 +171,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 _state.Value = new MockDataSourceState();
             }
             await RegisterTrigger("crash");
+            await RegisterTrigger("ingress_no_autocomplete_dependencies");
+            await RegisterTrigger("ingress_fail_and_rollback");
+            await RegisterTrigger("ingress_dependencies_done");
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -207,6 +229,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
             else
             {
@@ -221,7 +244,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
-            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            
         }
     }
 }

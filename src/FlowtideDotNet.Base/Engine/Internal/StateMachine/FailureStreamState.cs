@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
+using FlowtideDotNet.Base.Utils;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -18,11 +21,39 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
     {
         private readonly object _lock = new object();
         private Task? _currentTask;
+        private bool _isFailing = false;
 
-        public override void Initialize(StreamStateValue previousState)
+        public override async Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.CheckForPause();
+
+            try
+            {
+                lock (_lock)
+                {
+                    if (_isFailing)
+                    {
+                        return;
+                    }
+                    _isFailing = true;
+                }
+
+                // Run stop and dispose linearly to make sure that the caller does
+                // not return before any dependencies have been stopped and disposed
+                // This is useful in distributed mode to make sure all other streams are stopped
+                // and have recieved correct restore checkpoint version before going to starting.
+                await StopAndDispose();
+            }
+            catch(Exception e)
+            {
+                _context._logger.FailedStopAndDispose(e, _context.streamName);
+                _isFailing = false;
+                await Initialize(previousState);
+                return;
+            }
+            
+
             lock (_lock)
             {
                 _context.SetStatus(StreamStatus.Failing);
@@ -30,9 +61,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return;
                 }
+                // Transitioning to start is done in a separate task to avoid blocking the caller
                 _currentTask = Task.Factory.StartNew(async () =>
                 {
-                    await StopAndDispose();
+                    await Transition();
                 })
                     .Unwrap()
                     .ContinueWith(t =>
@@ -40,6 +72,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         lock (_lock)
                         {
                             _currentTask = null;
+                            _isFailing = false;
                         }
 
                         if (t.IsFaulted)
@@ -71,15 +104,29 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _context.ForEachBlock((key, block) =>
             {
-                block.Fault(new Exception($"Faulting block due to stream failure."));
+                block.Fault(new BlockStopException($"Faulting block due to stream failure."));
             });
 
             await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+
+            // Call failure for all blocks
+            if (_context._restoreCheckpointVersion.HasValue)
+            {
+                await _context.ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.OnFailure(_context._restoreCheckpointVersion.Value);
+                });
+            }
 
             await _context.ForEachBlockAsync(async (key, block) =>
             {
                 await block.DisposeAsync();
             });
+        }
+
+        private async Task Transition()
+        {
+            Debug.Assert(_context != null, nameof(_context));
 
             await Task.Delay(TimeSpan.FromMilliseconds(500));
 
@@ -106,8 +153,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         public override Task OnFailure()
         {
-            Initialize(StreamStateValue.Failure);
-            return Task.CompletedTask;
+            return Initialize(StreamStateValue.Failure);
         }
 
         public override void EgressCheckpointDone(string name)

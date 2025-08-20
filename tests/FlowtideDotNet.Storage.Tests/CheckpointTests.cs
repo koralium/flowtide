@@ -217,7 +217,7 @@ namespace FlowtideDotNet.Storage.Tests
                     PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistent",
+                        CheckpointDir = "./data/tmp/persistentrestoretwo",
                         RemoveOutdatedCheckpoints = false
                     })
                 }, NullLogger.Instance, new Meter($"storage"), "storage");

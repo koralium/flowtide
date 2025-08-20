@@ -10,16 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Vertices.Ingress
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Base.Exceptions
 {
-    public interface IStreamIngressVertex : IStreamVertex
+    internal class BlockStopException : Exception
     {
-        Task InitializationCompleted();
+        public BlockStopException()
+        {
+        }
 
-        internal void DoLockingEvent(ILockingEvent lockingEvent);
+        public BlockStopException(string? message) : base(message)
+        {
+        }
 
-        Task CheckpointDone(long checkpointVersion);
-
-        internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
+        public BlockStopException(string? message, Exception? innerException) : base(message, innerException)
+        {
+        }
     }
 }

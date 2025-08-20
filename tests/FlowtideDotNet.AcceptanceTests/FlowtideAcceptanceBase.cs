@@ -108,6 +108,21 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.Crash();
         }
 
+        protected Task StopMockIngressAutocompleteDependencies()
+        {
+            return flowtideTestStream.StopMockIngressAutocompleteDependencies();
+        }
+
+        protected Task MockIngressFailAndRollback(long restoreVersion)
+        {
+            return flowtideTestStream.MockIngressFailAndRollback(restoreVersion);
+        }
+
+        protected Task MockIngressSetDependenciesDone()
+        {
+            return flowtideTestStream.MockIngressSetDependenciesDone();
+        }
+
         protected void EgressCrashOnCheckpoint(int times)
         {
             flowtideTestStream.EgressCrashOnCheckpoint(times);
@@ -143,12 +158,18 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.DeleteOrder(order);
         }
 
-        public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
+        public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)
         {
             var baseType = this.GetType();
             var testName = GetTestClassName(testOutputHelper);
-            flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
-            //flowtideTestStream.CachePageCount = 10;
+            if (usePersistentStorage)
+            {
+                flowtideTestStream = new PersistentFlowtideTestStream($"{baseType.Name}/{testName}");
+            }
+            else
+            {
+                flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
+            }
         }
 
         private static string GetTestClassName(ITestOutputHelper output)

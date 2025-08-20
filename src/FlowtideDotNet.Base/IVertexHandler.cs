@@ -44,5 +44,7 @@ namespace FlowtideDotNet.Base
         /// <param name="name"></param>
         /// <param name="schedule"></param>
         Task RegisterTrigger(string name, TimeSpan? scheduledInterval = null);
+
+        Task FailAndRollback(Exception? exception, long? restoreVersion = default);
     }
 }

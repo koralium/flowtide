@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Exceptions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Metrics.Counter;
 using FlowtideDotNet.Base.Metrics.Gauge;
@@ -65,6 +66,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal readonly DataflowStreamOptions _dataflowStreamOptions;
         internal readonly IStreamMemoryManager _streamMemoryManager;
         private readonly Meter _contextMeter;
+        internal long? _restoreCheckpointVersion;
 
         internal StreamState? _lastState;
         internal long producingTime = 0;
@@ -283,8 +285,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 this._state = state;
                 this._state.SetContext(this);
             }
-            this._state.Initialize(previous);
-            return Task.CompletedTask;
+            return this._state.Initialize(previous);
         }
 
         public Task TransitionTo(StreamStateMachineState current, StreamStateValue newState)
@@ -593,6 +594,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         internal Task OnFailure(Exception? e)
         {
+            // Ingore block stop exceptions
+            // Since they are sent by the failure state to stop running blocks
+            if (IsBlockStopException(e))
+            {
+                return Task.CompletedTask;
+            }
             var activity = s_exceptionActivitySource.StartActivity("StreamFailure", ActivityKind.Internal, null);
 
             if (activity != null)
@@ -606,6 +613,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 activity.Stop();
                 activity.Dispose();
             }
+
+            lock (_checkpointLock)
+            {
+                if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
+                {
+                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
+                }
+            }
             
             _logger.StreamError(e, streamName);
             lock (_contextLock)
@@ -617,6 +632,23 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                 return _state!.OnFailure();
             }
+        }
+
+        private bool IsBlockStopException(Exception? exception)
+        {
+            if (exception == null)
+            {
+                return false;
+            }
+            if (exception is BlockStopException)
+            {
+                return true;
+            }
+            if (exception is AggregateException aggregate)
+            {
+                return aggregate.InnerExceptions.Any(IsBlockStopException);
+            }
+            return false;
         }
 
         internal Task StartAsync()
@@ -771,6 +803,26 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _state!.Resume();
                 }
             }
+        }
+
+        internal Task FailAndRollback(Exception? exception, long? restoreVersion = default)
+        {
+            lock (_checkpointLock)
+            {
+                if (restoreVersion.HasValue)
+                {
+                    if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > restoreVersion.Value)
+                    {
+                        _restoreCheckpointVersion = restoreVersion.Value;
+                    }
+                }
+                else if (!_restoreCheckpointVersion.HasValue || _restoreCheckpointVersion.Value > _stateManager.LastCompletedCheckpointVersion)
+                {
+                    _restoreCheckpointVersion = _stateManager.LastCompletedCheckpointVersion;
+                }
+            }
+            
+            return OnFailure(exception);
         }
     }
 }
