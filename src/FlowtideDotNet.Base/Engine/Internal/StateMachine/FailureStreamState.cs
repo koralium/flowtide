@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Exceptions;
+using FlowtideDotNet.Base.Utils;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -43,8 +45,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // and have recieved correct restore checkpoint version before going to starting.
                 await StopAndDispose();
             }
-            catch(Exception)
+            catch(Exception e)
             {
+                _context._logger.FailedStopAndDispose(e, _context.streamName);
                 _isFailing = false;
                 await Initialize(previousState);
                 return;
