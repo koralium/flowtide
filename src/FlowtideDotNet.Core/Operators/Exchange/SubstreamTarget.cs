@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _substreamCommunication = substreamCommunication;
             _dataValueContainer = new DataValueContainer();
             _lockSemaphore = new SemaphoreSlim(1);
+            _substreamCommunication.RegisterSubstreamTarget(_exchangeTargetId, this);
         }
 
         private void NewColumns()
@@ -170,16 +171,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             await _substreamCommunication.TargetHasData(_exchangeTargetId);
         }
 
-        public async ValueTask<bool> ReadData(List<IStreamEvent> outputList, int maxCount)
+        public async ValueTask<bool> ReadData(List<SubstreamEventData> outputList, int maxCount)
         {
             Debug.Assert(_queue != null);
             await _lockSemaphore.WaitAsync();
             try
             {
-                while (_queue.Count > 0 && outputList.Count < maxCount)
+                int count = 0;
+                while (_queue.Count > 0 && count < maxCount)
                 {
                     var val = await _queue.Dequeue();
-                    outputList.Add(val);
+                    outputList.Add(new SubstreamEventData()
+                    {
+                        ExchangeTargetId = _exchangeTargetId,
+                        StreamEvent = val
+                    });
+                    count++;
                 }
                 return _queue.Count > 0;
             }

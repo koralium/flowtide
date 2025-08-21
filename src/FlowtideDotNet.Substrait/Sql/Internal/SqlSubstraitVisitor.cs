@@ -1147,17 +1147,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         throw new InvalidOperationException("Trying to access an exchange relation that is not in a substream from a different stream.");
                     }
                     var exchangeTargetId = exchangeTargetIdCounter++;
-                    var exchangeRelReference = new PullExchangeReferenceRelation()
+                    var exchangeRelReference = new SubstreamExchangeReferenceRelation()
                     {
                         SubStreamName = exchangeRelationsContainer.SubStreamName,
                         ExchangeTargetId = exchangeTargetId,
                         ReferenceOutputLength = exchangeRelationsContainer.OutputLength,
                     };
 
-                    exchangeRelationsContainer.ExchangeRelation.Targets.Add(new PullBucketExchangeTarget()
+                    exchangeRelationsContainer.ExchangeRelation.Targets.Add(new SubstreamExchangeTarget()
                     {
                         ExchangeTargetId = exchangeTargetId,
-                        PartitionIds = partitionIds
+                        PartitionIds = partitionIds,
+                        SubstreamName = subStreamName!
                     });
                     relationData = new RelationData(exchangeRelReference, emitData);
                 }

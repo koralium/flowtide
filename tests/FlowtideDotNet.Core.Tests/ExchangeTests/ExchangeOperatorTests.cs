@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 },
                 PartitionCount = 1
             };
-            var op = new ExchangeOperator(relation, FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
+            var op = new ExchangeOperator(relation, new SubstreamCommunicationPointFactory(), FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
 
             var outputBlock = new BufferBlock<IStreamEvent>();
             op.Sources[0].LinkTo(outputBlock);
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
                 },
                 PartitionCount = 1
             };
-            var op = new ExchangeOperator(relation, FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
+            var op = new ExchangeOperator(relation, new SubstreamCommunicationPointFactory(), FunctionsRegister, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
 
             var outputBlock = new BufferBlock<IStreamEvent>();
             op.Sources[0].LinkTo(outputBlock);

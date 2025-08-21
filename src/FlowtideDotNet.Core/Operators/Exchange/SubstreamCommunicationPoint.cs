@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    internal struct SubstreamEventData
+    public struct SubstreamEventData
     {
         public int ExchangeTargetId;
         public IStreamEvent StreamEvent;
@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal class SubstreamCommunicationPoint
     {
         private readonly string substreamName;
+        private readonly ISubstreamCommunicationHandler _substreamCommunicationHandler;
         private ConcurrentDictionary<int, TargetInfo> _targetInfos;
 
         private class TargetInfo
@@ -45,10 +46,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public SubstreamCommunicationPoint(string substreamName)
+        public SubstreamCommunicationPoint(string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
         {
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
             this.substreamName = substreamName;
+            this._substreamCommunicationHandler = substreamCommunicationHandler;
+            substreamCommunicationHandler.Initialize(GetData);
         }
 
         public void RegisterSubstreamTarget(int exchangeTargetId, SubstreamTarget target)
@@ -68,14 +71,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return ValueTask.CompletedTask;
         }
 
-        public async IAsyncEnumerable<SubstreamEventData> GetData(IReadOnlySet<int> exchangeTargets, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancelToken)
+        /// <summary>
+        /// Fetches events from multiple exchange .
+        /// The max event count is distributed as equally as possible across the different targets
+        /// to fetch data from all of them if possible.
+        /// </summary>
+        /// <param name="exchangeTargets"></param>
+        /// <param name="maxEventCount"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> exchangeTargets, int maxEventCount, CancellationToken cancellationToken)
         {
-            List<IStreamEvent> outputList = new List<IStreamEvent>();
+            List<SubstreamEventData> outputList = new List<SubstreamEventData>();
 
-            while (!cancellationToken.IsCancellationRequested && !enumeratorCancelToken.IsCancellationRequested)
+            bool hasMoreData = true;
+            int maxCountPerTarget = Math.Max(1, maxEventCount / exchangeTargets.Count);
+            while (!cancellationToken.IsCancellationRequested && hasMoreData && outputList.Count < maxEventCount)
             {
+                hasMoreData = false;
                 cancellationToken.ThrowIfCancellationRequested();
-                enumeratorCancelToken.ThrowIfCancellationRequested();
 
                 foreach (var exchangeTarget in exchangeTargets)
                 {
@@ -83,25 +97,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (_targetInfos.TryGetValue(exchangeTarget, out var targetInfo))
                     {
                         // Fetch 10 events from a target before switching to another target to allow fairness
-                        var data = await targetInfo.Target.ReadData(outputList, 10);
-
-                        foreach (var e in outputList)
-                        {
-                            yield return new SubstreamEventData()
-                            {
-                                ExchangeTargetId = exchangeTarget,
-                                StreamEvent = e
-                            };
-                        }
-                        outputList.Clear();
+                        hasMoreData |= await targetInfo.Target.ReadData(outputList, maxCountPerTarget);
                     }
                 }
             }
+
+            return outputList;
         }
 
         public ValueTask SendFailAndRecover(long recoveryPoint)
         {
-            return ValueTask.CompletedTask;
+            return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
         }
 
     }
