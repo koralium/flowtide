@@ -2232,5 +2232,133 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expected, plan);
         }
 
+        [Fact]
+        public void IsDistinctFrom()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1 is distinct from c2 FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){2},
+                        Expressions = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsDistinctFrom,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    },
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 1
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1", "c2" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void IsNotDistinctFrom()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1 is not distinct from c2 FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){2},
+                        Expressions = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotDistinctFrom,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    },
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 1
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1", "c2" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
     }
 }

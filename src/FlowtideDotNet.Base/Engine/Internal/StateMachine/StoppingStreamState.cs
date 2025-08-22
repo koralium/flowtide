@@ -58,6 +58,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        public override void EgressDependenciesDone(string name)
+        {
+            // TODO: Implement waiting for dependencies
+            // Stopping a stream might need to be rethought how it will behave in a distributed setup.
+        }
+
         private void StartCheckpointDoneTask()
         {
             Debug.Assert(_context != null, nameof(_context));

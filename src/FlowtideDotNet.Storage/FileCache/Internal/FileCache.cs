@@ -499,7 +499,6 @@ namespace FlowtideDotNet.Storage.FileCache
         {
             lock (m_lock)
             {
-                _bufferWriter.ClearTemporaryAllocations();
                 foreach (var writer in segmentWriters)
                 {
                     writer.Value.ClearTemporaryAllocations();

@@ -769,30 +769,39 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
         public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection, IReadOnlyList<string> table)
         {
+            var originalDatabase = sqlConnection.Database;
+            var newDb = originalDatabase;
             if (table.Count == 3)
             {
-                var originalDatabase = sqlConnection.Database;
-                try
+                newDb = table[0];
+            }
+            try
+            {
+                if (newDb != originalDatabase)
                 {
-                    await sqlConnection.ChangeDatabaseAsync(table[0]);
+                    await sqlConnection.ChangeDatabaseAsync(newDb);
                 }
-                finally
+
+                using var cmd = sqlConnection.CreateCommand();
+                cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    return reader.GetInt64(0);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Could not get change tracking version from sql server.");
+                }
+            }
+            finally
+            {
+                if (newDb != originalDatabase)
                 {
                     await sqlConnection.ChangeDatabaseAsync(originalDatabase);
                 }
-            }
-            using var cmd = sqlConnection.CreateCommand();
-            cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
-
-            using var reader = await cmd.ExecuteReaderAsync();
-
-            if (await reader.ReadAsync())
-            {
-                return reader.GetInt64(0);
-            }
-            else
-            {
-                throw new InvalidOperationException("Could not get change tracking version from sql server.");
             }
         }
 

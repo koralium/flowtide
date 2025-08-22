@@ -12,6 +12,9 @@
 
 using Confluent.Kafka;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
@@ -83,7 +86,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             return beforeStartOffsets;
         }
 
-        public IEnumerable<RowEvent> ReadInitial()
+        public IEnumerable<EventBatchData> ReadInitial(int columnCount, IMemoryAllocator memoryAllocator)
         {
             Dictionary<int, long> currentOffsets = new Dictionary<int, long>();
             Dictionary<int, long> beforeStartOffsets = GetCurrentWatermarks(_consumer, _topicPartitions, currentOffsets);
@@ -94,6 +97,13 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 currentOffsets[kv.Key] = -1;
             }
 
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
+            Column[] columns = new Column[columnCount];
+            for (int i = 0; i < columnCount; i++)
+            {
+                columns[i] = Column.Create(memoryAllocator);
+            }
+
             while (true)
             {
                 var result = _consumer.Consume(TimeSpan.FromMilliseconds(100));
@@ -101,8 +111,18 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 {
                     // Parse the result
                     currentOffsets[result.Partition.Value] = result.Offset.Value;
-                    var ev = this.valueDeserializer.Deserialize(keyDeserializer, result.Message.Value, result.Message.Key);
-                    yield return ev;
+                    this.valueDeserializer.Deserialize(keyDeserializer, result.Message.Value, result.Message.Key, columns, weights);
+
+                    if (weights.Count >= 100)
+                    {
+                        yield return new EventBatchData(columns);
+                        columns = new Column[columnCount];
+                        for (int i = 0; i < columnCount; i++)
+                        {
+                            columns[i] = Column.Create(memoryAllocator);
+                        }
+                        weights.Clear();
+                    }
                 }
                 if (result == null)
                 {
@@ -128,6 +148,19 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     }
                 }
             }
+
+            if (weights.Count > 0)
+            {
+                yield return new EventBatchData(columns);
+            }
+            else
+            {
+                for (int i = 0; i < columnCount; i++)
+                {
+                    columns[i].Dispose();
+                }
+            }
+            weights.Dispose();
         }
     }
 }

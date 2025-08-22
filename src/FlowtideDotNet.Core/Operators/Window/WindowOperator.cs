@@ -82,7 +82,10 @@ namespace FlowtideDotNet.Core.Operators.Window
                 {
                     _emitList.Add(i);
                 }
-                _emitList.Add(_emitList.Count);
+                for (int i = 0; i < relation.WindowFunctions.Count; i++)
+                {
+                    _emitList.Add(_emitList.Count);
+                }
             }
 
             _windowFunctions = new IWindowFunction[relation.WindowFunctions.Count];

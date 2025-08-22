@@ -241,5 +241,22 @@ namespace FlowtideDotNet.Storage.Tests.Append
                 counter++;
             }
         }
+
+        [Fact]
+        public async Task TestIteratorEmptyTree()
+        {
+            var tree = await CreateTree(2);
+
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            int counter = 0;
+            await foreach (var kv in iterator)
+            {
+                counter++;
+            }
+
+            Assert.Equal(0, counter);
+        }
     }
 }

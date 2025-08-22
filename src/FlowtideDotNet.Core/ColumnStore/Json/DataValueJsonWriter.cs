@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Json
 {
-    internal class DataValueJsonWriter : DataValueVisitor
+    public class DataValueJsonWriter : DataValueVisitor
     {
         private readonly ArrayBufferWriter<byte> _writer;
         private readonly Utf8JsonWriter jsonWriter;
