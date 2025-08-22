@@ -72,6 +72,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly TaskScheduler? _taskScheduler;
         private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
         {
@@ -149,6 +150,7 @@ namespace FlowtideDotNet.Core.Engine
             _taskScheduler = taskScheduler;
             _distributedOptions = distributedOptions;
             _doneRelations = new Dictionary<int, RelationTree>();
+            _communicationPointFactory = new SubstreamCommunicationPointFactory();
         }
 
         //private ExecutionDataflowBlockOptions CreateBlockOptions()
@@ -694,7 +696,7 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitExchangeRelation(ExchangeRelation exchangeRelation, ITargetBlock<IStreamEvent>? state)
         {
             var id = _operatorId++;
-            var op = new ExchangeOperator(exchangeRelation, functionsRegister, DefaultBlockOptions);
+            var op = new ExchangeOperator(exchangeRelation, _communicationPointFactory, functionsRegister, DefaultBlockOptions);
 
             exchangeRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddEgressBlock(id.ToString(), op);

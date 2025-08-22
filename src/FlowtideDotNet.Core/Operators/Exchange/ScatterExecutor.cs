@@ -41,8 +41,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// List that contains all standard outputs to make it simple to iterate when giving out the results.
         /// </summary>
         private readonly List<StandardOutputTarget> standardOutputTargetList;
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
-        public ScatterExecutor(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister)
+        public ScatterExecutor(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister)
         {
             if (!(exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind))
             {
@@ -82,6 +83,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                             throw new NotSupportedException("Pull bucket type must implement PullBucketExchangeTarget");
                         }
                         break;
+                    case ExchangeTargetType.Substream:
+                        if (exchangeRelation.Targets[i] is SubstreamExchangeTarget substreamExchangeTarget)
+                        {
+                            var pullTarget = new SubstreamTarget(substreamExchangeTarget.ExchangeTargetId, exchangeRelation.OutputLength, communicationPointFactory.GetCommunicationPoint(substreamExchangeTarget.SubstreamName));
+                            _targets[i] = pullTarget;
+                        }
+                        else
+                        {
+                            throw new NotSupportedException("Pull bucket type must implement PullBucketExchangeTarget");
+                        }
+                        break;
                     default:
                         throw new NotSupportedException($"{exchangeRelation.Targets[i].Type} is not yet supported");
                 }
@@ -92,6 +104,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             // Create the hash function based on the fields
             _hashFunction = ColumnHashCompiler.CompileGetHashCode(new List<Substrait.Expressions.Expression>(scatterExchangeKind.Fields), functionsRegister);
+            this._communicationPointFactory = communicationPointFactory;
         }
 
         private int[][] CreatePartitionToTargets(ExchangeRelation exchangeRelation)

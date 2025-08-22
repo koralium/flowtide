@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         private const string PullBucketRequestTriggerPrefix = "exchange_";
 
+        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
         internal readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
@@ -44,17 +45,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IObjectState<ExchangeOperatorState>? _state;
         private bool _containPullBucket = false;
 
-        public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
+        public ExchangeOperator(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
             this.exchangeRelation = exchangeRelation;
-
+            this._communicationPointFactory = communicationPointFactory;
             switch (exchangeRelation.ExchangeKind.Type)
             {
                 case ExchangeKindType.Broadcast:
                     _executor = new BroadcastExecutor(exchangeRelation);
                     break;
                 case ExchangeKindType.Scatter:
-                    _executor = new ScatterExecutor(exchangeRelation, functionsRegister);
+                    _executor = new ScatterExecutor(exchangeRelation, communicationPointFactory, functionsRegister);
                     break;
                 default:
                     throw new NotImplementedException(exchangeRelation.ExchangeKind.Type.ToString());

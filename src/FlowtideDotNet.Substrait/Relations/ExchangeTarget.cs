@@ -22,7 +22,8 @@ namespace FlowtideDotNet.Substrait.Relations
         /// Stores the result in a bucket that can be pulled by the target.
         /// This is useful to allow the target to pull the data when it is ready.
         /// </summary>
-        PullBucket = 2
+        PullBucket = 2,
+        Substream = 3
     }
 
     public abstract class ExchangeTarget
@@ -114,6 +115,48 @@ namespace FlowtideDotNet.Substrait.Relations
         }
 
         public static bool operator !=(PullBucketExchangeTarget? left, PullBucketExchangeTarget? right)
+        {
+            return !(left == right);
+        }
+    }
+
+    public sealed class SubstreamExchangeTarget : ExchangeTarget, IEquatable<SubstreamExchangeTarget>
+    {
+        public override ExchangeTargetType Type => ExchangeTargetType.PullBucket;
+
+        /// <summary>
+        /// An identifier that should be unique inside the stream/substream.
+        /// This is used when the target wants to pull the data.
+        /// </summary>
+        public int ExchangeTargetId { get; set; }
+
+        public required string SubstreamName { get; set; }
+
+        public bool Equals(SubstreamExchangeTarget? other)
+        {
+            return other != null &&
+                base.Equals(other) &&
+                Equals(ExchangeTargetId, other.ExchangeTargetId) &&
+                Equals(SubstreamName, other.SubstreamName);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is SubstreamExchangeTarget other &&
+                Equals(other);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(base.GetHashCode(), ExchangeTargetId);
+        }
+
+        public static bool operator ==(SubstreamExchangeTarget? left, SubstreamExchangeTarget? right)
+        {
+            return EqualityComparer<SubstreamExchangeTarget>.Default.Equals(left, right);
+        }
+
+        public static bool operator !=(SubstreamExchangeTarget? left, SubstreamExchangeTarget? right)
         {
             return !(left == right);
         }
