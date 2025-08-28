@@ -184,5 +184,10 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             return pullExchangeReferenceRelation;
         }
+
+        public override Relation VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, object state)
+        {
+            return substreamExchangeReferenceRelation;
+        }
     }
 }

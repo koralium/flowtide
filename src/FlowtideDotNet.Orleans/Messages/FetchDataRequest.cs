@@ -14,20 +14,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Operators.Exchange
+namespace FlowtideDotNet.Orleans.Messages
 {
-    public interface ISubstreamCommunicationHandler
+    [GenerateSerializer]
+    [Immutable]
+    public class FetchDataRequest
     {
-        void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction);
+        public FetchDataRequest(string requestor, IReadOnlySet<int> targetIds, int numberOfEvents)
+        {
+            TargetIds = targetIds;
+            NumberOfEvents = numberOfEvents;
+            Requestor = requestor;
+        }
 
-        Task<IReadOnlyList<SubstreamEventData>> FetchData(
-            IReadOnlySet<int> targetIds,
-            int numberOfEvents,
-            CancellationToken cancellationToken);
+        [Id(0)]
+        public IReadOnlySet<int> TargetIds { get; set; }
 
-        ValueTask SendFailAndRecover(long restoreVersion);
+        [Id(1)]
+        public int NumberOfEvents { get; set; }
+
+        [Id(3)]
+        public string Requestor { get; set; }
     }
 }

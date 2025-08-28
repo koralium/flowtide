@@ -25,5 +25,7 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task StartStreamAsync(StartStreamMessage startStreamMessage);
 
         Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request);
+
+        Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request);
     }
 }

@@ -14,20 +14,17 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    public interface ISubstreamCommunicationHandler
+    public interface ISubstreamCommunicationHandlerFactory
     {
-        void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction);
-
-        Task<IReadOnlyList<SubstreamEventData>> FetchData(
-            IReadOnlySet<int> targetIds,
-            int numberOfEvents,
-            CancellationToken cancellationToken);
-
-        ValueTask SendFailAndRecover(long restoreVersion);
+        /// <summary>
+        /// Gets the communication handler for the specified substream.
+        /// </summary>
+        /// <param name="targetSubstreamName">The name of the substream.</param>
+        /// <returns>The communication handler for the substream.</returns>
+        ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName);
     }
 }

@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly TaskScheduler? _taskScheduler;
         private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
-        private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
+        private readonly SubstreamCommunicationPointFactory? _communicationPointFactory;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
         {
@@ -150,7 +150,10 @@ namespace FlowtideDotNet.Core.Engine
             _taskScheduler = taskScheduler;
             _distributedOptions = distributedOptions;
             _doneRelations = new Dictionary<int, RelationTree>();
-            _communicationPointFactory = new SubstreamCommunicationPointFactory();
+            if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
+            {
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory);
+            }
         }
 
         //private ExecutionDataflowBlockOptions CreateBlockOptions()
@@ -770,5 +773,23 @@ namespace FlowtideDotNet.Core.Engine
             return op;
         }
 
+        public override IStreamVertex VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (_distributedOptions == null)
+            {
+                throw new InvalidOperationException("SubstreamExchangeReferenceRelation is not supported without DistributedOptions");
+            }
+            
+
+            var comPoint = _communicationPointFactory.GetCommunicationPoint(substreamExchangeReferenceRelation.SubStreamName);
+            var op = new SubstreamReadOperator(comPoint, substreamExchangeReferenceRelation, DefaultBlockOptions);
+            var id = _operatorId++;
+            if (state != null && op is ISourceBlock<IStreamEvent> sourceBlock)
+            {
+                sourceBlock.LinkTo(state);
+            }
+            dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
+            return op;
+        }
     }
 }

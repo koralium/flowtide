@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Substrait.Relations
 
     public sealed class SubstreamExchangeTarget : ExchangeTarget, IEquatable<SubstreamExchangeTarget>
     {
-        public override ExchangeTargetType Type => ExchangeTargetType.PullBucket;
+        public override ExchangeTargetType Type => ExchangeTargetType.Substream;
 
         /// <summary>
         /// An identifier that should be unique inside the stream/substream.

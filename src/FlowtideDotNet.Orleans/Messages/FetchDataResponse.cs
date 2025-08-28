@@ -10,24 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Operators.Exchange;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Operators.Exchange
+namespace FlowtideDotNet.Orleans.Messages
 {
-    public interface ISubstreamCommunicationHandler
+    [GenerateSerializer]
+    [Immutable]
+    public class FetchDataResponse
     {
-        void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction);
+        public FetchDataResponse(IReadOnlyList<SubstreamEventData> data)
+        {
+            Data = data;
+        }
 
-        Task<IReadOnlyList<SubstreamEventData>> FetchData(
-            IReadOnlySet<int> targetIds,
-            int numberOfEvents,
-            CancellationToken cancellationToken);
-
-        ValueTask SendFailAndRecover(long restoreVersion);
+        [Id(0)]
+        public IReadOnlyList<SubstreamEventData> Data { get; set; }
     }
 }

@@ -32,6 +32,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly string substreamName;
         private readonly ISubstreamCommunicationHandler _substreamCommunicationHandler;
         private ConcurrentDictionary<int, TargetInfo> _targetInfos;
+        private Task? _fetchDataTask;
+        private readonly object _fetchDataLock = new object();
+        private readonly Dictionary<int, Func<IStreamEvent, Task>> _subscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
+        private long _subscribeTargetsVersion = 0;
+
 
         private class TargetInfo
         {
@@ -110,5 +115,92 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
         }
 
+        public void Subscribe(int exchangeTarget, Func<IStreamEvent, Task> onData)
+        {
+            lock (_fetchDataLock)
+            {
+                _subscribedTargets.Add(exchangeTarget, onData);
+                _subscribeTargetsVersion++;
+            }
+            TryStartFetchTask();
+        }
+
+        private void TryStartFetchTask()
+        {
+            lock (_fetchDataLock)
+            {
+                if (_fetchDataTask != null)
+                {
+                    return;
+                }
+
+                _fetchDataTask = Task.Factory.StartNew(async () =>
+                {
+                    await FetchDataLoop();
+                }, TaskCreationOptions.LongRunning)
+                    .Unwrap()
+                    .ContinueWith((task) =>
+                    {
+                        if (task.IsFaulted)
+                        {
+                            // Handle exceptions
+                            _fetchDataTask = null;
+                            TryStartFetchTask();
+                        }
+                    }, TaskContinuationOptions.ExecuteSynchronously | TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+
+        private async Task FetchDataLoop()
+        {
+            long currentVersion = 0;
+            HashSet<int> subscribedTargets = new HashSet<int>();
+            Dictionary<int, Func<IStreamEvent, Task>> currentSubscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
+            while (true)
+            {
+
+                lock (_fetchDataLock)
+                {
+                    if (_subscribeTargetsVersion > currentVersion)
+                    {
+                        currentVersion = _subscribeTargetsVersion;
+                        subscribedTargets.Clear();
+                        subscribedTargets.UnionWith(_subscribedTargets.Keys);
+                        currentSubscribedTargets.Clear();
+                        foreach (var kvp in _subscribedTargets)
+                        {
+                            currentSubscribedTargets[kvp.Key] = kvp.Value;
+                        }
+                    }
+                }
+                if (subscribedTargets.Count == 0)
+                {
+                    // No targets to fetch data from, wait for a while before checking again
+                    await Task.Delay(100);
+                    continue;
+                }
+
+                try
+                {
+                    // Fetch data from the substream communication handler
+                    var data = await _substreamCommunicationHandler.FetchData(subscribedTargets, 100, default);
+                    if (data.Count > 0)
+                    {
+                        // Process the fetched data
+                        foreach (var substreamEventData in data)
+                        {
+                            if (currentSubscribedTargets.TryGetValue(substreamEventData.ExchangeTargetId, out var onData))
+                            {
+                                await onData(substreamEventData.StreamEvent);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the exception and continue
+                }
+            }
+        }
     }
 }

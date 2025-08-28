@@ -36,12 +36,20 @@ namespace FlowtideDotNet.Orleans.Grains
         private readonly ILoggerFactory _loggerFactory;
         private readonly IGrainFactory _grainFactory;
         private Base.Engine.DataflowStream? _stream;
+        private OrleansCommunicationFactory? _orleansCommunicationFactory;
 
         public StreamGrain(IConnectorManager connectorManager, ILoggerFactory loggerFactory, IGrainFactory grainFactory)
         {
             this._connectorManager = connectorManager;
             this._loggerFactory = loggerFactory;
             this._grainFactory = grainFactory;
+        }
+
+        public async Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request)
+        {
+            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            var data = await handler.GetData(request.TargetIds, request.NumberOfEvents, default);
+            return new FetchDataResponse(data);
         }
 
         public async Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request)
@@ -78,11 +86,16 @@ namespace FlowtideDotNet.Orleans.Grains
                     DirectoryPath = "./data" + startStreamMessage.SubstreamName
                 })
             });
+
+            _orleansCommunicationFactory = new OrleansCommunicationFactory(_grainFactory);
             flowtideBuilder.WithScheduler(new OrleansStreamScheduler(this.RegisterTimer));
             flowtideBuilder.WithLoggerFactory(_loggerFactory);
             if (startStreamMessage.SubstreamName != null)
             {
-                flowtideBuilder.SetDistributedOptions(new DistributedOptions(startStreamMessage.SubstreamName, new PullExchangeReadFactory(_grainFactory)));
+                flowtideBuilder.SetDistributedOptions(new DistributedOptions(
+                    startStreamMessage.SubstreamName, 
+                    new PullExchangeReadFactory(_grainFactory),
+                    _orleansCommunicationFactory));
             }
             
             _stream = flowtideBuilder.Build();

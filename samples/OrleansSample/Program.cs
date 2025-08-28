@@ -31,6 +31,7 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddOrleans(b =>
 {
     b.UseLocalhostClustering();
+    
     b.Services.AddSingleton<OrleansPlanSerializer>();
     b.Services.AddSingleton<IGeneralizedCodec, OrleansPlanSerializer>();
     b.Services.AddSingleton<IGeneralizedCopier, OrleansPlanSerializer>();

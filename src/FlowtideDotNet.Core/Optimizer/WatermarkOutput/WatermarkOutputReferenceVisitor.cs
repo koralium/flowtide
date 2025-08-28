@@ -318,5 +318,10 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
         {
             return pullExchangeReferenceRelation;
         }
+
+        public override Relation VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, bool state)
+        {
+            return substreamExchangeReferenceRelation;
+        }
     }
 }

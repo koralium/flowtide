@@ -22,22 +22,34 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         private readonly object _lock = new object();
         private readonly Dictionary<string, SubstreamCommunicationPoint> _existing;
+        private readonly string? selfSubstreamName;
+        private readonly ISubstreamCommunicationHandlerFactory? _communicationHandlerFactory;
 
-        public SubstreamCommunicationPointFactory()
+        public SubstreamCommunicationPointFactory(string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null)
         {
             _existing = new Dictionary<string, SubstreamCommunicationPoint>();
+            this.selfSubstreamName = selfSubstreamName;
+            this._communicationHandlerFactory = communicationHandlerFactory;
         }
 
-        public SubstreamCommunicationPoint GetCommunicationPoint(string substreamName)
+        public SubstreamCommunicationPoint GetCommunicationPoint(string targetSubstreamName)
         {
+            if (_communicationHandlerFactory == null)
+            {
+                throw new InvalidOperationException("No communication handler factory provided, cannot create communication point.");
+            }
+            if (selfSubstreamName == null)
+            {
+                throw new InvalidOperationException("No self substream name provided, cannot create communication point.");
+            }
             lock (_lock)
             {
-                if (_existing.TryGetValue(substreamName, out var existing))
+                if (_existing.TryGetValue(targetSubstreamName, out var existing))
                 {
                     return existing;
                 }
-                existing = new SubstreamCommunicationPoint(substreamName);
-                _existing.Add(substreamName, existing);
+                existing = new SubstreamCommunicationPoint(targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
+                _existing.Add(targetSubstreamName, existing);
                 return existing;
             }
         }

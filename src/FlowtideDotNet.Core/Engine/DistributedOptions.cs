@@ -16,10 +16,11 @@ namespace FlowtideDotNet.Core.Engine
 {
     public class DistributedOptions
     {
-        public DistributedOptions(string substreamName, IPullBucketExchangeReadFactory pullBucketExchangeReadFactory)
+        public DistributedOptions(string substreamName, IPullBucketExchangeReadFactory pullBucketExchangeReadFactory, ISubstreamCommunicationHandlerFactory communicationHandlerFactory)
         {
             SubstreamName = substreamName;
             PullBucketExchangeReadFactory = pullBucketExchangeReadFactory;
+            CommunicationHandlerFactory = communicationHandlerFactory;
         }
 
         public string SubstreamName { get; }
@@ -28,5 +29,7 @@ namespace FlowtideDotNet.Core.Engine
         /// Factory to create the read operators to read from other streams.
         /// </summary>
         public IPullBucketExchangeReadFactory PullBucketExchangeReadFactory { get; } 
+
+        public ISubstreamCommunicationHandlerFactory CommunicationHandlerFactory { get; }
     }
 }
