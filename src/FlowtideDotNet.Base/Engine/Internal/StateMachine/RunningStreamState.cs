@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Task? _initialBatchTask;
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
-        private HashSet<string>? waitingForDependenciesEgresses;
+        private HashSet<string>? waitingForDependencies;
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
         private bool _initialCheckpointTaken = false;
@@ -47,13 +47,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressDependenciesDone(string name)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(waitingForDependenciesEgresses != null, nameof(waitingForDependenciesEgresses));
+            Debug.Assert(waitingForDependencies != null, nameof(waitingForDependencies));
             lock (_context._checkpointLock)
             {
-                waitingForDependenciesEgresses.Remove(name);
+                waitingForDependencies.Remove(name);
 
                 // Check if all egresses has done their dependencies
-                if (waitingForDependenciesEgresses.Count > 0 || !_initialCheckpointTaken || _compactionStarted)
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted)
                 {
                     return;
                 }
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 var run = (RunningStreamState)state!;
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
-                Debug.Assert(run.waitingForDependenciesEgresses != null);
+                Debug.Assert(run.waitingForDependencies != null);
 
                 // Write the latest state
                 run._context._lastState = new StreamState(
@@ -131,7 +131,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                  .ContinueWith(async (t, state) =>
                  {
                      RunningStreamState @this = (RunningStreamState)state!;
-                     Debug.Assert(@this.waitingForDependenciesEgresses != null);
+                     Debug.Assert(@this.waitingForDependencies != null);
                      if (t.IsFaulted)
                      {
                          await _context.OnFailure(t.Exception);
@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                          _initialCheckpointTaken = true;
                          // Check if all egresses has done their dependencies
                          // if not return
-                         if (@this.waitingForDependenciesEgresses.Count > 0 || _compactionStarted)
+                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted)
                          {
                              return;
                          }
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.CheckForPause();
@@ -256,7 +256,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_initialBatchTask != null)
                 {
-                    return;
+                    return Task.CompletedTask;
+                }
+
+                lock (_context._checkpointLock)
+                {
+                    // Reset the checkpoint version after the stream is in a running state
+                    _context._restoreCheckpointVersion = default;
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -295,6 +301,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     })
                     .Unwrap();
             }
+            return Task.CompletedTask;
         }
 
         public override Task OnFailure()
@@ -326,12 +333,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _initialCheckpointTaken = false;
                 _compactionStarted = false;
                 nonCheckpointedEgresses = new HashSet<string>();
-                waitingForDependenciesEgresses = new HashSet<string>();
+                waitingForDependencies = new HashSet<string>();
                 foreach (var key in _context.egressBlocks.Keys)
                 {
                     nonCheckpointedEgresses.Add(key);
-                    waitingForDependenciesEgresses.Add(key);
+                    waitingForDependencies.Add(key);
                 }
+                foreach(var key in _context.ingressBlocks.Keys)
+                {
+                    waitingForDependencies.Add(key);
+                }
+
                 _context.checkpointTask = new TaskCompletionSource();
                 var newTime = _context.producingTime + 1;
                 checkpoint = new Checkpoint(_context.producingTime, newTime);
