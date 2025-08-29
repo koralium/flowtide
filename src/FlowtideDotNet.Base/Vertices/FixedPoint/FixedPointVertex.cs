@@ -536,5 +536,10 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
         {
             return Task.CompletedTask;
         }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

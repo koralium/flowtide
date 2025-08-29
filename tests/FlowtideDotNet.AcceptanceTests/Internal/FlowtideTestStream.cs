@@ -331,6 +331,21 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        public async Task StopMockIngressAutocompleteDependencies()
+        {
+            await _stream!.CallTrigger("ingress_no_autocomplete_dependencies", default);
+        }
+
+        public async Task MockIngressFailAndRollback(long restoreVersion)
+        {
+            await _stream!.CallTrigger("ingress_fail_and_rollback", restoreVersion);
+        }
+
+        public async Task MockIngressSetDependenciesDone()
+        {
+            await _stream!.CallTrigger("ingress_dependencies_done", default);
+        }
+
         public async Task HealthyFor(TimeSpan time)
         {
             Debug.Assert(_stream != null);
