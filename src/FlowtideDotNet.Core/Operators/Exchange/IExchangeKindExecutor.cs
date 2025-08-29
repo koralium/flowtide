@@ -37,5 +37,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
 
         Task GetPullBucketData(int exchangeTargetId, ExchangeFetchDataMessage fetchDataRequest);
+
+        Task OnFailure(long recoveryPoint);
     }
 }

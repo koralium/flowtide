@@ -120,5 +120,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             _currentBatch = weightedBatch;
         }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

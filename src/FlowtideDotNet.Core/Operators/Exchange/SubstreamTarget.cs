@@ -196,5 +196,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
 
         }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

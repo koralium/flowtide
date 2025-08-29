@@ -172,5 +172,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             Debug.Assert(_state?.Value != null);
             await _executor.AddCheckpointState(_state.Value);
         }
+
+        public override Task OnFailure(long rollbackVersion)
+        {
+            return _executor.OnFailure(rollbackVersion);
+        }
     }
 }

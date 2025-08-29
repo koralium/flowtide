@@ -42,5 +42,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task OnWatermark(Watermark watermark);
 
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
+
+        Task OnFailure(long recoveryPoint);
     }
 }

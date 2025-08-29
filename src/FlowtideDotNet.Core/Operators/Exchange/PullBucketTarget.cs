@@ -208,5 +208,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public void NewBatch(EventBatchWeighted weightedBatch)
         {
         }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

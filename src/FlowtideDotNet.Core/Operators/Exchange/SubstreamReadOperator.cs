@@ -164,6 +164,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     // some check here is needed to check if this stream should fail
                     _watermarkNamesState.Value = initWatermarksEvent.WatermarkNames.ToHashSet();
                     await output.SendLockingEvent(initWatermarksEvent);
+                    SetDependenciesDone();
                 }
                 else if (ev is ILockingEvent lockingEvent)
                 {
@@ -178,6 +179,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     await output.SendWatermark(watermark);
                 }
             }
+        }
+
+        public override async Task OnFailure(long rollbackVersion)
+        {
+            await _communicationPoint.SendFailAndRecover(rollbackVersion);
+        }
+
+        public override Task CheckpointDone(long checkpointVersion)
+        {
+            return base.CheckpointDone(checkpointVersion);
         }
 
         public override void DoLockingEvent(ILockingEvent lockingEvent)

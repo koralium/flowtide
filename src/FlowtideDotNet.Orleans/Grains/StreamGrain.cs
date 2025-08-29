@@ -84,7 +84,11 @@ namespace FlowtideDotNet.Orleans.Grains
                 PersistentStorage = new FileCachePersistentStorage(new Storage.FileCacheOptions()
                 {
                     DirectoryPath = "./data" + startStreamMessage.SubstreamName
-                })
+                }),
+                TemporaryStorageOptions = new Storage.FileCacheOptions()
+                {
+                    DirectoryPath = "./temp" + startStreamMessage.SubstreamName
+                }
             });
 
             _orleansCommunicationFactory = new OrleansCommunicationFactory(_grainFactory);

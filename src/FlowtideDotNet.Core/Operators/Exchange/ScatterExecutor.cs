@@ -231,5 +231,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException($"{exchangeTargetId} does not exist");
             }
         }
+
+        public Task OnFailure(long recoveryPoint)
+        {
+            List<Task> tasks = new List<Task>();
+            foreach (var target in _targets)
+            {
+                tasks.Add(target.OnFailure(recoveryPoint));
+            }
+            return Task.WhenAll(tasks);
+        }
     }
 }
