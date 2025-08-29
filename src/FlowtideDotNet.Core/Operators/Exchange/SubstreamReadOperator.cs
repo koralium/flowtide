@@ -48,17 +48,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override Task Compact()
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public override Task DeleteAsync()
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         public override Task OnTrigger(string triggerName, object? state)
         {
-            throw new NotImplementedException();
+            return Task.CompletedTask;
         }
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
