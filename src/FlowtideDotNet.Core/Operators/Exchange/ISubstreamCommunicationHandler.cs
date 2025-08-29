@@ -21,7 +21,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public interface ISubstreamCommunicationHandler
     {
-        void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction);
+        void Initialize(
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<long, Task> callFailAndRecover);
 
         Task<IReadOnlyList<SubstreamEventData>> FetchData(
             IReadOnlySet<int> targetIds,

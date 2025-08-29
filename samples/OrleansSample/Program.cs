@@ -132,9 +132,4 @@ await grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMes
 //await grain7.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream7", plan, "sub2"));
 //await grain8.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream8", plan, "sub2"));
 
-while (true)
-{
-    await Task.Delay(TimeSpan.FromSeconds(10));
-    GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
-}
 await app.WaitForShutdownAsync();

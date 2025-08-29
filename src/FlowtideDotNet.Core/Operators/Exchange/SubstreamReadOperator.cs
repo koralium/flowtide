@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private SemaphoreSlim? _waitLock;
+        private IObjectState<HashSet<string>>? _watermarkNamesState;
 
         public SubstreamReadOperator(SubstreamCommunicationPoint communicationPoint, SubstreamExchangeReferenceRelation referenceRelation, DataflowBlockOptions options) : base(options)
         {
@@ -63,7 +64,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
-            throw new NotImplementedException();
+            Debug.Assert(_watermarkNamesState != null);
+            Debug.Assert(_watermarkNamesState.Value != null);
+            return Task.FromResult<IReadOnlySet<string>>(_watermarkNamesState.Value);
         }
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
@@ -74,11 +77,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 MemoryAllocator = MemoryAllocator,
                 ValueSerializer = new StreamEventValueSerializer(MemoryAllocator)
             });
+            _watermarkNamesState = await stateManagerClient.GetOrCreateObjectStateAsync<HashSet<string>>("watermarkNames");
         }
 
-        protected override Task OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            throw new NotImplementedException();
+            Debug.Assert(_watermarkNamesState != null);
+            await _watermarkNamesState.Commit();
         }
 
         protected override Task SendInitial(IngressOutput<StreamEventBatch> output)
@@ -90,6 +95,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             Debug.Assert(_waitLock != null);
             Debug.Assert(_queue != null);
+            Debug.Assert(_watermarkNamesState != null);
+
             // Fetch data from the communication point
             _communicationPoint.Subscribe(_exchangeReferenceRelation.ExchangeTargetId, async (ev) =>
             {
@@ -105,7 +112,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             });
 
-            while (true)
+            while (!output.CancellationToken.IsCancellationRequested)
             {
                 await _waitLock.WaitAsync();
 
@@ -142,6 +149,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     }
                     if (inStreamCheckpoint != null)
                     {
+                        await OnCheckpoint(inStreamCheckpoint.CheckpointTime);
                         await output.SendLockingEvent(checkpointEvent);
                         _currentCheckpoint = null;
                     }
@@ -149,6 +157,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         throw new InvalidOperationException("Checkpoint event not found in stream");
                     }
+                }
+                else if (ev is InitWatermarksEvent initWatermarksEvent)
+                {
+                    // TODO: This might mean that the other stream failed and restarted.
+                    // some check here is needed to check if this stream should fail
+                    _watermarkNamesState.Value = initWatermarksEvent.WatermarkNames.ToHashSet();
+                    await output.SendLockingEvent(initWatermarksEvent);
                 }
                 else if (ev is ILockingEvent lockingEvent)
                 {
@@ -188,6 +203,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
 
                     });
+            }
+            if (lockingEvent is InitWatermarksEvent initWatermarksEvent &&
+                _watermarkNamesState != null && 
+                _watermarkNamesState.Value != null)
+            {
+                // Run task to send watermark values
+                base.DoLockingEvent(lockingEvent);
             }
         }
     }

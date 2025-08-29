@@ -42,7 +42,9 @@ namespace FlowtideDotNet.Orleans.Internal
             return response.Data;
         }
 
-        public void Initialize(Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction)
+        public void Initialize(
+            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
+            Func<long, Task> callFailAndRecover)
         {
             _getDataFunction = getDataFunction;
         }

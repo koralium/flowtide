@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
-            substreamCommunicationHandler.Initialize(GetData);
+            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover);
         }
 
         public void RegisterSubstreamTarget(int exchangeTargetId, SubstreamTarget target)
@@ -108,6 +108,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
 
             return outputList;
+        }
+
+        private Task DoFailAndRecover(long recoveryPoint)
+        {
+            return Task.CompletedTask;
         }
 
         public ValueTask SendFailAndRecover(long recoveryPoint)
