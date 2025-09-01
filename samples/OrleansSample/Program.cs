@@ -15,6 +15,7 @@ using OrleansSample;
 using FlowtideDotNet.AspNetCore.Extensions;
 using System.Net.Sockets;
 using FlowtideDotNet.Core.Optimizer;
+using SqlSampleWithUI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -40,7 +41,8 @@ builder.Services.AddOrleans(b =>
     var connMgr = new ConnectorManager();
     connMgr.AddSource(new DummyReadFactory("*"));
     //connMgr.AddConsoleSink("*");
-    connMgr.AddBlackholeSink("*");
+    connMgr.AddSink(new DummyWriteFactory("*"));
+    //connMgr.AddBlackholeSink("*");
     b.Services.AddSingleton<IConnectorManager>(connMgr);
     //b.Services.AddSerializer(s =>
     //{

@@ -145,11 +145,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             ExchangeRelation exchangeRelation, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState,
-            IMemoryAllocator memoryAllocator)
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             for (int i = 0; i < _targets.Length; i++)
             {
-                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState, memoryAllocator);
+                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState, memoryAllocator, failAndRecoverFunc);
             }
         }
 

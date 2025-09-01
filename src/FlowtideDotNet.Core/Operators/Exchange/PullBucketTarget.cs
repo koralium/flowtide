@@ -111,7 +111,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _iterations = new PrimitiveList<uint>(_memoryAllocator);
         }
 
-        public async Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            int targetId,
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _memoryAllocator = memoryAllocator;
             _targetId = targetId;

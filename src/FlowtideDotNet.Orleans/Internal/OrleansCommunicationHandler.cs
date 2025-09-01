@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Orleans.Internal
         private readonly IGrainFactory _grainFactory;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private IStreamGrain _streamGrain;
+        private Func<long, Task>? _callFailAndRecover;
 
         public OrleansCommunicationHandler(string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -47,6 +48,7 @@ namespace FlowtideDotNet.Orleans.Internal
             Func<long, Task> callFailAndRecover)
         {
             _getDataFunction = getDataFunction;
+            _callFailAndRecover = callFailAndRecover;
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken = default)
@@ -58,10 +60,18 @@ namespace FlowtideDotNet.Orleans.Internal
             return await _getDataFunction(targetIds, numberOfEvents, cancellationToken);
         }
 
-        public ValueTask SendFailAndRecover(long restoreVersion)
+        public Task SendFailAndRecover(long restoreVersion)
         {
+            return _streamGrain.FailAndRecoverAsync(new Messages.FailAndRecoverRequest(selfName, restoreVersion));
+        }
 
-            throw new NotImplementedException();
+        public Task FailAndRecover(long restorePoint)
+        {
+            if (_callFailAndRecover == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _callFailAndRecover(restorePoint);
         }
     }
 }

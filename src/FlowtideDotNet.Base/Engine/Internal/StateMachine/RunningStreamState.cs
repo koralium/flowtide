@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     if (block is IStreamIngressVertex streamIngressVertex)
                     {
-                        return streamIngressVertex.CheckpointDone(run._currentCheckpoint.CheckpointTime);
+                        return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     return Task.CompletedTask;
                 });

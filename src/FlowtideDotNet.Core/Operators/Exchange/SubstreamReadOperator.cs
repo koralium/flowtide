@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private TaskCompletionSource? _waitForCheckpoint;
         private Task? _fetchTask;
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
-        private readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1);
+        private SemaphoreSlim _writeLock = new SemaphoreSlim(1);
         private SemaphoreSlim? _waitLock;
         private IObjectState<HashSet<string>>? _watermarkNamesState;
 
@@ -43,6 +43,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             this._communicationPoint = communicationPoint;
             _exchangeReferenceRelation = referenceRelation;
+            _communicationPoint.RegisterReadOperator(this);
         }
 
         public override string DisplayName => "Substream Read";
@@ -72,6 +73,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             _waitLock = new SemaphoreSlim(0);
+            _writeLock.Release();
+            _writeLock = new SemaphoreSlim(1);
             _queue = await stateManagerClient.GetOrCreateQueue("queue", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()
             {
                 MemoryAllocator = MemoryAllocator,
@@ -114,13 +117,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
             while (!output.CancellationToken.IsCancellationRequested)
             {
-                await _waitLock.WaitAsync();
+                await _waitLock.WaitAsync(output.CancellationToken);
 
-                await _writeLock.WaitAsync();
+                await _writeLock.WaitAsync(output.CancellationToken);
 
                 var ev = await _queue.Dequeue();
 
                 _writeLock.Release();
+
+                output.CancellationToken.ThrowIfCancellationRequested();
 
                 if (ev is ICheckpointEvent checkpointEvent)
                 {
@@ -157,6 +162,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         throw new InvalidOperationException("Checkpoint event not found in stream");
                     }
+                    SetDependenciesDone();
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)
                 {
@@ -183,12 +189,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override async Task OnFailure(long rollbackVersion)
         {
+            _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             await _communicationPoint.SendFailAndRecover(rollbackVersion);
         }
 
         public override Task CheckpointDone(long checkpointVersion)
         {
             return base.CheckpointDone(checkpointVersion);
+        }
+
+        public Task FailAndRecover(long recoveryPoint)
+        {
+            return FailAndRollback(restoreVersion: recoveryPoint);
         }
 
         public override void DoLockingEvent(ILockingEvent lockingEvent)
@@ -212,7 +224,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _fetchTask = RunTask(FetchData)
                     .ContinueWith(t =>
                     {
-
+                        _fetchTask = null;
                     });
             }
             if (lockingEvent is InitWatermarksEvent initWatermarksEvent &&

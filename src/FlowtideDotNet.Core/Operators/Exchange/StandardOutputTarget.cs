@@ -90,7 +90,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _iterations = new PrimitiveList<uint>(_memoryAllocator);
         }
 
-        public Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        public Task Initialize(
+            int targetId, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _memoryAllocator = memoryAllocator;
             //_offsets = new PrimitiveList<int>(memoryAllocator);

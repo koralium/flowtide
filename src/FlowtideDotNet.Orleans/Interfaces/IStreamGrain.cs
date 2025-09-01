@@ -27,5 +27,7 @@ namespace FlowtideDotNet.Orleans.Interfaces
         Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request);
 
         Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request);
+
+        Task FailAndRecoverAsync(FailAndRecoverRequest request);
     }
 }

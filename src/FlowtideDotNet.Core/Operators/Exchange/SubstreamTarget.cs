@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private IMemoryAllocator? _memoryAllocator;
         private readonly SemaphoreSlim _lockSemaphore;
+        private Func<long, Task>? _failAndRecoverFunc;
 
         private PrimitiveList<int>? _weights;
         private PrimitiveList<uint>? _iterations;
@@ -110,8 +111,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public async Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            int targetId, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
+            _failAndRecoverFunc = failAndRecoverFunc;
             _memoryAllocator = memoryAllocator;
             _queue = await stateManagerClient.GetOrCreateQueue($"events_target_{targetId}", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()
             {
@@ -194,12 +201,20 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _lockSemaphore.Release();
             }
-
         }
 
         public Task OnFailure(long recoveryPoint)
         {
-            return Task.CompletedTask;
+            return _substreamCommunication.SendFailAndRecover(recoveryPoint);
+        }
+
+        public Task FailAndRecover(long recoveryPoint)
+        {
+            if (_failAndRecoverFunc == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _failAndRecoverFunc(recoveryPoint);
         }
     }
 }

@@ -27,7 +27,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         void NewBatch(EventBatchWeighted weightedBatch);
         ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
 
-        Task Initialize(int targetId, IStateManagerClient stateManagerClient, ExchangeOperatorState state, IMemoryAllocator memoryAllocator);
+        Task Initialize(
+            int targetId, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState state, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc);
 
         /// <summary>
         /// Called when a event batch has been partitioned.

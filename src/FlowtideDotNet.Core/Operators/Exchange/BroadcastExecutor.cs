@@ -46,7 +46,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return exchangeRelation.Targets.Any(x => x.Type == ExchangeTargetType.PullBucket);
         }
 
-        public async Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator)
+        public async Task Initialize(
+            ExchangeRelation exchangeRelation, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState exchangeOperatorState, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 

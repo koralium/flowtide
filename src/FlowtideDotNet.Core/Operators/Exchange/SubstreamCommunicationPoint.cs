@@ -36,6 +36,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly object _fetchDataLock = new object();
         private readonly Dictionary<int, Func<IStreamEvent, Task>> _subscribedTargets = new Dictionary<int, Func<IStreamEvent, Task>>();
         private long _subscribeTargetsVersion = 0;
+        private bool _dataHandled = false;
+        private readonly object _dataHandledLock = new object();
+        private List<SubstreamReadOperator> _readOperators = new List<SubstreamReadOperator>();
 
 
         private class TargetInfo
@@ -57,6 +60,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
             substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover);
+        }
+
+        public void RegisterReadOperator(SubstreamReadOperator substreamReadOperator)
+        {
+            lock (_readOperators)
+            {
+                _readOperators.Add(substreamReadOperator);
+            }
         }
 
         public void RegisterSubstreamTarget(int exchangeTargetId, SubstreamTarget target)
@@ -107,15 +118,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
 
+            if (outputList.Count > 0)
+            {
+                lock (_dataHandledLock)
+                {
+                    _dataHandled = true;
+                }
+            }
+
             return outputList;
         }
 
-        private Task DoFailAndRecover(long recoveryPoint)
+        private async Task DoFailAndRecover(long recoveryPoint)
         {
-            return Task.CompletedTask;
+            var firstTarget = _targetInfos.FirstOrDefault();
+            if (firstTarget.Value != null)
+            {
+                await firstTarget.Value.Target.FailAndRecover(recoveryPoint);
+            }
+            else
+            {
+                SubstreamReadOperator? readOperator;
+                lock (_readOperators)
+                {
+                    readOperator = _readOperators.FirstOrDefault();
+                }
+                if (readOperator != null)
+                {
+                    await readOperator.FailAndRecover(recoveryPoint);
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Failed to recover {recoveryPoint}");
+                }
+            }
         }
 
-        public ValueTask SendFailAndRecover(long recoveryPoint)
+        public Task SendFailAndRecover(long recoveryPoint)
         {
             return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
         }
@@ -128,6 +167,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _subscribeTargetsVersion++;
             }
             TryStartFetchTask();
+        }
+
+        public void Unsubscribe(int exchangeTarget)
+        {
+            lock (_fetchDataLock)
+            {
+                _subscribedTargets.Remove(exchangeTarget);
+                _subscribeTargetsVersion++;
+            }
         }
 
         private void TryStartFetchTask()
@@ -191,6 +239,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     var data = await _substreamCommunicationHandler.FetchData(subscribedTargets, 100, default);
                     if (data.Count > 0)
                     {
+                        lock (_dataHandledLock)
+                        {
+                            _dataHandled = true;
+                        }
                         // Process the fetched data
                         foreach (var substreamEventData in data)
                         {

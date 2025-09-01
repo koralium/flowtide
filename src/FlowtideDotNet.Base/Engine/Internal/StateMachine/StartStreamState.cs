@@ -235,9 +235,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         _context.loggerFactory,
                         _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
                         _context.FailAndRollback);
-                    await block.Value.Initialize(block.Key, _context._lastState!.Time, _context.producingTime, vertexHandler, _context._streamVersionInformation);
+                    await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
                 }
-
+                
                 _context._logger.InitializingEgressBlocks(_context.streamName);
                 foreach (var block in _context.egressBlocks)
                 {

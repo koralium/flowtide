@@ -24,7 +24,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal interface IExchangeKindExecutor
     {
-        Task Initialize(ExchangeRelation exchangeRelation, IStateManagerClient stateManagerClient, ExchangeOperatorState exchangeOperatorState, IMemoryAllocator memoryAllocator);
+        Task Initialize(
+            ExchangeRelation exchangeRelation, 
+            IStateManagerClient stateManagerClient, 
+            ExchangeOperatorState exchangeOperatorState, 
+            IMemoryAllocator memoryAllocator,
+            Func<long, Task> failAndRecoverFunc);
 
         IAsyncEnumerable<KeyValuePair<int, StreamMessage<StreamEventBatch>>> PartitionData(StreamEventBatch data, long time);
 

@@ -78,6 +78,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override string DisplayName => "Exchange";
 
+        private Task FailAndRecoverMethod(long recoveryPoint)
+        {
+            return FailAndRollback(restoreVersion: recoveryPoint);
+        }
+
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<ExchangeOperatorState>("state");
@@ -86,7 +91,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _state.Value = new ExchangeOperatorState();
             }
 
-            await _executor.Initialize(exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator);
+            await _executor.Initialize(exchangeRelation, stateManagerClient, _state.Value, MemoryAllocator, FailAndRecoverMethod);
 
             foreach(var pullTarget in exchangeRelation.Targets)
             {
