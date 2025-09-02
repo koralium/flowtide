@@ -163,7 +163,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     {
                         throw new InvalidOperationException("Checkpoint event not found in stream");
                     }
-                    SetDependenciesDone();
                 }
                 else if (ev is InitWatermarksEvent initWatermarksEvent)
                 {
