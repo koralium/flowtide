@@ -49,6 +49,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 
                 await Task.Delay(100);
             }
+
+            Assert.Equal(Base.Engine.Internal.StateMachine.StreamStateValue.Deleted, State);
         }
     }
 }
