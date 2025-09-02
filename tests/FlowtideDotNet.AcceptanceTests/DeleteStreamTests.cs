@@ -33,8 +33,10 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Users.Select(x => new { x.UserKey, x.FirstName }));
 
             await DeleteStream();
+
+            CancellationTokenSource tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             
-            while (true)
+            while (!tokenSource.IsCancellationRequested)
             {
                 if (State == Base.Engine.Internal.StateMachine.StreamStateValue.Deleted)
                 {
@@ -44,6 +46,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 {
                     throw new InvalidOperationException("Not in the deleting state");
                 }
+                
+                await Task.Delay(100);
             }
         }
     }
