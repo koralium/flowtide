@@ -142,6 +142,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public async Task Initialize(
+            long restoreVersion,
             ExchangeRelation exchangeRelation, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState,
@@ -150,7 +151,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             for (int i = 0; i < _targets.Length; i++)
             {
-                await _targets[i].Initialize(i, stateManagerClient, exchangeOperatorState, memoryAllocator, failAndRecoverFunc);
+                await _targets[i].Initialize(restoreVersion, i, stateManagerClient, exchangeOperatorState, memoryAllocator, failAndRecoverFunc);
             }
         }
 

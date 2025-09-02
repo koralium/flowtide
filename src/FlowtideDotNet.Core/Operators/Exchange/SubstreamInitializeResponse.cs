@@ -14,25 +14,23 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
-    public interface ISubstreamCommunicationHandler
+    public class SubstreamInitializeResponse
     {
-        void Initialize(
-            Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget);
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion)
+        {
+            NotStarted = notStarted;
+            Success = success;
+            RestoreVersion = restoreVersion;
+        }
 
-        Task<IReadOnlyList<SubstreamEventData>> FetchData(
-            IReadOnlySet<int> targetIds,
-            int numberOfEvents,
-            CancellationToken cancellationToken);
+        public bool NotStarted { get; }
 
-        Task SendFailAndRecover(long restoreVersion);
+        public bool Success { get; }
 
-        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken);
+        public long RestoreVersion { get; }
     }
 }

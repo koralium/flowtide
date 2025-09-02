@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
     internal class SubstreamCommunicationPoint
     {
+        private readonly ILogger _logger;
         private readonly string substreamName;
         private readonly ISubstreamCommunicationHandler _substreamCommunicationHandler;
         private ConcurrentDictionary<int, TargetInfo> _targetInfos;
@@ -39,6 +41,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _dataHandled = false;
         private readonly object _dataHandledLock = new object();
         private List<SubstreamReadOperator> _readOperators = new List<SubstreamReadOperator>();
+
+        // Initialize fields
+        private bool _initializedSent = false;
+        private long _selfInitializeVersion = 0;
+        private bool _initializeRecieved = false;
+        private long _targetInitializeVersion = 0;
+        private readonly object _initializeLock = new object();
 
 
         private class TargetInfo
@@ -54,12 +63,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public SubstreamCommunicationPoint(string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
+        public SubstreamCommunicationPoint(ILogger logger, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
         {
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
+            this._logger = logger;
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
-            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover);
+            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize);
         }
 
         public void RegisterReadOperator(SubstreamReadOperator substreamReadOperator)
@@ -67,6 +77,58 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             lock (_readOperators)
             {
                 _readOperators.Add(substreamReadOperator);
+            }
+        }
+
+        public Task InitializeOperator(long restorePoint)
+        {
+            lock (_initializeLock)
+            {
+                if (_initializedSent)
+                {
+                    return Task.CompletedTask;
+                }
+                if (_initializeRecieved)
+                {
+                    if (restorePoint != _targetInitializeVersion)
+                    {
+                        var minVersion = Math.Min(restorePoint, _targetInitializeVersion);
+                        return DoFailAndRecover(minVersion);
+                    }
+                }
+                _initializedSent = true;
+                _selfInitializeVersion = restorePoint;
+            }
+
+            return SendInitializeRequest(restorePoint);
+        }
+
+        private async Task SendInitializeRequest(long restorePoint)
+        {
+            SubstreamInitializeResponse? response;
+
+            // Retry multiple times to send the initialize request
+            int tryCount = 0;
+            do
+            {
+                _logger.LogInformation("Sending initialize request to substream {substreamName} with restore point {restorePoint}, try {tryCount}", substreamName, restorePoint, tryCount);
+                response = await _substreamCommunicationHandler.SendInitializeRequest(restorePoint, default);
+                tryCount++;
+
+                if (tryCount > 10)
+                {
+                    throw new InvalidOperationException($"Failed to initialize substream {substreamName} after {tryCount} tries.");
+                }
+                if (response.NotStarted)
+                {
+                    _logger.LogInformation("Substream {substreamName} not started yet, retrying in {delay} ms", substreamName, Math.Min(1000 * tryCount, 10000));
+                    await Task.Delay(Math.Min(1000 * tryCount, 10000));
+                }
+            } while (response.NotStarted);
+
+            if (!response.Success)
+            {
+                await DoFailAndRecover(response.RestoreVersion);
             }
         }
 
@@ -85,6 +147,31 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
             return ValueTask.CompletedTask;
+        }
+
+        private Task<SubstreamInitializeResponse> OnTargetSubstreamInitialize(long restorePoint)
+        {
+            lock (_dataHandledLock)
+            {
+                if (_dataHandled)
+                {
+                    return Task.FromResult(new SubstreamInitializeResponse(false, false, restorePoint));
+                }
+            }
+            lock (_initializeLock)
+            {
+                if (_initializedSent)
+                {
+                    if (_selfInitializeVersion != _targetInitializeVersion)
+                    {
+                        var minVersion = Math.Min(_selfInitializeVersion, _targetInitializeVersion);
+                        return Task.FromResult(new SubstreamInitializeResponse(false, false, minVersion));
+                    }
+                }
+                _initializeRecieved = true;
+                _targetInitializeVersion = restorePoint;
+            }
+            return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint));
         }
 
         /// <summary>

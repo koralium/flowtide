@@ -294,6 +294,7 @@ namespace FlowtideDotNet.Core.Engine
                 _parallelism,
                 _getTimestampInterval,
                 _useColumnStore,
+                dataflowStreamBuilder.LoggerFactory,
                 _taskScheduler,
                 _distributedOptions);
 

@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,12 +24,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     {
         private readonly object _lock = new object();
         private readonly Dictionary<string, SubstreamCommunicationPoint> _existing;
+        private readonly ILoggerFactory loggerFactory;
         private readonly string? selfSubstreamName;
         private readonly ISubstreamCommunicationHandlerFactory? _communicationHandlerFactory;
 
-        public SubstreamCommunicationPointFactory(string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null)
+        public SubstreamCommunicationPointFactory(ILoggerFactory? loggerFactory = null, string? selfSubstreamName = null, ISubstreamCommunicationHandlerFactory? communicationHandlerFactory = null)
         {
             _existing = new Dictionary<string, SubstreamCommunicationPoint>();
+            if (loggerFactory != null)
+            {
+                this.loggerFactory = loggerFactory;
+            }
+            else
+            {
+                this.loggerFactory = NullLoggerFactory.Instance;
+            }
             this.selfSubstreamName = selfSubstreamName;
             this._communicationHandlerFactory = communicationHandlerFactory;
         }
@@ -48,7 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return existing;
                 }
-                existing = new SubstreamCommunicationPoint(targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
+                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"substream_com_{targetSubstreamName}"), targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
                 _existing.Add(targetSubstreamName, existing);
                 return existing;
             }

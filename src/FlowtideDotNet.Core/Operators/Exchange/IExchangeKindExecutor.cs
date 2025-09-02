@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal interface IExchangeKindExecutor
     {
         Task Initialize(
+            long restoreVersion,
             ExchangeRelation exchangeRelation, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState, 

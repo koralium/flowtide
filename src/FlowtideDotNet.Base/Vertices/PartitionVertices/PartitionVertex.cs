@@ -328,10 +328,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 return measurements;
             });
 
-            return InitializeOrRestore(vertexHandler.StateClient);
+            return InitializeOrRestore(restoreTime, vertexHandler.StateClient);
         }
 
-        protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
+        protected abstract Task InitializeOrRestore(long restoreVersion, IStateManagerClient stateManagerClient);
 
         public void Link()
         {

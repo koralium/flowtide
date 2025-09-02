@@ -72,6 +72,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            await _communicationPoint.InitializeOperator(restoreTime);
             _waitLock = new SemaphoreSlim(0);
             _writeLock.Release();
             _writeLock = new SemaphoreSlim(1);

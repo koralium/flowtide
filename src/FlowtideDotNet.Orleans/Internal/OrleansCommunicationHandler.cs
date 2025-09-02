@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Orleans.Internal
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private IStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
+        private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
 
         public OrleansCommunicationHandler(string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -45,10 +46,12 @@ namespace FlowtideDotNet.Orleans.Internal
 
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover)
+            Func<long, Task> callFailAndRecover,
+            Func<long, Task<SubstreamInitializeResponse>> targetInitializeRequest)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
+            _targetInitializeRequest = targetInitializeRequest;
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken = default)
@@ -72,6 +75,21 @@ namespace FlowtideDotNet.Orleans.Internal
                 throw new InvalidOperationException("Not initialized");
             }
             return _callFailAndRecover(restorePoint);
+        }
+
+        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken)
+        {
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion));
+            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion);
+        }
+
+        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion)
+        {
+            if (_targetInitializeRequest == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _targetInitializeRequest(restoreVersion);
         }
     }
 }

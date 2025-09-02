@@ -40,6 +40,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Operators.Exchange;
+using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -135,6 +136,7 @@ namespace FlowtideDotNet.Core.Engine
             int parallelism,
             TimeSpan getTimestampInterval,
             bool useColumnStore,
+            ILoggerFactory? loggerFactory,
             TaskScheduler? taskScheduler = default,
             DistributedOptions? distributedOptions = default)
         {
@@ -152,7 +154,7 @@ namespace FlowtideDotNet.Core.Engine
             _doneRelations = new Dictionary<int, RelationTree>();
             if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
             {
-                _communicationPointFactory = new SubstreamCommunicationPointFactory(distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory);
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory);
             }
         }
 

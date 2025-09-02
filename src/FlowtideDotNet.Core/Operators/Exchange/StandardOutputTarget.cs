@@ -91,6 +91,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public Task Initialize(
+            long restoreVersion,
             int targetId, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState state, 

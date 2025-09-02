@@ -112,12 +112,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         public async Task Initialize(
+            long restoreVersion,
             int targetId, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState state, 
             IMemoryAllocator memoryAllocator,
             Func<long, Task> failAndRecoverFunc)
         {
+            await _substreamCommunication.InitializeOperator(restoreVersion);
             _failAndRecoverFunc = failAndRecoverFunc;
             _memoryAllocator = memoryAllocator;
             _queue = await stateManagerClient.GetOrCreateQueue($"events_target_{targetId}", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()

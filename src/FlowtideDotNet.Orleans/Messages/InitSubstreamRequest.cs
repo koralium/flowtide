@@ -10,26 +10,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Orleans.Messages;
-using Orleans;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Orleans.Interfaces
+namespace FlowtideDotNet.Orleans.Messages
 {
-    public interface IStreamGrain : IGrainWithStringKey
+    [GenerateSerializer]
+    [Immutable]
+    public class InitSubstreamRequest
     {
-        Task StartStreamAsync(StartStreamMessage startStreamMessage);
+        public InitSubstreamRequest(string requestor, long restorePoint)
+        {
+            Requestor = requestor;
+            RestorePoint = restorePoint;
+        }
 
-        Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request);
+        [Id(0)]
+        public string Requestor { get; }
 
-        Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request);
-
-        Task FailAndRecoverAsync(FailAndRecoverRequest request);
-
-        Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request);
+        [Id(1)]
+        public long RestorePoint { get; }
     }
 }

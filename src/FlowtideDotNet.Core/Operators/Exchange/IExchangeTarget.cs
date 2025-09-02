@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         ValueTask AddEvent(EventBatchWeighted weightedBatch, int index);
 
         Task Initialize(
+            long restoreVersion,
             int targetId, 
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState state, 

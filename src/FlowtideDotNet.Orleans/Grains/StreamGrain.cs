@@ -72,6 +72,17 @@ namespace FlowtideDotNet.Orleans.Grains
             return new GetEventsResponse(msg.LastEventId, msg.OutEvents, false);
         }
 
+        public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
+        {
+            if (_orleansCommunicationFactory == null)
+            {
+                return new InitSubstreamResponse(true, false, request.RestorePoint);
+            }
+            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            var response = await handler.TargetInitializeRequest(request.RestorePoint);
+            return new InitSubstreamResponse(false, response.Success, response.RestoreVersion);
+        }
+
         public async Task StartStreamAsync(StartStreamMessage startStreamMessage)
         {
             FlowtideBuilder flowtideBuilder = new FlowtideBuilder(startStreamMessage.StreamName);
@@ -109,7 +120,11 @@ namespace FlowtideDotNet.Orleans.Grains
             }
             
             _stream = flowtideBuilder.Build();
-            await _stream.StartAsync();
+            _ = Task.Factory.StartNew(async () =>
+            {
+                await _stream.StartAsync();
+            })
+                .Unwrap();
         }
     }
 }

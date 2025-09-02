@@ -125,8 +125,11 @@ plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
     SimplifyProjection = true
 });
 
-await grain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream", plan, "sub1"));
-await grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream2", plan, "sub2"));
+var task1 = grain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream", plan, "sub1"));
+var task2 = grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream2", plan, "sub2"));
+
+await Task.WhenAll(task1, task2);
+
 //await grain3.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream3", plan, "sub2"));
 //await grain4.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream4", plan, "sub2"));
 //await grain5.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream5", plan, "sub2"));
