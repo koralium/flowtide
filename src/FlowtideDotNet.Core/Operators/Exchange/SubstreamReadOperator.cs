@@ -196,7 +196,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public override Task CheckpointDone(long checkpointVersion)
         {
-            return base.CheckpointDone(checkpointVersion);
+            // Send checkpoint done to the communication point so the other substream can set dependencies done.
+            return _communicationPoint.SendCheckpointDone(checkpointVersion);
+        }
+
+        public void RecieveCheckpointDone(long checkpointVersion)
+        {
+            SetDependenciesDone();
         }
 
         public Task FailAndRecover(long recoveryPoint)

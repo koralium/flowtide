@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly int _exchangeTargetId;
         private readonly int _columnCount;
         private readonly SubstreamCommunicationPoint _substreamCommunication;
+        private readonly Action _targetCallDependenciesDone;
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private IMemoryAllocator? _memoryAllocator;
         private readonly SemaphoreSlim _lockSemaphore;
@@ -42,11 +43,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private PrimitiveList<uint>? _iterations;
         private IColumn[]? _columns;
 
-        public SubstreamTarget(int exchangeTargetId, int columnCount, SubstreamCommunicationPoint substreamCommunication)
+        public SubstreamTarget(
+            int exchangeTargetId, 
+            int columnCount,
+            SubstreamCommunicationPoint substreamCommunication,
+            Action targetCallDependenciesDone)
         {
             this._exchangeTargetId = exchangeTargetId;
             _columnCount = columnCount;
             _substreamCommunication = substreamCommunication;
+            this._targetCallDependenciesDone = targetCallDependenciesDone;
             _dataValueContainer = new DataValueContainer();
             _lockSemaphore = new SemaphoreSlim(1);
             _substreamCommunication.RegisterSubstreamTarget(_exchangeTargetId, this);
@@ -217,6 +223,17 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 throw new InvalidOperationException("Not initialized");
             }
             return _failAndRecoverFunc(recoveryPoint);
+        }
+
+        public Task TargetSubstreamCheckpointDone(long checkpointVersion)
+        {
+            _targetCallDependenciesDone();
+            return Task.CompletedTask;
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return _substreamCommunication.SendCheckpointDone(checkpointVersion);
         }
     }
 }

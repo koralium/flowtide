@@ -131,5 +131,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             return Task.CompletedTask;
         }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

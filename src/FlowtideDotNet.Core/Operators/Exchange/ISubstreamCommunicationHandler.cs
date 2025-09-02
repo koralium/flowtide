@@ -24,7 +24,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget);
+            Func<long, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<long, Task> callRecieveCheckpointDone);
 
         Task<IReadOnlyList<SubstreamEventData>> FetchData(
             IReadOnlySet<int> targetIds,
@@ -34,5 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task SendFailAndRecover(long restoreVersion);
 
         Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, CancellationToken cancellationToken);
+
+        Task SendCheckpointDone(long checkpointVersion);
     }
 }

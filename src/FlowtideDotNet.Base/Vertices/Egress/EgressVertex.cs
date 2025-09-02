@@ -325,5 +325,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         {
             return Task.CompletedTask;
         }
+
+        public virtual Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

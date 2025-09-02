@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             this._logger = logger;
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
-            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize);
+            substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize, RecieveCheckpointDone);
         }
 
         public void RegisterReadOperator(SubstreamReadOperator substreamReadOperator)
@@ -244,6 +244,25 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Task SendFailAndRecover(long recoveryPoint)
         {
             return _substreamCommunicationHandler.SendFailAndRecover(recoveryPoint);
+        }
+
+        private Task RecieveCheckpointDone(long checkpointVersion)
+        {
+            // Call all targets and read operators that the connected substream have completed the checkpoint
+            foreach(var target in _targetInfos)
+            {
+                target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+            }
+            foreach(var readOperator in _readOperators)
+            {
+                readOperator.RecieveCheckpointDone(checkpointVersion);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task SendCheckpointDone(long checkpointVersion)
+        {
+            return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion);
         }
 
         public void Subscribe(int exchangeTarget, Func<IStreamEvent, Task> onData)

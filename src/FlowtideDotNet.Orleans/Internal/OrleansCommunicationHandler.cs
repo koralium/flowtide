@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Orleans.Internal
         private IStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
+        private Func<long, Task>? _callRecieveCheckpointDone;
 
         public OrleansCommunicationHandler(string substreamName, string selfName, IGrainFactory grainFactory)
         {
@@ -47,11 +48,13 @@ namespace FlowtideDotNet.Orleans.Internal
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
             Func<long, Task> callFailAndRecover,
-            Func<long, Task<SubstreamInitializeResponse>> targetInitializeRequest)
+            Func<long, Task<SubstreamInitializeResponse>> targetInitializeRequest,
+            Func<long, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
             _callFailAndRecover = callFailAndRecover;
             _targetInitializeRequest = targetInitializeRequest;
+            _callRecieveCheckpointDone = callRecieveCheckpointDone;
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken = default)
@@ -90,6 +93,20 @@ namespace FlowtideDotNet.Orleans.Internal
                 throw new InvalidOperationException("Not initialized");
             }
             return _targetInitializeRequest(restoreVersion);
+        }
+
+        public Task SendCheckpointDone(long checkpointVersion)
+        {
+            return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion));
+        }
+
+        public Task TargetCheckpointDone(long checkpointVersion)
+        {
+            if (_callRecieveCheckpointDone == null)
+            {
+                throw new InvalidOperationException("Not initialized");
+            }
+            return _callRecieveCheckpointDone(checkpointVersion);
         }
     }
 }

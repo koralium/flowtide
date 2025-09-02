@@ -45,6 +45,12 @@ namespace FlowtideDotNet.Orleans.Grains
             this._grainFactory = grainFactory;
         }
 
+        public async Task CheckpointDone(CheckpointDoneRequest request)
+        {
+            var handler = _orleansCommunicationFactory.handlers[request.Requestor];
+            await handler.TargetCheckpointDone(request.CheckpointVersion);
+        }
+
         public async Task FailAndRecoverAsync(FailAndRecoverRequest request)
         {
             var handler = _orleansCommunicationFactory.handlers[request.Requestor];

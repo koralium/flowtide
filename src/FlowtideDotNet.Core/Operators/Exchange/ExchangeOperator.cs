@@ -45,6 +45,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IObjectState<ExchangeOperatorState>? _state;
         private bool _containPullBucket = false;
 
+        private readonly object _dependenciesDoneLock = new object();
+        private int _dependenciesDoneCalled = 0;
+        private int _numberOfSubstreams = 0;
+
+
         public ExchangeOperator(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
             this.exchangeRelation = exchangeRelation;
@@ -55,7 +60,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     _executor = new BroadcastExecutor(exchangeRelation);
                     break;
                 case ExchangeKindType.Scatter:
-                    _executor = new ScatterExecutor(exchangeRelation, communicationPointFactory, functionsRegister);
+                    _executor = new ScatterExecutor(exchangeRelation, communicationPointFactory, functionsRegister, TargetCallDependenciesDone);
                     break;
                 default:
                     throw new NotImplementedException(exchangeRelation.ExchangeKind.Type.ToString());
@@ -67,6 +72,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     _containPullBucket = true;
                     break;
+                }
+                if (target.Type == ExchangeTargetType.Substream)
+                {
+                    _numberOfSubstreams++;
                 }
             }
         }
@@ -145,9 +154,28 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _checkpointDone(Name);
             }
-            if (_dependenciesDone != null && !_containPullBucket)
+            if (_dependenciesDone != null && (_numberOfSubstreams == 0 || lockingEvent is InitWatermarksEvent))
             {
                 _dependenciesDone(Name);
+            }
+        }
+
+        private void TargetCallDependenciesDone()
+        {
+            if (_dependenciesDone == null)
+            {
+                throw new InvalidOperationException("No dependencies done function set.");
+            }
+
+            lock (_dependenciesDoneLock)
+            {
+                _dependenciesDoneCalled++;
+
+                if (_dependenciesDoneCalled == _numberOfSubstreams)
+                {
+                    _dependenciesDone(Name);
+                    _dependenciesDoneCalled = 0;
+                }
             }
         }
 
@@ -181,6 +209,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public override Task OnFailure(long rollbackVersion)
         {
             return _executor.OnFailure(rollbackVersion);
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            return _executor.CheckpointDone(checkpointVersion);
         }
     }
 }

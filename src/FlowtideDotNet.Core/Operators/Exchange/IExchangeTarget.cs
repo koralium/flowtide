@@ -50,5 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         Task AddCheckpointState(ExchangeOperatorState exchangeOperatorState);
 
         Task OnFailure(long recoveryPoint);
+
+        Task CheckpointDone(long checkpointVersion);
     }
 }

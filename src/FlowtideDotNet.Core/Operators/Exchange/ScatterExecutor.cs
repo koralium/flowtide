@@ -43,7 +43,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly List<StandardOutputTarget> standardOutputTargetList;
         private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
-        public ScatterExecutor(ExchangeRelation exchangeRelation, SubstreamCommunicationPointFactory communicationPointFactory, FunctionsRegister functionsRegister)
+        public ScatterExecutor(
+            ExchangeRelation exchangeRelation, 
+            SubstreamCommunicationPointFactory communicationPointFactory, 
+            FunctionsRegister functionsRegister,
+            Action targetCallDependenciesDone)
         {
             if (!(exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind))
             {
@@ -86,7 +90,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     case ExchangeTargetType.Substream:
                         if (exchangeRelation.Targets[i] is SubstreamExchangeTarget substreamExchangeTarget)
                         {
-                            var pullTarget = new SubstreamTarget(substreamExchangeTarget.ExchangeTargetId, exchangeRelation.OutputLength, communicationPointFactory.GetCommunicationPoint(substreamExchangeTarget.SubstreamName));
+                            var pullTarget = new SubstreamTarget(
+                                substreamExchangeTarget.ExchangeTargetId, 
+                                exchangeRelation.OutputLength, 
+                                communicationPointFactory.GetCommunicationPoint(substreamExchangeTarget.SubstreamName),
+                                targetCallDependenciesDone);
                             _targets[i] = pullTarget;
                         }
                         else
@@ -240,6 +248,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             foreach (var target in _targets)
             {
                 tasks.Add(target.OnFailure(recoveryPoint));
+            }
+            return Task.WhenAll(tasks);
+        }
+
+        public Task CheckpointDone(long checkpointVersion)
+        {
+            List<Task> tasks = new List<Task>();
+            foreach (var target in _targets)
+            {
+                tasks.Add(target.CheckpointDone(checkpointVersion));
             }
             return Task.WhenAll(tasks);
         }
