@@ -1,21 +1,9 @@
-using FASTER.core;
-using FlowtideDotNet.Core;
 using FlowtideDotNet.Orleans.Interfaces;
-using FlowtideDotNet.Orleans.Internal;
-using FlowtideDotNet.Substrait.Sql;
-using Orleans.Serialization;
-using Orleans.Serialization.Cloning;
-using Orleans.Serialization.Serializers;
-using static SqlParser.Ast.DataType;
-using FlowtideDotNet.Core.Sinks;
 using OpenTelemetry.Metrics;
-using static SqlParser.Ast.Action;
-using System.Net.Security;
 using OrleansSample;
 using FlowtideDotNet.AspNetCore.Extensions;
-using System.Net.Sockets;
-using FlowtideDotNet.Core.Optimizer;
 using SqlSampleWithUI;
+using FlowtideDotNet.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,59 +20,35 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddOrleans(b =>
 {
     b.UseLocalhostClustering();
-    
-    b.Services.AddSingleton<OrleansPlanSerializer>();
-    b.Services.AddSingleton<IGeneralizedCodec, OrleansPlanSerializer>();
-    b.Services.AddSingleton<IGeneralizedCopier, OrleansPlanSerializer>();
-    b.Services.AddSingleton<ITypeFilter, OrleansPlanSerializer>();
-
-    var connMgr = new ConnectorManager();
-    connMgr.AddSource(new DummyReadFactory("*"));
-    //connMgr.AddConsoleSink("*");
-    connMgr.AddSink(new DummyWriteFactory("*"));
-    //connMgr.AddBlackholeSink("*");
-    b.Services.AddSingleton<IConnectorManager>(connMgr);
-    //b.Services.AddSerializer(s =>
-    //{
-    //    s.Sys
-    //})
+    b.AddMemoryGrainStorage("stream_metadata");
+    b.Services.AddFlowtideOrleans(c =>
+    {
+        c.AddSource(new DummyReadFactory("*"));
+        c.AddSink(new DummyWriteFactory("*"));
+    }, (streamName, substreamName, storage) =>
+    {
+        storage.MaxPageCount = 100_000;
+        storage.AddTemporaryDevelopmentStorage(b =>
+        {
+            b.DirectoryPath = $"./temp/{streamName}/{substreamName}";
+        });
+    });
 });
 // Add services to the container.
+
 
 var app = builder.Build();
 
 app.StartFlowtideMetrics("/stream");
 
 var grainFactory = app.Services.GetRequiredService<IGrainFactory>();
-var grain = grainFactory.GetGrain<IStreamGrain>("sub1");
-var grain2 = grainFactory.GetGrain<IStreamGrain>("sub2");
-//var grain3 = grainFactory.GetGrain<IStreamGrain>("stream3");
-//var grain4 = grainFactory.GetGrain<IStreamGrain>("stream4");
-//var grain5 = grainFactory.GetGrain<IStreamGrain>("stream5");
-//var grain6 = grainFactory.GetGrain<IStreamGrain>("stream6");
-//var grain7 = grainFactory.GetGrain<IStreamGrain>("stream7");
-//var grain8 = grainFactory.GetGrain<IStreamGrain>("stream8");
-// Configure the HTTP request pipeline.
+var streamGrain = grainFactory.GetGrain<IStreamGrain>("stream");
 
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 await app.StartAsync();
-//CREATE TABLE table1 (
-//    id any
-//);
 
-//SUBSTREAM sub1;
-
-//CREATE VIEW partitioned_data WITH(DISTRIBUTED = true) AS
-//SELECT id FROM table1;
-
-//SUBSTREAM sub2;
-
-//INSERT INTO console
-//SELECT * FROM partitioned_data;
-
-SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-sqlPlanBuilder.Sql(@"
+await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
 CREATE TABLE table1 (val any);
 CREATE TABLE table2 (val any);
 
@@ -115,26 +79,6 @@ SELECT
 FROM read_table_1_stream1 a WITH (PARTITION_ID = 1)
 LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 1)
 ON a.val = b.val;
-");
-
-var plan = sqlPlanBuilder.GetPlan();
-
-plan = PlanOptimizer.Optimize(plan, new PlanOptimizerSettings()
-{
-    Parallelization = 1,
-    SimplifyProjection = true
-});
-
-var task1 = grain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream", plan, "sub1"));
-var task2 = grain2.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream2", plan, "sub2"));
-
-await Task.WhenAll(task1, task2);
-
-//await grain3.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream3", plan, "sub2"));
-//await grain4.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream4", plan, "sub2"));
-//await grain5.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream5", plan, "sub2"));
-//await grain6.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream6", plan, "sub2"));
-//await grain7.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream7", plan, "sub2"));
-//await grain8.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamMessage("stream8", plan, "sub2"));
+"));
 
 await app.WaitForShutdownAsync();

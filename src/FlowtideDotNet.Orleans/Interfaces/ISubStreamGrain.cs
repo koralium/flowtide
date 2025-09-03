@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Orleans.Messages;
+using Orleans;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,8 +20,18 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Orleans.Interfaces
 {
-    public interface IStreamGrain : IGrainWithStringKey
+    public interface ISubStreamGrain : IGrainWithStringKey
     {
-        Task StartStreamAsync(StartStreamRequest request);
+        Task StartStreamAsync(StartStreamMessage startStreamMessage);
+
+        Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request);
+
+        Task<FetchDataResponse> FetchDataAsync(FetchDataRequest request);
+
+        Task FailAndRecoverAsync(FailAndRecoverRequest request);
+
+        Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request);
+
+        Task CheckpointDone(CheckpointDoneRequest request);
     }
 }

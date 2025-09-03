@@ -21,18 +21,20 @@ namespace FlowtideDotNet.Orleans.Internal
 {
     internal class OrleansCommunicationFactory : ISubstreamCommunicationHandlerFactory
     {
+        private readonly string _streamName;
         private readonly IGrainFactory _grainFactory;
 
         public Dictionary<string, OrleansCommunicationHandler> handlers = new Dictionary<string, OrleansCommunicationHandler>();
 
-        public OrleansCommunicationFactory(IGrainFactory grainFactory)
+        public OrleansCommunicationFactory(string streamName, IGrainFactory grainFactory)
         {
-            this._grainFactory = grainFactory;
+            _streamName = streamName;
+            _grainFactory = grainFactory;
         }
 
         public ISubstreamCommunicationHandler GetCommunicationHandler(string targetSubstreamName, string selfSubstreamName)
         {
-            var handler = new OrleansCommunicationHandler(targetSubstreamName, selfSubstreamName, _grainFactory);
+            var handler = new OrleansCommunicationHandler(_streamName, targetSubstreamName, selfSubstreamName, _grainFactory);
             handlers[targetSubstreamName] = handler;
             return handler;
         }

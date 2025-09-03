@@ -10,17 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Orleans.Messages;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Orleans.Interfaces
+namespace FlowtideDotNet.Orleans.Messages
 {
-    public interface IStreamGrain : IGrainWithStringKey
+    [GenerateSerializer]
+    [Immutable]
+    public class StartStreamRequest
     {
-        Task StartStreamAsync(StartStreamRequest request);
+        public StartStreamRequest(string sqlText)
+        {
+            SqlText = sqlText;
+        }
+
+        [Id(0)]
+        public string SqlText { get; }
     }
 }

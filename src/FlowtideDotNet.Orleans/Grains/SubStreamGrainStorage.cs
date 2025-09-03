@@ -10,17 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Orleans.Messages;
+using FlowtideDotNet.Substrait;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Orleans.Interfaces
+namespace FlowtideDotNet.Orleans.Grains
 {
-    public interface IStreamGrain : IGrainWithStringKey
+    [GenerateSerializer]
+    public class SubStreamGrainStorage
     {
-        Task StartStreamAsync(StartStreamRequest request);
+        [Id(1)]
+        public string? StreamName { get; set; }
+
+        [Id(2)]
+        public Plan? Plan { get; set; }
+
+        /// <summary>
+        /// Name of the substream to start
+        /// If null, the plan should not contain substreams and it will run the entire plan.
+        /// </summary>
+        [Id(3)]
+        public string? SubstreamName { get; set; }
+
     }
 }

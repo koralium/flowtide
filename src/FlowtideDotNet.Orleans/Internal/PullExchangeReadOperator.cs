@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Orleans.Internal
     {
         private readonly PullExchangeReferenceRelation exchangeReferenceRelation;
         private readonly IGrainFactory grainFactory;
-        private IStreamGrain? _referenceGrain;
+        private ISubStreamGrain? _referenceGrain;
         private readonly object _lock = new object();
         private ICheckpointEvent? _currentCheckpoint;
         private TaskCompletionSource? _waitForCheckpoint;
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Orleans.Internal
 
         protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            _referenceGrain = grainFactory.GetGrain<IStreamGrain>(exchangeReferenceRelation.SubStreamName);
+            _referenceGrain = grainFactory.GetGrain<ISubStreamGrain>(exchangeReferenceRelation.SubStreamName);
 
             
             return Task.CompletedTask;

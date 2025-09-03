@@ -22,21 +22,23 @@ namespace FlowtideDotNet.Orleans.Internal
 {
     internal class OrleansCommunicationHandler : ISubstreamCommunicationHandler
     {
+        private readonly string streamName;
         private readonly string _substreamName;
         private readonly string selfName;
         private readonly IGrainFactory _grainFactory;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
-        private IStreamGrain _streamGrain;
+        private ISubStreamGrain _streamGrain;
         private Func<long, Task>? _callFailAndRecover;
         private Func<long, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
         private Func<long, Task>? _callRecieveCheckpointDone;
 
-        public OrleansCommunicationHandler(string substreamName, string selfName, IGrainFactory grainFactory)
+        public OrleansCommunicationHandler(string streamName, string substreamName, string selfName, IGrainFactory grainFactory)
         {
+            this.streamName = streamName;
             this._substreamName = substreamName;
             this.selfName = selfName;
             this._grainFactory = grainFactory;
-            _streamGrain = _grainFactory.GetGrain<IStreamGrain>(_substreamName);
+            _streamGrain = _grainFactory.GetGrain<ISubStreamGrain>($"{streamName}_{_substreamName}");
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)

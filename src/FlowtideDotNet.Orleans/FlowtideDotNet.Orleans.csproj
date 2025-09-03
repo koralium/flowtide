@@ -8,11 +8,13 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Orleans.Core" Version="8.1.0" />
+    <PackageReference Include="Microsoft.Orleans.Runtime" Version="8.1.0" />
     <PackageReference Include="Microsoft.Orleans.Sdk" Version="8.1.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj" />
   </ItemGroup>
 
 </Project>
