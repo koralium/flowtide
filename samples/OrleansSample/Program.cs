@@ -87,12 +87,12 @@ CREATE TABLE table2 (val any);
 
 SUBSTREAM sub1;
 
-CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 4) AS
+CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 8) AS
 SELECT val FROM table1;
 
 SUBSTREAM sub2;
 
-CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 4) AS
+CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 8) AS
 SELECT val FROM table2;
 
 SUBSTREAM sub1;
@@ -129,6 +129,42 @@ SELECT
     a.val 
 FROM read_table_1_stream1 a WITH (PARTITION_ID = 3)
 LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 3)
+ON a.val = b.val;
+
+SUBSTREAM sub5;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 4)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 4)
+ON a.val = b.val;
+
+SUBSTREAM sub6;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 5)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 5)
+ON a.val = b.val;
+
+SUBSTREAM sub7;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 6)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 6)
+ON a.val = b.val;
+
+SUBSTREAM sub8;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 7)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 7)
 ON a.val = b.val;
 "));
 
