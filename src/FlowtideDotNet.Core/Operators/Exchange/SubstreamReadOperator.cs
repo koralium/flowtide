@@ -131,25 +131,34 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 if (ev is ICheckpointEvent checkpointEvent)
                 {
                     ICheckpointEvent? inStreamCheckpoint = default;
+                    bool scheduleCheckpoint = false;
                     lock (_lock)
                     {
                         if (_currentCheckpoint != null)
                         {
                             inStreamCheckpoint = _currentCheckpoint;
                         }
-                        else
+                        else if (_waitForCheckpoint == null)
                         {
                             _waitForCheckpoint = new TaskCompletionSource();
-                            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                            scheduleCheckpoint = true;
                         }
                     }
+                    if (scheduleCheckpoint)
+                    {
+                        // Schedule outside the lock to hinder any deadlocks with OnLockingEvent
+                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                    }
+                    
                     if (inStreamCheckpoint == null)
                     {
                         // Wait until the checkpoint event has been collected from this stream.
                         Debug.Assert(_waitForCheckpoint != null);
                         await _waitForCheckpoint.Task;
+                        
                         lock (_lock)
                         {
+                            _waitForCheckpoint = null; // Reset wait for checkpoint after this is completed
                             inStreamCheckpoint = _currentCheckpoint;
                         }
                     }
@@ -216,13 +225,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             // If state is handled by the state manager client instead this is not required.
             if (lockingEvent is ICheckpointEvent checkpointEvent)
             {
+                TaskCompletionSource? taskSource = default;
                 lock (_lock)
                 {
                     _currentCheckpoint = checkpointEvent;
                     if (_waitForCheckpoint != null)
                     {
-                        _waitForCheckpoint.SetResult();
+                        taskSource = _waitForCheckpoint;
                     }
+                }
+                if (taskSource != null)
+                {
+                    // Set task completion source outside of lock to hinder any deadlocks
+                    taskSource.SetResult();
                 }
             }
             if (_fetchTask == null)

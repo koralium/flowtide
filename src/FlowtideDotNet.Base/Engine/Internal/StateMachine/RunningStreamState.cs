@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Finish the checkpoint
                 run.CheckpointCompleted();
                 run._context._logger.CheckpointDone(_context.streamName);
-            }, this)
+            }, this, default, TaskCreationOptions.None, TaskScheduler.Default)
                 .Unwrap();
         }
 

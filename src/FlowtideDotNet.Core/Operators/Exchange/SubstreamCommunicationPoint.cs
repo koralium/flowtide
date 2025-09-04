@@ -254,16 +254,19 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private Task RecieveCheckpointDone(long checkpointVersion)
         {
+            _logger.LogDebug($"Recieved checkpoint done from substream {substreamName} to {_selfSubstreamName} with version {checkpointVersion}, notifying targets and read operators.");
             // Call all targets and read operators that the connected substream have completed the checkpoint
-            foreach(var target in _targetInfos)
+            return Task.Factory.StartNew(() =>
             {
-                target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
-            }
-            foreach(var readOperator in _readOperators)
-            {
-                readOperator.RecieveCheckpointDone(checkpointVersion);
-            }
-            return Task.CompletedTask;
+                foreach (var target in _targetInfos)
+                {
+                    target.Value.Target.TargetSubstreamCheckpointDone(checkpointVersion);
+                }
+                foreach (var readOperator in _readOperators)
+                {
+                    readOperator.RecieveCheckpointDone(checkpointVersion);
+                }
+            }, default, TaskCreationOptions.None, TaskScheduler.Default);
         }
 
         public Task SendCheckpointDone(long checkpointVersion)
