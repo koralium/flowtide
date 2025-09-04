@@ -232,7 +232,7 @@ namespace FlowtideDotNet.SqlServer.Tests.Acceptance
             var streamMemoryManager = new StreamMemoryManager("stream");
             var memoryManager = streamMemoryManager.CreateOperatorMemoryManager("op");
 
-            var vertexHandler = new VertexHandler("mergejoinstream", "op", (time) =>
+            var vertexHandler = new VertexHandler("mergejoinstream", "op", (time, version) =>
             {
 
             }, (v1, v2, time) =>

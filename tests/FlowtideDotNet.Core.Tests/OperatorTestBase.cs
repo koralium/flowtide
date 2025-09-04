@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests
             var vertexHandler = new VertexHandler(
                 "stream", 
                 "1", 
-                (time) => { }, 
+                (time, version) => { }, 
                 (p1, p2, t) => Task.CompletedTask, 
                 metrics.GetOrCreateVertexMeter("1", () => ""), 
                 _stateManager.GetOrCreateClient("1"), 

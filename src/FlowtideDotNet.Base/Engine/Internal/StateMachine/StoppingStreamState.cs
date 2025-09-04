@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context.CheckForPause();
             _context.SetStatus(StreamStatus.Stopping);
             _context._logger.StoppingStream(_context.streamName);
-            _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
+            _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1), default);
             return Task.CompletedTask;
         }
 

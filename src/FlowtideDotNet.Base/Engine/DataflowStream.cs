@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Base.Engine
 
         public void TryScheduleCheckpoint(TimeSpan timeSpan)
         {
-            streamContext.TryScheduleCheckpointIn(timeSpan);
+            streamContext.TryScheduleCheckpointIn(timeSpan, default);
         }
 
         public StreamState? GetLatestState()

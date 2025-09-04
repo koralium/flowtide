@@ -258,7 +258,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             RunTask(RunLockingEvent, lockingEvent);
         }
 
-        protected void ScheduleCheckpoint(TimeSpan inTime)
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
         {
             Debug.Assert(_ingressState?._vertexHandler != null, nameof(_ingressState._vertexHandler));
 
@@ -266,7 +266,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _ingressState._vertexHandler.ScheduleCheckpoint(inTime);
+            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
         }
 
         private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state, int taskId);

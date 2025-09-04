@@ -355,13 +355,13 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             throw new NotSupportedException("Triggers are not supported in partition vertices");
         }
 
-        protected void ScheduleCheckpoint(TimeSpan inTime)
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
         {
             if (_vertexHandler == null)
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _vertexHandler.ScheduleCheckpoint(inTime);
+            _vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
         }
 
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()

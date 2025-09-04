@@ -176,7 +176,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._scheduleCheckpointTask = null;
                 _context._triggerCheckpointTime = null;
                 _context._scheduleCheckpointCancelSource = null;
-                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10));
+                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10), default);
                 return Task.CompletedTask;
             }
             return Task.FromException(new InvalidOperationException("Cant trigger a checkpoint when the stream is failing"));

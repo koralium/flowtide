@@ -147,7 +147,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     if (scheduleCheckpoint)
                     {
                         // Schedule outside the lock to hinder any deadlocks with OnLockingEvent
-                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                        // we also provide the checkpoint time to make sure that the same checkpoint from the target is scheduled twice.
+                        ScheduleCheckpoint(TimeSpan.FromMilliseconds(1), checkpointEvent.CheckpointTime);
                     }
                     
                     if (inStreamCheckpoint == null)

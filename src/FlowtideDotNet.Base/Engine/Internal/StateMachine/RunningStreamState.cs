@@ -225,6 +225,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context.checkpointTask.SetResult();
                     _context.checkpointTask = null;
                     _currentCheckpoint = null;
+                    _context._currentProvidedCheckpointVersion = default;
 
                     if (_context._wantedState == StreamStateValue.NotStarted && _doingCheckpoint)
                     {
@@ -241,8 +242,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         {
                             span = TimeSpan.FromMilliseconds(1);
                         }
-                        if (_context.TryScheduleCheckpointIn_NoLock(span))
+                        if (_context.TryScheduleCheckpointIn_NoLock(span, _context._scheduledProvidedCheckpointVersion))
                         {
+                            _context._scheduledProvidedCheckpointVersion = default;
                             _context.inQueueCheckpoint = null;
                         }
                         else
@@ -344,7 +346,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 if (_context.checkpointTask != null)
                 {
                     // Enqueue the checkpoint as soon as possible
-                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1));
+                    _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromMilliseconds(1),_context._scheduledProvidedCheckpointVersion);
+                    _context._scheduledProvidedCheckpointVersion = default;
                     return _context.checkpointTask.Task;
                 }
                 _context._logger.StartingCheckpoint(_context.streamName);

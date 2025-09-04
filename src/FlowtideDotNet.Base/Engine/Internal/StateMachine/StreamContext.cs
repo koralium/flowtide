@@ -73,6 +73,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         internal Task? _onFailureTask;
         internal TaskCompletionSource? checkpointTask;
         internal DateTimeOffset? inQueueCheckpoint;
+        internal long? _currentProvidedCheckpointVersion;
+        internal long? _scheduledProvidedCheckpointVersion;
 
         internal TaskCompletionSource? _stopTask;
 
@@ -443,15 +445,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             return completionTasks;
         }
 
-        internal void TryScheduleCheckpointIn(TimeSpan timeSpan)
+        internal void TryScheduleCheckpointIn(TimeSpan timeSpan, long? checkpointVersion)
         {
             lock (_checkpointLock)
             {
-                TryScheduleCheckpointIn_NoLock(timeSpan);
+                TryScheduleCheckpointIn_NoLock(timeSpan, checkpointVersion);
             }
         }
 
-        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan)
+        internal bool TryScheduleCheckpointIn_NoLock(TimeSpan timeSpan, long? checkpointVersion)
         {
             Debug.Assert(Monitor.IsEntered(_checkpointLock));
 
@@ -469,15 +471,26 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // This is required so checkpoints are not missed.
             if (checkpointTask != null)
             {
+                // If the provided version is the same as the running one, skip scheduling
+                // This is to hinder multiple checkpoints after one another in distributed mode
+                if (checkpointVersion.HasValue && _currentProvidedCheckpointVersion.HasValue && checkpointVersion.Value == _currentProvidedCheckpointVersion.Value)
+                {
+                    return false;
+                }
                 if (inQueueCheckpoint.HasValue && inQueueCheckpoint.Value.CompareTo(triggerTime) <= 0)
                 {
                     return false;
                 }
                 else
                 {
+                    _scheduledProvidedCheckpointVersion = checkpointVersion;
                     inQueueCheckpoint = triggerTime;
                     return true;
                 }
+            }
+            else
+            {
+                _currentProvidedCheckpointVersion = checkpointVersion;
             }
 
             if (_scheduleCheckpointTask != null)
