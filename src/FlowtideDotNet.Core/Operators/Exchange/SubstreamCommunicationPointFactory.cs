@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 {
                     return existing;
                 }
-                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"substream_com_{targetSubstreamName}"), targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
+                existing = new SubstreamCommunicationPoint(loggerFactory.CreateLogger($"FlowtideDotNet.substream_com_{selfSubstreamName}_{targetSubstreamName}"), selfSubstreamName, targetSubstreamName, _communicationHandlerFactory.GetCommunicationHandler(targetSubstreamName, selfSubstreamName));
                 _existing.Add(targetSubstreamName, existing);
                 return existing;
             }

@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Base.Vertices.Ingress;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
@@ -22,6 +23,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
         private HashSet<string>? waitingForDependencies;
+        private HashSet<string>? _preCompletedDependencies;
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
         private bool _initialCheckpointTaken = false;
@@ -47,9 +49,17 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override void EgressDependenciesDone(string name)
         {
             Debug.Assert(_context != null, nameof(_context));
-            Debug.Assert(waitingForDependencies != null, nameof(waitingForDependencies));
+            Debug.Assert(_preCompletedDependencies != null, nameof(_preCompletedDependencies));
             lock (_context._checkpointLock)
             {
+                if (waitingForDependencies == null || !waitingForDependencies.Contains(name))
+                {
+                    // This stream has not yet started checkpointing, but a dependency is already done
+                    // Add it to pre completed
+                    _context._logger.LogDebug("Operator {Operator} has completed dependencies before checkpoint started on stream {Stream}, marking as precompleted.", name, _context.streamName);
+                    _preCompletedDependencies.Add(name);
+                    return;
+                }
                 waitingForDependencies.Remove(name);
 
                 // Check if all egresses has done their dependencies
@@ -125,6 +135,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         return streamIngressVertex.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                     }
                     return Task.CompletedTask;
+                });
+                await _context.ForEachEgressBlockAsync((key, block) =>
+                {
+                    return block.CheckpointDone(run._context._stateManager.LastCompletedCheckpointVersion);
                 });
             }, this)
                 .Unwrap()
@@ -263,6 +277,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     // Reset the checkpoint version after the stream is in a running state
                     _context._restoreCheckpointVersion = default;
+
+                    _preCompletedDependencies = new HashSet<string>();
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -313,6 +329,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         public override Task TriggerCheckpoint(bool isScheduled = false)
         {
             Debug.Assert(_context != null, nameof(_context));
+            Debug.Assert(_preCompletedDependencies != null);
 
             Checkpoint? checkpoint = null;
             lock (_context._checkpointLock)
@@ -345,6 +362,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     waitingForDependencies.Add(key);
                 }
+                foreach(var precompleted in _preCompletedDependencies)
+                {
+                    waitingForDependencies.Remove(precompleted);
+                }
+                _preCompletedDependencies.Clear();
 
                 _context.checkpointTask = new TaskCompletionSource();
                 var newTime = _context.producingTime + 1;

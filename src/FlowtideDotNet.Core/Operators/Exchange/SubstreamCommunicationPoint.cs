@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
     internal class SubstreamCommunicationPoint
     {
         private readonly ILogger _logger;
+        private readonly string _selfSubstreamName;
         private readonly string substreamName;
         private readonly ISubstreamCommunicationHandler _substreamCommunicationHandler;
         private ConcurrentDictionary<int, TargetInfo> _targetInfos;
@@ -49,6 +50,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private long _targetInitializeVersion = 0;
         private readonly object _initializeLock = new object();
 
+        // Send checkpoint fields
+        private long _lastSentCheckpointVersion;
+        private readonly object _sendCheckpointLock = new object();
+
 
         private class TargetInfo
         {
@@ -63,10 +68,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             }
         }
 
-        public SubstreamCommunicationPoint(ILogger logger, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
+        public SubstreamCommunicationPoint(ILogger logger, string selfSubstreamName, string substreamName, ISubstreamCommunicationHandler substreamCommunicationHandler)
         {
             _targetInfos = new ConcurrentDictionary<int, TargetInfo>();
             this._logger = logger;
+            this._selfSubstreamName = selfSubstreamName;
             this.substreamName = substreamName;
             this._substreamCommunicationHandler = substreamCommunicationHandler;
             substreamCommunicationHandler.Initialize(GetData, DoFailAndRecover, OnTargetSubstreamInitialize, RecieveCheckpointDone);
@@ -262,6 +268,16 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public Task SendCheckpointDone(long checkpointVersion)
         {
+            lock (_sendCheckpointLock)
+            {
+                if (checkpointVersion <= _lastSentCheckpointVersion)
+                {
+                    // Already sent this checkpoint or a later one
+                    return Task.CompletedTask;
+                }
+                _lastSentCheckpointVersion = checkpointVersion;
+            }
+            _logger.LogDebug($"Sending checkpoint done to target: {substreamName} from {_selfSubstreamName}");
             return _substreamCommunicationHandler.SendCheckpointDone(checkpointVersion);
         }
 

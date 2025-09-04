@@ -48,18 +48,51 @@ app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 await app.StartAsync();
 
+//await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
+//CREATE TABLE table1 (val any);
+//CREATE TABLE table2 (val any);
+
+//SUBSTREAM sub1;
+
+//CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
+//SELECT val FROM table1;
+
+//SUBSTREAM sub2;
+
+//CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
+//SELECT val FROM table2;
+
+//SUBSTREAM sub1;
+
+//INSERT INTO output
+//SELECT 
+//    a.val 
+//FROM read_table_1_stream1 a WITH (PARTITION_ID = 0)
+//LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 0)
+//ON a.val = b.val;
+
+//SUBSTREAM sub2;
+
+//INSERT INTO output
+//SELECT 
+//    a.val 
+//FROM read_table_1_stream1 a WITH (PARTITION_ID = 1)
+//LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 1)
+//ON a.val = b.val;
+//"));
+
 await streamGrain.StartStreamAsync(new FlowtideDotNet.Orleans.Messages.StartStreamRequest(@"
 CREATE TABLE table1 (val any);
 CREATE TABLE table2 (val any);
 
 SUBSTREAM sub1;
 
-CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
+CREATE VIEW read_table_1_stream1 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 3) AS
 SELECT val FROM table1;
 
 SUBSTREAM sub2;
 
-CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 2) AS
+CREATE VIEW read_table_2_stream2 WITH (DISTRIBUTED = true, SCATTER_BY = val, PARTITION_COUNT = 3) AS
 SELECT val FROM table2;
 
 SUBSTREAM sub1;
@@ -78,6 +111,15 @@ SELECT
     a.val 
 FROM read_table_1_stream1 a WITH (PARTITION_ID = 1)
 LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 1)
+ON a.val = b.val;
+
+SUBSTREAM sub3;
+
+INSERT INTO output
+SELECT 
+    a.val 
+FROM read_table_1_stream1 a WITH (PARTITION_ID = 2)
+LEFT JOIN read_table_2_stream2 b WITH (PARTITION_ID = 2)
 ON a.val = b.val;
 "));
 

@@ -416,6 +416,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        internal async Task ForEachEgressBlockAsync(Func<string, IStreamEgressVertex, Task> action)
+        {
+            foreach (var block in egressBlocks)
+            {
+                await action(block.Key, block.Value);
+            }
+        }
+
         internal List<Task> GetCompletionTasks()
         {
             List<Task> completionTasks = new List<Task>();
