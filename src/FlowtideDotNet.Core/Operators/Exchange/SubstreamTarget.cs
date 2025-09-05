@@ -188,6 +188,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public async ValueTask<bool> ReadData(List<SubstreamEventData> outputList, int maxCount)
         {
+            // the target is not yet initialized
+            if (_queue == null)
+            {
+                // Return false and empty list
+                return false;
+            }
             Debug.Assert(_queue != null);
             await _lockSemaphore.WaitAsync();
             try

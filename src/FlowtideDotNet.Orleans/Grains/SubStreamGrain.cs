@@ -36,6 +36,7 @@ using FlowtideDotNet.Storage;
 
 namespace FlowtideDotNet.Orleans.Grains
 {
+    [KeepAlive]
     public class SubStreamGrain : Grain, ISubStreamGrain
     {
         private readonly IPersistentState<SubStreamGrainStorage> _state;
