@@ -9,7 +9,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
     internal class DeltaWriteStream : Stream
     {
         private readonly Stream _inner;
-        private int _position;
+        private long _position;
 
         public DeltaWriteStream(Stream inner)
         {
@@ -51,7 +51,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         public override long Seek(long offset, SeekOrigin origin)
         {
-            return _inner.Seek(offset, origin);
+            _position = _inner.Seek(offset, origin);
+            return _position;
         }
 
         public override void SetLength(long value)
