@@ -44,7 +44,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         public override int Read(byte[] buffer, int offset, int count)
         {
-            return _inner.Read(buffer, offset, count);
+            int bytesRead = _inner.Read(buffer, offset, count);
+            _position += bytesRead;
+            return bytesRead;
         }
 
         public override long Seek(long offset, SeekOrigin origin)
