@@ -194,14 +194,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public async Task<int> WriteData(IFileStorage storage, IOPath tablePath, string fileName)
         {
             using var stream = await storage.OpenWrite(tablePath.Combine(fileName));
-
-            using var writer = new ParquetSharp.Arrow.FileWriter(stream, _schema);
+            using var deltaStream = new DeltaWriteStream(stream);
+            using var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, _schema);
 
             var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);
             writer.Close();
 
-            var length = stream.Position;
+            var length = deltaStream.Position;
 
             return (int)length;
         }
