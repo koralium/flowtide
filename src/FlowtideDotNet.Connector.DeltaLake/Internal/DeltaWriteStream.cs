@@ -58,6 +58,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         public override void SetLength(long value)
         {
             _inner.SetLength(value);
+            if (_position > value)
+            {
+                _position = value;
+            }
         }
 
         public override void Write(byte[] buffer, int offset, int count)
