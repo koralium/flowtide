@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Core.Engine
                 {
                     return null;
                 }
-                return new KafkaSink(writeRelation, options, executionMode, opt);
+                return new KafkaSink(options, executionMode, writeRelation, opt);
             });
             return readWriteFactory;
         }

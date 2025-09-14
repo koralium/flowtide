@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// Compacts the data, removes old versions of data that are no longer in use
         /// </summary>
         /// <returns></returns>
-        ValueTask CompactAsync();
+        ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount);
 
         /// <summary>
         /// Reset the store to an empty state

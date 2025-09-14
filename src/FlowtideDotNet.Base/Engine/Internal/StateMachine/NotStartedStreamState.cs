@@ -49,10 +49,15 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override void EgressDependenciesDone(string name)
+        {
+        }
+
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.SetStatus(StreamStatus.Stopped);
+            return Task.CompletedTask;
         }
 
         public override Task OnFailure()

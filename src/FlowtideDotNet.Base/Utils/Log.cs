@@ -189,5 +189,11 @@ namespace FlowtideDotNet.Base.Utils
            Level = LogLevel.Information,
            Message = "Shutdown checkpoint done in stream `{stream}`.")]
         public static partial void ShutdownCheckpointDone(this ILogger logger, string stream);
+
+        [LoggerMessage(
+          EventId = 30,
+          Level = LogLevel.Error,
+          Message = "Failed to stop and dispose stream during failure state initialization., stream: `{stream}`")]
+        public static partial void FailedStopAndDispose(this ILogger logger, Exception? e, string stream);
     }
 }

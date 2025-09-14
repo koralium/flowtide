@@ -395,5 +395,21 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         {
             return Task.CompletedTask;
         }
+
+        protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)
+        {
+            Debug.Assert(_vertexHandler != null, nameof(_vertexHandler));
+
+            if (_vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot fail and rollback before initialize is called");
+            }
+            return _vertexHandler.FailAndRollback(exception, restoreVersion);
+        }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

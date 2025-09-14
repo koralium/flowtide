@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -18,6 +19,8 @@ namespace FlowtideDotNet.Connector.Kafka
     public interface IFlowtideKafkaValueSerializer
     {
         byte[]? Serialize(RowEvent streamEvent, bool isDeleted);
+
+        byte[]? Serialize(ColumnRowReference row, bool isDeleted);
 
         Task Initialize(WriteRelation writeRelation);
     }

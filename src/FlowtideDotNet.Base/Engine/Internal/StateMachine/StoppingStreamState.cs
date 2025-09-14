@@ -58,6 +58,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        public override void EgressDependenciesDone(string name)
+        {
+            // TODO: Implement waiting for dependencies
+            // Stopping a stream might need to be rethought how it will behave in a distributed setup.
+        }
+
         private void StartCheckpointDoneTask()
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -169,13 +175,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null);
             _context.CheckForPause();
             _context.SetStatus(StreamStatus.Stopping);
             _context._logger.StoppingStream(_context.streamName);
             _context.TryScheduleCheckpointIn(TimeSpan.FromMilliseconds(1));
+            return Task.CompletedTask;
         }
 
         public override async Task OnFailure()

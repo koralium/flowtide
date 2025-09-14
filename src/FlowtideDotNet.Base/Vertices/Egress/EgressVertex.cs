@@ -28,12 +28,14 @@ namespace FlowtideDotNet.Base.Vertices.Egress
     public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex
     {
         private Action<string>? _checkpointDone;
+        private Action<string>? _dependenciesDone;
         private readonly ExecutionDataflowBlockOptions _executionDataflowBlockOptions;
         private IEgressImplementation? _targetBlock;
         private bool _isHealthy = true;
         private CancellationTokenSource? _cancellationTokenSource;
         private IHistogram<float>? _latencyHistogram;
         private IMemoryAllocator? _memoryAllocator;
+        private IVertexHandler? _vertexHandler;
 
         private string? _name;
         private string? _streamName;
@@ -112,6 +114,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             {
                 Logger.CheckpointDoneFunctionNotSet(StreamName, Name ?? "");
             }
+            DependenciesDone();
         }
 
         private Task HandleLockingEvent(ILockingEvent lockingEvent)
@@ -132,6 +135,18 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         public virtual Task OnTrigger(string name, object? state)
         {
             return Task.CompletedTask;
+        }
+
+        private void DependenciesDone()
+        {
+            if (_dependenciesDone != null && Name != null)
+            {
+                _dependenciesDone(Name);
+            }
+            else
+            {
+                throw new InvalidOperationException("Dependencies done function is not set or Name is null. Ensure that the vertex has been properly initialized before calling this method.");
+            }
         }
 
         protected abstract Task OnCheckpoint(long checkpointTime);
@@ -172,6 +187,7 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             _logger = vertexHandler.LoggerFactory.CreateLogger(DisplayName);
             _streamVersion = streamVersionInformation;
             CurrentCheckpointId = newTime;
+            _vertexHandler = vertexHandler;
 
             Metrics.CreateObservableGauge("busy", () =>
             {
@@ -216,9 +232,10 @@ namespace FlowtideDotNet.Base.Vertices.Egress
             return _targetBlock.OfferMessage(messageHeader, messageValue, source, consumeToAccept);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
+            _dependenciesDone = dependenciesDone;
         }
 
         public abstract Task Compact();
@@ -289,6 +306,22 @@ namespace FlowtideDotNet.Base.Vertices.Egress
         }
 
         public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
+
+        protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)
+        {
+            Debug.Assert(_vertexHandler != null, nameof(_vertexHandler));
+
+            if (_vertexHandler == null)
+            {
+                throw new NotSupportedException("Cannot fail and rollback before initialize is called");
+            }
+            return _vertexHandler.FailAndRollback(exception, restoreVersion);
+        }
+
+        public Task OnFailure(long rollbackVersion)
         {
             return Task.CompletedTask;
         }

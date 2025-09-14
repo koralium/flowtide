@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Json;
 using System.Text;
 
 namespace FlowtideDotNet.Connector.Kafka
@@ -20,6 +22,14 @@ namespace FlowtideDotNet.Connector.Kafka
         public byte[] Serialize(FlxValue key)
         {
             return Encoding.UTF8.GetBytes(key.ToJson);
+        }
+
+        public byte[] Serialize<T>(T key) where T : IDataValue
+        {
+            DataValueJsonWriter dataValueJsonWriter = new DataValueJsonWriter();
+            dataValueJsonWriter.Visit(in key);
+            dataValueJsonWriter.Flush();
+            return dataValueJsonWriter.WrittenMemory.ToArray();
         }
     }
 }
