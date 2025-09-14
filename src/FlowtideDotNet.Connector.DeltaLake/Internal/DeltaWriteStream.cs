@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {
-    class DeltaWriteStream : Stream
+    internal class DeltaWriteStream : Stream
     {
         private readonly Stream _inner;
         private int _position;
