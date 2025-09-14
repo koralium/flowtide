@@ -62,8 +62,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         public override void Write(byte[] buffer, int offset, int count)
         {
-            _position += count;
             _inner.Write(buffer, offset, count);
+            _position += count;
         }
     }
 }
