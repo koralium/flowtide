@@ -14,7 +14,7 @@ using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
 
 namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {
-    internal sealed class ResultUserType
+    public sealed class ResultUserType
     {
         public required string TypeName { get; set; }
 
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
     }
     internal sealed class Result
     {
-        public required ZanzibarRelation Relation { get; set; }
+        public required ZanzibarRelation? Relation { get; set; }
         public required HashSet<ResultUserType> ResultTypes { get; set; }
     }
 
@@ -74,14 +74,21 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         private readonly ZanzibarSchema _schema;
         private readonly HashSet<string> _stopTypes;
+        private readonly bool _recurseAtStopType;
+        private readonly bool _hardStop;
+        private readonly string? hardStopTypeName;
         private readonly HashSet<TypeReference> visitedTypes;
         private readonly HashSet<TypeReference> loopFoundTypes;
         private readonly List<ZanzibarRelation> _relations;
+        private string? _startType;
 
-        public ZanzibarFlowtideConvertVisitor(ZanzibarSchema schema, HashSet<string> stopTypes)
+        public ZanzibarFlowtideConvertVisitor(ZanzibarSchema schema, HashSet<string> stopTypes, bool recurseAtStopType, bool hardStop, string? hardStopTypeName)
         {
             this._schema = schema;
             this._stopTypes = stopTypes;
+            this._recurseAtStopType = recurseAtStopType;
+            this._hardStop = hardStop;
+            this.hardStopTypeName = hardStopTypeName;
             visitedTypes = new HashSet<TypeReference>();
             loopFoundTypes = new HashSet<TypeReference>();
             _relations = new List<ZanzibarRelation>();
@@ -89,6 +96,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         public List<ZanzibarRelation> Parse(string type, string relation)
         {
+            _startType = type;
             if (!_schema.Types.TryGetValue(type, out var typeDefinition))
             {
                 throw new InvalidOperationException($"Type {type} not found in the zanzibar schema.");
@@ -98,7 +106,11 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 throw new InvalidOperationException($"Relation {relation} not found in type {type}");
             }
             var result = Visit(relationDefinition, new ConvertState(relation, typeDefinition));
-            _relations.Add(result.Relation);
+            if (result.Relation != null)
+            {
+                _relations.Add(result.Relation);
+            }
+            
             return _relations;
         }
 
@@ -109,6 +121,12 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 throw new InvalidOperationException($"Relation {relation.ReferenceRelation} not found in type {state.typeDefinition.Name}");
             }
             var result = Visit(relationDef, new ConvertState(relation.ReferenceRelation, state.typeDefinition));
+
+            if (result.Relation == null)
+            {
+                return result;
+            }
+
             var changeNameProjection = new ZanzibarChangeRelationName()
             {
                 Input = result.Relation,
@@ -124,14 +142,39 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         public override Result VisitIntersect(ZanzibarIntersectRelation relation, ConvertState state)
         {
-            var first = relation.Children[0];
-            var firstRel = Visit(first, state);
+            int i = 0;
+            Result? firstRel = default;
+
+            for (; i < relation.Children.Count; i++)
+            {
+                var child = relation.Children[i];
+                firstRel = Visit(child, state);
+                if (firstRel.Relation != null)
+                {
+                    i++;
+                    break;
+                }
+            }
+
+            if (firstRel == null || firstRel.Relation == null)
+            {
+                return new Result()
+                {
+                    Relation = null,
+                    ResultTypes = new HashSet<ResultUserType>()
+                };
+            }
 
             var rootRel = firstRel.Relation;
             var resultTypes = firstRel.ResultTypes.ToHashSet();
-            for (int i = 1; i < relation.Children.Count; i++)
+            for (; i < relation.Children.Count; i++)
             {
                 var subRel = Visit(relation.Children[i], state);
+
+                if (subRel.Relation == null)
+                {
+                    continue;
+                }
 
                 var combinedTypes = new HashSet<ResultUserType>(resultTypes);
                 foreach (var t in subRel.ResultTypes)
@@ -220,6 +263,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 if (type.Relation != null)
                 {
                     var rel = VisitUserRelation(type, state.toRelationName, typeDefinition, state.typeDefinition);
+                    if (rel.Relation == null)
+                    {
+                        continue;
+                    }
                     relations.Add(rel.Relation);
                     foreach (var resultType in rel.ResultTypes)
                     {
@@ -229,6 +276,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 else
                 {
                     var typeResult = VisitDirectUser(type, typeDefinition, state.toRelationName, state.typeDefinition);
+                    if (typeResult.Relation == null)
+                    {
+                        continue;
+                    }
                     relations.Add(typeResult.Relation);
                     foreach (var resultType in typeResult.ResultTypes)
                     {
@@ -262,6 +313,11 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         {
             var tuplesetResult = VisitTupleset(relation.ReferenceRelation, state.typeDefinition);
 
+            if (tuplesetResult.Relation == null)
+            {
+                return tuplesetResult;
+            }
+
             if (tuplesetResult.ResultTypes.Count > 1)
             {
                 throw new InvalidOperationException("At this time only 1 type is allowed for tuple to userset");
@@ -279,19 +335,79 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
             if (_stopTypes.Contains(resultTypeDefinition.Name))
             {
+                if (_hardStop || resultTypeDefinition.Name == _startType)
+                {
+                    if (state.typeDefinition.Name == hardStopTypeName)
+                    {
+                        return new Result()
+                        {
+                            Relation = new ZanzibarCopyResourceToSubjectDistinct()
+                            {
+                                Input = tuplesetResult.Relation
+                            },
+                            ResultTypes = tuplesetResult.ResultTypes
+                        }; 
+                    }
+                    return new Result() { Relation = null, ResultTypes = new HashSet<ResultUserType>() };
+                }
+
                 var changeNameRel = new ZanzibarChangeRelationName()
                 {
                     Input = tuplesetResult.Relation,
                     NewRelationName = state.toRelationName
                 };
-                return new Result()
+
+                if (_recurseAtStopType)
                 {
-                    Relation = changeNameRel,
-                    ResultTypes = tuplesetResult.ResultTypes
-                };
+                    var newStopTypes = new HashSet<string>(_schema.Types.Keys);
+
+                    newStopTypes.Remove(resultTypeDefinition.Name);
+
+                    var innerTypeRelations = new ZanzibarFlowtideConvertVisitor(_schema, newStopTypes, _recurseAtStopType, true, resultTypeDefinition.Name).Parse(resultTypeDefinition.Name, relation.PointerRelation);
+
+                    ZanzibarRelation? rel;
+
+                    if (innerTypeRelations.Count == 1)
+                    {
+                        var innerTypeRelation = innerTypeRelations[0];
+
+                        rel = new ZanzibarJoinUserToObject()
+                        {
+                            Left = changeNameRel,
+                            Right = innerTypeRelation
+                        };
+                    }
+                    else if (innerTypeRelations.Count > 1)
+                    {
+                        throw new NotImplementedException("Multiple relations not implemented here yet, please create a github issue");
+                    }
+                    else
+                    {
+                        rel = changeNameRel;
+                    }
+
+                    return new Result()
+                    {
+                        Relation = rel,
+                        ResultTypes = tuplesetResult.ResultTypes
+                    };
+                }
+                else
+                {
+                    return new Result()
+                    {
+                        Relation = changeNameRel,
+                        ResultTypes = tuplesetResult.ResultTypes
+                    };
+                }
             }
 
             var computedTypeResult = VisitComputedUserset(new ZanzibarComputedUsersetRelation(relation.PointerRelation), new ConvertState(state.toRelationName, resultTypeDefinition));
+            
+            if (computedTypeResult.Relation == null)
+            {
+                return computedTypeResult;
+            }
 
             var joinRel = new ZanzibarJoinUserToObject()
             {
@@ -345,6 +461,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             foreach (var child in relation.Children)
             {
                 var subRel = Visit(child, new ConvertState(state.toRelationName, state.typeDefinition));
+                if (subRel.Relation == null)
+                {
+                    continue;
+                }
                 relations.Add(subRel.Relation);
                 foreach (var t in subRel.ResultTypes)
                 {
@@ -396,6 +516,11 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             };
 
             var result = Visit(relationDef, new ConvertState(relationReference.Relation, referenceType));
+
+            if (result.Relation == null)
+            {
+                return result;
+            }
 
             var joinRel = new ZanzibarJoinUserRelation()
             {
