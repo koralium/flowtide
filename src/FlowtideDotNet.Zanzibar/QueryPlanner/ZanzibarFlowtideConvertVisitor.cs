@@ -14,7 +14,7 @@ using FlowtideDotNet.Zanzibar.QueryPlanner.Models;
 
 namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {
-    public sealed class ResultUserType
+    internal sealed class ResultUserType
     {
         public required string TypeName { get; set; }
 
