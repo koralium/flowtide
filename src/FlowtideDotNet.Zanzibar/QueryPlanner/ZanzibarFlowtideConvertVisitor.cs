@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         private readonly HashSet<string> _stopTypes;
         private readonly bool _recurseAtStopType;
         private readonly bool _hardStop;
-        private readonly string? hardStopTypeName;
+        private readonly string? _hardStopTypeName;
         private readonly HashSet<TypeReference> visitedTypes;
         private readonly HashSet<TypeReference> loopFoundTypes;
         private readonly List<ZanzibarRelation> _relations;
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             this._stopTypes = stopTypes;
             this._recurseAtStopType = recurseAtStopType;
             this._hardStop = hardStop;
-            this.hardStopTypeName = hardStopTypeName;
+            this._hardStopTypeName = hardStopTypeName;
             visitedTypes = new HashSet<TypeReference>();
             loopFoundTypes = new HashSet<TypeReference>();
             _relations = new List<ZanzibarRelation>();
@@ -343,7 +343,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 _typeIdCounter--;
                 if (_hardStop || resultTypeDefinition.Name == _startType)
                 {
-                    if (state.typeDefinition.Name == hardStopTypeName)
+                    // Check if its a relation inside of the stop type that we are resolving
+                    // If so, take the relation data and only keep the resource information and take the distinct value
+                    // This allows getting a list of resources that can give access
+                    if (state.typeDefinition.Name == _hardStopTypeName)
                     {
                         
                         return new Result()
