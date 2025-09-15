@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Authzed.Api.V1;
-using FlowtideDotNet.AcceptanceTests.Entities;
 using Grpc.Core;
 using System.Diagnostics;
 
