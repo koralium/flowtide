@@ -192,5 +192,10 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             return Task.CompletedTask;
         }
+
+        public Task DeleteStream()
+        {
+            return flowtideTestStream.DeleteStream();
+        }
     }
 }
