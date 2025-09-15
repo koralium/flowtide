@@ -47,28 +47,31 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
     {
         private sealed class TypeReference
         {
-            public TypeReference(string type, string relation)
+            public TypeReference(string type, string relation, int typeCounter)
             {
                 Type = type;
                 Relation = relation;
+                TypeCounter = typeCounter;
             }
 
             public string Type { get; }
 
             public string Relation { get; }
 
+            public int TypeCounter { get; }
+
             public override bool Equals(object? obj)
             {
                 if (obj is TypeReference other)
                 {
-                    return other.Type == Type && other.Relation == Relation;
+                    return other.Type == Type && other.Relation == Relation && other.TypeCounter == TypeCounter;
                 }
                 return false;
             }
 
             public override int GetHashCode()
             {
-                return HashCode.Combine(Type, Relation);
+                return HashCode.Combine(Type, Relation, TypeCounter);
             }
         }
 
@@ -81,6 +84,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         private readonly HashSet<TypeReference> loopFoundTypes;
         private readonly List<ZanzibarRelation> _relations;
         private string? _startType;
+        private int _typeIdCounter;
 
         public ZanzibarFlowtideConvertVisitor(ZanzibarSchema schema, HashSet<string> stopTypes, bool recurseAtStopType, bool hardStop, string? hardStopTypeName)
         {
@@ -332,13 +336,16 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             {
                 throw new InvalidOperationException();
             }
+            _typeIdCounter++;
 
             if (_stopTypes.Contains(resultTypeDefinition.Name))
             {
+                _typeIdCounter--;
                 if (_hardStop || resultTypeDefinition.Name == _startType)
                 {
                     if (state.typeDefinition.Name == hardStopTypeName)
                     {
+                        
                         return new Result()
                         {
                             Relation = new ZanzibarCopyResourceToSubjectDistinct()
@@ -403,7 +410,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             }
 
             var computedTypeResult = VisitComputedUserset(new ZanzibarComputedUsersetRelation(relation.PointerRelation), new ConvertState(state.toRelationName, resultTypeDefinition));
-            
+            _typeIdCounter--;
+
             if (computedTypeResult.Relation == null)
             {
                 return computedTypeResult;
@@ -439,8 +447,12 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         public override Result VisitUnion(ZanzibarUnionRelation relation, ConvertState state)
         {
-            var typeRef = new TypeReference(state.typeDefinition.Name, state.toRelationName);
-            if (visitedTypes.Contains(typeRef))
+            var typeRef = new TypeReference(state.typeDefinition.Name, state.toRelationName, _typeIdCounter);
+
+            // Find if we have visited this type with another type counter, then this is a loop
+            var existingVisitedType = visitedTypes.FirstOrDefault(x => x.Type == state.typeDefinition.Name && x.Relation == state.toRelationName && x.TypeCounter != _typeIdCounter);
+
+            if (existingVisitedType != null)
             {
                 loopFoundTypes.Add(typeRef);
                 return new Result()
@@ -476,7 +488,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             {
                 Inputs = relations
             };
-            if (loopFoundTypes.Contains(typeRef))
+            var loopFoundType = loopFoundTypes.FirstOrDefault(x => x.Type == typeRef.Type && x.Relation == typeRef.Relation);
+            if (loopFoundType != null)
             {
                 loopFoundTypes.Remove(typeRef);
                 rel = new ZanzibarLoop()
