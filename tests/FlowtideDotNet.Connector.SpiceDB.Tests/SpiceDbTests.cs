@@ -760,7 +760,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata
             {
-                { "Authorization", $"Bearer {nameof(TestReadPermissionsStopTypeRecurse)}" }
+                { "Authorization", $"Bearer {nameof(TestReadPermissionsStopTypeRecurseThreeLevels)}" }
             };
             await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
@@ -920,7 +920,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
             var viewPermissionPlan = SpiceDbToFlowtide.Convert(schemaText, "project", "can_view", "spicedb", true, "organization");
 
-            var stream = new SpiceDbTestStream(nameof(TestReadPermissionsStopTypeRecurse), spiceDbFixture.GetChannel(), false, true);
+            var stream = new SpiceDbTestStream(nameof(TestReadPermissionsStopTypeRecurseThreeLevels), spiceDbFixture.GetChannel(), false, true);
             stream.SqlPlanBuilder.AddPlanAsView("authdata", viewPermissionPlan);
 
             await stream.StartStream(@"
