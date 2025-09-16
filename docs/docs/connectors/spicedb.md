@@ -131,3 +131,51 @@ FROM authdata
 ");
 ```
 
+### Stop at types
+
+It is possible to send in an array of type names where the search should end.
+This can be useful in scenarios where say an entire company has access to a resource, it can be better to add the company identifier instead of every single user in the company.
+
+Example:
+
+```csharp
+var modelPlan = SpiceDbToFlowtide.Convert(schemaText, "{type name}", "{relation name}", "{input table name}", false, "company");
+```
+
+The relation name will still be the relation name you are filtering on but instead with the object type company and its identifier.
+
+It is also possible to allow recursions at stop types to create a flat list. This is useful in scenarios such as a folder
+structure:
+
+```
+definition folder {
+  relation user: user
+  relation parent: folder
+
+  permission can_view = user + parent->can_view 
+}
+
+definition file {
+    relation user: user
+    relation folder: folder
+
+    permission can_view = user + folder->can_view
+}
+```
+
+If one would use `folder` as a stop type at a folder structure like this: `/folder1/folder2/folder3/file.txt`.
+
+With the following command:
+
+```csharp
+var modelPlan = SpiceDbToFlowtide.Convert(schemaText, "file", "can_view", "{input table name}", true, "folder");
+```
+
+The result for `file.txt` would become:
+
+```
+/folder1
+/folder1/folder2
+/folder1/folder2/folder3
++ any users that have file access
+```
