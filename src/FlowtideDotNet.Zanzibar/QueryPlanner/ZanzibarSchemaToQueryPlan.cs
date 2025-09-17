@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 {
     public static class ZanzibarSchemaToQueryPlan
     {
-        public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, HashSet<string> stopTypes)
+        public static List<ZanzibarRelation> GenerateQueryPlan(ZanzibarSchema schema, string type, string relation, bool recurseAtStopType, HashSet<string> stopTypes)
         {
             if (!schema.Types.ContainsKey(type))
             {
@@ -32,7 +32,9 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                     }
                 }
             }
-            return new ZanzibarFlowtideConvertVisitor(schema, stopTypes).Parse(type, relation);
+            var result = new ZanzibarFlowtideConvertVisitor(schema, stopTypes, recurseAtStopType, false, default).Parse(type, relation);
+
+            return result;
         }
     }
 }
