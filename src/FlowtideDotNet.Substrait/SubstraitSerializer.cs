@@ -14,6 +14,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
 using Google.Protobuf;
 using Substrait.Protobuf;
 using Protobuf = Substrait.Protobuf;
@@ -59,6 +60,153 @@ namespace FlowtideDotNet.Substrait
                 });
                 _functionsExtensions.Add(key, functionAnchor);
                 return functionAnchor;
+            }
+
+            private uint GetAnyTypeId()
+            {
+                if (!_typeExtensions.TryGetValue("any", out var id))
+                {
+                    var anchor = uriCounter++;
+                    Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
+                    {
+                        Uri = $"/any_type.yaml",
+                        ExtensionUriAnchor = (uint)anchor
+                    });
+                    var typeAnchor = (uint)extensionCounter++;
+                    Root.Extensions.Add(new Protobuf.SimpleExtensionDeclaration()
+                    {
+                        ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
+                        {
+                            ExtensionUriReference = (uint)anchor,
+                            Name = "any",
+                            TypeAnchor = typeAnchor
+                        }
+                    });
+                    id = (int)typeAnchor;
+                    _typeExtensions.Add("any", id);
+                }
+                return (uint)id;
+            }
+
+            public Protobuf.Type GetType(SubstraitBaseType type, List<string>? names = default)
+            {
+                Protobuf.Type.Types.Nullability nullable = type.Nullable ? Protobuf.Type.Types.Nullability.Nullable : Protobuf.Type.Types.Nullability.Required;
+                switch (type.Type)
+                {
+                    case Type.SubstraitType.Int64:
+                        return new Protobuf.Type()
+                        {
+                            I64 = new Protobuf.Type.Types.I64()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Int32:
+                        return new Protobuf.Type()
+                        {
+                            I32 = new Protobuf.Type.Types.I32()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Any:
+                        var anyTypeId = GetAnyTypeId();
+                        return new Protobuf.Type()
+                        {
+                            UserDefined = new Protobuf.Type.Types.UserDefined()
+                            {
+                                Nullability = nullable,
+                                TypeReference = anyTypeId
+                            }
+                        };
+                    case SubstraitType.Bool:
+                        return new Protobuf.Type()
+                        {
+                            Bool = new Protobuf.Type.Types.Boolean()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Binary:
+                        return new Protobuf.Type()
+                        {
+                            Binary = new Protobuf.Type.Types.Binary()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Date:
+                        return new Protobuf.Type()
+                        {
+                            Date = new Protobuf.Type.Types.Date()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Decimal:
+                        return new Protobuf.Type()
+                        {
+                            Decimal = new Protobuf.Type.Types.Decimal()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Fp32:
+                        return new Protobuf.Type()
+                        {
+                            Fp32 = new Protobuf.Type.Types.FP32()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Fp64:
+                        return new Protobuf.Type()
+                        {
+                            Fp64 = new Protobuf.Type.Types.FP64()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.String:
+                        return new Protobuf.Type()
+                        {
+                            String = new Protobuf.Type.Types.String()
+                            {
+                                Nullability = nullable
+                            }
+                        };
+                    case SubstraitType.Struct:
+                        if (names == null)
+                        {
+                            throw new NotSupportedException("names list must be provided with serializing named structs");
+                        }
+                        var structType = new Protobuf.Type.Types.Struct();
+                        if (type is Type.NamedStruct namedStruct)
+                        {
+                            if (namedStruct.Struct != null)
+                            {
+                                for (int i = 0; i < namedStruct.Names.Count; i++)
+                                {
+                                    names.Add(namedStruct.Names[i]);
+                                    structType.Types_.Add(GetType(namedStruct.Struct.Types[i], names));
+                                }
+                                return new Protobuf.Type()
+                                {
+                                    Struct = structType
+                                };
+                            }
+                            else
+                            {
+                                throw new NotSupportedException("Inner structs must have data types");
+                            }
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Struct must be NamedStruct");
+                        }
+                    default:
+                        throw new NotImplementedException(type.Type.ToString());
+                }
             }
 
             public Protobuf.Plan Root { get; }
@@ -164,6 +312,29 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Protobuf.Expression? VisitListNestedExpression(ListNestedExpression listNestedExpression, SerializerVisitorState state)
+            {
+                var list = new Protobuf.Expression.Types.Nested.Types.List();
+
+                foreach(var item in listNestedExpression.Values)
+                {
+                    var itemExpr = Visit(item, state);
+                    if (itemExpr == null)
+                    {
+                        throw new InvalidOperationException("Array literal contained expression that could not be parsed.");
+                    }
+                    list.Values.Add(itemExpr);
+                }
+                
+                return new Protobuf.Expression()
+                {
+                    Nested = new Protobuf.Expression.Types.Nested()
+                    {
+                        List = list
+                    }
+                };
+            }
+
             public override Protobuf.Expression? VisitArrayLiteral(ArrayLiteral arrayLiteral, SerializerVisitorState state)
             {
                 var list = new Protobuf.Expression.Types.Literal.Types.List();
@@ -259,6 +430,19 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Protobuf.Expression? VisitCastExpression(CastExpression castExpression, SerializerVisitorState state)
+            {
+                return new Protobuf.Expression()
+                {
+                    Cast = new Protobuf.Expression.Types.Cast()
+                    {
+                        Input = Visit(castExpression.Expression, state),
+                        FailureBehavior = Protobuf.Expression.Types.Cast.Types.FailureBehavior.ReturnNull,
+                        Type = state.GetType(castExpression.Type)
+                    }
+                };
+            }
+
             public override Protobuf.Expression? VisitStructExpression(StructExpression structExpression, SerializerVisitorState state)
             {
                 var s = new Protobuf.Expression.Types.Nested.Types.Struct();
@@ -273,6 +457,30 @@ namespace FlowtideDotNet.Substrait
                         Struct = s
                     }
                 };
+            }
+
+            public override Protobuf.Expression? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, SerializerVisitorState state)
+            {
+                var output = new Protobuf.Expression()
+                {
+                    Nested = new Protobuf.Expression.Types.Nested()
+                    {
+                        Map = new Protobuf.Expression.Types.Nested.Types.Map()
+                    }
+                };
+                for (int i = 0; i < mapNestedExpression.KeyValues.Count; i++)
+                {
+                    var key = Visit(mapNestedExpression.KeyValues[i].Key, state);
+                    var value = Visit(mapNestedExpression.KeyValues[i].Value, state);
+
+                    output.Nested.Map.KeyValues.Add(new Protobuf.Expression.Types.Nested.Types.Map.Types.KeyValue()
+                    {
+                        Key = key,
+                        Value = value
+                    });
+                }
+
+                return output;
             }
         }
 
@@ -293,23 +501,7 @@ namespace FlowtideDotNet.Substrait
                 }
                 if (readRelation.BaseSchema != null)
                 {
-                    readRel.BaseSchema = new Protobuf.NamedStruct();
-                    readRel.BaseSchema.Names.AddRange(readRelation.BaseSchema.Names);
-                    if (readRelation.BaseSchema.Struct != null)
-                    {
-                        var anyTypeAnchor = GetAnyTypeId(state);
-                        readRel.BaseSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach (var type in readRelation.BaseSchema.Struct.Types)
-                        {
-                            readRel.BaseSchema.Struct.Types_.Add(new Protobuf.Type()
-                            {
-                                UserDefined = new Protobuf.Type.Types.UserDefined()
-                                {
-                                    TypeReference = anyTypeAnchor
-                                }
-                            });
-                        }
-                    }
+                    readRel.BaseSchema = SerializeNamedStruct(readRelation.BaseSchema, state);
                 }
                 if (readRelation.Filter != null)
                 {
@@ -451,11 +643,7 @@ namespace FlowtideDotNet.Substrait
 
                 var rel = new Protobuf.ExtensionMultiRel()
                 {
-                    Detail = new Google.Protobuf.WellKnownTypes.Any()
-                    {
-                        TypeUrl = "flowtide/flowtide.IterationRelation",
-                        Value = iterRel.ToByteString()
-                    }
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(iterRel)
                 };
 
                 rel.Inputs.Add(Visit(iterationRelation.LoopPlan, state));
@@ -481,13 +669,10 @@ namespace FlowtideDotNet.Substrait
             {
                 CustomProtobuf.IterationReferenceReadRelation iterRel = new CustomProtobuf.IterationReferenceReadRelation();
                 iterRel.IterationName = iterationReferenceReadRelation.IterationName;
+                iterRel.OutputLength = iterationReferenceReadRelation.ReferenceOutputLength;
 
                 var rel = new Protobuf.ExtensionLeafRel();
-                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                {
-                    TypeUrl = "flowtide/flowtide.IterationReferenceReadRelation",
-                    Value = iterRel.ToByteString()
-                };
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(iterRel);
 
                 if (iterationReferenceReadRelation.EmitSet)
                 {
@@ -558,6 +743,123 @@ namespace FlowtideDotNet.Substrait
                 return new Protobuf.Rel()
                 {
                     Join = joinRel
+                };
+            }
+
+            private Protobuf.Expression.Types.WindowFunction.Types.Bound GetWindowBound(WindowBound windowBound)
+            {
+                switch (windowBound.Type)
+                {
+                    case WindowBoundType.CurrentRow:
+                        return new Protobuf.Expression.Types.WindowFunction.Types.Bound()
+                        {
+                            CurrentRow = new Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.CurrentRow()
+                        };
+                    case WindowBoundType.Unbounded:
+                        return new Protobuf.Expression.Types.WindowFunction.Types.Bound()
+                        {
+                            Unbounded = new Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Unbounded()
+                        };
+                    case WindowBoundType.PreceedingRow:
+                        if (windowBound is PreceedingRowWindowBound rangeWindowBound)
+                        {
+                            return new Protobuf.Expression.Types.WindowFunction.Types.Bound()
+                            {
+                                Preceding = new Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Preceding()
+                                {
+                                    Offset = rangeWindowBound.Offset
+                                }
+                            };
+                        }
+                        throw new InvalidOperationException("PreceedingRange must be PreceedingRowWindowBound");
+                    case WindowBoundType.FollowingRow:
+                        if (windowBound is FollowingRowWindowBound followingRowWindowBound)
+                        {
+                            return new Protobuf.Expression.Types.WindowFunction.Types.Bound()
+                            {
+                                Following = new Protobuf.Expression.Types.WindowFunction.Types.Bound.Types.Following()
+                                {
+                                    Offset = followingRowWindowBound.Offset
+                                }
+                            };
+                        }
+                        throw new InvalidOperationException("FollowingRange must be FollowingRowWindowBound");
+                    default:
+                        throw new InvalidOperationException("Window bound type not implemented");
+                }
+            }
+
+            private Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction GetWindowRelFunction(WindowFunction windowFunction, SerializerVisitorState state)
+            {
+                var exprVisitor = new SerializerExpressionVisitor();
+
+                var output = new ConsistentPartitionWindowRel.Types.WindowRelFunction()
+                {
+                };
+
+                foreach(var arg in windowFunction.Arguments)
+                {
+                    output.Arguments.Add(new FunctionArgument()
+                    {
+                        Value = exprVisitor.Visit(arg, state)
+                    });
+                }
+
+                output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUri, windowFunction.ExtensionName);
+                output.Invocation = Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
+                
+                if (windowFunction.LowerBound != null)
+                {
+                    output.LowerBound = GetWindowBound(windowFunction.LowerBound);
+                }
+                if (windowFunction.UpperBound != null)
+                {
+                    output.UpperBound = GetWindowBound(windowFunction.UpperBound);
+                }
+                output.Phase = AggregationPhase.Unspecified;
+
+                return output;
+            }
+
+            public override Rel VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, SerializerVisitorState state)
+            {
+                var rel = new ConsistentPartitionWindowRel();
+
+                var exprVisitor = new SerializerExpressionVisitor();
+
+                if (consistentPartitionWindowRelation.PartitionBy != null)
+                {
+                    foreach (var expr in consistentPartitionWindowRelation.PartitionBy)
+                    {
+                        rel.PartitionExpressions.Add(exprVisitor.Visit(expr, state));
+                    }
+                }
+
+                if (consistentPartitionWindowRelation.OrderBy != null)
+                {
+                    foreach (var order in consistentPartitionWindowRelation.OrderBy)
+                    {
+                        rel.Sorts.Add(GetSortField(order, state));
+                    }
+                }
+
+                foreach(var func in consistentPartitionWindowRelation.WindowFunctions)
+                {
+                    rel.WindowFunctions.Add(GetWindowRelFunction(func, state));
+                }
+
+                rel.Input = Visit(consistentPartitionWindowRelation.Input, state);
+
+                if (consistentPartitionWindowRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(consistentPartitionWindowRelation.Emit);
+                }
+
+                return new Rel()
+                {
+                    Window = rel
                 };
             }
 
@@ -671,11 +973,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     customRel.KeyIndex.Add(k);
                 }
-                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                {
-                    TypeUrl = "flowtide/flowtide.NormalizationRelation",
-                    Value = customRel.ToByteString()
-                };
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(customRel);
 
                 if (normalizationRelation.EmitSet)
                 {
@@ -709,11 +1007,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var rel = new Protobuf.ExtensionSingleRel();
                 var bufRel = new CustomProtobuf.BufferRelation();
-                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                {
-                    TypeUrl = "flowtide/flowtide.BufferRelation",
-                    Value = bufRel.ToByteString()
-                };
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(bufRel);
 
                 if (bufferRelation.EmitSet)
                 {
@@ -801,56 +1095,13 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            private static uint GetAnyTypeId(SerializerVisitorState state)
-            {
-                if (!state._typeExtensions.TryGetValue("any", out var id))
-                {
-                    var anchor = state.uriCounter++;
-                    state.Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
-                    {
-                        Uri = $"/any_type.yaml",
-                        ExtensionUriAnchor = (uint)anchor
-                    });
-                    var typeAnchor = (uint)state.extensionCounter++;
-                    state.Root.Extensions.Add(new Protobuf.SimpleExtensionDeclaration()
-                    {
-                        ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
-                        {
-                            ExtensionUriReference = (uint)anchor,
-                            Name = "any",
-                            TypeAnchor = typeAnchor
-                        }
-                    });
-                    id = (int)typeAnchor;
-                    state._typeExtensions.Add("any", id);
-                }
-                return (uint)id;
-            }
-
             public override Protobuf.Rel VisitWriteRelation(WriteRelation writeRelation, SerializerVisitorState state)
             {
                 var writeRel = new Protobuf.WriteRel();
 
                 if (writeRelation.TableSchema != null)
                 {
-
-                    writeRel.TableSchema = new Protobuf.NamedStruct();
-                    writeRel.TableSchema.Names.AddRange(writeRelation.TableSchema.Names);
-                    if (writeRelation.TableSchema.Struct != null)
-                    {
-                        var anyTypeAnchor = GetAnyTypeId(state);
-                        writeRel.TableSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach (var t in writeRelation.TableSchema.Struct.Types)
-                        {
-                            writeRel.TableSchema.Struct.Types_.Add(new Protobuf.Type()
-                            {
-                                UserDefined = new Protobuf.Type.Types.UserDefined()
-                                {
-                                    TypeReference = anyTypeAnchor
-                                }
-                            });
-                        }
-                    }
+                    writeRel.TableSchema = SerializeNamedStruct(writeRelation.TableSchema, state);
                 }
                 if (writeRelation.NamedObject != null)
                 {
@@ -865,6 +1116,122 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Rel VisitExchangeRelation(ExchangeRelation exchangeRelation, SerializerVisitorState state)
+            {
+                var output = new ExchangeRel()
+                {
+                    PartitionCount = exchangeRelation.PartitionCount.HasValue ? exchangeRelation.PartitionCount.Value : 0,
+                };
+                if (exchangeRelation.ExchangeKind.Type == ExchangeKindType.Scatter)
+                {
+                    output.ScatterByFields = new ExchangeRel.Types.ScatterFields();
+
+                    if (exchangeRelation.ExchangeKind is ScatterExchangeKind scatterExchangeKind)
+                    {
+                        var exprVisitor = new SerializerExpressionVisitor();
+                        foreach (var field in scatterExchangeKind.Fields)
+                        {
+                            var fieldExpr = exprVisitor.Visit(field, state);
+
+                            if (fieldExpr == null)
+                            {
+                                throw new InvalidOperationException("Scatter field could not be serialized");
+                            }
+
+                            output.ScatterByFields.Fields.Add(fieldExpr.Selection);
+                        }
+                    }
+                }
+                else
+                {
+                    throw new NotImplementedException("Only scatter exchange kind is implemented");
+                }
+
+                output.Input = Visit(exchangeRelation.Input, state);
+
+                foreach(var target in exchangeRelation.Targets)
+                {
+                    var protoTarget = new ExchangeRel.Types.ExchangeTarget();
+                    foreach(var partitionId in target.PartitionIds)
+                    {
+                        protoTarget.PartitionId.Add(partitionId);
+                    }
+                    switch (target.Type)
+                    {
+                        case ExchangeTargetType.StandardOutput:
+                            protoTarget.Uri = "standard_output";
+                            break;
+                        case ExchangeTargetType.PullBucket:
+                            // TODO: Fix later on when distributed mode is on.
+                            throw new NotImplementedException();
+                    }
+                    output.Targets.Add(protoTarget);
+                }
+                
+                if (exchangeRelation.EmitSet)
+                {
+                    output.Common = new Protobuf.RelCommon();
+                    output.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    output.Common.Emit.OutputMapping.AddRange(exchangeRelation.Emit);
+                }
+
+                return new Rel()
+                {
+                    Exchange = output
+                };
+            }
+
+            public override Rel VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, SerializerVisitorState state)
+            {
+
+                FlowtideDotNet.Substrait.CustomProtobuf.StandardOutputTargetReferenceRelation target = new FlowtideDotNet.Substrait.CustomProtobuf.StandardOutputTargetReferenceRelation();
+                target.RelationId = standardOutputExchangeReferenceRelation.RelationId;
+                target.TargetId = standardOutputExchangeReferenceRelation.TargetId;
+                
+
+                var rel = new Protobuf.ExtensionLeafRel()
+                {
+                    Detail = Google.Protobuf.WellKnownTypes.Any.Pack(target)
+                };
+                
+
+                return new Rel()
+                {
+                    ExtensionLeaf = rel
+                };
+            }
+
+            private Protobuf.SortField.Types.SortDirection GetSortDirection(SortDirection sortDirection)
+            {
+                switch (sortDirection)
+                {
+                    case SortDirection.SortDirectionUnspecified:
+                        return Protobuf.SortField.Types.SortDirection.Unspecified;
+                    case SortDirection.SortDirectionAscNullsFirst:
+                        return Protobuf.SortField.Types.SortDirection.AscNullsFirst;
+                    case SortDirection.SortDirectionAscNullsLast:
+                        return Protobuf.SortField.Types.SortDirection.AscNullsLast;
+                    case SortDirection.SortDirectionDescNullsFirst:
+                        return Protobuf.SortField.Types.SortDirection.DescNullsFirst;
+                    case SortDirection.SortDirectionDescNullsLast:
+                        return Protobuf.SortField.Types.SortDirection.DescNullsLast;
+                    case SortDirection.SortDirectionClustered:
+                        return Protobuf.SortField.Types.SortDirection.Clustered;
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+
+            private Protobuf.SortField GetSortField(Expressions.SortField sortField, SerializerVisitorState state)
+            {
+                var exprVisitor = new SerializerExpressionVisitor();
+                return new Protobuf.SortField()
+                {
+                    Direction = GetSortDirection(sortField.SortDirection),
+                    Expr = exprVisitor.Visit(sortField.Expression, state)
+                };
+            }
+
             public override Rel VisitTopNRelation(TopNRelation topNRelation, SerializerVisitorState state)
             {
                 var rel = new Protobuf.ExtensionSingleRel();
@@ -872,47 +1239,12 @@ namespace FlowtideDotNet.Substrait
                 topRel.Offset = topNRelation.Offset;
                 topRel.Count = topNRelation.Count;
 
-                var exprVisitor = new SerializerExpressionVisitor();
-
                 foreach (var sortField in topNRelation.Sorts)
                 {
-                    Protobuf.SortField.Types.SortDirection sortDir;
-                    switch (sortField.SortDirection)
-                    {
-                        case SortDirection.SortDirectionUnspecified:
-                            sortDir = Protobuf.SortField.Types.SortDirection.Unspecified;
-                            break;
-                        case SortDirection.SortDirectionAscNullsFirst:
-                            sortDir = Protobuf.SortField.Types.SortDirection.AscNullsFirst;
-                            break;
-                        case SortDirection.SortDirectionAscNullsLast:
-                            sortDir = Protobuf.SortField.Types.SortDirection.AscNullsLast;
-                            break;
-                        case SortDirection.SortDirectionDescNullsFirst:
-                            sortDir = Protobuf.SortField.Types.SortDirection.DescNullsFirst;
-                            break;
-                        case SortDirection.SortDirectionDescNullsLast:
-                            sortDir = Protobuf.SortField.Types.SortDirection.DescNullsLast;
-                            break;
-                        case SortDirection.SortDirectionClustered:
-                            sortDir = Protobuf.SortField.Types.SortDirection.Clustered;
-                            break;
-                        default:
-                            throw new NotImplementedException();
-                    }
-
-                    topRel.Sorts.Add(new Protobuf.SortField()
-                    {
-                        Direction = sortDir,
-                        Expr = exprVisitor.Visit(sortField.Expression, state)
-                    });
+                    topRel.Sorts.Add(GetSortField(sortField, state));
                 }
 
-                rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                {
-                    TypeUrl = "flowtide/flowtide.TopNRelation",
-                    Value = topRel.ToByteString()
-                };
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(topRel);
 
                 if (topNRelation.EmitSet)
                 {
@@ -928,6 +1260,42 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            
+
+            private static Protobuf.NamedStruct SerializeNamedStruct(Type.NamedStruct namedStruct, SerializerVisitorState state)
+            {
+                var protoNamedStruct = new Protobuf.NamedStruct();
+                List<string> names = new List<string>();
+                List<Protobuf.Type> types = new List<Protobuf.Type>();
+                if (namedStruct.Struct != null)
+                {
+                    for (int i = 0; i < namedStruct.Names.Count; i++)
+                    {
+                        var name = namedStruct.Names[i];
+                        names.Add(name);
+                        types.Add(state.GetType(namedStruct.Struct.Types[i], names));
+                    }
+                    protoNamedStruct.Struct = new Protobuf.Type.Types.Struct();
+                    protoNamedStruct.Struct.Types_.AddRange(types);
+                }
+                else
+                {
+                    names.AddRange(namedStruct.Names);
+                }
+                protoNamedStruct.Names.AddRange(names); 
+                return protoNamedStruct;
+            }
+
+            private static Protobuf.Type.Types.Struct SerializeStruct(Type.Struct structType, SerializerVisitorState state)
+            {
+                var protoStruct = new Protobuf.Type.Types.Struct();
+                foreach (var t in structType.Types)
+                {
+                    protoStruct.Types_.Add(state.GetType(t));
+                }
+                return protoStruct;
+            }
+
             private static CustomProtobuf.TableFunction CreateTableFunctionProtoDefintion(TableFunction tableFunction, SerializerVisitorState state)
             {
                 var protoDef = new CustomProtobuf.TableFunction();
@@ -938,23 +1306,7 @@ namespace FlowtideDotNet.Substrait
                 // Serialize the table schema if it exists
                 if (tableFunction.TableSchema != null)
                 {
-                    protoDef.TableSchema = new Protobuf.NamedStruct();
-                    protoDef.TableSchema.Names.AddRange(tableFunction.TableSchema.Names);
-                    if (tableFunction.TableSchema.Struct != null)
-                    {
-                        var anyTypeAnchor = GetAnyTypeId(state);
-                        protoDef.TableSchema.Struct = new Protobuf.Type.Types.Struct();
-                        foreach (var t in tableFunction.TableSchema.Struct.Types)
-                        {
-                            protoDef.TableSchema.Struct.Types_.Add(new Protobuf.Type()
-                            {
-                                UserDefined = new Protobuf.Type.Types.UserDefined()
-                                {
-                                    TypeReference = anyTypeAnchor
-                                }
-                            });
-                        }
-                    }
+                    protoDef.TableSchema = SerializeNamedStruct(tableFunction.TableSchema, state);
                 }
 
                 // Serialize function arguments
@@ -1012,11 +1364,7 @@ namespace FlowtideDotNet.Substrait
                 {
                     var rel = new Protobuf.ExtensionSingleRel();
                     rel.Input = Visit(tableFunctionRelation.Input, state);
-                    rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                    {
-                        TypeUrl = "flowtide/flowtide.TableFunctionRelation",
-                        Value = protoDef.ToByteString()
-                    };
+                    rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(protoDef);
 
                     // Emit info
                     if (tableFunctionRelation.EmitSet)
@@ -1034,11 +1382,7 @@ namespace FlowtideDotNet.Substrait
                 else
                 {
                     var rel = new Protobuf.ExtensionLeafRel();
-                    rel.Detail = new Google.Protobuf.WellKnownTypes.Any()
-                    {
-                        TypeUrl = "flowtide/flowtide.TableFunctionRelation",
-                        Value = protoDef.ToByteString()
-                    };
+                    rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(protoDef);
                     // Emit info
                     if (tableFunctionRelation.EmitSet)
                     {
@@ -1052,6 +1396,29 @@ namespace FlowtideDotNet.Substrait
                         ExtensionLeaf = rel
                     };
                 }
+            }
+
+            public override Rel VisitSubStreamRootRelation(SubStreamRootRelation subStreamRootRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+
+                var subStreamRel = new CustomProtobuf.SubStreamRootRelation();
+                subStreamRel.SubstreamName = subStreamRootRelation.Name;
+
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(subStreamRel);
+                if (subStreamRootRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(subStreamRootRelation.Emit);
+                }
+
+                rel.Input = Visit(subStreamRootRelation.Input, state);
+
+                return new Rel()
+                {
+                    ExtensionSingle = rel
+                };
             }
         }
 
@@ -1077,7 +1444,8 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.TopNRelation.Descriptor);
+                CustomProtobuf.TopNRelation.Descriptor,
+                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);

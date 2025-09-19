@@ -24,16 +24,200 @@ namespace FlowtideDotNet.Substrait
         private sealed class ExpressionDeserializerImpl
         {
             private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
+            private readonly Dictionary<uint, string> idToUserDefinedType = new Dictionary<uint, string>();
 
             public ExpressionDeserializerImpl(Protobuf.Plan plan)
             {
                 foreach (var extension in plan.Extensions)
                 {
-                    var id = extension.ExtensionFunction.FunctionAnchor;
-                    var uri = plan.ExtensionUris.First(x => x.ExtensionUriAnchor == extension.ExtensionFunction.ExtensionUriReference).Uri;
-                    uri = uri.Substring(uri.LastIndexOf('/'));
-                    idToFunctionLookup.Add(id, $"{uri}:{extension.ExtensionFunction.Name.Substring(0, extension.ExtensionFunction.Name.IndexOf(':'))}");
+                    if (extension.MappingTypeCase == Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase.ExtensionType)
+                    {
+                        idToUserDefinedType.Add(extension.ExtensionType.TypeAnchor, extension.ExtensionType.Name);
+                    }
+                    else if (extension.MappingTypeCase == Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase.ExtensionFunction)
+                    {
+                        var id = extension.ExtensionFunction.FunctionAnchor;
+                        var uri = plan.ExtensionUris.First(x => x.ExtensionUriAnchor == extension.ExtensionFunction.ExtensionUriReference).Uri;
+                        uri = uri.Substring(uri.LastIndexOf('/'));
+                        var colonLocation = extension.ExtensionFunction.Name.IndexOf(':');
+
+                        string? extensionName = default;
+                        if (colonLocation == -1)
+                        {
+                            extensionName = extension.ExtensionFunction.Name;
+                        }
+                        else
+                        {
+                            extensionName = extension.ExtensionFunction.Name.Substring(0, colonLocation);
+                        }
+                        idToFunctionLookup.Add(id, $"{uri}:{extensionName}");
+                    }
+                    else
+                    {
+                        throw new NotImplementedException(extension.MappingTypeCase.ToString());
+                    }
+                       
                 }
+            }
+
+            internal SubstraitBaseType GetType(Protobuf.Type type, ref Span<string> names)
+            {
+                switch (type.KindCase)
+                {
+                    case Protobuf.Type.KindOneofCase.String:
+
+                        return new StringType()
+                        {
+                            Nullable = type.String.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.I32:
+                        return new Int32Type()
+                        {
+                            Nullable = type.I32.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Date:
+                        return new DateType()
+                        {
+                            Nullable = type.Date.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Fp64:
+                        return new Fp64Type()
+                        {
+                            Nullable = type.Fp64.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.I64:
+                        return new Int64Type()
+                        {
+                            Nullable = type.I64.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Bool:
+                        return new BoolType()
+                        {
+                            Nullable = type.Bool.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Fp32:
+                        return new Fp32Type()
+                        {
+                            Nullable = type.Fp32.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.UserDefined:
+                        if (idToUserDefinedType.TryGetValue(type.UserDefined.TypeReference, out var typeName))
+                        {
+                            if (typeName.Equals("any", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return new AnyType();
+                            }
+                            else
+                            {
+                                throw new NotImplementedException($"User defined type not implemented {typeName}");
+                            }
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException($"User defined type not found {type.UserDefined.TypeReference}");
+                        }
+                    case Protobuf.Type.KindOneofCase.Struct:
+                        List<string> structNames = new List<string>();
+                        List<SubstraitBaseType> structTypes = new List<SubstraitBaseType>();
+                        for (int i = 0; i < type.Struct.Types_.Count; i++)
+                        {
+                            string? name = default;
+                            if (names.Length > 0)
+                            {
+                                name = names[0];
+                                names = names.Slice(1);
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Not enough names for struct fields");
+                            }
+                            var structType = GetType(type.Struct.Types_[i], ref names);
+                            structNames.Add(name);
+                            structTypes.Add(structType);
+                        }
+                        return new NamedStruct()
+                        {
+                            Names = structNames,
+                            Struct = new Struct()
+                            {
+                                Types = structTypes
+                            }
+                        };
+                    default:
+                        throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
+                }
+            }
+
+            internal Struct ParseStruct(Protobuf.Type.Types.Struct str)
+            {
+                var st = new Type.Struct()
+                {
+                    Types = new List<SubstraitBaseType>()
+                };
+                foreach (var type in str.Types_)
+                {
+                    var emptySpan = Span<string>.Empty;
+                    st.Types.Add(GetType(type, ref emptySpan));
+                }
+
+                return st;
+            }
+
+            internal NamedStruct ParseNamedStruct(Protobuf.NamedStruct namedStruct)
+            {
+                var names = new List<string>();
+                Struct? structType = default;
+                if (namedStruct.Struct != null)
+                {
+                    List<SubstraitBaseType> types = new List<SubstraitBaseType>();
+                    var namesSpan = namedStruct.Names.ToArray().AsSpan();
+                    for (int i = 0; i < namedStruct.Struct.Types_.Count; i++)
+                    {
+                        var name = namesSpan[0];
+                        namesSpan = namesSpan.Slice(1);
+                        var type = GetType(namedStruct.Struct.Types_[i], ref namesSpan);
+                        names.Add(name);
+                        types.Add(type);
+                    }
+                    structType = new Struct()
+                    {
+                        Types = types
+                    };
+                }
+                return new NamedStruct()
+                {
+                    Names = names,
+                    Struct = structType
+                };
+            }
+
+            public TableFunction VisitTableFunction(CustomProtobuf.TableFunction tableFunction)
+            {
+                if (!idToFunctionLookup.TryGetValue(tableFunction.FunctionReference, out var functionName))
+                {
+                    throw new NotImplementedException();
+                }
+
+                var uri = functionName.Substring(0, functionName.IndexOf(':'));
+                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+
+                var tableSchema = ParseNamedStruct(tableFunction.TableSchema);
+                var result = new TableFunction()
+                {
+                    ExtensionName = name,
+                    ExtensionUri = uri,
+                    TableSchema = tableSchema,
+                    Arguments = new List<Expression>()
+                };
+                if (tableFunction.Arguments != null && tableFunction.Arguments.Count > 0)
+                {
+                    foreach (var arg in tableFunction.Arguments)
+                    {
+                        result.Arguments.Add(VisitExpression(arg.Value));
+                    }
+                }
+
+                return result;
             }
 
             public Expressions.Expression VisitExpression(Protobuf.Expression expression)
@@ -43,15 +227,92 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.Expression.RexTypeOneofCase.ScalarFunction:
                         return VisitScalarFunction(expression.ScalarFunction);
                     case Protobuf.Expression.RexTypeOneofCase.Selection:
-                        return VisitFieldReferencce(expression.Selection);
+                        return VisitFieldReference(expression.Selection);
                     case Protobuf.Expression.RexTypeOneofCase.Literal:
                         return VisitLiteral(expression.Literal);
                     case Protobuf.Expression.RexTypeOneofCase.IfThen:
                         return VisitIfThen(expression.IfThen);
                     case Protobuf.Expression.RexTypeOneofCase.Cast:
                         return VisitCast(expression.Cast);
+                    case Protobuf.Expression.RexTypeOneofCase.Nested:
+                        return VisitNested(expression.Nested);
+                    case Protobuf.Expression.RexTypeOneofCase.SingularOrList:
+                        return VisitSingularOrList(expression.SingularOrList);
                 }
                 throw new NotImplementedException();
+            }
+
+            public Expression VisitSingularOrList(Protobuf.Expression.Types.SingularOrList singularOrList)
+            {
+                var valueExpr = VisitExpression(singularOrList.Value);
+                List<Expression> options = new List<Expression>();
+
+                for (int i = 0; i < singularOrList.Options.Count; i++)
+                {
+                    options.Add(VisitExpression(singularOrList.Options[i]));
+                }
+
+                return new SingularOrListExpression()
+                {
+                    Options = options,
+                    Value = valueExpr
+                };
+            }
+
+            public Expression VisitNested(Protobuf.Expression.Types.Nested nested)
+            {
+                switch (nested.NestedTypeCase)
+                {
+                    case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.List:
+                        return VisitListNestedExpression(nested.List);
+                    case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.Map:
+                        return VisitMapNestedExpression(nested.Map);
+                    default:
+                        throw new NotImplementedException();
+                }
+            }
+
+            public MapNestedExpression VisitMapNestedExpression(Protobuf.Expression.Types.Nested.Types.Map map)
+            {
+                var output = new MapNestedExpression()
+                {
+                    KeyValues = new List<KeyValuePair<Expression, Expression>>()
+                };
+
+                foreach(var val in map.KeyValues)
+                {
+                    var key = VisitExpression(val.Key);
+                    var value = VisitExpression(val.Value);
+
+                    output.KeyValues.Add(new KeyValuePair<Expression, Expression>(key, value));
+                }
+
+                return output;
+            }
+
+            public Expressions.ListNestedExpression VisitListNestedExpression(Protobuf.Expression.Types.Nested.Types.List list)
+            {
+                var values = new List<Expression>();
+
+                foreach (var val in list.Values)
+                {
+                    var expr = VisitExpression(val);
+                    if (expr == null)
+                    {
+                        throw new InvalidOperationException("Expression in list cannot be null");
+                    }
+                    else
+                    {
+                        values.Add(expr);
+                    }
+                }
+
+                var o = new ListNestedExpression()
+                {
+                    Values = values
+                };
+
+                return o;
             }
 
             public Expressions.AggregateFunction VisitAggregateFunction(Protobuf.AggregateFunction aggregateFunction)
@@ -91,8 +352,91 @@ namespace FlowtideDotNet.Substrait
 
             private Expressions.Expression VisitCast(Protobuf.Expression.Types.Cast cast)
             {
-                // Skip casts for now
-                return VisitExpression(cast.Input);
+                var emptySpan = Span<string>.Empty;
+                return new CastExpression()
+                {
+                    Expression = VisitExpression(cast.Input),
+                    Type = GetType(cast.Type, ref emptySpan)
+                };
+            }
+
+            private SortDirection GetSortDirection(Protobuf.SortField.Types.SortDirection sortDirection)
+            {
+                switch (sortDirection)
+                {
+                    case Protobuf.SortField.Types.SortDirection.AscNullsFirst:
+                        return SortDirection.SortDirectionAscNullsFirst;
+                    case Protobuf.SortField.Types.SortDirection.DescNullsFirst:
+                        return SortDirection.SortDirectionDescNullsFirst;
+                    case Protobuf.SortField.Types.SortDirection.AscNullsLast:
+                        return SortDirection.SortDirectionAscNullsLast;
+                    case Protobuf.SortField.Types.SortDirection.DescNullsLast:
+                        return SortDirection.SortDirectionDescNullsLast;
+                    case Protobuf.SortField.Types.SortDirection.Clustered:
+                        return SortDirection.SortDirectionClustered;
+                    case Protobuf.SortField.Types.SortDirection.Unspecified:
+                        return SortDirection.SortDirectionUnspecified;
+                    default:
+                        throw new NotImplementedException(sortDirection.ToString());
+                }
+            }
+
+            public SortField VisitSortField(Protobuf.SortField sortField)
+            {
+                return new SortField()
+                {
+                    Expression = VisitExpression(sortField.Expr),
+                    SortDirection = GetSortDirection(sortField.Direction),
+                };
+            }
+
+            public WindowBound? GetWindowBound(Protobuf.Expression.Types.WindowFunction.Types.Bound bound)
+            {
+                switch (bound.KindCase)
+                {
+                    case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.CurrentRow:
+                        return new CurrentRowWindowBound();
+                    case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.Unbounded:
+                        return new UnboundedWindowBound();
+                    case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.Preceding:
+                        return new PreceedingRowWindowBound()
+                        {
+                            Offset = bound.Preceding.Offset
+                        };
+                    case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.Following:
+                        return new FollowingRowWindowBound()
+                        {
+                            Offset = bound.Following.Offset
+                        };
+                    case Protobuf.Expression.Types.WindowFunction.Types.Bound.KindOneofCase.None:
+                        return null;
+                    default:
+                        throw new NotImplementedException(bound.KindCase.ToString());
+                }
+            }
+
+            public WindowFunction VisitWindowFunction(Protobuf.ConsistentPartitionWindowRel.Types.WindowRelFunction windowRelFunction)
+            {
+                
+                if (!idToFunctionLookup.TryGetValue(windowRelFunction.FunctionReference, out var functionName))
+                {
+                    throw new NotImplementedException();
+                }
+                var uri = functionName.Substring(0, functionName.IndexOf(':'));
+                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                var result = new WindowFunction()
+                {
+                    ExtensionName = name,
+                    ExtensionUri = uri,
+                    Arguments = new List<Expression>(),
+                    LowerBound = GetWindowBound(windowRelFunction.LowerBound),
+                    UpperBound = GetWindowBound(windowRelFunction.UpperBound)
+                };
+                foreach(var arg in windowRelFunction.Arguments)
+                {
+                    result.Arguments.Add(VisitExpression(arg.Value));
+                }
+                return result;
             }
 
             private Expressions.Expression VisitIfThen(Protobuf.Expression.Types.IfThen ifThen)
@@ -150,7 +494,7 @@ namespace FlowtideDotNet.Substrait
                 }
             }
 
-            private static FieldReference VisitFieldReferencce(Protobuf.Expression.Types.FieldReference fieldReference)
+            public static FieldReference VisitFieldReference(Protobuf.Expression.Types.FieldReference fieldReference)
             {
                 switch (fieldReference.ReferenceTypeCase)
                 {
@@ -229,11 +573,13 @@ namespace FlowtideDotNet.Substrait
         {
             private readonly Protobuf.Plan plan;
             private readonly ExpressionDeserializerImpl expressionDeserializer;
+            private List<Relation> _relations;
 
             public SubstraitDeserializerImpl(Protobuf.Plan plan)
             {
                 this.plan = plan;
                 expressionDeserializer = new ExpressionDeserializerImpl(plan);
+                _relations = new List<Relation>();
             }
 
             public Plan Convert()
@@ -245,7 +591,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var output = new Plan
                 {
-                    Relations = new List<Relation>()
+                    Relations = _relations
                 };
                 foreach (var relation in plan.Relations)
                 {
@@ -259,8 +605,7 @@ namespace FlowtideDotNet.Substrait
                 switch (planRel.RelTypeCase)
                 {
                     case Protobuf.PlanRel.RelTypeOneofCase.Rel:
-
-                        break;
+                        return VisitRel(planRel.Rel);
                     case Protobuf.PlanRel.RelTypeOneofCase.None:
                         throw new NotImplementedException();
                     case Protobuf.PlanRel.RelTypeOneofCase.Root:
@@ -296,9 +641,364 @@ namespace FlowtideDotNet.Substrait
                         return VisitSet(rel.Set);
                     case Protobuf.Rel.RelTypeOneofCase.Aggregate:
                         return VisitAggregate(rel.Aggregate);
+                    case Protobuf.Rel.RelTypeOneofCase.ExtensionSingle:
+                        return VisitExtensionSingle(rel.ExtensionSingle);
+                    case Protobuf.Rel.RelTypeOneofCase.Write:
+                        return VisitWrite(rel.Write);
+                    case Protobuf.Rel.RelTypeOneofCase.ExtensionLeaf:
+                        return VisitExtensionLeaf(rel.ExtensionLeaf);
+                    case Protobuf.Rel.RelTypeOneofCase.ExtensionMulti:
+                        return VisitExtensionMulti(rel.ExtensionMulti);
+                    case Protobuf.Rel.RelTypeOneofCase.Reference:
+                        return VisitReference(rel.Reference);
+                    case Protobuf.Rel.RelTypeOneofCase.Window:
+                        return VisitWindow(rel.Window);
+                    case Protobuf.Rel.RelTypeOneofCase.MergeJoin:
+                        return VisitMergeJoin(rel.MergeJoin);
+                    case Protobuf.Rel.RelTypeOneofCase.Exchange:
+                        return VisitExchange(rel.Exchange);
                     default:
-                        throw new NotImplementedException();
+                        throw new NotImplementedException(rel.RelTypeCase.ToString());
                 }
+            }
+
+            private Relation VisitExchange(Protobuf.ExchangeRel exchange)
+            {
+                ExchangeKind? exchangeKind = default;
+
+                if (exchange.ExchangeKindCase == Protobuf.ExchangeRel.ExchangeKindOneofCase.ScatterByFields)
+                {
+                    var scatterExchangeKind = new ScatterExchangeKind()
+                    {
+                        Fields = new List<FieldReference>()
+                    };
+                    foreach(var field in exchange.ScatterByFields.Fields)
+                    {
+                        scatterExchangeKind.Fields.Add(ExpressionDeserializerImpl.VisitFieldReference(field));
+                    }
+                    exchangeKind = scatterExchangeKind;
+                }
+                else
+                {
+                    throw new NotImplementedException();
+                }
+                List<ExchangeTarget> targets = new List<ExchangeTarget>();
+                foreach(var target in exchange.Targets)
+                {
+                    if (target.Uri == "standard_output")
+                    {
+                        targets.Add(new StandardOutputExchangeTarget()
+                        {
+                            PartitionIds = target.PartitionId.ToList()
+                        });
+                    }
+                    else
+                    {
+                        throw new NotImplementedException($"{target.Uri}");
+                    }
+                }
+
+                return new ExchangeRelation()
+                {
+                    Input = VisitRel(exchange.Input),
+                    ExchangeKind = exchangeKind,
+                    Targets = targets,
+                    Emit = GetEmit(exchange.Common),
+                    PartitionCount = exchange.PartitionCount
+                };
+            }
+
+            private JoinType GetJoinType(Protobuf.MergeJoinRel.Types.JoinType joinType)
+            {
+                switch (joinType)
+                {
+                    case Protobuf.MergeJoinRel.Types.JoinType.Right:
+                        return JoinType.Right;
+                    case Protobuf.MergeJoinRel.Types.JoinType.Outer:
+                        return JoinType.Outer;
+                    case Protobuf.MergeJoinRel.Types.JoinType.Inner:
+                        return JoinType.Inner;
+                    case Protobuf.MergeJoinRel.Types.JoinType.Left:
+                        return JoinType.Left;
+                    case Protobuf.MergeJoinRel.Types.JoinType.Unspecified:
+                        return JoinType.Unspecified;
+                    default:
+                        throw new NotSupportedException(joinType.ToString());
+                }
+            }
+
+            private Relation VisitMergeJoin(Protobuf.MergeJoinRel mergeJoin)
+            {
+                List<FieldReference> leftKeys = new List<FieldReference>();
+                List<FieldReference> rightKeys = new List<FieldReference>();
+                foreach (var key in mergeJoin.Keys)
+                {
+                    leftKeys.Add(ExpressionDeserializerImpl.VisitFieldReference(key.Left));
+                    rightKeys.Add(ExpressionDeserializerImpl.VisitFieldReference(key.Right));
+                }
+                Expression? postJoinFilter = default;
+                if (mergeJoin.PostJoinFilter != null)
+                {
+                    postJoinFilter = expressionDeserializer.VisitExpression(mergeJoin.PostJoinFilter);
+                }
+                var output = new MergeJoinRelation()
+                {
+                    Emit = GetEmit(mergeJoin.Common),
+                    Left = VisitRel(mergeJoin.Left),
+                    Right = VisitRel(mergeJoin.Right),
+                    LeftKeys = leftKeys,
+                    RightKeys = rightKeys,
+                    Type = GetJoinType(mergeJoin.Type),
+                    PostJoinFilter = postJoinFilter
+                };
+                return output;
+            }
+
+            private Relation VisitWindow(Protobuf.ConsistentPartitionWindowRel windowRel)
+            {
+                List<SortField> orderBy = new List<SortField>();
+
+                foreach(var sort in windowRel.Sorts)
+                {
+                    orderBy.Add(expressionDeserializer.VisitSortField(sort));
+                }
+
+                List<Expression> partitionBy = new List<Expression>();
+
+                foreach (var partition in windowRel.PartitionExpressions) 
+                {
+                    partitionBy.Add(expressionDeserializer.VisitExpression(partition));
+                }
+
+                List<WindowFunction> windowFunctions = new List<WindowFunction>();
+
+                foreach(var windowFunction in windowRel.WindowFunctions)
+                {
+                    windowFunctions.Add(expressionDeserializer.VisitWindowFunction(windowFunction)); 
+                }
+
+                var output = new ConsistentPartitionWindowRelation()
+                {
+                    Input = VisitRel(windowRel.Input),
+                    Emit = GetEmit(windowRel.Common),
+                    OrderBy = orderBy,
+                    PartitionBy = partitionBy,
+                    WindowFunctions = windowFunctions
+                };
+
+                return output;
+            }
+
+            private Relation VisitReference(Protobuf.ReferenceRel referenceRel)
+            {
+                return new ReferenceRelation()
+                {
+                    RelationId = referenceRel.SubtreeOrdinal,
+                    ReferenceOutputLength = _relations[referenceRel.SubtreeOrdinal].OutputLength
+                };
+            }
+
+            private Relation VisitExtensionMulti(Protobuf.ExtensionMultiRel extensionMulti)
+            {
+                var inputs = new List<Relation>();
+                foreach (var input in extensionMulti.Inputs)
+                {
+                    inputs.Add(VisitRel(input));
+                }
+                var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(extensionMulti.Detail.TypeUrl);
+                if (typeName == CustomProtobuf.IterationRelation.Descriptor.FullName)
+                {
+                    var loopPlan = inputs[0];
+                    Relation? inputRel = default;
+                    if (inputs.Count > 1)
+                    {
+                        inputRel = inputs[1];
+                    }
+                    var iterationRel = extensionMulti.Detail.Unpack<CustomProtobuf.IterationRelation>();
+                    var rel = new IterationRelation()
+                    {
+                        Input = inputRel,
+                        LoopPlan = loopPlan,
+                        IterationName = iterationRel.IterationName,
+                        Emit = GetEmit(extensionMulti.Common)
+                    };
+                    return rel;
+                }
+                throw new NotImplementedException();
+            }
+
+            private Relation VisitWrite(Protobuf.WriteRel writeRel)
+            {
+                var input = VisitRel(writeRel.Input);
+
+                var namedStruct = expressionDeserializer.ParseNamedStruct(writeRel.TableSchema);
+
+                List<string> namedTable = new List<string>();
+                if (writeRel.NamedTable != null)
+                {
+                    namedTable.AddRange(writeRel.NamedTable.Names);
+                }
+
+                var namedTableObj = new NamedTable()
+                {
+                    Names = namedTable
+                };
+
+                var emitData = GetEmit(writeRel.Common);
+
+                var writeRelation = new WriteRelation()
+                {
+                    Input = input,
+                    NamedObject = namedTableObj,
+                    TableSchema = namedStruct,
+                    Emit = emitData
+                };
+
+                return writeRelation;
+            }
+
+            private Relation VisitExtensionLeaf(Protobuf.ExtensionLeafRel extensionLeaf)
+            {
+                var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(extensionLeaf.Detail.TypeUrl);
+                if (typeName == CustomProtobuf.TableFunctionRelation.Descriptor.FullName)
+                {
+                    var tableFuncRel = extensionLeaf.Detail.Unpack<CustomProtobuf.TableFunctionRelation>();
+
+                    Expression? joinExpr = null;
+                    if (tableFuncRel.JoinCondition != null)
+                    {
+                        joinExpr = expressionDeserializer.VisitExpression(tableFuncRel.JoinCondition);
+                    }
+                    JoinType joinType = JoinType.Unspecified;
+                    switch (tableFuncRel.Type)
+                    {
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Inner:
+                            joinType = JoinType.Inner;
+                            break;
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Left:
+                            joinType = JoinType.Left;
+                            break;
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Unspecified:
+                            joinType = JoinType.Unspecified;
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
+                    var rel = new TableFunctionRelation()
+                    {
+                        TableFunction = expressionDeserializer.VisitTableFunction(tableFuncRel.TableFunction),
+                        Input = null,
+                        JoinCondition = joinExpr,
+                        Type = joinType,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
+                    return rel;
+                }
+                else if (typeName == CustomProtobuf.IterationReferenceReadRelation.Descriptor.FullName)
+                {
+                    var iterationRefRead = extensionLeaf.Detail.Unpack<CustomProtobuf.IterationReferenceReadRelation>();
+                    var rel = new IterationReferenceReadRelation()
+                    {
+                        IterationName = iterationRefRead.IterationName,
+                        ReferenceOutputLength = iterationRefRead.OutputLength,
+                        Emit = GetEmit(extensionLeaf.Common)
+                    };
+                    return rel;
+                }
+                else if (typeName == CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor.FullName)
+                {
+                    var standardOutputRef = extensionLeaf.Detail.Unpack<CustomProtobuf.StandardOutputTargetReferenceRelation>();
+                    var rel = new StandardOutputExchangeReferenceRelation()
+                    {
+                        RelationId = standardOutputRef.RelationId,
+                        TargetId = standardOutputRef.TargetId,
+                        ReferenceOutputLength = _relations[standardOutputRef.RelationId].OutputLength
+                    };
+                    return rel;
+                }
+
+                throw new NotImplementedException();
+            }
+
+            private Relation VisitExtensionSingle(Protobuf.ExtensionSingleRel extensionSingle)
+            {
+                var input = VisitRel(extensionSingle.Input);
+
+                var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(extensionSingle.Detail.TypeUrl);
+                if (typeName == CustomProtobuf.SubStreamRootRelation.Descriptor.FullName)
+                {
+                    var substreamRoot = extensionSingle.Detail.Unpack<CustomProtobuf.SubStreamRootRelation>();
+                    var rel = new SubStreamRootRelation()
+                    {
+                        Input = input,
+                        Name = substreamRoot.SubstreamName,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                    return rel;
+                }
+                else if (typeName == CustomProtobuf.TableFunctionRelation.Descriptor.FullName)
+                {
+                    var tableFuncRel = extensionSingle.Detail.Unpack<CustomProtobuf.TableFunctionRelation>();
+                    var expr = expressionDeserializer.VisitExpression(tableFuncRel.JoinCondition);
+
+                    JoinType joinType = JoinType.Unspecified;
+
+                    switch (tableFuncRel.Type)
+                    {
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Inner:
+                            joinType = JoinType.Inner;
+                            break;
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Left:
+                            joinType = JoinType.Left;
+                            break;
+                        case CustomProtobuf.TableFunctionRelation.Types.JoinType.Unspecified:
+                            joinType = JoinType.Unspecified;
+                            break;
+                        default:
+                            throw new NotImplementedException();
+                    }
+
+                    var rel = new TableFunctionRelation()
+                    {
+                        TableFunction = expressionDeserializer.VisitTableFunction(tableFuncRel.TableFunction),
+                        Input = input,
+                        JoinCondition = expr,
+                        Type = joinType,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                    return rel;
+                }
+                else if (typeName == CustomProtobuf.TopNRelation.Descriptor.FullName)
+                {
+                    
+                    var topRel = extensionSingle.Detail.Unpack<CustomProtobuf.TopNRelation>();
+                    List<SortField> sortFields = new List<SortField>();
+                    foreach(var field in topRel.Sorts)
+                    {
+                        sortFields.Add(expressionDeserializer.VisitSortField(field));
+                    }
+                    var rel = new TopNRelation()
+                    {
+                        Input = input,
+                        Count = topRel.Count,
+                        Offset = topRel.Offset,
+                        Emit = GetEmit(extensionSingle.Common),
+                        Sorts = sortFields
+                    };
+                    return rel;
+
+                }
+                else if (typeName == CustomProtobuf.BufferRelation.Descriptor.FullName)
+                {
+                    var bufferRel = extensionSingle.Detail.Unpack<CustomProtobuf.BufferRelation>();
+
+                    return new BufferRelation()
+                    {
+                        Input = input,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                }
+                throw new NotImplementedException();
             }
 
             private Relation VisitAggregate(Protobuf.AggregateRel aggregateRel)
@@ -322,6 +1022,7 @@ namespace FlowtideDotNet.Substrait
                         {
                             aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(expr));
                         }
+                        relation.Groupings.Add(aggGroup);
                     }
                 }
                 if (aggregateRel.Measures.Count > 0)
@@ -397,7 +1098,8 @@ namespace FlowtideDotNet.Substrait
                 return project;
             }
 
-            private static Relation VisitRead(Protobuf.ReadRel readRel)
+            
+            private Relation VisitRead(Protobuf.ReadRel readRel)
             {
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
@@ -412,62 +1114,7 @@ namespace FlowtideDotNet.Substrait
                 Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
-                    var st = new Type.Struct()
-                    {
-                        Types = new List<SubstraitBaseType>()
-                    };
-                    foreach (var type in readRel.BaseSchema.Struct.Types_)
-                    {
-                        switch (type.KindCase)
-                        {
-                            case Protobuf.Type.KindOneofCase.String:
-
-                                st.Types.Add(new StringType()
-                                {
-                                    Nullable = type.String.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.I32:
-                                st.Types.Add(new Int32Type()
-                                {
-                                    Nullable = type.I32.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.Date:
-                                st.Types.Add(new DateType()
-                                {
-                                    Nullable = type.Date.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.Fp64:
-                                st.Types.Add(new Fp64Type()
-                                {
-                                    Nullable = type.Fp64.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.I64:
-                                st.Types.Add(new Int64Type()
-                                {
-                                    Nullable = type.I64.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.Bool:
-                                st.Types.Add(new BoolType()
-                                {
-                                    Nullable = type.Bool.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            case Protobuf.Type.KindOneofCase.Fp32:
-                                st.Types.Add(new Fp32Type()
-                                {
-                                    Nullable = type.Fp32.Nullability != Protobuf.Type.Types.Nullability.Required
-                                });
-                                break;
-                            default:
-                                throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
-                        }
-                    }
-                    schema = st;
+                    schema = expressionDeserializer.ParseStruct(readRel.BaseSchema.Struct);
                 }
 
                 var namedStruct = new Type.NamedStruct()
@@ -554,8 +1201,18 @@ namespace FlowtideDotNet.Substrait
 
         public Plan Deserialize(string json)
         {
-            var plan = Google.Protobuf.JsonParser.Default.Parse<Protobuf.Plan>(json);
+            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
+                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
+                    CustomProtobuf.IterationRelation.Descriptor);
+            var parser = new Google.Protobuf.JsonParser(new Google.Protobuf.JsonParser.Settings(300, typeRegistry));
+            var plan = parser.Parse<Protobuf.Plan>(json);
             return Deserialize(plan);
+        }
+
+        public static Plan DeserializeFromJson(string json)
+        {
+            var deserializer = new SubstraitDeserializer();
+            return deserializer.Deserialize(json);
         }
 
         public Plan Deserialize(Protobuf.Plan plan)
