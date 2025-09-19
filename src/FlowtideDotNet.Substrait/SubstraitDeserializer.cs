@@ -591,7 +591,7 @@ namespace FlowtideDotNet.Substrait
             {
                 var output = new Plan
                 {
-                    Relations = _relations // new List<Relation>()
+                    Relations = _relations
                 };
                 foreach (var relation in plan.Relations)
                 {
