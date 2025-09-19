@@ -407,7 +407,6 @@ namespace FlowtideDotNet.Substrait.Tests
         [Fact]
         public void TestStandardOutputReference()
         {
-            
             var plan = new Plan()
             {
                 Relations = new List<Relation>()
