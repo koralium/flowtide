@@ -519,20 +519,8 @@ namespace FlowtideDotNet.Substrait.Tests
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
-            var protoPlan = SubstraitSerializer.Serialize(plan);
-            var typeRegistry = Google.Protobuf.Reflection.TypeRegistry.FromMessages(
-                    CustomProtobuf.IterationReferenceReadRelation.Descriptor,
-                    CustomProtobuf.IterationRelation.Descriptor,
-                    CustomProtobuf.NormalizationRelation.Descriptor,
-                    CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor);
-            var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
-                .WithIndentation();
-            var formatter = new Google.Protobuf.JsonFormatter(settings);
-            var json = formatter.Format(protoPlan);
-
-            var deserializer = new SubstraitDeserializer();
-            var deserializedPlan = deserializer.Deserialize(json);
-
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
             Assert.Equal(plan, deserializedPlan);
         }
     }

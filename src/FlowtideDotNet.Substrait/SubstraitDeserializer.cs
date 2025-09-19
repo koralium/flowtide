@@ -1210,6 +1210,12 @@ namespace FlowtideDotNet.Substrait
             return Deserialize(plan);
         }
 
+        public static Plan DeserializeFromJson(string json)
+        {
+            var deserializer = new SubstraitDeserializer();
+            return deserializer.Deserialize(json);
+        }
+
         public Plan Deserialize(Protobuf.Plan plan)
         {
             var impl = new SubstraitDeserializerImpl(plan);

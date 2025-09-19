@@ -1096,32 +1096,6 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
-            private static uint GetAnyTypeId(SerializerVisitorState state)
-            {
-                if (!state._typeExtensions.TryGetValue("any", out var id))
-                {
-                    var anchor = state.uriCounter++;
-                    state.Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
-                    {
-                        Uri = $"/any_type.yaml",
-                        ExtensionUriAnchor = (uint)anchor
-                    });
-                    var typeAnchor = (uint)state.extensionCounter++;
-                    state.Root.Extensions.Add(new Protobuf.SimpleExtensionDeclaration()
-                    {
-                        ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
-                        {
-                            ExtensionUriReference = (uint)anchor,
-                            Name = "any",
-                            TypeAnchor = typeAnchor
-                        }
-                    });
-                    id = (int)typeAnchor;
-                    state._typeExtensions.Add("any", id);
-                }
-                return (uint)id;
-            }
-
             public override Protobuf.Rel VisitWriteRelation(WriteRelation writeRelation, SerializerVisitorState state)
             {
                 var writeRel = new Protobuf.WriteRel();
@@ -1472,7 +1446,8 @@ namespace FlowtideDotNet.Substrait
                 CustomProtobuf.IterationReferenceReadRelation.Descriptor,
                 CustomProtobuf.IterationRelation.Descriptor,
                 CustomProtobuf.NormalizationRelation.Descriptor,
-                CustomProtobuf.TopNRelation.Descriptor);
+                CustomProtobuf.TopNRelation.Descriptor,
+                CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, typeRegistry)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);
