@@ -1314,7 +1314,6 @@ namespace FlowtideDotNet.Substrait
 
             private static Protobuf.Type.Types.Struct SerializeStruct(Type.Struct structType, SerializerVisitorState state)
             {
-                //var anyTypeAnchor = GetAnyTypeId(state);
                 var protoStruct = new Protobuf.Type.Types.Struct();
                 foreach (var t in structType.Types)
                 {
