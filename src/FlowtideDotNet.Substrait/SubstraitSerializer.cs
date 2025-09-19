@@ -17,7 +17,6 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Google.Protobuf;
 using Substrait.Protobuf;
-using static SqlParser.Ast.DataType;
 using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
