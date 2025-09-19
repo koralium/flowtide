@@ -17,7 +17,6 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Google.Protobuf;
 using Substrait.Protobuf;
-using static SqlParser.Ast.DataType;
 using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
@@ -1289,7 +1288,6 @@ namespace FlowtideDotNet.Substrait
 
             private static Protobuf.Type.Types.Struct SerializeStruct(Type.Struct structType, SerializerVisitorState state)
             {
-                //var anyTypeAnchor = GetAnyTypeId(state);
                 var protoStruct = new Protobuf.Type.Types.Struct();
                 foreach (var t in structType.Types)
                 {
