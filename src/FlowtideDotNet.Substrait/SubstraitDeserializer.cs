@@ -1099,7 +1099,6 @@ namespace FlowtideDotNet.Substrait
             }
 
             
-
             private Relation VisitRead(Protobuf.ReadRel readRel)
             {
                 List<string> names = new List<string>();
