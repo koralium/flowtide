@@ -476,5 +476,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             return _stream!.StartAsync();
         }
+
+        public Task DeleteStream()
+        {
+            return _stream!.DeleteAsync();
+        }
     }
 }

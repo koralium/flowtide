@@ -74,5 +74,10 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner.Models
         {
             throw new NotImplementedException();
         }
+
+        public virtual T VisitZanzibarCopyResourceToSubjectDistinct(ZanzibarCopyResourceToSubjectDistinct copyResourceToSubject, TState state)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

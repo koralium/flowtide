@@ -13,6 +13,7 @@ message IterationRelation {
 message IterationReferenceReadRelation {
     // Name of the iteration to get data from
     string iterationName = 1;
+    int32 outputLength = 2;
 }
 
 message NormalizationRelation {
@@ -74,4 +75,9 @@ message PullExchangeReferenceRelation {
 
     // Identifier that is used when fetching data from the other stream.
     int32 exchange_target_id = 2;
+}
+
+message StandardOutputTargetReferenceRelation {
+    int32 relation_id = 1;
+    int32 target_id = 2;
 }
