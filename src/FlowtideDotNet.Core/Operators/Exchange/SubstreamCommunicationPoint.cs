@@ -322,6 +322,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                         if (task.IsFaulted)
                         {
                             // Handle exceptions
+                            _logger.LogError(task.Exception, "Fetch data loop for substream {substreamName} terminated with an error.", substreamName);
                             _fetchDataTask = null;
                             TryStartFetchTask();
                         }
@@ -381,6 +382,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 catch (Exception ex)
                 {
                     // Log the exception and continue
+                    _logger.LogError(ex, "Error fetching data from substream {substreamName}", substreamName);
                 }
             }
         }
