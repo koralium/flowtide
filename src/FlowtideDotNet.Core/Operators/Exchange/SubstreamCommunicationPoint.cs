@@ -136,6 +136,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 await DoFailAndRecover(response.RestoreVersion);
             }
+
+            if (response.RestoreVersion != restorePoint)
+            {
+                _logger.LogInformation("Substream {substreamName} initialized with different restore point {response.RestoreVersion} than requested {restorePoint}, recovering.", substreamName, response.RestoreVersion, restorePoint);
+                var minVersion = Math.Min(restorePoint, response.RestoreVersion);
+                await DoFailAndRecover(minVersion);
+            }
         }
 
         public void RegisterSubstreamTarget(int exchangeTargetId, SubstreamTarget target)

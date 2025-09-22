@@ -125,9 +125,11 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IMemoryAllocator memoryAllocator,
             Func<long, Task> failAndRecoverFunc)
         {
-            await _substreamCommunication.InitializeOperator(restoreVersion);
             _failAndRecoverFunc = failAndRecoverFunc;
             _memoryAllocator = memoryAllocator;
+
+            await _substreamCommunication.InitializeOperator(restoreVersion);
+
             _queue = await stateManagerClient.GetOrCreateQueue($"events_target_{targetId}", new FlowtideQueueOptions<IStreamEvent, StreamEventValueContainer>()
             {
                 MemoryAllocator = memoryAllocator,

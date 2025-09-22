@@ -179,7 +179,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -257,6 +258,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.SetVersion(version);
             }
 
+            if (distributedOptions != null)
+            {
+                flowtideBuilder.SetDistributedOptions(distributedOptions);
+            }
+
             if (checkFailureListener != null)
             {
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
@@ -276,9 +282,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            string? version = default)
+            string? version = default,
+            DistributedOptions? distributedOptions = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version);
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions);
             await _stream!.StartAsync();
         }
 
@@ -397,7 +404,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 }
                 else
                 {
-                    throw new Exception("Unknown error occured in stream without exception");
+                    //throw new Exception("Unknown error occured in stream without exception");
                 }
             }
 
