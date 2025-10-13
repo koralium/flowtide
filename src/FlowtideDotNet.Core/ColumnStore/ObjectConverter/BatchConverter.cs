@@ -253,10 +253,31 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                     throw new InvalidOperationException("Cannot deserialize object without a set function");
                 }
 
-                property.SetFunc(obj, value);
+                try
+                {
+                    property.SetFunc(obj, value);
+                }
+                catch (Exception e)
+                {
+                    if (!IsNullable(property.TypeInfo.Type) && value == null)
+                    {
+                        // Ignore setting null to nullable types
+                        throw new InvalidOperationException($"Could not assign NULL to a non nullable property '{property.Name}'");
+                    }
+                    throw new InvalidOperationException($"Could not set property {property.Name}, Check inner exception for type details", e);
+                }
             }
             return obj;
         }
+
+        private static bool IsNullable(Type type)
+        {
+            if (!type.IsValueType) return true; // ref-type
+            if (Nullable.GetUnderlyingType(type) != null) return true; // Nullable<T>
+
+            return false;
+        }
+
 
         public static BatchConverter GetBatchConverter(Type objectType, List<string>? columnNames = null, ObjectConverterResolver? resolver = null)
         {
