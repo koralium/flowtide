@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using FlowtideDotNet.Storage.Memory;
@@ -685,6 +686,23 @@ namespace FlowtideDotNet.Core.Tests
             {
                 var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "func" });
             });
+        }
+
+        [Fact]
+        public void TestConvertNullIntoNonNullable()
+        {
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "int16Value" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+
+            arr[0].Add(NullValue.Instance);
+
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+            {
+                converter.ConvertToDotNetObject(arr, 0);
+            });
+
+
+            Assert.Equal("Could not assign NULL to a non nullable property 'Int16Value'", ex.Message);
         }
     }
 }
