@@ -267,14 +267,22 @@ namespace FlowtideDotNet.Core.Engine
                 StringBuilder sb = new();
                 foreach (var (stringVersion, addHashVersion) in _versionParts)
                 {
+                    string? part = null;
                     if (!string.IsNullOrEmpty(stringVersion))
                     {
-                        sb.Append(stringVersion);
+                        part = stringVersion;
                     }
                     else if (addHashVersion ?? false)
                     {
-                        sb.Append(hash);
+                        part = hash;
                     }
+
+                    if (sb.Length > 0)
+                    {
+                        sb.Append('-');
+                    }
+
+                    sb.Append(part);
                 }
 
                 SetVersion(sb.ToString());
