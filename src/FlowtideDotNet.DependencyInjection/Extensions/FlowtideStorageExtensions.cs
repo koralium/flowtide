@@ -81,10 +81,8 @@ namespace FlowtideDotNet.DependencyInjection
             string containerName,
             string directoryName)
         {
-            storageBuilder.AddFasterKVAzureStorage(azureStorageString, containerName, _ => directoryName);
-            return storageBuilder;
+            return storageBuilder.AddFasterKVAzureStorage(azureStorageString, containerName, _ => directoryName);
         }
-
         /// <summary>
         /// Use FasterKV Azure storage, uses ZLib compression as default
         /// Allows dynamic directory naming based on stream metadata such as name and version
