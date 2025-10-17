@@ -246,7 +246,7 @@ namespace FlowtideDotNet.Core.Engine
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
-                return Base32.Encode(hashBytes);
+                return Base62.Encode(hashBytes);
             }
         }
 
