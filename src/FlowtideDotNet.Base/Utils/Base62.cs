@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Base.Utils
 
         public static string Encode(ReadOnlySpan<byte> data)
         {
-            if (data == null || data.Length == 0) return string.Empty;
+            if (data.Length == 0) return string.Empty;
 
             // Interpret input as an unsigned big-endian integer
             BigInteger intData = new BigInteger(data, isUnsigned: true, isBigEndian: true);
