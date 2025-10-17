@@ -47,5 +47,4 @@ namespace FlowtideDotNet.Base.Utils
             return result.ToString();
         }
     }
-
 }
