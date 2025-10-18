@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/{testName}/fasterkv", true));
+            return new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/{testName}/fasterkv", true));
         }
     }
 }

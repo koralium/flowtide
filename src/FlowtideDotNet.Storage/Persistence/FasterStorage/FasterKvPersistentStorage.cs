@@ -19,25 +19,31 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 {
     public class FasterKvPersistentStorage : IPersistentStorage
     {
-        private readonly FasterKVSettings<long, SpanByte> settings;
-        private readonly FasterKV<long, SpanByte> m_persistentStorage;
-        private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
+        private readonly Func<StorageInitializationMetadata, FasterKVSettings<long, SpanByte>> m_settingsFunc;
+        private FasterKV<long, SpanByte>? m_persistentStorage;
+        private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions>? m_adminSession;
         private Functions m_functions;
         private FasterCheckpointMetadata _checkpointMetadata;
 
-        public FasterKvPersistentStorage(FasterKVSettings<long, SpanByte> settings)
+        public FasterKvPersistentStorage(Func<StorageInitializationMetadata, FasterKVSettings<long, SpanByte>> settingsFunc)
         {
-            this.settings = settings;
+            m_settingsFunc = settingsFunc;
             m_functions = new Functions();
-            m_persistentStorage = new FasterKV<long, SpanByte>(settings);
-            m_adminSession = m_persistentStorage.For(m_functions).NewSession(m_functions);
             _checkpointMetadata = new FasterCheckpointMetadata(null, 0, 0, []);
         }
 
-        public long CurrentVersion => m_persistentStorage.CurrentVersion;
+        public long CurrentVersion => m_persistentStorage?.CurrentVersion ?? 0;
 
         public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+            if (m_adminSession == null)
+            {
+                throw new InvalidOperationException("Admin session is not initialized.");
+            }
             ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
 
             _checkpointMetadata = _checkpointMetadata.Update(metadata, m_persistentStorage.CurrentVersion);
@@ -63,6 +69,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         internal async Task<Guid> TakeCheckpointAsync(bool includeIndex)
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+
             bool success = false;
             Guid token;
             int retryCount = 0;
@@ -84,6 +95,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public IPersistentStorageSession CreateSession()
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+
             var functions = new Functions();
             var session = m_persistentStorage.For(functions).NewSession(functions);
             return new FasterKVPersistentSession(session);
@@ -93,6 +109,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         {
             try
             {
+                if (m_persistentStorage == null)
+                {
+                    m_persistentStorage = new FasterKV<long, SpanByte>(m_settingsFunc(metadata));
+                    m_adminSession = m_persistentStorage.For(m_functions).NewSession(m_functions);
+                }
                 await m_persistentStorage.RecoverAsync();
                 await ReadCheckpointMetadata();
             }
@@ -104,6 +125,11 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         private async Task ReadCheckpointMetadata()
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+
             var checkpointMetadataBytes = await Read(1);
             if (checkpointMetadataBytes.HasValue)
             {
@@ -119,6 +145,14 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+            if (m_adminSession == null)
+            {
+                throw new InvalidOperationException("Admin session is not initialized.");
+            }
             // Remove old checkpoints
             for (int i = 0; i < _checkpointMetadata.PreviousCheckpoints.Count - 1; i++)
             {
@@ -144,12 +178,21 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public ValueTask ResetAsync()
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
             m_persistentStorage.Reset();
             return ValueTask.CompletedTask;
         }
 
         public async ValueTask RecoverAsync(long checkpointVersion)
         {
+            if (m_persistentStorage == null)
+            {
+                throw new InvalidOperationException("Persistent storage is not initialized.");
+            }
+
             var checkpointInfo = _checkpointMetadata.PreviousCheckpoints.FirstOrDefault(x => x.checkpointVersion == checkpointVersion, default);
             
             if (checkpointInfo.checkpointVersion != checkpointVersion)
@@ -163,6 +206,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         private async ValueTask<ReadOnlyMemory<byte>?> Read(long key)
         {
+            if (m_adminSession == null)
+            {
+                throw new InvalidOperationException("Admin session is not initialized.");
+            }
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await m_adminSession.ReadAsync(ref key, token: tokenSource.Token);
             var (status, bytes) = result.Complete();
@@ -171,6 +218,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
+            if (m_adminSession == null)
+            {
+                throw new InvalidOperationException("Admin session is not initialized.");
+            }
             if (key == 1)
             {
                 value = _checkpointMetadata.Metadata;
@@ -209,6 +260,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public async ValueTask Write(long key, byte[] value)
         {
+            if (m_adminSession == null)
+            {
+                throw new InvalidOperationException("Admin session is not initialized.");
+            }
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var mem = new Memory<byte>(value);
             var handle = mem.Pin();
@@ -220,8 +275,14 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
         public void Dispose()
         {
-            m_adminSession.Dispose();
-            m_persistentStorage.Dispose();
+            if (m_adminSession != null)
+            {
+                m_adminSession.Dispose();
+            }
+            if (m_persistentStorage != null)
+            {
+                m_persistentStorage.Dispose();
+            }
         }
     }
 }

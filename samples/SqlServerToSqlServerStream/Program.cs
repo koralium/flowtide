@@ -51,6 +51,8 @@ builder.Services.AddHealthChecks()
 // Create the stream
 builder.Services.AddFlowtideStream("my_stream")
     .AddSqlFileAsPlan("stream.sql")
+    .AddVersioningFromPlanHash()
+    .AddVersioningFromString("1.0")
     .AddConnectors(connectors =>
     {
         connectors.AddSqlServerAsCatalog("db1", () => sqlDb1ConnStr);
@@ -66,7 +68,10 @@ builder.Services.AddFlowtideStream("my_stream")
         storage.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
 
         // Use azure storage for persistence
-        storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", "mydirname");
+        storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
+        {
+            return $"{meta.StreamName}/{meta.StreamVersion!.Version}";
+        });
     });
 
 var app = builder.Build();

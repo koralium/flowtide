@@ -13,6 +13,7 @@
 using FASTER.core;
 using FASTER.devices;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,7 +46,19 @@ namespace FlowtideDotNet.DependencyInjection
         /// <returns></returns>
         public static IFlowtideStorageBuilder AddFasterKVFileSystemStorage(this IFlowtideStorageBuilder storageBuilder, string baseDir)
         {
-            storageBuilder.SetPersistentStorage(new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>(baseDir)
+            return storageBuilder.AddFasterKVFileSystemStorage(_ => baseDir);
+        }
+
+        /// <summary>
+        /// Use FasterKV local file system storage, uses ZLib compression as default
+        /// Allows dynamic base directory naming based on stream metadata such as name and version
+        /// </summary>
+        /// <param name="storageBuilder"></param>
+        /// <param name="baseDirFunc"></param>
+        /// <returns></returns>
+        public static IFlowtideStorageBuilder AddFasterKVFileSystemStorage(this IFlowtideStorageBuilder storageBuilder, Func<StorageInitializationMetadata, string> baseDirFunc)
+        {
+            storageBuilder.SetPersistentStorage(new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>(baseDirFunc(meta))
             {
                 MemorySize = 1024 * 1024 * 32,
                 PageSize = 1024 * 1024 * 16
@@ -68,27 +81,45 @@ namespace FlowtideDotNet.DependencyInjection
             string containerName,
             string directoryName)
         {
+            return storageBuilder.AddFasterKVAzureStorage(azureStorageString, containerName, _ => directoryName);
+        }
+        /// <summary>
+        /// Use FasterKV Azure storage, uses ZLib compression as default
+        /// Allows dynamic directory naming based on stream metadata such as name and version
+        /// </summary>
+        /// <param name="storageBuilder"></param>
+        /// <param name="azureStorageString"></param>
+        /// <param name="containerName"></param>
+        /// <param name="directoryNameFunc"></param>
+        /// <returns></returns>
+        public static IFlowtideStorageBuilder AddFasterKVAzureStorage(
+            this IFlowtideStorageBuilder storageBuilder,
+            string azureStorageString,
+            string containerName,
+            Func<StorageInitializationMetadata, string> directoryNameFunc)
+        {
             storageBuilder.SetPersistentStorage((provider) =>
             {
                 var azureStorageLogger = provider.GetRequiredService<ILogger<AzureStorageDevice>>();
-                var log = new AzureStorageDevice(azureStorageString, containerName, directoryName, "hlog.log", logger: azureStorageLogger);
 
                 var checkpointManagerLogger = provider.GetRequiredService<ILogger<DeviceLogCommitCheckpointManager>>();
-                // Create azure storage backed checkpoint manager
-                var checkpointManager = new DeviceLogCommitCheckpointManager(
-                                new AzureStorageNamedDeviceFactory(azureStorageString),
-                                new DefaultCheckpointNamingScheme($"{containerName}/{directoryName}/checkpoints/"), logger: checkpointManagerLogger);
 
                 var fasterKvLogger = provider.GetRequiredService<ILogger<FasterKvPersistentStorage>>();
-                return new FasterKvPersistentStorage(
-                    new FasterKVSettings<long, SpanByte>(null, logger: fasterKvLogger)
+                return new FasterKvPersistentStorage(meta =>
+                {
+                    var directory = directoryNameFunc(meta);
+                    var log = new AzureStorageDevice(azureStorageString, containerName, directory, "hlog.log", logger: azureStorageLogger);
+                    var checkpointManager = new DeviceLogCommitCheckpointManager(
+                        new AzureStorageNamedDeviceFactory(azureStorageString),
+                        new DefaultCheckpointNamingScheme($"{containerName}/{directory}/checkpoints/"), logger: checkpointManagerLogger);
+                    return new FasterKVSettings<long, SpanByte>(null, logger: fasterKvLogger)
                     {
                         MemorySize = 1024 * 1024 * 32,
                         PageSize = 1024 * 1024 * 16,
                         CheckpointManager = checkpointManager,
                         LogDevice = log
-                    }
-                );
+                    };
+                });
             });
             storageBuilder.ZstdPageCompression();
 

@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             {
                 CachePageCount = cachePageCount,
                 MinCachePageCount = 0,
-                PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>(path, deleteOnClose)
+                PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>(path, deleteOnClose)
                 {
                     PageSize = 16 * 1024 * 1024,
                     MemorySize = 32 * 1024 * 1024
