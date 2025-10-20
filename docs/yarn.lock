@@ -5637,7 +5637,7 @@ jsonfile@^6.0.1:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
-kebab-case@^2.0.1:
+kebab-case@^2.0.2:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/kebab-case/-/kebab-case-2.0.2.tgz#d12157283733ae2136482a5ac4cb20f42ea79b65"
   integrity sha512-NhIP7vecGtqJfNZ85ct0yRQfx//gCJHapJCBZP6/BBcBw/U218Jw7YX7rO6TI5/cCp5dJvlIjN3vbcRTqq7nWA==
@@ -6543,10 +6543,10 @@ mimic-fn@^2.1.0:
   resolved "https://registry.yarnpkg.com/mimic-fn/-/mimic-fn-2.1.0.tgz#7ed2c2ccccaf84d3ffcb7a69b57711fc2083401b"
   integrity sha512-OqbOk5oEQeAZ8WXWydlu9HJjz9WVdEIvamMCcXmuqUYjTknH/sqsWvhQ3vgwKFRR1HpjvNBKQ37nbJgYzGqGcg==
 
-mimic-fn@^4.0.0:
-  version "4.0.0"
-  resolved "https://registry.yarnpkg.com/mimic-fn/-/mimic-fn-4.0.0.tgz#60a90550d5cb0b239cca65d893b1a53b29871ecc"
-  integrity sha512-vqiC06CuhBTUdZH+RYl8sFrL096vA45Ok5ISO6sE/Mr1jRbGH4Csnhi8f3wKVl7x8mO4Au7Ir9D3Oyv1VYMFJw==
+mimic-function@^5.0.1:
+  version "5.0.1"
+  resolved "https://registry.yarnpkg.com/mimic-function/-/mimic-function-5.0.1.tgz#acbe2b3349f99b9deaca7fb70e48b83e94e67076"
+  integrity sha512-VP79XUPxV2CigYP3jWwAUFSku2aKqBH7uTAapFWCBqutsbmDo96KY5o8uh6U+/YSIn5OxJnXp73beVkpqMIGhA==
 
 mimic-response@^3.1.0:
   version "3.1.0"
@@ -6833,13 +6833,13 @@ p-map@^4.0.0:
   dependencies:
     aggregate-error "^3.0.0"
 
-p-memoize@^7.1.1:
-  version "7.1.1"
-  resolved "https://registry.yarnpkg.com/p-memoize/-/p-memoize-7.1.1.tgz#53b1d0e6007288f7261cfa11a7603b84c9261bfa"
-  integrity sha512-DZ/bONJILHkQ721hSr/E9wMz5Am/OTJ9P6LhLFo2Tu+jL8044tgc9LwHO8g4PiaYePnlVVRAJcKmgy8J9MVFrA==
+p-memoize@^8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/p-memoize/-/p-memoize-8.0.0.tgz#1312d5a1ff5e902ef2d77b6ccadf00c67f127b6f"
+  integrity sha512-jdZ10MCxavHoIHwJ5oweOtYy6ElPixEHaMkz0AuaEMovR1MRpVvYFzIEHRxgMEpXYzNpRVByFAniAzwmd1/uug==
   dependencies:
-    mimic-fn "^4.0.0"
-    type-fest "^3.0.0"
+    mimic-function "^5.0.1"
+    type-fest "^4.41.0"
 
 p-queue@^6.6.2:
   version "6.6.2"
@@ -7994,16 +7994,16 @@ remark-gfm@^4.0.0:
     remark-stringify "^11.0.0"
     unified "^11.0.0"
 
-remark-kroki@^0.3.7:
-  version "0.3.7"
-  resolved "https://registry.yarnpkg.com/remark-kroki/-/remark-kroki-0.3.7.tgz#e732be0f6f08d261ee8f1ddd3da3b6a746d09dba"
-  integrity sha512-LlIkBZ2bE2aAnMXviZBuGyo6mnxCakNJeMOA/rw9jV6CV7YhPq27r9IUogkE+xlgoF7p7OGb4vp6AnvWIdS7RQ==
+remark-kroki@^0.3.8:
+  version "0.3.8"
+  resolved "https://registry.yarnpkg.com/remark-kroki/-/remark-kroki-0.3.8.tgz#6c7fe1714c49b8b3b3ab13fec8b513ec87ac285d"
+  integrity sha512-WQ+RaijsjCzb2gOQmRbQlm1SOS+v+CL+zVc+kZo6mxLiLdleRFUULhVzEsiCim0v9X/ZrxY9Nx2LPBUkok7TZA==
   dependencies:
     is-plain-obj "^4.1.0"
-    kebab-case "^2.0.1"
+    kebab-case "^2.0.2"
     markdown-code-block-meta "^0.0.2"
     node-fetch "^3.3.2"
-    p-memoize "^7.1.1"
+    p-memoize "^8.0.0"
     unist-util-visit "^5.0.0"
 
 remark-mdx@^3.0.0:
@@ -8810,10 +8810,10 @@ type-fest@^2.13.0, type-fest@^2.5.0:
   resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-2.19.0.tgz#88068015bb33036a598b952e55e9311a60fd3a9b"
   integrity sha512-RAH822pAdBgcNMAfWnCBU3CFZcfZ/i1eZjwFU/dsLKumyuuP3niueg2UAukXYF0E2AAoc82ZSSf9J0WQBinzHA==
 
-type-fest@^3.0.0:
-  version "3.13.1"
-  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-3.13.1.tgz#bb744c1f0678bea7543a2d1ec24e83e68e8c8706"
-  integrity sha512-tLq3bSNx+xSpwvAJnzrK0Ep5CLNWjvFTOp71URMaAEWBfRb9nnJiBoUe0tF8bI4ZFO3omgBR6NvnbzVUT3Ly4g==
+type-fest@^4.41.0:
+  version "4.41.0"
+  resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-4.41.0.tgz#6ae1c8e5731273c2bf1f58ad39cbae2c91a46c58"
+  integrity sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA==
 
 type-is@~1.6.18:
   version "1.6.18"
