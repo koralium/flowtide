@@ -28,8 +28,8 @@ namespace FlowtideDotNet.DependencyInjection.Internal
         private readonly string streamName;
         private readonly IServiceCollection services;
         private readonly List<Action<IServiceProvider, FlowtideBuilder>> _customOptions;
-        private string? _streamVersion;
-        private bool _useHashPlanAsVersion = false;
+        private readonly List<(string? stringVersion, bool? addHashVersion)> _streamVersionParts = [];
+
         private PlanOptimizerSettings? _planOptimizerSettings;
 
         public FlowtideDIBuilder(string streamName, IServiceCollection services)
@@ -107,13 +107,9 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 .AddPlan(plan, planOptimizerSettings: _planOptimizerSettings)
                 .WithStateOptions(stateManager);
 
-            if (_useHashPlanAsVersion)
+            if (_streamVersionParts?.Count > 0)
             {
-                streamBuilder.SetHashPlanAsVersion();
-            }
-            else if (!string.IsNullOrWhiteSpace(_streamVersion))
-            {
-                streamBuilder.SetVersion(_streamVersion);
+                streamBuilder.SetVersionParts(_streamVersionParts);
             }
 
             if (pauseMonitor != null)
@@ -144,20 +140,22 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public IFlowtideDIBuilder AddVersioningFromAssembly()
         {
-            _streamVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+            var assemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version?.ToString();
+            ArgumentException.ThrowIfNullOrWhiteSpace(assemblyVersion);
+            _streamVersionParts.Add((assemblyVersion, null));
             return this;
         }
 
         public IFlowtideDIBuilder AddVersioningFromString(string version)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(version);
-            _streamVersion = version;
+            _streamVersionParts.Add((version, null));
             return this;
         }
 
         public IFlowtideDIBuilder AddVersioningFromPlanHash()
         {
-            _useHashPlanAsVersion = true;
+            _streamVersionParts.Add((null, true));
             return this;
         }
 

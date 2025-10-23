@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistent"
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentfail"
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
@@ -214,7 +214,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentrestoretwo",
