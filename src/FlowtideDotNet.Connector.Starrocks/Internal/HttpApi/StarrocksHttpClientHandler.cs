@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
 using System.Collections.Concurrent;
 
 namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 {
                     if (response.Headers.Location == null)
                     {
-                        throw new InvalidOperationException("Redirect response missing Location header.");
+                        throw new StarRocksHttpException("Redirect response missing Location header.");
                     }
                     var newUrl = response.Headers.Location.ToString();
                     // Store the new redirect uri for future requests
