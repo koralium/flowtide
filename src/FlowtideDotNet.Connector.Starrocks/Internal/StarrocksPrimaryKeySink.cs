@@ -250,7 +250,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                     var keyType = row.EventBatchData.Columns[_primaryKeyOrdinals[i]].GetTypeAt(row.Index, default);
                     if (keyType == Core.ColumnStore.ArrowTypeId.Null)
                     {
-                        throw new InvalidOperationException($"Recieved a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
+                        throw new InvalidOperationException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
                     }
                 }
                 _jsonWriter.WriteObject(ref jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
