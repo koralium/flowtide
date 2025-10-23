@@ -45,9 +45,9 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         {
             container = new ContainerBuilder()
                 .WithImage("starrocks/allin1-ubuntu")
-                .WithPortBinding(9030, false)
-                .WithPortBinding(8030, false)
-                .WithPortBinding(8040, false)
+                .WithPortBinding(9030, true)
+                .WithPortBinding(8030, true)
+                .WithPortBinding(8040, true)
                 .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))
                 .Build();
             await container.StartAsync();
@@ -70,6 +70,8 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
 
         public string Uri => GetUri();
 
+        public string BackendUrl => GetBackendUri();
+
         public string GetUri()
         {
             if (container == null)
@@ -78,6 +80,16 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
             }
             return $"http://localhost:{container.GetMappedPublicPort(8030)}";
         }
+
+        public string GetBackendUri()
+        {
+            if (container == null)
+            {
+                throw new ArgumentNullException(nameof(container));
+            }
+            return $"http://localhost:{container.GetMappedPublicPort(8040)}";
+        }
+
 
         public MySqlConnection GetMySqlConnection(string database)
         {

@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
             connectorManager.AddStarrocksSink(new StarrocksSinkOptions()
             {
                 HttpUrl = starrocksFixture.Uri,
+                BackendHttpUrl = starrocksFixture.BackendUrl,
                 Username = "root",
                 ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint
             });

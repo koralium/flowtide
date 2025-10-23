@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                 schema = names[1];
                 table = names[2];
             }
-            if (names.Count == 2)
+            else if (names.Count == 2)
             {
                 catalog = "default_catalog";
                 schema = names[0];

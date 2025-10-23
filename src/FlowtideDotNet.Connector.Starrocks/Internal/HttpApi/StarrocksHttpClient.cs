@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
 
         public async Task<StreamLoadInfo> TransactionCommit(string database, string table, string label)
         {
-            var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/commit");
+            var request = new HttpRequestMessage(HttpMethod.Post, $"{_url}/api/transaction/commit");
             request.Headers.Add("Expect", "100-continue");
             request.Headers.Add("label", label);
             request.Headers.Add("db", database);
