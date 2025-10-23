@@ -52,11 +52,6 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 .Build();
             await container.StartAsync();
 
-            //await RunQuery(@"
-            //    SET PASSWORD = PASSWORD('123456')
-            //");
-            //password = "123456";
-
             await RunQuery(@"
                 CREATE DATABASE test
                 DEFAULT CHARACTER SET = 'utf8mb4';

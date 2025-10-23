@@ -37,6 +37,30 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (!TryGetTableInformation(writeRelation.NamedObject.Names, out var metadata))
+            {
+                throw new InvalidOperationException($"Table '{string.Join(".", writeRelation.NamedObject.Names)}' not found in Starrocks.");
+            }
+
+            // Validate that all insert fields exist in starrocks table
+            for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
+            {
+                var insertName = writeRelation.TableSchema.Names[i];
+
+                bool foundName = false;
+                foreach(var name in metadata.Schema.Names)
+                {
+                    if (insertName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundName = true;
+                    }
+                }
+                if (!foundName)
+                {
+                    throw new InvalidOperationException($"Column '{insertName}' not found in Starrocks table '{string.Join(".", writeRelation.NamedObject.Names)}'.");
+                }
+            }
+
             return new StarrocksPrimaryKeySink(_options, _options.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
 

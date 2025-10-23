@@ -104,6 +104,49 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         }
 
         [Fact]
+        public async Task InsertNoPrimaryKeyInInsertThrowsException()
+        {
+            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(InsertNoPrimaryKeyInInsertThrowsException));
+
+            stream.Generate();
+            await stream.StartStream(@"
+                INSERT INTO test.testtable
+                SELECT '2024-01-01 12:00:00' AS create_time, 'testname' AS name
+                FROM users;
+            ");
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                while (true)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+            });
+
+            Assert.Equal("Primary key column 'id' is not inserted into the table, all primary keys must be inserted.", ex.Message);
+        }
+
+        [Fact]
+        public async Task InsertColumnThatDoesNotExistThrowsException()
+        {
+            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(InsertColumnThatDoesNotExistThrowsException));
+
+            stream.Generate();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await stream.StartStream(@"
+                    INSERT INTO test.testtable
+                    SELECT UserKey AS id, '2024-01-01 12:00:00' AS create_time2, 'testname' AS name
+                    FROM users;
+                ");
+            });
+
+            Assert.Equal("Column 'create_time2' not found in Starrocks table 'test.testtable'.", ex.Message);
+        }
+
+        [Fact]
         public async Task TestInsertDataNullKey()
         {
             StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(TestInsertDataNullKey));
