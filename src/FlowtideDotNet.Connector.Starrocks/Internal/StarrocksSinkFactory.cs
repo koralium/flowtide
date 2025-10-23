@@ -18,14 +18,14 @@ using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal class StarrocksSinkFactory : AbstractConnectorSinkFactory, ITableProvider
+    internal class StarRocksSinkFactory : AbstractConnectorSinkFactory, ITableProvider
     {
-        private readonly StarrocksSinkOptions _options;
-        private Dictionary<StarrocksTableKey, TableMetadata>? _tablesCache;
+        private readonly StarRocksSinkOptions _options;
+        private Dictionary<StarRocksTableKey, TableMetadata>? _tablesCache;
 
-        public StarrocksSinkFactory(StarrocksSinkOptions options)
+        public StarRocksSinkFactory(StarRocksSinkOptions options)
         {
             this._options = options;
         }
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                 }
             }
 
-            return new StarrocksPrimaryKeySink(_options, _options.ExecutionMode, writeRelation, dataflowBlockOptions);
+            return new StarRocksPrimaryKeySink(_options, _options.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
 
         public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
@@ -74,10 +74,10 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
             if (_tablesCache == null)
             {
-                _tablesCache = StarrocksUtils.GetTables(_options).GetAwaiter().GetResult();
+                _tablesCache = StarRocksUtils.GetTables(_options).GetAwaiter().GetResult();
             }
 
-            var key = new StarrocksTableKey(tableName[0], tableName[1]);
+            var key = new StarRocksTableKey(tableName[0], tableName[1]);
 
             return _tablesCache.TryGetValue(key, out tableMetadata);
         }

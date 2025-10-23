@@ -11,14 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Connector.Starrocks.Internal;
+using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Tests;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
-namespace FlowtideDotNet.Connector.Starrocks.Tests
+namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
     public class OperatorTests : OperatorTestBase
     {
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         {
             var ex = Assert.Throws<InvalidOperationException>(() =>
             {
-                new StarrocksPrimaryKeySink(new StarrocksSinkOptions()
+                new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
                 {
                     HttpUrl = "http://",
                     Username = "user"
@@ -269,11 +269,11 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
             await client.ReceivedWithAnyArgs().TransactionCommit(default);
         }
 
-        private async Task<StarrocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)
+        private async Task<StarRocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)
         {
-            var factory = new StarrocksMockClientFactory(client);
+            var factory = new StarRocksMockClientFactory(client);
 
-            var op = new StarrocksPrimaryKeySink(new StarrocksSinkOptions()
+            var op = new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
             {
                 HttpUrl = "http://",
                 Username = "user",
@@ -306,9 +306,9 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 PrimaryKeys = []
             }));
 
-            var factory = new StarrocksMockClientFactory(client);
+            var factory = new StarRocksMockClientFactory(client);
 
-            var op = new StarrocksPrimaryKeySink(new StarrocksSinkOptions()
+            var op = new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
             {
                 HttpUrl = "http://",
                 Username = "user",

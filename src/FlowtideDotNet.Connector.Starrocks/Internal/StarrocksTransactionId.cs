@@ -16,15 +16,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal struct StarrocksTransactionId
+    internal struct StarRocksTransactionId
     {
         public readonly string database;
         public readonly string table;
         public readonly string label;
 
-        public StarrocksTransactionId(string database, string table, string label)
+        public StarRocksTransactionId(string database, string table, string label)
         {
             this.database = database;
             this.table = table;

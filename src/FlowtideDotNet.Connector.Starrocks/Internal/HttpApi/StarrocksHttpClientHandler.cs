@@ -12,9 +12,9 @@
 
 using System.Collections.Concurrent;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
-    internal class StarrocksHttpClientHandler : HttpClientHandler
+    internal class StarRocksHttpClientHandler : HttpClientHandler
     {
         private ConcurrentDictionary<string, string> _redirectUriCache = new ConcurrentDictionary<string, string>();
 

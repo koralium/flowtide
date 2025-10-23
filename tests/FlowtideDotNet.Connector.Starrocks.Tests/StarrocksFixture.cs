@@ -15,9 +15,9 @@ using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
 using MySql.Data.MySqlClient;
 
-namespace FlowtideDotNet.Connector.Starrocks.Tests
+namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    public class StarrocksFixture : IAsyncLifetime
+    public class StarRocksFixture : IAsyncLifetime
     {
         private IContainer? container;
         private string password = "";

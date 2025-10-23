@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks;
-using FlowtideDotNet.Connector.Starrocks.Internal;
+using FlowtideDotNet.Connector.StarRocks;
+using FlowtideDotNet.Connector.StarRocks.Internal;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,11 +20,11 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core
 {
-    public static class StarrocksConnectorManagerExtensions
+    public static class StarRocksConnectorManagerExtensions
     {
-        public static IConnectorManager AddStarrocksSink(this IConnectorManager connectorManager, StarrocksSinkOptions options)
+        public static IConnectorManager AddStarRocksSink(this IConnectorManager connectorManager, StarRocksSinkOptions options)
         {
-            connectorManager.AddSink(new StarrocksSinkFactory(options));
+            connectorManager.AddSink(new StarRocksSinkFactory(options));
             return connectorManager;
         }
     }

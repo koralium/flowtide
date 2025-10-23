@@ -10,20 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal;
+using FlowtideDotNet.Connector.StarRocks.Internal;
 
-namespace FlowtideDotNet.Connector.Starrocks.Tests
+namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    internal class StarrocksMockClientFactory : IStarrocksClientFactory
+    internal class StarRocksMockClientFactory : IStarRocksClientFactory
     {
         private readonly IStarrocksClient client;
 
-        public StarrocksMockClientFactory(IStarrocksClient client)
+        public StarRocksMockClientFactory(IStarrocksClient client)
         {
             this.client = client;
         }
 
-        public IStarrocksClient CreateClient(StarrocksSinkOptions options)
+        public IStarrocksClient CreateClient(StarRocksSinkOptions options)
         {
             return this.client;
         }

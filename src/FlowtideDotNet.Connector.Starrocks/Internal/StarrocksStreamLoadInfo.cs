@@ -16,14 +16,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal struct StarrocksStreamLoadInfo
+    internal struct StarRocksStreamLoadInfo
     {
         public readonly string database;
         public readonly string table;
         public readonly ReadOnlyMemory<byte> data;
-        public StarrocksStreamLoadInfo(string database, string table, ReadOnlyMemory<byte> data)
+        public StarRocksStreamLoadInfo(string database, string table, ReadOnlyMemory<byte> data)
         {
             this.database = database;
             this.table = table;

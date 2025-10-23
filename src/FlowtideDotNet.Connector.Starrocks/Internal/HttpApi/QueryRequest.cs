@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
     public class QueryRequest
     {

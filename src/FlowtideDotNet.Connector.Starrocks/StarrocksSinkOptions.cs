@@ -10,12 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal;
+using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Operators.Write;
 
-namespace FlowtideDotNet.Connector.Starrocks
+namespace FlowtideDotNet.Connector.StarRocks
 {
-    public class StarrocksSinkOptions
+    public class StarRocksSinkOptions
     {
         public required string HttpUrl { get; set; }
 
@@ -42,6 +42,6 @@ namespace FlowtideDotNet.Connector.Starrocks
         /// </summary>
         public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.OnCheckpoint;
 
-        internal IStarrocksClientFactory ClientFactory { get; set; } = new DefaultStarrocksClientFactory();
+        internal IStarRocksClientFactory ClientFactory { get; set; } = new DefaultStarRocksClientFactory();
     }
 }

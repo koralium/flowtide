@@ -14,18 +14,18 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
-    internal class StarrocksHttpClient : IStarrocksClient
+    internal class StarRocksHttpClient : IStarrocksClient
     {
         private readonly string _url;
         private readonly string _backendUrl;
         private readonly HttpClient _httpClient;
         private readonly AuthenticationHeaderValue _authenticationHeaderValue;
-        private readonly StarrocksSinkOptions _options;
+        private readonly StarRocksSinkOptions _options;
         private Dictionary<string, string> _redirectUris;
 
-        public StarrocksHttpClient(StarrocksSinkOptions options)
+        public StarRocksHttpClient(StarRocksSinkOptions options)
         {
             _url = options.HttpUrl;
             _backendUrl = _url;
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
                 _backendUrl = options.BackendHttpUrl;
             }
             _redirectUris = new Dictionary<string, string>();
-            _httpClient = new HttpClient(new StarrocksHttpClientHandler() { AllowAutoRedirect = false })
+            _httpClient = new HttpClient(new StarRocksHttpClientHandler() { AllowAutoRedirect = false })
             {
             };
 
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             this._options = options;
         }
 
-        public async Task StreamLoad(StarrocksStreamLoadInfo request)
+        public async Task StreamLoad(StarRocksStreamLoadInfo request)
         {
             var jsonData = Encoding.UTF8.GetString(request.data.Span);
             HttpResponseMessage? response = default;
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return await ResponseParser.ParseQuery(await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false);
         }
 
-        public async Task<TransactionInfo> CreateTransaction(StarrocksTransactionId transactionId)
+        public async Task<TransactionInfo> CreateTransaction(StarRocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/begin");
             request.Headers.Add("Expect", "100-continue");
@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionInfo;
         }
 
-        public async Task TransactionLoad(StarrocksTransactionLoadInfo request)
+        public async Task TransactionLoad(StarRocksTransactionLoadInfo request)
         {
             var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"{_backendUrl}/api/transaction/load");
             httpRequest.Headers.Add("Expect", "100-continue");
@@ -172,7 +172,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             }
         }
 
-        public async Task<TransactionInfo> TransactionPrepare(StarrocksTransactionId transactionId)
+        public async Task<TransactionInfo> TransactionPrepare(StarRocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/prepare");
             request.Headers.Add("Expect", "100-continue");
@@ -189,7 +189,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionInfo;
         }
 
-        public async Task<StreamLoadInfo> TransactionCommit(StarrocksTransactionId transactionId)
+        public async Task<StreamLoadInfo> TransactionCommit(StarRocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_url}/api/transaction/commit");
             request.Headers.Add("Expect", "100-continue");
@@ -208,7 +208,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionResponse;
         }
 
-        public async Task<TransactionInfo> TransactionRollback(StarrocksTransactionId transactionId)
+        public async Task<TransactionInfo> TransactionRollback(StarRocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/rollback");
             request.Headers.Add("Expect", "100-continue");
@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
 
         public Task<TableInfo> GetTableInfo(List<string> names)
         {
-            return StarrocksUtils.GetTableInfo(_options, names);
+            return StarRocksUtils.GetTableInfo(_options, names);
         }
     }
 }

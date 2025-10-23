@@ -10,14 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
     /// <summary>
     /// Factory for creating Starrocks clients.
     /// This is used for unit testing to inject mock clients.
     /// </summary>
-    internal interface IStarrocksClientFactory
+    internal interface IStarRocksClientFactory
     {
-        IStarrocksClient CreateClient(StarrocksSinkOptions options);
+        IStarrocksClient CreateClient(StarRocksSinkOptions options);
     }
 }

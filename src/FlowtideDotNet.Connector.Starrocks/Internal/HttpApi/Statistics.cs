@@ -12,7 +12,7 @@
 
 using System.Text.Json.Serialization;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
     internal class Statistics
     {

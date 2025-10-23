@@ -13,14 +13,15 @@
 using FlowtideDotNet.Core.ColumnStore;
 using System.Text.Json;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal class StarrocksJsonWriter
+    internal class StarRocksJsonWriter
+
     {
         private readonly List<JsonEncodedText> m_names;
         private static readonly JsonEncodedText OperationPropertyName = JsonEncodedText.Encode("__op");
 
-        public StarrocksJsonWriter(List<string> names)
+        public StarRocksJsonWriter(List<string> names)
         {
             m_names = new List<JsonEncodedText>();
             for (int i = 0; i < names.Count; i++)

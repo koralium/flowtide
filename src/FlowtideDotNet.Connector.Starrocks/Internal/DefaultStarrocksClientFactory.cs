@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal class DefaultStarrocksClientFactory : IStarrocksClientFactory
+    internal class DefaultStarRocksClientFactory : IStarRocksClientFactory
     {
-        public IStarrocksClient CreateClient(StarrocksSinkOptions options)
+        public IStarrocksClient CreateClient(StarRocksSinkOptions options)
         {
-            return new StarrocksHttpClient(options);
+            return new StarRocksHttpClient(options);
         }
     }
 }

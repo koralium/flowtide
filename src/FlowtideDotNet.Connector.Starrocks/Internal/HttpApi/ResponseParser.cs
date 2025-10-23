@@ -13,7 +13,7 @@
 using System.IO.Pipelines;
 using System.Text.Json;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
     internal class ResponseParser
     {

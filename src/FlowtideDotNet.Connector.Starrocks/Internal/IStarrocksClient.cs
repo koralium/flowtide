@@ -10,23 +10,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
     internal interface IStarrocksClient
     {
-        Task<StreamLoadInfo> TransactionCommit(StarrocksTransactionId transactionId);
+        Task<StreamLoadInfo> TransactionCommit(StarRocksTransactionId transactionId);
 
-        Task<TransactionInfo> CreateTransaction(StarrocksTransactionId transactionId);
+        Task<TransactionInfo> CreateTransaction(StarRocksTransactionId transactionId);
 
-        Task TransactionLoad(StarrocksTransactionLoadInfo request);
+        Task TransactionLoad(StarRocksTransactionLoadInfo request);
 
-        Task<TransactionInfo> TransactionPrepare(StarrocksTransactionId transactionId);
+        Task<TransactionInfo> TransactionPrepare(StarRocksTransactionId transactionId);
 
-        Task<TransactionInfo> TransactionRollback(StarrocksTransactionId transactionId);
+        Task<TransactionInfo> TransactionRollback(StarRocksTransactionId transactionId);
 
-        Task StreamLoad(StarrocksStreamLoadInfo request);
+        Task StreamLoad(StarRocksStreamLoadInfo request);
 
         Task<TableInfo> GetTableInfo(List<string> names);
     }

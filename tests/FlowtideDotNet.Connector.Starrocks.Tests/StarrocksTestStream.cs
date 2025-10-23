@@ -13,20 +13,20 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 
-namespace FlowtideDotNet.Connector.Starrocks.Tests
+namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    internal class StarrocksTestStream : FlowtideTestStream
+    internal class StarRocksTestStream : FlowtideTestStream
     {
-        private readonly StarrocksFixture starrocksFixture;
+        private readonly StarRocksFixture starrocksFixture;
 
-        public StarrocksTestStream(StarrocksFixture starrocksFixture, string testName) : base(testName)
+        public StarRocksTestStream(StarRocksFixture starrocksFixture, string testName) : base(testName)
         {
             this.starrocksFixture = starrocksFixture;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManager)
         {
-            connectorManager.AddStarrocksSink(new StarrocksSinkOptions()
+            connectorManager.AddStarRocksSink(new StarRocksSinkOptions()
             {
                 HttpUrl = starrocksFixture.Uri,
                 BackendHttpUrl = starrocksFixture.BackendUrl,

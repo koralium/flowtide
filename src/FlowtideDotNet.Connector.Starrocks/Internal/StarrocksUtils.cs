@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 
-namespace FlowtideDotNet.Connector.Starrocks.Internal
+namespace FlowtideDotNet.Connector.StarRocks.Internal
 {
-    internal class StarrocksTableKey
+    internal class StarRocksTableKey
     {
-        public StarrocksTableKey(string schema, string tableName)
+        public StarRocksTableKey(string schema, string tableName)
         {
             Schema = schema;
             TableName = tableName;
@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
         public override bool Equals(object? obj)
         {
-            return obj is StarrocksTableKey key &&
+            return obj is StarRocksTableKey key &&
                    Schema.Equals(key.Schema, StringComparison.OrdinalIgnoreCase) &&
                    TableName.Equals(key.TableName, StringComparison.OrdinalIgnoreCase);
         }
@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
         public required List<string> PrimaryKeys { get; set; }
     }
-    internal static class StarrocksUtils
+    internal static class StarRocksUtils
     {
         private const string StarrocksColumnKeyPrimary = "PRI";
 
@@ -70,9 +70,9 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
             return new AnyType();
         }
 
-        public static async Task<Dictionary<StarrocksTableKey, TableMetadata>> GetTables(StarrocksSinkOptions options)
+        public static async Task<Dictionary<StarRocksTableKey, TableMetadata>> GetTables(StarRocksSinkOptions options)
         {
-            var client = new StarrocksHttpClient(options);
+            var client = new StarRocksHttpClient(options);
             var result = await client.Query(@"
                 SELECT t.table_schema, t.table_name, c.column_name, c.data_type, c.column_key FROM information_schema.columns c
                 INNER JOIN information_schema.tables t
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
             var columnKeyIndex = result.FieldIndex("column_key");
             
 
-            Dictionary<StarrocksTableKey, NamedStruct> tablesInfo = new Dictionary<StarrocksTableKey, NamedStruct>();
+            Dictionary<StarRocksTableKey, NamedStruct> tablesInfo = new Dictionary<StarRocksTableKey, NamedStruct>();
 
             await foreach (var row in result.Rows)
             {
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                     throw new InvalidOperationException("Column key is not a string.");
                 }
 
-                if (!tablesInfo.TryGetValue(new StarrocksTableKey(schema, table), out var namedStruct))
+                if (!tablesInfo.TryGetValue(new StarRocksTableKey(schema, table), out var namedStruct))
                 {
                     namedStruct = new NamedStruct()
                     {
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                             Types = new List<SubstraitBaseType>()
                         }
                     };
-                    tablesInfo[new StarrocksTableKey(schema, table)] = namedStruct;
+                    tablesInfo[new StarRocksTableKey(schema, table)] = namedStruct;
                 }
 
                 if (namedStruct.Struct == null)
@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                 namedStruct.Names.Add(columnName);
                 namedStruct.Struct.Types.Add(StarrocksTypeToSubstrait(dataType));
             }
-            Dictionary<StarrocksTableKey, TableMetadata> tables = new Dictionary<StarrocksTableKey, TableMetadata>();
+            Dictionary<StarRocksTableKey, TableMetadata> tables = new Dictionary<StarRocksTableKey, TableMetadata>();
 
             foreach (var kv in tablesInfo)
             {
@@ -168,10 +168,10 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
         }
 
-        public static async Task<TableInfo> GetTableInfo(StarrocksSinkOptions options, List<string> names)
+        public static async Task<TableInfo> GetTableInfo(StarRocksSinkOptions options, List<string> names)
         {
             GetCatalogSchemaTable(names, out var catalog, out var schema, out var table);
-            var client = new StarrocksHttpClient(options);
+            var client = new StarRocksHttpClient(options);
             var result = await client.Query($"SELECT column_name, data_type, column_key FROM information_schema.columns WHERE table_name = '{table}' AND table_schema = '{schema}';");
 
             var columnNameIndex = result.FieldIndex("column_name");

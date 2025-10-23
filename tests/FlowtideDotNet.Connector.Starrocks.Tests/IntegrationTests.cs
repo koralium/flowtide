@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal;
+using FlowtideDotNet.Connector.StarRocks.Internal;
 
-namespace FlowtideDotNet.Connector.Starrocks.Tests
+namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    public class IntegrationTests : IClassFixture<StarrocksFixture>
+    public class IntegrationTests : IClassFixture<StarRocksFixture>
     {
-        private readonly StarrocksFixture fixture;
+        private readonly StarRocksFixture fixture;
 
-        public IntegrationTests(StarrocksFixture fixture)
+        public IntegrationTests(StarRocksFixture fixture)
         {
             this.fixture = fixture;
         }
@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public void FetchTableMetadata()
         {
-            var factory = new StarrocksSinkFactory(new StarrocksSinkOptions()
+            var factory = new StarRocksSinkFactory(new StarRocksSinkOptions()
             {
                 HttpUrl = fixture.Uri,
                 Username = "root"
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public void FetchTableMetadataCaseInsensitive()
         {
-            var factory = new StarrocksSinkFactory(new StarrocksSinkOptions()
+            var factory = new StarRocksSinkFactory(new StarRocksSinkOptions()
             {
                 HttpUrl = fixture.Uri,
                 Username = "root"
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public async Task TestInsertData()
         {
-            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(TestInsertData));
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, nameof(TestInsertData));
 
             stream.Generate();
             await stream.StartStream(@"
@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public async Task InsertNoPrimaryKeyInInsertThrowsException()
         {
-            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(InsertNoPrimaryKeyInInsertThrowsException));
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, nameof(InsertNoPrimaryKeyInInsertThrowsException));
 
             stream.Generate();
             await stream.StartStream(@"
@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public async Task InsertColumnThatDoesNotExistThrowsException()
         {
-            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(InsertColumnThatDoesNotExistThrowsException));
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, nameof(InsertColumnThatDoesNotExistThrowsException));
 
             stream.Generate();
 
@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
         [Fact]
         public async Task TestInsertDataNullKey()
         {
-            StarrocksTestStream stream = new StarrocksTestStream(fixture, nameof(TestInsertDataNullKey));
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, nameof(TestInsertDataNullKey));
 
             stream.Generate(1);
             await stream.StartStream(@"
