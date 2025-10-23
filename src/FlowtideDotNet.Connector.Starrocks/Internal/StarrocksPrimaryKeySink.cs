@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
@@ -51,7 +52,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             if (writeRelation.NamedObject.Names.Count != 2)
             {
-                throw new InvalidOperationException("Starrocks table name must be in the format 'database.table'");
+                throw new StarRocksConfigurationException("Starrocks table name must be in the format 'database.table'");
             }
 
             _tableName = writeRelation.NamedObject.Names[1];
@@ -77,7 +78,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             if (tableInfo.PrimaryKeys.Count == 0)
             {
-                throw new InvalidOperationException("The target Starrocks table does not have a primary key defined.");
+                throw new StarRocksConfigurationException("The target Starrocks table does not have a primary key defined.");
             }
 
             List<int> primaryKeyOrdinals = new List<int>();
@@ -97,7 +98,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 if (!foundPrimaryKey)
                 {
-                    throw new InvalidOperationException($"Primary key column '{primaryKey}' is not inserted into the table, all primary keys must be inserted.");
+                    throw new StarRocksConfigurationException($"Primary key column '{primaryKey}' is not inserted into the table, all primary keys must be inserted.");
                 }
             }
 
@@ -124,7 +125,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 var commitResult = await _httpClient.TransactionCommit(new StarRocksTransactionId(_databaseName, _tableName, label));
                 if (commitResult.Status != "OK")
                 {
-                    throw new InvalidOperationException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.Message}'");
+                    throw new StarRocksTransactionException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.Message}'");
                 }
             }
             await base.Compact();
@@ -153,18 +154,18 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                     createTransactionResponse = await _httpClient.TransactionRollback(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
                     if (createTransactionResponse.Status != "OK")
                     {
-                        throw new InvalidOperationException("Failed to rollback existing label.");
+                        throw new StarRocksTransactionException("Failed to rollback existing label.");
                     }
                     // Retry create transaction
                     createTransactionResponse = await _httpClient.CreateTransaction(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
                     if (createTransactionResponse.Status != "OK")
                     {
-                        throw new InvalidOperationException("Failed to create transaction after rollback.");
+                        throw new StarRocksTransactionException("Failed to create transaction after rollback.");
                     }
                 }
                 else
                 {
-                    throw new InvalidOperationException(createTransactionResponse.Message);
+                    throw new StarRocksTransactionException(createTransactionResponse.Message);
                 }
             }
 
@@ -182,7 +183,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                         var keyType = row.EventBatchData.Columns[_primaryKeyOrdinals[i]].GetTypeAt(row.Index, default);
                         if (keyType == Core.ColumnStore.ArrowTypeId.Null)
                         {
-                            throw new InvalidOperationException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
+                            throw new StarRocksInvalidDataException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
                         }
                     }
                     _jsonWriter.WriteObject(ref jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
@@ -210,7 +211,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 var prepareResponse = await _httpClient.TransactionPrepare(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
                 if (prepareResponse.Status != "OK")
                 {
-                    throw new InvalidOperationException(prepareResponse.Message);
+                    throw new StarRocksTransactionException(prepareResponse.Message);
                 }
 
                 // Update the label id after we prepared and commit it to the checkpoint data
@@ -250,7 +251,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                     var keyType = row.EventBatchData.Columns[_primaryKeyOrdinals[i]].GetTypeAt(row.Index, default);
                     if (keyType == Core.ColumnStore.ArrowTypeId.Null)
                     {
-                        throw new InvalidOperationException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
+                        throw new StarRocksInvalidDataException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
                     }
                 }
                 _jsonWriter.WriteObject(ref jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);

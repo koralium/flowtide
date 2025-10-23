@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -49,8 +50,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
     internal static class StarRocksUtils
     {
         private const string StarrocksColumnKeyPrimary = "PRI";
-
-        
 
         private static SubstraitBaseType StarrocksTypeToSubstrait(string typeName)
         {
@@ -97,7 +96,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Schema name is not a string.");
+                    throw new StarRocksHttpException("Schema name is not a string.");
                 }
                 string? table = default;
                 if (row[tableIndex] is string tableString)
@@ -106,7 +105,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Table name is not a string.");
+                    throw new StarRocksHttpException("Table name is not a string.");
                 }
                 string? columnName = default;
                 if (row[columnNameIndex] is string columnNameString)
@@ -115,7 +114,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Column name is not a string.");
+                    throw new StarRocksHttpException("Column name is not a string.");
                 }
                 string? dataType = default;
                 if (row[dataTypeIndex] is string dataTypeString)
@@ -124,7 +123,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Data type is not a string.");
+                    throw new StarRocksHttpException("Data type is not a string.");
                 }
                 string? columnKey = default;
                 if (row[columnKeyIndex] is string columnKeyString)
@@ -133,7 +132,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Column key is not a string.");
+                    throw new StarRocksHttpException("Column key is not a string.");
                 }
 
                 if (!tablesInfo.TryGetValue(new StarRocksTableKey(schema, table), out var namedStruct))
@@ -189,7 +188,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
                 else
                 {
-                    throw new InvalidOperationException("Column name is not a string.");
+                    throw new StarRocksHttpException("Column name is not a string.");
                 }
                 columnNames.Add(columnName);
                 if (row[columnKeyIndex] is string columnKeyString && columnKeyString == StarrocksColumnKeyPrimary)

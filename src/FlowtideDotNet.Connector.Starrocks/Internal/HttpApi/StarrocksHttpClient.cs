@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 {
                     if (response.Headers.Location == null)
                     {
-                        throw new InvalidOperationException("Redirect response missing Location header.");
+                        throw new StarRocksHttpException("Redirect response missing Location header.");
                     }
                     var newUrl = response.Headers.Location.ToString();
                     // Store the new redirect uri for future requests
@@ -104,13 +105,13 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             var transactionResponse = await response.Content.ReadFromJsonAsync<StreamLoadInfo>();
             if (transactionResponse == null)
             {
-                throw new InvalidOperationException("Failed to parse stream load response.");   
+                throw new StarRocksHttpException("Failed to parse stream load response.");   
             }
                 
             if (transactionResponse.Status == "FAILED" ||
                 transactionResponse.Status == "Fail")
             {
-                throw new InvalidOperationException(transactionResponse.Message);
+                throw new StarRocksHttpException(transactionResponse.Message);
             }
         }
 
@@ -137,7 +138,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
             if (transactionInfo == null)
             {
-                throw new InvalidOperationException("Failed to parse transaction response.");
+                throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
 
             return transactionInfo;
@@ -163,12 +164,12 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
             if (transactionInfo == null)
             {
-                throw new InvalidOperationException("Failed to parse transaction response.");
+                throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
 
             if (transactionInfo.Status != "OK")
             {
-                throw new InvalidOperationException(transactionInfo.Message);
+                throw new StarRocksTransactionException(transactionInfo.Message);
             }
         }
 
@@ -184,7 +185,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
             if (transactionInfo == null)
             {
-                throw new InvalidOperationException("Failed to parse transaction response.");
+                throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
             return transactionInfo;
         }
@@ -202,7 +203,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             var transactionResponse = await response.Content.ReadFromJsonAsync<StreamLoadInfo>();
             if (transactionResponse == null)
             {
-                throw new InvalidOperationException("Failed to parse stream load response.");
+                throw new StarRocksTransactionException("Failed to parse stream load response.");
             }
 
             return transactionResponse;
@@ -220,7 +221,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
             if (transactionInfo == null)
             {
-                throw new InvalidOperationException("Failed to parse transaction response.");
+                throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
             return transactionInfo;
         }
