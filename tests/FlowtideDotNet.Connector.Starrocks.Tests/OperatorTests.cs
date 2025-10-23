@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "Cant create transaction",
                 Status = "Fail"
@@ -75,12 +75,12 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "Already exists",
                 Status = "LABEL_ALREADY_EXISTS"
             }));
-            client.TransactionRollback(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.TransactionRollback(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Status = "OK",
                 Message = "ok"
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 await op.Completion;
             });
 
-            await client.ReceivedWithAnyArgs().TransactionRollback(default!, default!, default!);
+            await client.ReceivedWithAnyArgs().TransactionRollback(default!);
         }
 
         [Fact]
@@ -106,12 +106,12 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
                 Status = "OK"
             }));
-            client.TransactionLoad(default!, default!, default!, default).ThrowsAsyncForAnyArgs(new Exception("Error loading data"));
+            client.TransactionLoad(default).ThrowsAsyncForAnyArgs(new Exception("Error loading data"));
 
 
             var op = await SendOneRowAndSendCheckpoint(client);
@@ -123,7 +123,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
 
             Assert.Equal("Error loading data", ex.Message);
 
-            await client.ReceivedWithAnyArgs().TransactionRollback(default!, default!, default!);
+            await client.ReceivedWithAnyArgs().TransactionRollback(default);
         }
 
         [Fact]
@@ -135,13 +135,13 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
                 Status = "OK"
             }));
-            client.TransactionLoad(default!, default!, default!, default).ReturnsForAnyArgs(Task.CompletedTask);
-            client.TransactionPrepare(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
+            client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Status = "Fail",
                 Message = "Error"
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
 
             Assert.Equal("Error", ex.Message);
 
-            await client.ReceivedWithAnyArgs().TransactionRollback(default!, default!, default!);
+            await client.ReceivedWithAnyArgs().TransactionRollback(default);
         }
 
         [Fact]
@@ -168,18 +168,18 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
                 Status = "OK"
             }));
-            client.TransactionLoad(default!, default!, default!, default).ReturnsForAnyArgs(Task.CompletedTask);
-            client.TransactionPrepare(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
+            client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Status = "OK",
                 Message = "ok"
             }));
-            client.TransactionCommit(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
+            client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
                 Status = "Fail",
                 Message = "Commit failure"
@@ -206,18 +206,18 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
                 Status = "OK"
             }));
-            client.TransactionLoad(default!, default!, default!, default).ReturnsForAnyArgs(Task.CompletedTask);
-            client.TransactionPrepare(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
+            client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Status = "OK",
                 Message = "ok"
             }));
-            client.TransactionCommit(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
+            client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
                 Status = "OK",
                 Message = "ok"
@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
 
             await op.Compact();
 
-            await client.ReceivedWithAnyArgs().TransactionCommit(default!, default!, default!);
+            await client.ReceivedWithAnyArgs().TransactionCommit(default);
         }
 
         [Fact]
@@ -242,18 +242,18 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 ColumnNames = ["a"],
                 PrimaryKeys = ["a"]
             }));
-            client.CreateTransaction(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
                 Status = "OK"
             }));
-            client.TransactionLoad(default!, default!, default!, default).ReturnsForAnyArgs(Task.CompletedTask);
-            client.TransactionPrepare(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
+            client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
+            client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Status = "OK",
                 Message = "ok"
             }));
-            client.TransactionCommit(default!, default!, default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
+            client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
                 Status = "OK",
                 Message = "ok"
@@ -266,7 +266,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
             // Simulate a crash where the operator reinitializes, expected here is that the prepared transaction is committed
             await ReinitializeOperator(op);
 
-            await client.ReceivedWithAnyArgs().TransactionCommit(default!, default!, default!);
+            await client.ReceivedWithAnyArgs().TransactionCommit(default);
         }
 
         private async Task<StarrocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)

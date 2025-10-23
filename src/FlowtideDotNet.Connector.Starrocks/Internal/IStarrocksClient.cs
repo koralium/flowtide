@@ -16,17 +16,17 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 {
     internal interface IStarrocksClient
     {
-        Task<StreamLoadInfo> TransactionCommit(string database, string table, string label);
+        Task<StreamLoadInfo> TransactionCommit(StarrocksTransactionId transactionId);
 
-        Task<TransactionInfo> CreateTransaction(string database, string table, string label);
+        Task<TransactionInfo> CreateTransaction(StarrocksTransactionId transactionId);
 
-        Task TransactionLoad(string database, string table, string label, ReadOnlyMemory<byte> data);
+        Task TransactionLoad(StarrocksTransactionLoadInfo request);
 
-        Task<TransactionInfo> TransactionPrepare(string database, string table, string label);
+        Task<TransactionInfo> TransactionPrepare(StarrocksTransactionId transactionId);
 
-        Task<TransactionInfo> TransactionRollback(string database, string table, string label);
+        Task<TransactionInfo> TransactionRollback(StarrocksTransactionId transactionId);
 
-        Task StreamLoad(string database, string table, ReadOnlyMemory<byte> memory);
+        Task StreamLoad(StarrocksStreamLoadInfo request);
 
         Task<TableInfo> GetTableInfo(List<string> names);
     }

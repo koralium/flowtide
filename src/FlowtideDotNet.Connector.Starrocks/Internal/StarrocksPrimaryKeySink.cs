@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                 var label = GetLabel(_labelId.Value);
 
                 // We always try and commit the transaction with the last label in case a crash happened between checkpoint and compact
-                await _httpClient.TransactionCommit(_databaseName, _tableName, label);
+                await _httpClient.TransactionCommit(new StarrocksTransactionId(_databaseName, _tableName, label));
             }
 
             var tableInfo = await _httpClient.GetTableInfo(_writeRelation.NamedObject.Names);
@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
                 // Commit the transaction if we are running on checkpoint mode
                 var label = GetLabel(_labelId.Value);
-                var commitResult = await _httpClient.TransactionCommit(_databaseName, _tableName, label);
+                var commitResult = await _httpClient.TransactionCommit(new StarrocksTransactionId(_databaseName, _tableName, label));
                 if (commitResult.Status != "OK")
                 {
                     throw new InvalidOperationException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.Message}'");
@@ -143,20 +143,20 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
             var labelid = _labelId.Value + 1;
             var labelIdentifier = GetLabel(labelid);
-            var createTransactionResponse = await _httpClient.CreateTransaction(_databaseName, _tableName, labelIdentifier);
+            var createTransactionResponse = await _httpClient.CreateTransaction(new StarrocksTransactionId(_databaseName, _tableName, labelIdentifier));
 
             if (createTransactionResponse.Status != "OK")
             {
                 if (createTransactionResponse.Status == "LABEL_ALREADY_EXISTS")
                 {
                     // Rollback if the transaction already exists
-                    createTransactionResponse = await _httpClient.TransactionRollback(_databaseName, _tableName, labelIdentifier);
+                    createTransactionResponse = await _httpClient.TransactionRollback(new StarrocksTransactionId(_databaseName, _tableName, labelIdentifier));
                     if (createTransactionResponse.Status != "OK")
                     {
                         throw new InvalidOperationException("Failed to rollback existing label.");
                     }
                     // Retry create transaction
-                    createTransactionResponse = await _httpClient.CreateTransaction(_databaseName, _tableName, labelIdentifier);
+                    createTransactionResponse = await _httpClient.CreateTransaction(new StarrocksTransactionId(_databaseName, _tableName, labelIdentifier));
                     if (createTransactionResponse.Status != "OK")
                     {
                         throw new InvalidOperationException("Failed to create transaction after rollback.");
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                     {
                         jsonWriter.WriteEndArray();
                         jsonWriter.Flush();
-                        await _httpClient.TransactionLoad(_databaseName, _tableName, labelIdentifier, bufferWriter.WrittenMemory);
+                        await _httpClient.TransactionLoad(new StarrocksTransactionLoadInfo(_databaseName, _tableName, labelIdentifier, bufferWriter.WrittenMemory));
                         jsonWriter.Reset();
                         bufferWriter.Clear();
                         jsonWriter.WriteStartArray();
@@ -204,10 +204,10 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
                 if (rowCount > 0)
                 {
-                    await _httpClient.TransactionLoad(_databaseName, _tableName, labelIdentifier, bufferWriter.WrittenMemory);
+                    await _httpClient.TransactionLoad(new StarrocksTransactionLoadInfo(_databaseName, _tableName, labelIdentifier, bufferWriter.WrittenMemory));
                 }
 
-                var prepareResponse = await _httpClient.TransactionPrepare(_databaseName, _tableName, labelIdentifier);
+                var prepareResponse = await _httpClient.TransactionPrepare(new StarrocksTransactionId(_databaseName, _tableName, labelIdentifier));
                 if (prepareResponse.Status != "OK")
                 {
                     throw new InvalidOperationException(prepareResponse.Message);
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
             catch(Exception)
             {
                 // Rollback transaction in case of errors
-                await _httpClient.TransactionRollback(_databaseName, _tableName, labelIdentifier);
+                await _httpClient.TransactionRollback(new StarrocksTransactionId(_databaseName, _tableName, labelIdentifier));
                 throw;
             }
             
@@ -260,7 +260,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
                 {
                     jsonWriter.WriteEndArray();
                     jsonWriter.Flush();
-                    await _httpClient.StreamLoad(_databaseName, _tableName, bufferWriter.WrittenMemory);
+                    await _httpClient.StreamLoad(new StarrocksStreamLoadInfo(_databaseName, _tableName, bufferWriter.WrittenMemory));
                     jsonWriter.Reset();
                     bufferWriter.Clear();
                     jsonWriter.WriteStartArray();
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal
 
             if (rowCount > 0)
             {
-                await _httpClient.StreamLoad(_databaseName, _tableName, bufferWriter.WrittenMemory);
+                await _httpClient.StreamLoad(new StarrocksStreamLoadInfo(_databaseName, _tableName, bufferWriter.WrittenMemory));
             }
         }
 

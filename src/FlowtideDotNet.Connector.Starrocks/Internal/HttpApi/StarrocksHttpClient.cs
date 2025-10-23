@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             _redirectUris = new Dictionary<string, string>();
             _httpClient = new HttpClient(new StarrocksHttpClientHandler() { AllowAutoRedirect = false })
             {
-                //BaseAddress = new Uri(url)
             };
 
             var authenticationString = $"{options.Username}:{options.Password}";
@@ -48,15 +47,15 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             this._options = options;
         }
 
-        public async Task StreamLoad(string database, string table, ReadOnlyMemory<byte> memory)
+        public async Task StreamLoad(StarrocksStreamLoadInfo request)
         {
-            var jsonData = Encoding.UTF8.GetString(memory.Span);
+            var jsonData = Encoding.UTF8.GetString(request.data.Span);
             HttpResponseMessage? response = default;
 
             bool triedCachedRedirect = false;
             do
             {
-                string? requestUrl = $"{_backendUrl}/api/{database}/{table}/_stream_load";
+                string? requestUrl = $"{_backendUrl}/api/{request.database}/{request.table}/_stream_load";
                 bool usedRedirectUri = false;
 
                 // First we try and use a cached redirect uri for the request to skip an extra roundtrip
@@ -79,7 +78,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
                     requestUrl = newUrl;
                 }
 
-                var content = new ReadOnlyMemoryContent(memory);
+                var content = new ReadOnlyMemoryContent(request.data);
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
                 var requestMessage = new HttpRequestMessage(HttpMethod.Put, requestUrl)
                 {
@@ -124,13 +123,13 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return await ResponseParser.ParseQuery(await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false);
         }
 
-        public async Task<TransactionInfo> CreateTransaction(string database, string table, string label)
+        public async Task<TransactionInfo> CreateTransaction(StarrocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/begin");
             request.Headers.Add("Expect", "100-continue");
-            request.Headers.Add("label", label);
-            request.Headers.Add("db", database);
-            request.Headers.Add("table", table);
+            request.Headers.Add("label", transactionId.label);
+            request.Headers.Add("db", transactionId.database);
+            request.Headers.Add("table", transactionId.table);
             var response = await _httpClient.SendAsync(request); // ($"{_url}/api/{database}/{table}/transactions", request);
             response.EnsureSuccessStatusCode();
 
@@ -144,20 +143,20 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionInfo;
         }
 
-        public async Task TransactionLoad(string  database, string table, string label, ReadOnlyMemory<byte> data)
+        public async Task TransactionLoad(StarrocksTransactionLoadInfo request)
         {
-            var request = new HttpRequestMessage(HttpMethod.Put, $"{_backendUrl}/api/transaction/load");
-            request.Headers.Add("Expect", "100-continue");
-            request.Headers.Add("label", label);
-            request.Headers.Add("db", database);
-            request.Headers.Add("table", table);
-            request.Headers.Add("format", "json");
-            request.Headers.Add("strip_outer_array", "true");
-            var content = new ReadOnlyMemoryContent(data);
+            var httpRequest = new HttpRequestMessage(HttpMethod.Put, $"{_backendUrl}/api/transaction/load");
+            httpRequest.Headers.Add("Expect", "100-continue");
+            httpRequest.Headers.Add("label", request.label);
+            httpRequest.Headers.Add("db", request.database);
+            httpRequest.Headers.Add("table", request.table);
+            httpRequest.Headers.Add("format", "json");
+            httpRequest.Headers.Add("strip_outer_array", "true");
+            var content = new ReadOnlyMemoryContent(request.data);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-            request.Content = content;
+            httpRequest.Content = content;
 
-            var response = await _httpClient.SendAsync(request);
+            var response = await _httpClient.SendAsync(httpRequest);
             response.EnsureSuccessStatusCode();
 
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
@@ -173,13 +172,13 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             }
         }
 
-        public async Task<TransactionInfo> TransactionPrepare(string database, string table, string label)
+        public async Task<TransactionInfo> TransactionPrepare(StarrocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/prepare");
             request.Headers.Add("Expect", "100-continue");
-            request.Headers.Add("label", label);
-            request.Headers.Add("db", database);
-            request.Headers.Add("table", table);
+            request.Headers.Add("label", transactionId.label);
+            request.Headers.Add("db", transactionId.database);
+            request.Headers.Add("table", transactionId.table);
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
@@ -190,13 +189,13 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionInfo;
         }
 
-        public async Task<StreamLoadInfo> TransactionCommit(string database, string table, string label)
+        public async Task<StreamLoadInfo> TransactionCommit(StarrocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_url}/api/transaction/commit");
             request.Headers.Add("Expect", "100-continue");
-            request.Headers.Add("label", label);
-            request.Headers.Add("db", database);
-            request.Headers.Add("table", table);
+            request.Headers.Add("label", transactionId.label);
+            request.Headers.Add("db", transactionId.database);
+            request.Headers.Add("table", transactionId.table);
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
@@ -209,13 +208,13 @@ namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
             return transactionResponse;
         }
 
-        public async Task<TransactionInfo> TransactionRollback(string database, string table, string label)
+        public async Task<TransactionInfo> TransactionRollback(StarrocksTransactionId transactionId)
         {
             var request = new HttpRequestMessage(HttpMethod.Post, $"{_backendUrl}/api/transaction/rollback");
             request.Headers.Add("Expect", "100-continue");
-            request.Headers.Add("label", label);
-            request.Headers.Add("db", database);
-            request.Headers.Add("table", table);
+            request.Headers.Add("label", transactionId.label);
+            request.Headers.Add("db", transactionId.database);
+            request.Headers.Add("table", transactionId.table);
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
