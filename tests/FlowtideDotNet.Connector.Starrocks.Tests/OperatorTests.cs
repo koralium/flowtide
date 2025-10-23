@@ -15,16 +15,8 @@ using FlowtideDotNet.Connector.Starrocks.Internal;
 using FlowtideDotNet.Core.Tests;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using MySqlX.XDevAPI;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Starrocks.Tests
 {

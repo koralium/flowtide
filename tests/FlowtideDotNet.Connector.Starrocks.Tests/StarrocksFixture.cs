@@ -13,10 +13,7 @@
 using DotNet.Testcontainers.Builders;
 using DotNet.Testcontainers.Configurations;
 using DotNet.Testcontainers.Containers;
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using MySql.Data.MySqlClient;
-using SqlParser.Ast;
-using static Google.Protobuf.Compiler.CodeGeneratorResponse.Types;
 
 namespace FlowtideDotNet.Connector.Starrocks.Tests
 {
