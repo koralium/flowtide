@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Connector.Starrocks.Tests
                 }
             });
             Assert.NotNull(exception.InnerException);
-            Assert.Equal("Recieved a row with primary key 'id' set to 'null'", exception.InnerException.Message);
+            Assert.Equal("Received a row with primary key 'id' set to 'null'", exception.InnerException.Message);
         }
     }
 }
