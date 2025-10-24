@@ -41,7 +41,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                     return StarRocksStatus.Unknown;
             }
 
-            throw new NotImplementedException();
         }
 
         public override void Write(Utf8JsonWriter writer, StarRocksStatus value, JsonSerializerOptions options)
