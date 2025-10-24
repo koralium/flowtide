@@ -12,7 +12,7 @@
 
 namespace FlowtideDotNet.Connector.StarRocks.Exceptions
 {
-    internal class StarRocksConfigurationException : StarRocksException
+    public class StarRocksConfigurationException : StarRocksException
     {
         public StarRocksConfigurationException()
         {
