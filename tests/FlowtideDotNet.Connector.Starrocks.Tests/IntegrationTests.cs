@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Exceptions;
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             var factory = new StarRocksSinkFactory(new StarRocksSinkOptions()
             {
                 HttpUrl = fixture.Uri,
-                Username = "root"
+                Credentials = () => new StarRocksUsernamePassword("root", "")
             });
 
             var found = factory.TryGetTableInformation(["test", "testtable"], out var metadata);
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             var factory = new StarRocksSinkFactory(new StarRocksSinkOptions()
             {
                 HttpUrl = fixture.Uri,
-                Username = "root"
+                Credentials = () => new StarRocksUsernamePassword("root", "")
             });
 
             var found = factory.TryGetTableInformation(["test", "testtAble"], out var metadata);

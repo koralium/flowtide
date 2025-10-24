@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Connector.Starrocks.Exceptions;
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
+using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;

@@ -10,8 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Exceptions;
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -23,7 +22,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
         private readonly string _url;
         private readonly string _backendUrl;
         private readonly HttpClient _httpClient;
-        private readonly AuthenticationHeaderValue _authenticationHeaderValue;
         private readonly StarRocksSinkOptions _options;
         private Dictionary<string, string> _redirectUris;
 
@@ -41,12 +39,15 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             {
             };
 
-            var authenticationString = $"{options.Username}:{options.Password}";
-            var base64EncodedAuthenticationString = Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(authenticationString));
+            _options = options;
+        }
 
-            _authenticationHeaderValue = new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
-            _httpClient.DefaultRequestHeaders.Authorization = _authenticationHeaderValue;
-            this._options = options;
+        private AuthenticationHeaderValue GetAuthorizationHeaderValue()
+        {
+            var credentials = _options.Credentials();
+            var authenticationString = $"{credentials.Username}:{credentials.Password}";
+            var base64EncodedAuthenticationString = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(authenticationString));
+            return new AuthenticationHeaderValue("Basic", base64EncodedAuthenticationString);
         }
 
         public async Task StreamLoad(StarRocksStreamLoadInfo request)
@@ -87,7 +88,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                     Content = content
                 };
                 requestMessage.Headers.Add("Expect", "100-continue");
-                requestMessage.Headers.Authorization = _authenticationHeaderValue;
+                requestMessage.Headers.Authorization = GetAuthorizationHeaderValue();
                 requestMessage.Headers.Add("format", "json");
                 requestMessage.Headers.Add("strip_outer_array", "true");
                 response = await _httpClient.SendAsync(requestMessage);
@@ -118,7 +119,10 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
         public async Task<QueryResult> Query(string query)
         {
             var request = new QueryRequest(query);
-            var response = await _httpClient.PostAsJsonAsync($"{_url}/api/v1/catalogs/default_catalog/sql", request);
+            var requestMessage = new HttpRequestMessage(HttpMethod.Post, $"{_url}/api/v1/catalogs/default_catalog/sql");
+            requestMessage.Headers.Authorization = GetAuthorizationHeaderValue();
+            requestMessage.Content = JsonContent.Create(request);
+            var response = await _httpClient.SendAsync(requestMessage);
             response.EnsureSuccessStatusCode();
 
             return await ResponseParser.ParseQuery(await response.Content.ReadAsStreamAsync().ConfigureAwait(false)).ConfigureAwait(false);
@@ -131,6 +135,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             request.Headers.Add("label", transactionId.label);
             request.Headers.Add("db", transactionId.database);
             request.Headers.Add("table", transactionId.table);
+            request.Headers.Authorization = GetAuthorizationHeaderValue();
             var response = await _httpClient.SendAsync(request); // ($"{_url}/api/{database}/{table}/transactions", request);
             response.EnsureSuccessStatusCode();
 
@@ -153,6 +158,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             httpRequest.Headers.Add("table", request.table);
             httpRequest.Headers.Add("format", "json");
             httpRequest.Headers.Add("strip_outer_array", "true");
+            httpRequest.Headers.Authorization = GetAuthorizationHeaderValue();
             var content = new ReadOnlyMemoryContent(request.data);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             httpRequest.Content = content;
@@ -180,6 +186,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             request.Headers.Add("label", transactionId.label);
             request.Headers.Add("db", transactionId.database);
             request.Headers.Add("table", transactionId.table);
+            request.Headers.Authorization = GetAuthorizationHeaderValue();
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();
@@ -197,6 +204,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             request.Headers.Add("label", transactionId.label);
             request.Headers.Add("db", transactionId.database);
             request.Headers.Add("table", transactionId.table);
+            request.Headers.Authorization = GetAuthorizationHeaderValue();
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
 
@@ -216,6 +224,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             request.Headers.Add("label", transactionId.label);
             request.Headers.Add("db", transactionId.database);
             request.Headers.Add("table", transactionId.table);
+            request.Headers.Authorization = GetAuthorizationHeaderValue();
             var response = await _httpClient.SendAsync(request);
             response.EnsureSuccessStatusCode();
             var transactionInfo = await response.Content.ReadFromJsonAsync<TransactionInfo>();

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Exceptions;
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;

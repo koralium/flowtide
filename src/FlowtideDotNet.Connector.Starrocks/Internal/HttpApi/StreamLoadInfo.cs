@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi

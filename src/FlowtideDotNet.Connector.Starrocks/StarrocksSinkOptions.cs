@@ -25,12 +25,8 @@ namespace FlowtideDotNet.Connector.StarRocks
         /// </summary>
         public string? BackendHttpUrl { get; set; }
 
-        public required string Username { get; set; }
+        public required Func<StarRocksUsernamePassword> Credentials { get; set; }
 
-        /// <summary>
-        /// Starrocks allows empty password and is default after starting it
-        /// </summary>
-        public string Password { get; set; } = "";
 
         public int BatchSize { get; set; } = 1000;
 

@@ -10,13 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace FlowtideDotNet.Connector.Starrocks.Exceptions
+namespace FlowtideDotNet.Connector.StarRocks.Exceptions
 {
     public class StarRocksTransactionException : StarRocksException
     {

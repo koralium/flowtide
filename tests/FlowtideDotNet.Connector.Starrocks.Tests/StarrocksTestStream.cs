@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             {
                 HttpUrl = starrocksFixture.Uri,
                 BackendHttpUrl = starrocksFixture.BackendUrl,
-                Username = "root",
+                Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint
             });
         }

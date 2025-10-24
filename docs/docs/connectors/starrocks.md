@@ -18,11 +18,10 @@ This is required for supporting both upsert and delete operations in StarRocks.
 To use the *StarRocks Sink*, add the following line to the *ConnectorManager*:
 
 ```csharp
-connectorManager.AddStarRocksSink("*", new FlowtideStarRocksOptions()
+connectorManager.AddStarRocksSink("*", new StarRocksSinkOptions()
 {
     HttpUrl = "http://starrocks-fe-host:8030",
-    Username = "user",
-    Password = "password",
+    Credentials = () => new StarRocksUsernamePassword("username", "password")
     ExecutionMode = ExecutionMode.OnCheckpoint
 });
 ```

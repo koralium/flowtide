@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Connector.Starrocks.Exceptions;
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
+using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Tests;
 using FlowtideDotNet.Substrait.Relations;
@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
                 {
                     HttpUrl = "http://",
-                    Username = "user"
+                    Credentials = () => new StarRocksUsernamePassword("root", "")
                 }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _invalidTableNameWriteRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
             });
 
@@ -278,7 +278,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             var op = new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
             {
                 HttpUrl = "http://",
-                Username = "user",
+                Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ClientFactory = factory
             }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
@@ -313,7 +313,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             var op = new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
             {
                 HttpUrl = "http://",
-                Username = "user",
+                Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ClientFactory = factory
             }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 

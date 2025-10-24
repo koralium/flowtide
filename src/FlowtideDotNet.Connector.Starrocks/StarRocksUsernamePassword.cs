@@ -10,20 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Connector.StarRocks.Exceptions
+namespace FlowtideDotNet.Connector.StarRocks
 {
-    internal class StarRocksConfigurationException : StarRocksException
+    public struct StarRocksUsernamePassword
     {
-        public StarRocksConfigurationException()
+        public StarRocksUsernamePassword(string username, string password)
         {
+            Username = username;
+            Password = password;
         }
 
-        public StarRocksConfigurationException(string? message) : base(message)
-        {
-        }
+        public string Username { get; }
 
-        public StarRocksConfigurationException(string? message, Exception? innerException) : base(message, innerException)
-        {
-        }
+        public string Password { get; }
     }
 }
