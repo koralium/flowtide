@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.Starrocks\FlowtideDotNet.Connector.Starrocks.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.Starrocks\FlowtideDotNet.Connector.StarRocks.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.AcceptanceTests\FlowtideDotNet.AcceptanceTests.csproj" />
     <ProjectReference Include="..\FlowtideDotNet.Core.Tests\FlowtideDotNet.Core.Tests.csproj" />
   </ItemGroup>

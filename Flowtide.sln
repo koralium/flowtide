@@ -109,17 +109,17 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.TestFramewor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AspireTestSample", "samples\AspireTestSample\AspireTestSample.csproj", "{3AA7D225-34A4-44A5-8828-EFB66F02411A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Files", "src\FlowtideDotNet.Connector.Files\FlowtideDotNet.Connector.Files.csproj", "{A270F762-2CBD-457F-AC9F-8A35A8BBB85F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Files", "src\FlowtideDotNet.Connector.Files\FlowtideDotNet.Connector.Files.csproj", "{A270F762-2CBD-457F-AC9F-8A35A8BBB85F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Files.Tests", "tests\FlowtideDotNet.Connector.Files.Tests\FlowtideDotNet.Connector.Files.Tests.csproj", "{917F78B2-5478-4DEF-BD07-5A0758D388FF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Files.Tests", "tests\FlowtideDotNet.Connector.Files.Tests\FlowtideDotNet.Connector.Files.Tests.csproj", "{917F78B2-5478-4DEF-BD07-5A0758D388FF}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant", "src\FlowtideDotNet.Connector.Qdrant\FlowtideDotNet.Connector.Qdrant.csproj", "{1E365C19-368D-46B4-8F62-10746EA785CC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Qdrant", "src\FlowtideDotNet.Connector.Qdrant\FlowtideDotNet.Connector.Qdrant.csproj", "{1E365C19-368D-46B4-8F62-10746EA785CC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant.Tests", "tests\FlowtideDotNet.Connector.Qdrant.Tests\FlowtideDotNet.Connector.Qdrant.Tests.csproj", "{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Qdrant.Tests", "tests\FlowtideDotNet.Connector.Qdrant.Tests\FlowtideDotNet.Connector.Qdrant.Tests.csproj", "{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Starrocks", "src\FlowtideDotNet.Connector.Starrocks\FlowtideDotNet.Connector.Starrocks.csproj", "{3EDF1DD3-6057-2471-48C9-E73BBA458AF6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.StarRocks", "src\FlowtideDotNet.Connector.Starrocks\FlowtideDotNet.Connector.StarRocks.csproj", "{3EDF1DD3-6057-2471-48C9-E73BBA458AF6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Starrocks.Tests", "tests\FlowtideDotNet.Connector.Starrocks.Tests\FlowtideDotNet.Connector.Starrocks.Tests.csproj", "{B4B3D78A-2254-4712-D5E4-47B2D347E01C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.StarRocks.Tests", "tests\FlowtideDotNet.Connector.Starrocks.Tests\FlowtideDotNet.Connector.StarRocks.Tests.csproj", "{B4B3D78A-2254-4712-D5E4-47B2D347E01C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
