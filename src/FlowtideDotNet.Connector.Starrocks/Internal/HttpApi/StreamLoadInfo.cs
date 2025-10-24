@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
@@ -23,7 +24,8 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
         public string? Label { get; set; }
 
         [JsonPropertyName("Status")]
-        public string? Status { get; set; }
+        [JsonConverter(typeof(StarRocksStatusConverter))]
+        public StarRocksStatus Status { get; set; }
 
         [JsonPropertyName("Message")]
         public string? Message { get; set; }

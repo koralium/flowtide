@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.Starrocks.Exceptions;
+using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
@@ -123,7 +124,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 // Commit the transaction if we are running on checkpoint mode
                 var label = GetLabel(_labelId.Value);
                 var commitResult = await _httpClient.TransactionCommit(new StarRocksTransactionId(_databaseName, _tableName, label));
-                if (commitResult.Status != "OK")
+                if (commitResult.Status != StarRocksStatus.Ok)
                 {
                     throw new StarRocksTransactionException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.Message}'");
                 }
@@ -146,19 +147,19 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             var labelIdentifier = GetLabel(labelid);
             var createTransactionResponse = await _httpClient.CreateTransaction(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
 
-            if (createTransactionResponse.Status != "OK")
+            if (createTransactionResponse.Status != StarRocksStatus.Ok)
             {
-                if (createTransactionResponse.Status == "LABEL_ALREADY_EXISTS")
+                if (createTransactionResponse.Status == StarRocksStatus.LabelAlreadyExists)
                 {
                     // Rollback if the transaction already exists
                     createTransactionResponse = await _httpClient.TransactionRollback(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
-                    if (createTransactionResponse.Status != "OK")
+                    if (createTransactionResponse.Status != StarRocksStatus.Ok)
                     {
                         throw new StarRocksTransactionException("Failed to rollback existing label.");
                     }
                     // Retry create transaction
                     createTransactionResponse = await _httpClient.CreateTransaction(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
-                    if (createTransactionResponse.Status != "OK")
+                    if (createTransactionResponse.Status != StarRocksStatus.Ok)
                     {
                         throw new StarRocksTransactionException("Failed to create transaction after rollback.");
                     }
@@ -209,7 +210,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 }
 
                 var prepareResponse = await _httpClient.TransactionPrepare(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
-                if (prepareResponse.Status != "OK")
+                if (prepareResponse.Status != StarRocksStatus.Ok)
                 {
                     throw new StarRocksTransactionException(prepareResponse.Message);
                 }

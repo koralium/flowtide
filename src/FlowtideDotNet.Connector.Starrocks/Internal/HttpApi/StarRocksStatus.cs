@@ -10,21 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
-using System.Text.Json.Serialization;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
+namespace FlowtideDotNet.Connector.Starrocks.Internal.HttpApi
 {
-    internal class TransactionInfo
+    internal enum StarRocksStatus
     {
-        [JsonPropertyName("Status")]
-        [JsonConverter(typeof(StarRocksStatusConverter))]
-        public StarRocksStatus Status { get; set; }
-
-        [JsonPropertyName("ExistingJobStatus")]
-        public string? ExistingJobStatus { get; set; }
-
-        [JsonPropertyName("Message")]
-        public string? Message { get; set; }
+        Ok = 0,
+        Failed = 1,
+        LabelAlreadyExists = 2,
+        TransactionNotExist = 3,
+        Unknown = 99
     }
 }

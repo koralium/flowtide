@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
+using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Tests;
 using FlowtideDotNet.Substrait.Relations;
@@ -25,7 +27,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
         [Fact]
         public void IncorrectTableNameThrowsException()
         {
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            var ex = Assert.Throws<StarRocksConfigurationException>(() =>
             {
                 new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
                 {
@@ -49,12 +51,12 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default!).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "Cant create transaction",
-                Status = "Fail"
+                Status = StarRocksStatus.Failed
             }));
 
             var op = await SendOneRowAndSendCheckpoint(client);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
             {
                 await op.Completion;
             });
@@ -78,18 +80,18 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "Already exists",
-                Status = "LABEL_ALREADY_EXISTS"
+                Status = StarRocksStatus.LabelAlreadyExists
             }));
             client.TransactionRollback(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
             
 
             var op = await SendOneRowAndSendCheckpoint(client);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
             {
                 await op.Completion;
             });
@@ -109,7 +111,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
-                Status = "OK"
+                Status = StarRocksStatus.Ok
             }));
             client.TransactionLoad(default).ThrowsAsyncForAnyArgs(new Exception("Error loading data"));
 
@@ -138,18 +140,18 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
-                Status = "OK"
+                Status = StarRocksStatus.Ok
             }));
             client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
             client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
-                Status = "Fail",
+                Status = StarRocksStatus.Failed,
                 Message = "Error"
             }));
 
             var op = await SendOneRowAndSendCheckpoint(client);
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
             {
                 await op.Completion;
             });
@@ -171,17 +173,17 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
-                Status = "OK"
+                Status = StarRocksStatus.Ok
             }));
             client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
             client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
             client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
-                Status = "Fail",
+                Status = StarRocksStatus.Failed,
                 Message = "Commit failure"
             }));
 
@@ -190,11 +192,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             await EgressWaitForCheckpointDone();
 
             // Call compact which happens after checkpoints
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
             {
                 await op.Compact();
             });
-            Assert.Equal("Transaction commit failed with status 'Fail' and message 'Commit failure'", ex.Message);
+            Assert.Equal("Transaction commit failed with status 'Failed' and message 'Commit failure'", ex.Message);
         }
 
         [Fact]
@@ -209,17 +211,17 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
-                Status = "OK"
+                Status = StarRocksStatus.Ok
             }));
             client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
             client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
             client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
 
@@ -245,17 +247,17 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
                 Message = "ok",
-                Status = "OK"
+                Status = StarRocksStatus.Ok
             }));
             client.TransactionLoad(default).ReturnsForAnyArgs(Task.CompletedTask);
             client.TransactionPrepare(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.TransactionInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
             client.TransactionCommit(default).ReturnsForAnyArgs(Task.FromResult(new Internal.HttpApi.StreamLoadInfo()
             {
-                Status = "OK",
+                Status = StarRocksStatus.Ok,
                 Message = "ok"
             }));
 
@@ -315,7 +317,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 ClientFactory = factory
             }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksConfigurationException>(async () =>
             {
                 await InitializeOperator(op);
             });

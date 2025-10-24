@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.Starrocks.Exceptions;
+using FlowtideDotNet.Connector.Starrocks.Internal.HttpApi;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -108,8 +109,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 throw new StarRocksHttpException("Failed to parse stream load response.");   
             }
                 
-            if (transactionResponse.Status == "FAILED" ||
-                transactionResponse.Status == "Fail")
+            if (transactionResponse.Status == StarRocksStatus.Failed)
             {
                 throw new StarRocksHttpException(transactionResponse.Message);
             }
@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
 
-            if (transactionInfo.Status != "OK")
+            if (transactionInfo.Status != StarRocksStatus.Ok)
             {
                 throw new StarRocksTransactionException(transactionInfo.Message);
             }

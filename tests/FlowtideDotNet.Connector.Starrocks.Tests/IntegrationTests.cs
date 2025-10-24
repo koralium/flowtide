@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.Starrocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
@@ -115,7 +116,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 FROM users;
             ");
 
-            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            var ex = await Assert.ThrowsAsync<StarRocksConfigurationException>(async () =>
             {
                 while (true)
                 {
