@@ -137,18 +137,15 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             using var connection = GetMySqlConnection(database);
             await connection.OpenAsync();
             var cmd = connection.CreateCommand();
-            while (true)
+            cmd.CommandText = $"SELECT COUNT(*) FROM {database}.{tableName}";
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
             {
-                cmd.CommandText = $"SELECT COUNT(*) FROM {database}.{tableName}";
-                using var reader = await cmd.ExecuteReaderAsync();
-
-                while (await reader.ReadAsync())
-                {
-                    var count = reader.GetInt32(0);
-                    return count;
-                }
-
+                var count = reader.GetInt32(0);
+                return count;
             }
+            // If no rows are returned, return 0
+            return 0;
         }
     }
 }
