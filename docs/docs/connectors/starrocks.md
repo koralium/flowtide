@@ -21,7 +21,7 @@ To use the *StarRocks Sink*, add the following line to the *ConnectorManager*:
 connectorManager.AddStarRocksSink("*", new StarRocksSinkOptions()
 {
     HttpUrl = "http://starrocks-fe-host:8030",
-    Credentials = () => new StarRocksUsernamePassword("username", "password")
+    Credentials = () => new StarRocksUsernamePassword("username", "password"),
     ExecutionMode = ExecutionMode.OnCheckpoint
 });
 ```
