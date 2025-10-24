@@ -471,9 +471,12 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             // Add to visited types
             visitedTypes.Add(typeRef);
 
+            List<ZanzibarTypeRelation> children = new List<ZanzibarTypeRelation>();
+            FlattenUnionChildren(relation.Children, children);
+
             List<ZanzibarRelation> relations = new List<ZanzibarRelation>();
             HashSet<ResultUserType> resultTypes = new HashSet<ResultUserType>();
-            foreach (var child in relation.Children)
+            foreach (var child in children)
             {
                 var subRel = Visit(child, new ConvertState(state.toRelationName, state.typeDefinition));
                 if (subRel.Relation == null)
@@ -511,6 +514,21 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 Relation = rel,
                 ResultTypes = resultTypes
             };
+        }
+
+        private static void FlattenUnionChildren(List<ZanzibarTypeRelation> children, List<ZanzibarTypeRelation> output)
+        {
+            foreach(var child in children)
+            {
+                if (child is ZanzibarUnionRelation unionRel)
+                {
+                    FlattenUnionChildren(unionRel.Children, output);
+                }
+                else
+                {
+                    output.Add(child);
+                }
+            }
         }
 
         private Result VisitUserRelation(ZanzibarTypeReference relationReference, string toRelationName, ZanzibarType referenceType, ZanzibarType objectType)

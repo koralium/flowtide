@@ -183,6 +183,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
+            List<JoinWeights> joinWeights = new List<JoinWeights>();
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
@@ -304,7 +305,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
                 var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
-                await _leftTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
+                joinWeights.Add(insertWeights);   
+            }
+
+            for (int i = 0; i < joinWeights.Count; i++)
+            {
+                var columnReference = new ColumnRowReference()
+                {
+                    referenceBatch = msg.Data.EventBatchData,
+                    RowIndex = i
+                };
+                var insertWeights = joinWeights[i];
+                await _leftTree!.RMWNoResult(in columnReference, in insertWeights, static (input, current, found) =>
                 {
                     if (found)
                     {
@@ -386,6 +398,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 leftColumns.Add(Column.Create(memoryManager));
             }
+            List<JoinWeights> joinWeights = new List<JoinWeights>();
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
@@ -400,7 +413,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 int joinWeight = 0;
                 if (!_searchLeftComparer.noMatch)
                 {
-
                     bool firstPage = true;
 
                     await foreach (var page in _leftIterator)
@@ -510,7 +522,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                 }
                 var insertWeights = new JoinWeights() { weight = weight, joinWeight = joinWeight };
-                await _rightTree!.RMWNoResult(in columnReference, in insertWeights, (input, current, found) =>
+                joinWeights.Add(insertWeights);
+            }
+
+            for (int i = 0; i < joinWeights.Count; i++)
+            {
+                var columnReference = new ColumnRowReference()
+                {
+                    referenceBatch = msg.Data.EventBatchData,
+                    RowIndex = i
+                };
+                var insertWeights = joinWeights[i];
+                await _rightTree!.RMWNoResult(in columnReference, in insertWeights, static (input, current, found) =>
                 {
                     if (found)
                     {
