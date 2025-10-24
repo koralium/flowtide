@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
         {
-            throw new NotSupportedException();
+            writer.WriteNullValue();
         }
 
         public Column Copy(IMemoryAllocator memoryAllocator)
