@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.StarRocks
         public required string HttpUrl { get; set; }
 
         /// <summary>
-        /// Optional backend http url mostly used for unit testing with the allin1 docker iamge.
+        /// Optional backend http url mostly used for unit testing with the allin1 docker image.
         /// This allows insertions even when using random ports.
         /// </summary>
         public string? BackendHttpUrl { get; set; }
