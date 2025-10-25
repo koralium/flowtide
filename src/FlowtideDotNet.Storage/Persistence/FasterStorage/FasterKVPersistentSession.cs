@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             where T : ICacheObject
         {
             var memory = await Read(key);
-            return serializer.Deserialize(memory, memory.Length);
+            return serializer.Deserialize(new ReadOnlySequence<byte>(memory), memory.Length);
         }
 
         private unsafe SpanByte CreateSpanByteFromHandle(MemoryHandle handle, int length)

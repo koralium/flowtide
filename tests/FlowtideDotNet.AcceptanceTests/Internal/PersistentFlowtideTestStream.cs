@@ -32,7 +32,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 Directory.Delete($"./data/tempFiles/faster/{testName}/persist", true);
             }
-            return new FasterKvPersistentStorage(new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/faster/{testName}/persist")
+            return new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/faster/{testName}/persist")
             {
                 RemoveOutdatedCheckpoints = false
             });
