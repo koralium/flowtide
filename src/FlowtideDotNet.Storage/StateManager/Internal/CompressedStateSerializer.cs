@@ -198,25 +198,55 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             _serializer.ClearTemporaryAllocations();
         }
 
-        public TValue Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        public TValue Deserialize(ReadOnlySequence<byte> bytes, int length)
         {
             lock (_readLock)
             {
-                var span = bytes.Span;
+                var reader = new SequenceReader<byte>(bytes);
 
-                var writtenLength = BinaryPrimitives.ReadInt32LittleEndian(span);
-                var originalLength = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4));
+                if (!reader.TryReadLittleEndian(out int writtenLength))
+                {
+                    throw new Exception("Could not read written length");
+                }
+                if (!reader.TryReadLittleEndian(out int originalLength))
+                {
+                    throw new Exception("Could not read original length");
+                }
 
                 var temporaryDestination = ArrayPool<byte>.Shared.Rent(originalLength);
 
-                _compressor.Unwrap(span.Slice(8, writtenLength), temporaryDestination);
-                var result = _serializer.Deserialize(temporaryDestination.AsMemory().Slice(0, originalLength), originalLength);
+                IMemoryOwner<byte>? rentedMemory = default;
+                ReadOnlySpan<byte> data;
+
+                if ((reader.CurrentSpan.Length - reader.CurrentSpanIndex) < writtenLength)
+                {
+                    // If the span is too small, rent memory and copy
+                    rentedMemory = MemoryPool<byte>.Shared.Rent(writtenLength);
+                    if (!reader.TryCopyTo(rentedMemory.Memory.Span.Slice(0, writtenLength)))
+                    {
+                        throw new Exception("Failed to copy data for decompression");
+                    }
+                    data = rentedMemory.Memory.Span.Slice(0, writtenLength);
+                }
+                else
+                {
+                    data = reader.CurrentSpan.Slice(reader.CurrentSpanIndex, writtenLength);
+                }
+                
+                _compressor.Unwrap(data, temporaryDestination);
+                var result = _serializer.Deserialize(new ReadOnlySequence<byte>(temporaryDestination.AsMemory().Slice(0, originalLength)), originalLength);
                 ArrayPool<byte>.Shared.Return(temporaryDestination);
+
+                if (rentedMemory != null)
+                {
+                    rentedMemory.Dispose();
+                }
+
                 return result;
             }
         }
 
-        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
         {
             return Deserialize(bytes, length);
         }

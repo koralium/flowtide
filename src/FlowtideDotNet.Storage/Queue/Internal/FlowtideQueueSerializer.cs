@@ -43,9 +43,9 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
         }
 
-        public IBPlusTreeNode Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        public IBPlusTreeNode Deserialize(ReadOnlySequence<byte> bytes, int length)
         {
-            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
+            var sequenceReader = new SequenceReader<byte>(bytes);
 
             if (!sequenceReader.TryReadLittleEndian(out long id))
             {
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             return node;
         }
 
-        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
         {
             return Deserialize(bytes, length);
         }
