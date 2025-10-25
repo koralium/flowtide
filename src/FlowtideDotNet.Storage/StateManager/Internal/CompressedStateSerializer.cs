@@ -222,7 +222,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                 {
                     // If the span is too small, rent memory and copy
                     rentedMemory = MemoryPool<byte>.Shared.Rent(writtenLength);
-                    reader.TryCopyTo(rentedMemory.Memory.Span.Slice(0, writtenLength));
+                    if (!reader.TryCopyTo(rentedMemory.Memory.Span.Slice(0, writtenLength)))
+                    {
+                        throw new Exception("Failed to copy data for decompression");
+                    }
                     data = rentedMemory.Memory.Span.Slice(0, writtenLength);
                 }
                 else
