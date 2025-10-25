@@ -218,7 +218,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                 IMemoryOwner<byte>? rentedMemory = default;
                 ReadOnlySpan<byte> data;
 
-                if (reader.CurrentSpan.Length < writtenLength)
+                if ((reader.CurrentSpan.Length - reader.CurrentSpanIndex) < writtenLength)
                 {
                     // If the span is too small, rent memory and copy
                     rentedMemory = MemoryPool<byte>.Shared.Rent(writtenLength);
