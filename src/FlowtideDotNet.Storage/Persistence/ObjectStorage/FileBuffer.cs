@@ -38,19 +38,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         public void Write(long key, ReadOnlySpan<byte> value)
         {
            // using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            if (value.PreSerializedData.HasValue)
-            {
-                pageInfo.Add(new PageInfo() { PageKey = key, PageValue = 0 });
-                EnsureCapacity(value.PreSerializedData.Value.Length);
-                var handle = value.PreSerializedData.Value.Pin();
-                var span = _end.AvailableMemory.Span.Slice(endIndex);
-                value.PreSerializedData.Value.Span.CopyTo(span);
-                handle.Dispose();
-            }
-            else
-            {
-                value.Serialize(this);
-            }
+            //if (value.PreSerializedData.HasValue)
+            //{
+            //    pageInfo.Add(new PageInfo() { PageKey = key, PageValue = 0 });
+            //    EnsureCapacity(value.PreSerializedData.Value.Length);
+            //    var handle = value.PreSerializedData.Value.Pin();
+            //    var span = _end.AvailableMemory.Span.Slice(endIndex);
+            //    value.PreSerializedData.Value.Span.CopyTo(span);
+            //    handle.Dispose();
+            //}
+            //else
+            //{
+            //    value.Serialize(this);
+            //}
         }
 
         public void Advance(int count)
