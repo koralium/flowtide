@@ -241,7 +241,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                 {
                     rentedMemory.Dispose();
                 }
-                reader.Advance(writtenLength);
 
                 return result;
             }
