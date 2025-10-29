@@ -36,11 +36,13 @@ namespace FlowtideDotNet.Core.Operators.Window
         private readonly ConsistentPartitionWindowRelation _relation;
         private IColumnComparer<ColumnRowReference>? _sortComparer;
         private IBPlusTree<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _persistentTree;
+        private IBplusTreeUpdater<ColumnRowReference, WindowValue, ColumnKeyStorageContainer, WindowValueContainer>? _persistUpdater;
 
         /// <summary>
         /// This tree contains partitions that have been updated.
         /// </summary>
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBplusTreeUpdater<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryUpdater;
         private List<int> _partitionColumns;
         private List<int> _otherColumns;
         private List<Action<EventBatchData, int, Column>> _partitionCalculateExpressions;
@@ -163,6 +165,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
             Debug.Assert(_partitionIterator != null);
+            Debug.Assert(_persistUpdater != null);
+            Debug.Assert(_temporaryUpdater != null);
+
+            await _persistUpdater.Commit();
+            await _temporaryUpdater.Commit();
 
             using var temporaryTreeIterator = _temporaryTree!.CreateIterator();
             await temporaryTreeIterator.SeekFirst();
@@ -270,42 +277,42 @@ namespace FlowtideDotNet.Core.Operators.Window
 
                 Debug.Assert(_persistentTree != null);
                 Debug.Assert(_temporaryTree != null);
+                Debug.Assert(_persistUpdater != null);
+                Debug.Assert(_temporaryUpdater != null);
 
                 var windowValue = new WindowValue()
                 {
                     weight = msg.Data.Weights[i],
                 };
-                    
-                await _persistentTree.RMWNoResult(in rowRef, in windowValue, (input, current, exist) =>
+
+                await _persistUpdater.Seek(rowRef);
+
+                if (_persistUpdater.Found)
                 {
-                    if (exist)
+                    var current = _persistUpdater.GetValue();
+                    current.weight = current.weight + msg.Data.Weights[i];
+                    if (current.weight == 0)
                     {
-                        current.weight += input.weight;
-
-                        if (current.weight == 0)
-                        {
-                            _outputBuilder.AddDeleteToOutput(rowRef, current);
-                            // Must output the entire row here and the previous value
-                            return (current, GenericWriteOperation.Delete);
-                        }
-
-                        return (current, GenericWriteOperation.Upsert);
+                        // If the weight is 0, we need to delete the row
+                        _outputBuilder.AddDeleteToOutput(rowRef, current);
+                        await _persistUpdater.Delete();
                     }
-
-                    return (input, GenericWriteOperation.Upsert);
-                });
-
-                // Even if the row was deleted we still need to update the temporary tree
-                // Since rows that depend on this row will need to be updated
-                await _temporaryTree.RMWNoResult(partitionRowRef, 1, (input, current, exists) =>
+                    else
+                    {
+                        await _persistUpdater.Upsert(in rowRef, in current);
+                    }
+                }
+                else
                 {
-                    if (exists)
-                    {
-                        // If the partition already exists in the tree, no need to force a write on the page
-                        return (current, GenericWriteOperation.None);
-                    }
-                    return (input, GenericWriteOperation.Upsert);
-                });
+                    await _persistUpdater.Upsert(in rowRef, in windowValue);
+                }
+
+                await _temporaryUpdater.Seek(partitionRowRef);
+
+                if (!_temporaryUpdater.Found)
+                {
+                    await _temporaryUpdater.Upsert(in partitionRowRef, 1);
+                }
 
                 if (_outputBuilder.Count >= 100)
                 {
@@ -338,6 +345,8 @@ namespace FlowtideDotNet.Core.Operators.Window
                 UseByteBasedPageSizes = true
             });
 
+            _persistUpdater = _persistentTree.CreateUpdater();
+
             _temporaryTree = await stateManagerClient.GetOrCreateTree("temporary",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -347,7 +356,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
                     UseByteBasedPageSizes = true
                 });
-            
+            _temporaryUpdater = _temporaryTree.CreateUpdater();
 
             _partitionBatchColumns = new IColumn[_partitionColumns.Count];
             _partitionBatch = new EventBatchData(_partitionBatchColumns);

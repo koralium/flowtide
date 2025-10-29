@@ -52,7 +52,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _tree;
         private IBPlusTreeIterator<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeIterator;
+        private IBplusTreeUpdater<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeUpdater;
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBplusTreeUpdater<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeUpdater;
 
 #if DEBUG_WRITE
         private StreamWriter? allInput;
@@ -127,8 +129,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         public override async Task OnCheckpoint()
         {
             Debug.Assert(_tree != null);
+            Debug.Assert(_treeUpdater != null);
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
+            await _treeUpdater.Commit();
             await _tree.Commit();
 
 #if DEBUG_WRITE
@@ -167,6 +171,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_temporaryStateBatch != null);
             Debug.Assert(m_groupValues != null);
+            Debug.Assert(_temporaryTreeUpdater != null);
 
 #if DEBUG_WRITE
             allInput!.WriteLine("Watermark");
@@ -460,6 +465,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
 
                 await _temporaryTree.Clear();
+                _temporaryTreeUpdater.ClearCache();
             }
             yield break;
         }
@@ -474,6 +480,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_groupValuesBatch != null);
             Debug.Assert(m_temporaryStateBatch != null);
+            Debug.Assert(_temporaryTreeUpdater != null);
+            Debug.Assert(_treeUpdater != null);
 
             for (int i = 0; i < m_groupValues.Length; i++)
             {
@@ -497,6 +505,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
             _eventsProcessed.Add(data.Count);
 
+            var comparer = new AggregateSearchComparer(m_groupValues.Length);
+
             for (int i = 0; i < data.Count; i++)
             {
                 var groupIndex = i;
@@ -508,67 +518,60 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         groupExpressions[k](data.EventBatchData, i, m_groupValues[k]);
                     }
 
-                    await _temporaryTree.RMWNoResult(new ColumnRowReference()
+                    var temporaryTreeKey = new ColumnRowReference()
                     {
                         referenceBatch = m_groupValuesBatch,
                         RowIndex = groupIndex
-                    }, default, (_, current, exist) =>
+                    };
+
+                    await _temporaryTreeUpdater.Seek(in temporaryTreeKey);
+
+                    if (!_temporaryTreeUpdater.Found)
                     {
-                        if (exist)
-                        {
-                            return (1, GenericWriteOperation.None);
-                        }
-                        else
-                        {
-                            return (1, GenericWriteOperation.Upsert);
-                        }
-                    });
+                        await _temporaryTreeUpdater.Upsert(in temporaryTreeKey, 1);
+                    }
                 }
 
-                var comparer = new AggregateSearchComparer(m_groupValues.Length);
-                await _treeIterator.Seek(new ColumnRowReference()
+                var columnRef = new ColumnRowReference()
                 {
                     referenceBatch = m_groupValuesBatch,
                     RowIndex = groupIndex
-                }, comparer);
+                };
 
-                if (!comparer.noMatch)
+                await _treeUpdater.Seek(columnRef);
+
+                if (_treeUpdater.Found)
                 {
-                    var enumerator = _treeIterator.GetAsyncEnumerator();
-                    if (await enumerator.MoveNextAsync())
+                    var page = _treeUpdater.CurrentPage;
+                    var index = _treeUpdater.CurrentIndex;
+
+                    var state = _treeUpdater.GetValue();
+
+                    if (m_measures.Count > 0)
                     {
-                        var page = enumerator.Current;
-                        var index = comparer.start;
-
-                        var state = page.Values.Get(index);
-
-                        if (m_measures.Count > 0)
+                        for (int k = 0; k < m_measures.Count; k++)
                         {
-                            for (int k = 0; k < m_measures.Count; k++)
+                            var stateColumn = page.values._eventBatch.Columns[k];
+                            if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
                             {
-                                var stateColumn = page.Values._eventBatch.Columns[k]; //.Get(index);
-                                if (_measureFilters[k] != null && !_measureFilters[k]!(data.EventBatchData, i))
-                                {
-                                    continue;
-                                }
-                                await m_measures[k].Compute(new ColumnRowReference()
-                                {
-                                    referenceBatch = m_groupValuesBatch,
-                                    RowIndex = groupIndex
-                                }, data.EventBatchData, i, new ColumnReference(stateColumn, index, page), msg.Data.Weights.Get(i));
+                                continue;
                             }
+                            await m_measures[k].Compute(new ColumnRowReference()
+                            {
+                                referenceBatch = m_groupValuesBatch,
+                                RowIndex = groupIndex
+                            }, data.EventBatchData, i, new ColumnReference(stateColumn, index, page), msg.Data.Weights.Get(i));
                         }
-
-                        page.EnterWriteLock();
-                        var currentWeight = page.Values._weights.Get(index);
-                        page.Values._weights.Update(index, currentWeight + msg.Data.Weights.Get(i));
-                        page.ExitWriteLock();
-                        await page.SavePage(true);
                     }
+
+                    page.EnterWriteLock();
+                    var currentWeight = page.values._weights.Get(index);
+                    page.values._weights.Update(index, state.weight + msg.Data.Weights.Get(i));
+                    page.ExitWriteLock();
+                    await _treeUpdater.SavePage();
                 }
                 else
                 {
-
                     // No match, a new row must be added to the tree.
                     int temporaryStateIndex = 0;
                     if (m_measures.Count > 0)
@@ -584,7 +587,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                             {
                                 continue;
                             }
-                            
+
                             await m_measures[k].Compute(new ColumnRowReference()
                             {
                                 referenceBatch = m_groupValuesBatch,
@@ -599,12 +602,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                         }
                     }
 
-
-                    await _tree.Upsert(new ColumnRowReference()
-                    {
-                        referenceBatch = m_groupValuesBatch,
-                        RowIndex = groupIndex
-                    }, new ColumnAggregateStateReference()
+                    await _treeUpdater.Upsert(columnRef, new ColumnAggregateStateReference()
                     {
                         referenceBatch = m_temporaryStateBatch,
                         RowIndex = temporaryStateIndex,
@@ -710,6 +708,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     MemoryAllocator = MemoryAllocator
                 });
             _treeIterator = _tree.CreateIterator();
+            _treeUpdater = _tree.CreateUpdater();
             _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -719,6 +718,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     UseByteBasedPageSizes = true,
                     MemoryAllocator = MemoryAllocator
                 });
+            _temporaryTreeUpdater = _temporaryTree.CreateUpdater();
             await _temporaryTree.Clear();
         }
     }

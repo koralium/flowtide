@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
         private readonly int keyLength;
         public readonly DataValueContainer dataValueContainer;
         public readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator;
+        public readonly IBplusTreeUpdater<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> updater;
 
         public ColumnListAggAggregationSingleton(IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree, int keyLength)
         {
@@ -36,6 +37,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             SearchComparer = new ListAggSearchComparer(keyLength);
             dataValueContainer = new DataValueContainer();
             iterator = tree.CreateIterator();
+            updater = tree.CreateUpdater();
         }
         public int KeyLength => keyLength;
         public ListAggSearchComparer SearchComparer { get; }
@@ -127,20 +129,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                 index = groupingKey.RowIndex,
                 insertValue = column
             };
-            await singleton.Tree.RMWNoResult(columnRowRef, (int)weight, (input, current, exists) =>
-            {
-                if (exists)
-                {
-                    current += input;
 
-                    if (current == 0)
-                    {
-                        return (0, GenericWriteOperation.Delete);
-                    }
-                    return (current, GenericWriteOperation.Upsert);
+            await singleton.updater.Seek(columnRowRef);
+            if (singleton.updater.Found)
+            {
+                var current = singleton.updater.GetValue();
+                current += (int)weight;
+                if (current == 0)
+                {
+                    await singleton.updater.Delete();
                 }
-                return (input, GenericWriteOperation.Upsert);
-            });
+                else
+                {
+                    
+                    await singleton.updater.Upsert(columnRowRef, current);
+                }
+            }
+            else
+            {
+                await singleton.updater.Upsert(columnRowRef, (int)weight);
+            }
         }
 
         private static async ValueTask ListAggGetValue(ColumnReference state, ColumnRowReference groupingKey, ColumnListAggAggregationSingleton singleton, ColumnStore.Column outputColumn)
@@ -181,6 +189,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
                             outputColumn.AddToNewList(singleton.dataValueContainer);
                         }
                     }
+                    if (singleton.SearchComparer.end < page.Keys.Count - 1)
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -190,6 +202,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         private static async Task Commit(ColumnListAggAggregationSingleton singleton)
         {
+            await singleton.updater.Commit();
             await singleton.Tree.Commit();
         }
 

@@ -111,13 +111,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public ValueTask Seek(in K key, in IBplusTreeComparer<K, TKeyContainer>? searchComparer = null)
         {
+            var comparer = searchComparer == null ? tree.m_keyComparer : searchComparer;
+
             if (enumerator.leafNode != null)
             {
                 // Return previous rented node
                 enumerator.leafNode.Return();
                 enumerator.leafNode = null;
             }
-            var comparer = searchComparer == null ? tree.m_keyComparer : searchComparer;
+            
             var searchTask = tree.SearchRoot(key, comparer);
             if (!searchTask.IsCompleted)
             {
