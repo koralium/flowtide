@@ -369,21 +369,11 @@ namespace FlowtideDotNet.Core.Operators.Read
                             {
                                 if (exists)
                                 {
-                                    bool updated = false;
-                                    bool hasChanges = false;
-                                    for (int k = 0; k < _otherColumns.Count; k++)
-                                    {
-                                        var compareResult = input.referenceBatch.Columns[_otherColumns[k]].CompareTo(current.referenceBatch.Columns[k], input.RowIndex, current.RowIndex);
-                                        if (compareResult != 0)
-                                        {
-                                            hasChanges = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!hasChanges)
+                                    if (CompareRowReference(input, current) == 0)
                                     {
                                         return (current, GenericWriteOperation.None);
                                     }
+                                    bool updated = false;
                                     if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
                                     {
                                         weights.Add(1);
