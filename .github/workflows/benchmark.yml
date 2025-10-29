@@ -11,9 +11,10 @@ on:
 
 jobs:
   build:
-
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: windows-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
