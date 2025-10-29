@@ -152,7 +152,10 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.Type.KindOneofCase.Map:
                         var keyType = GetType(type.Map.Key, ref names);
                         var valueType = GetType(type.Map.Value, ref names);
-                        return new MapType(keyType, valueType);
+                        return new MapType(keyType, valueType)
+                        {
+                            Nullable = type.Map.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                 }
