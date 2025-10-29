@@ -145,7 +145,10 @@ namespace FlowtideDotNet.Substrait
                         };
                     case Protobuf.Type.KindOneofCase.List:
                         var elementType = GetType(type.List.Type, ref names);
-                        return new ListType(elementType);
+                        return new ListType(elementType)
+                        {
+                            Nullable = type.List.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
                     case Protobuf.Type.KindOneofCase.Map:
                         var keyType = GetType(type.Map.Key, ref names);
                         var valueType = GetType(type.Map.Value, ref names);
