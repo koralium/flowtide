@@ -120,6 +120,14 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             await foreach (var row in rows)
             {
                 var rowReference = new ColumnRowReference() { referenceBatch = row.EventBatchData, RowIndex = row.Index };
+
+                if (row.IsDeleted && isInitialData && FetchExistingData)
+                {
+                    // Skip deletes on initial load if fetching existing data
+                    // Since it can be tombstones for data that is not present in the source
+                    continue;
+                }
+
                 if (FetchExistingData && !row.IsDeleted)
                 {
                     // Compare against existing
