@@ -204,6 +204,41 @@ namespace FlowtideDotNet.Substrait
                         {
                             throw new InvalidOperationException("Struct must be NamedStruct");
                         }
+                    case SubstraitType.List:
+                        if (type is ListType listType)
+                        {
+                            return new Protobuf.Type()
+                            {
+                                List = new Protobuf.Type.Types.List()
+                                {
+                                    Type = GetType(listType.ValueType, names),
+                                    Nullability = nullable
+                                }
+                            };
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("List type must be ListType");
+                        }
+                    case SubstraitType.Map:
+                        if (type is MapType mapType)
+                        {
+                            var keyType = GetType(mapType.KeyType, names);
+                            var valueType = GetType(mapType.ValueType, names);
+                            return new Protobuf.Type()
+                            {
+                                Map = new Protobuf.Type.Types.Map()
+                                {
+                                    Key = keyType,
+                                    Value = valueType,
+                                    Nullability = nullable
+                                }
+                            };
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException("Map type must be MapType");
+                        }
                     default:
                         throw new NotImplementedException(type.Type.ToString());
                 }
