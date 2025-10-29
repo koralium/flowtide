@@ -516,6 +516,34 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        [Fact]
+        public void TestListType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, b, list(a, b) as my_list FROM table1;
+            "
+            );
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestMapType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, b, map(a, b) as my_list FROM table1;
+            "
+            );
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);

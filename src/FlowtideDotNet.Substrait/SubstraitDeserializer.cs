@@ -143,6 +143,13 @@ namespace FlowtideDotNet.Substrait
                                 Types = structTypes
                             }
                         };
+                    case Protobuf.Type.KindOneofCase.List:
+                        var elementType = GetType(type.List.Type, ref names);
+                        return new ListType(elementType);
+                    case Protobuf.Type.KindOneofCase.Map:
+                        var keyType = GetType(type.Map.Key, ref names);
+                        var valueType = GetType(type.Map.Value, ref names);
+                        return new MapType(keyType, valueType);
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                 }
