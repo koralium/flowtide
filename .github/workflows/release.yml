@@ -70,5 +70,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.TestFramework/FlowtideDotNet.TestFramework.csproj
     - name: Package Qdrant
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj
+    - name: Package Starrocks
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json
