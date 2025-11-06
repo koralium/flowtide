@@ -24,6 +24,9 @@ The checkpoint file contains the following information:
   * **RoaringBitmaps** - bitmaps that mark which pages that have been invalidated in a file.
 * **DeletedFileIds** - an array of file ids that are no longer active.
 
+The page ids are stored in sorted order, this is done to allow quick merging of multiple checkpoints
+when reading in the data.
+
 The data is stored in the following order:
 
 ```kroki type=rackdiag alt=fileoverviewrack
@@ -97,14 +100,14 @@ The following layout shows how the three columns for new/updated pages are writt
   320-383: File Identifier 2
   384-447: ...
   448-511: File Identifier N
-  512-575: Page file offset 1
-  576-639: Page file offset 2
-  640-703: ...
-  704-767: Page file offset N
-  768-831: Deleted page 1
-  832-895: Deleted page 2
-  896-959: ...
-  960-1023: Deleted page N
+  512-543: Page file offset 1
+  544-575: Page file offset 2
+  576-607: ...
+  608-639: Page file offset N
+  640-703: Deleted page 1
+  704-767: Deleted page 2
+  768-831: ...
+  832-895: Deleted page N
 }
 ```
 

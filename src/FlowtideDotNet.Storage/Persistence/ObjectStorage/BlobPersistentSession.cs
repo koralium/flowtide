@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Buffers;
@@ -17,6 +18,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
@@ -27,15 +29,25 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         private BlobFileWriter _fileWriter;
         private Memory<byte> _fileHeaderBytes;
 
-        public BlobPersistentSession()
+        /// <summary>
+        /// A dictionary that holds the locations of pages before they are flushed to disk.
+        /// This allows a reader to still read the data before it is written to disk.
+        /// </summary>
+        private Dictionary<long, PageWriteLocation> _temporaryWrittenPageLocations;
+        private readonly object _lock = new object();
+        private readonly IMemoryAllocator _memoryAllocator;
+
+        public BlobPersistentSession(IMemoryAllocator memoryAllocator)
         {
+            _temporaryWrittenPageLocations = new Dictionary<long, PageWriteLocation>();
             SetupFileWriter();
+            this._memoryAllocator = memoryAllocator;
         }
 
         [MemberNotNull(nameof(_fileWriter))]
         private void SetupFileWriter()
         {
-            _fileWriter = new BlobFileWriter(MemoryPool<byte>.Shared);
+            _fileWriter = new BlobFileWriter(MemoryPool<byte>.Shared, _memoryAllocator);
 
             // Take out the bytes for the header
             _fileHeaderBytes = _fileWriter.GetMemory(64);
@@ -59,6 +71,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
+            lock (_lock)
+            {
+                if (_temporaryWrittenPageLocations.TryGetValue(key, out var location))
+                {
+                    return ValueTask.FromResult(stateSerializer.Deserialize(location.data, (int)location.data.Length));
+                }
+            }
+            
             throw new NotImplementedException();
         }
 
@@ -69,11 +89,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 
         public Task Write(long key, SerializableObject value)
         {
-            var position = _fileWriter.WrittenLength;
-            value.Serialize(_fileWriter);
+            var sequence = _fileWriter.Write(key, value);
+
+            lock (_lock)
+            {
+                // Add info to lookup so reads can find the written data before its flushed to storage
+                _temporaryWrittenPageLocations.Add(key, new PageWriteLocation()
+                {
+                    data = sequence
+                });
+            }
+            
 
             if (_fileWriter.WrittenLength >= MaxFileSize)
             {
+                // Finish the file writer, this adds the page ids and offsets
+                _fileWriter.Finish();
+
                 // TODO: Send the file to the blob writer
 
                 SetupFileWriter();

@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 {
     internal class BufferSegment : ReadOnlySequenceSegment<byte>, IDisposable
     {
-        private BufferSegment? _next;
+        internal BufferSegment? _next;
         private int _end;
         private IMemoryOwner<byte>? _owner;
         private int _rentCounter;
@@ -46,12 +46,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
             _end = _owner.Memory.Length;
         }
 
+        public BufferSegment(Memory<byte> memory)
+        {
+            this.Memory = memory;
+            AvailableMemory = memory;
+            _end = memory.Length;
+        }
+
         public void SetNext(BufferSegment segment)
         {
             Debug.Assert(segment != null);
             Debug.Assert(Next == null);
 
             _next = segment;
+            Next = _next;
 
             segment = this;
 
