@@ -143,7 +143,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
                     break;
                 }
 
-                var field = JsonSerializer.Deserialize<StructField>(ref reader, options);
+                var field = ReadStructField(ref reader, options);
+
                 fields.Add(field!);
             }
 
@@ -156,6 +157,86 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             }
 
             return new StructType(fields);
+        }
+
+        private StructField ReadStructField(ref Utf8JsonReader reader, JsonSerializerOptions options)
+        {
+            string? fieldName = null;
+            SchemaBaseType? fieldType = default;
+            bool nullable = false;
+            Dictionary<string, object> metadata = new Dictionary<string, object>();
+            string? physicalName = default;
+            int? fieldId = default;
+
+            while (reader.Read())
+            {
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    break;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new JsonException();
+                }
+
+                var propertyNameString = reader.GetString();
+
+                reader.Read();
+
+                if (propertyNameString == "name")
+                {
+                    fieldName = reader.GetString();
+                }
+                else if (propertyNameString == "type")
+                {
+                    fieldType = JsonSerializer.Deserialize<SchemaBaseType>(ref reader, options);
+                }
+                else if (propertyNameString == "nullable")
+                {
+                    nullable = reader.GetBoolean();
+                }
+                else if (propertyNameString == "metadata")
+                {
+                    // Read metadata object
+                    // For simplicity, we skip detailed metadata parsing here
+                    while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+                    {
+                        var metadataPropName = reader.GetString();
+
+                        reader.Read();
+
+                        if (metadataPropName == "delta.columnMapping.physicalName")
+                        {
+                            physicalName = reader.GetString();
+                        }
+                        else if (metadataPropName == "delta.columnMapping.id")
+                        {
+                            fieldId = reader.GetInt32();
+                        }
+                        else
+                        {
+                            // Generic metadata handling
+                            var metadataValue = JsonSerializer.Deserialize<object>(ref reader, options);
+                            if (metadataValue != null)
+                            {
+                                metadata[metadataPropName!] = metadataValue;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (fieldName == null || fieldType == null)
+            {
+                throw new JsonException("Struct field is missing name or type");
+            }
+
+            return new StructField(fieldName, fieldType, nullable, metadata)
+            {
+                PhysicalName = physicalName,
+                FieldId = fieldId
+            };
         }
 
         private SchemaBaseType ReadArray(ref Utf8JsonReader reader, JsonSerializerOptions options)
@@ -337,7 +418,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
             writer.WriteStartArray();
             foreach (var field in value.Fields)
             {
-                JsonSerializer.Serialize(writer, field, options);
+                writer.WriteStartObject();
+                writer.WriteString("name", field.Name);
+                writer.WritePropertyName("type");
+                JsonSerializer.Serialize(writer, field.Type, options);
+                writer.WriteBoolean("nullable", field.Nullable);
+
+                if (field.HasMetadata)
+                {
+                    writer.WritePropertyName("metadata");
+                    writer.WriteStartObject();
+
+                    if (field.PhysicalName != null)
+                    {
+                        writer.WriteString("delta.columnMapping.physicalName", field.PhysicalName);
+                    }
+
+                    if (field.FieldId != null)
+                    {
+                        writer.WriteNumber("delta.columnMapping.id", field.FieldId.Value);
+                    }
+
+                    if (field.Metadata != null)
+                    {
+                        foreach (var kvp in field.Metadata)
+                        {
+                            writer.WritePropertyName(kvp.Key);
+                            JsonSerializer.Serialize(writer, kvp.Value, options);
+                        }
+                    }
+
+                    writer.WriteEndObject();
+                }
+                writer.WriteEndObject();
             }
             writer.WriteEndArray();
 
