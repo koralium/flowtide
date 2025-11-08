@@ -195,7 +195,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
                 deletionVectorEnabled = table.DeleteVectorEnabled;
-                columnMappingEnabled = table.ColumnMappingEnabled;
 
                 actions.Add(new DeltaAction()
                 {
