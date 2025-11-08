@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
 
                     if (columnMapping)
                     {
-                        structField.PhysicalName = $"col-{Guid.NewGuid().ToString()}";
+                        structField.PhysicalName = $"col-{Guid.NewGuid()}";
                         structField.FieldId = ++maxColumnId;
                     }
 
