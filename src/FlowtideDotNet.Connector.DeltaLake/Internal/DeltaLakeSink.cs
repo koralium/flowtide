@@ -94,15 +94,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             bool changeDataEnabled = false;
             bool deletionVectorEnabled = false;
+            bool columnMappingEnabled = false;
+
+            int maxColumnId = 0;
 
             StructType? schema;
             if (table == null)
             {
                 changeDataEnabled = _options.WriteChangeDataOnNewTables;
                 deletionVectorEnabled = _options.EnableDeletionVectorsOnNewTables;
+                columnMappingEnabled = _options.EnableColumnMappingOnNewTables;
 
                 // Create schema
-                schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema);
+                schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema, ref maxColumnId, columnMappingEnabled);
 
                 var jsonOptions = new JsonSerializerOptions();
                 jsonOptions.Converters.Add(new TypeConverter());
@@ -129,22 +133,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     tableConfiguration.Add("delta.enableDeletionVectors", "true");
                 }
+                if (columnMappingEnabled)
+                {
+                    tableConfiguration.Add("delta.columnMapping.mode", "name");
+                    tableConfiguration.Add("delta.columnMapping.maxColumnId", maxColumnId.ToString());
+                }
 
+                var metadataAction = new DeltaMetadataAction()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SchemaString = schemaString,
+                    Configuration = tableConfiguration,
+                    Format = new DeltaMetadataFormat()
+                    {
+                        Provider = "parquet",
+                        Options = new Dictionary<string, string>()
+                    },
+                    PartitionColumns = new List<string>(),
+                    CreatedTime = currentTime
+                };
                 actions.Add(new DeltaAction()
                 {
-                    MetaData = new DeltaMetadataAction()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        SchemaString = schemaString,
-                        Configuration = tableConfiguration,
-                        Format = new DeltaMetadataFormat()
-                        {
-                            Provider = "parquet",
-                            Options = new Dictionary<string, string>()
-                        },
-                        PartitionColumns = new List<string>(),
-                        CreatedTime = currentTime
-                    }
+                    MetaData = metadataAction
                 });
 
                 var writerFeatures = new List<string>();
@@ -161,6 +171,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (deletionVectorEnabled)
                 {
                     readerFeatures.Add("deletionVectors");
+                }
+                if (columnMappingEnabled)
+                {
+                    writerFeatures.Add("columnMapping");
+                    readerFeatures.Add("columnMapping");
                 }
 
                 actions.Add(new DeltaAction()
@@ -180,6 +195,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
                 deletionVectorEnabled = table.DeleteVectorEnabled;
+                columnMappingEnabled = table.ColumnMappingEnabled;
+
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()

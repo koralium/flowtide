@@ -17,9 +17,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
 {
     internal static class SubstraitTypeToDeltaType
     {
-        public static Schema.Types.StructType GetSchema(NamedStruct @struct)
+        public static Schema.Types.StructType GetSchema(NamedStruct @struct, ref int maxColumnId, bool columnMapping)
         {
-            var result = GetDeltaType(@struct) as Schema.Types.StructType;
+            var result = GetDeltaType(@struct, ref maxColumnId, columnMapping) as Schema.Types.StructType;
             if (result == null)
             {
                 throw new Exception("Expected struct type");
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             return result;
         }
 
-        public static SchemaBaseType GetDeltaType(SubstraitBaseType type)
+        public static SchemaBaseType GetDeltaType(SubstraitBaseType type, ref int maxColumnId, bool columnMapping)
         {
             if (type is AnyType)
             {
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             }
             if (type is ListType listType)
             {
-                var inner = GetDeltaType(listType.ValueType);
+                var inner = GetDeltaType(listType.ValueType, ref maxColumnId, columnMapping);
                 return new Schema.Types.ArrayType()
                 {
                     ElementType = inner
@@ -83,8 +83,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
             }
             if (type is MapType mapType)
             {
-                var key = GetDeltaType(mapType.KeyType);
-                var value = GetDeltaType(mapType.ValueType);
+                var key = GetDeltaType(mapType.KeyType, ref maxColumnId, columnMapping);
+                var value = GetDeltaType(mapType.ValueType, ref maxColumnId, columnMapping);
                 return new Schema.Types.MapType(key, value, true);
             }
             if (type is NamedStruct @struct)
@@ -93,8 +93,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
                 for (int i = 0; i < @struct.Names.Count; i++)
                 {
                     var name = @struct.Names[i];
-                    var inner = GetDeltaType(@struct.Struct!.Types[i]);
-                    fields.Add(new Schema.Types.StructField(name, inner, true, new Dictionary<string, object>()));
+                    var inner = GetDeltaType(@struct.Struct!.Types[i], ref maxColumnId, columnMapping);
+                    var structField = new Schema.Types.StructField(name, inner, true, new Dictionary<string, object>());
+
+                    if (columnMapping)
+                    {
+                        structField.PhysicalName = $"col-{Guid.NewGuid().ToString()}";
+                        structField.FieldId = ++maxColumnId;
+                    }
+
+                    fields.Add(structField);
                 }
                 return new Schema.Types.StructType(fields);
             }

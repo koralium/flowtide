@@ -28,5 +28,7 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public bool WriteChangeDataOnNewTables { get; set; } = false;
 
         public bool EnableDeletionVectorsOnNewTables { get; set; } = true;
+
+        public bool EnableColumnMappingOnNewTables { get; set; } = true;
     }
 }
