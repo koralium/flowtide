@@ -10,24 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
 {
-    internal class ArrayType : SchemaBaseType
+    internal class PartitionSpec
     {
-        public override SchemaType Type => SchemaType.Array;
+        [JsonPropertyName("spec-id")]
+        public int SpecId { get; set; }
 
-        public SchemaBaseType? ElementType { get; set; }
-
-        /// <summary>
-        /// Only used for iceberg compat
-        /// </summary>
-        public int? ElementId { get; set; }
-
-        public bool ContainsNull { get; set; }
-
-        public override T Accept<T>(DeltaTypeVisitor<T> visitor)
-        {
-            return visitor.VisitArrayType(this);
-        }
+        public List<PartitionField> Fields { get; set; } = new List<PartitionField>();
     }
 }

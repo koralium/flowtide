@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Apache.Avro" Version="1.12.1" />
     <PackageReference Include="ParquetSharp" Version="18.1.0" />
     <PackageReference Include="Stowage" Version="2.0.1" />
   </ItemGroup>

@@ -22,6 +22,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
 
         public bool ValueContainsNull { get; }
 
+        /// <summary>
+        /// Only for iceberg compatibility
+        /// </summary>
+        public int? KeyId { get; set; }
+
+        /// <summary>
+        /// Only for iceberg compatibility
+        /// </summary>
+        public int? ValueId { get; set; }
+
         public MapType(SchemaBaseType keyType, SchemaBaseType valueType, bool valueContainsNull)
         {
             KeyType = keyType;
