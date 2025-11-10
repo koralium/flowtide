@@ -12,6 +12,8 @@
 
 using Avro;
 using Avro.Generic;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -139,6 +141,79 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Manifest
             });
 
             //new GenericRecord(manifestSchema).Add("data_file", ;
+        }
+
+        public void AddDataFile(
+            Delta.Schema.Types.StructType schema, 
+            DeltaAddAction addAction, 
+            DeltaStatistics stats,
+            long snapshotId)
+        {
+            var record = new GenericRecord(null);
+            record.Add("content", 0);
+            record.Add("file_path", addAction.Path);
+            record.Add("file_format", "parquet");
+
+            GenericRecord partitionRecord = new GenericRecord(null);
+            record.Add("partition", partitionRecord);
+            record.Add("record_count", stats.NumRecords);
+            record.Add("file_size_in_bytes", addAction.Size);
+
+            
+            Dictionary<string, long> nullValueCount = new Dictionary<string, long>();
+            Dictionary<string, byte[]> lowerBounds = new Dictionary<string, byte[]>();
+            Dictionary<string, byte[]> maxBounds = new Dictionary<string, byte[]>();
+
+            if (stats.ValueComparers != null)
+            {
+                foreach (var val in stats.ValueComparers)
+                {
+                    var field = schema.Fields.First(x => x.PhysicalName == val.Key);
+                    var fieldId = field.FieldId!.Value.ToString();
+                    if (val.Value.NullCount.HasValue)
+                    {
+                        nullValueCount.Add(fieldId, val.Value.NullCount.Value);
+                    }
+                    var minValue = val.Value.GetMinValueIcebergBinary();
+                    if (minValue != null)
+                    {
+                        lowerBounds.Add(fieldId, minValue);
+                    }
+                    var maxValue = val.Value.GetMaxValueIcebergBinary();
+                    if (maxValue != null)
+                    {
+                        maxBounds.Add(fieldId, maxValue);
+                    }
+                }
+            }
+            
+
+            record.Add("null_value_counts", nullValueCount);
+            record.Add("lower_bounds", lowerBounds);
+            record.Add("upper_bounds", maxBounds);
+
+            var manifestEntry = new ManifestEntry()
+            {
+                Status = 1,
+                SnapshotId = snapshotId,
+                DataFile = new DataFile()
+                {
+                    Content = 0,
+                    FilePath = addAction.Path,
+                    FileFormat = "parquet",
+                    Partition = new Dictionary<string, object>(),
+                    RecordCount = stats.NumRecords,
+                    FileSizeInBytes = addAction.Size,
+                    NullValueCounts = nullValueCount,
+                    LowerBounds = lowerBounds,
+                    UpperBounds = maxBounds
+                }
+            };
+            var datumWriter = new Avro.Generic.GenericDatumWriter<ManifestEntry>(default);
+            var writer = Avro.File.DataFileWriter<ManifestEntry>.OpenWriter(datumWriter, "");
+            writer.Append(manifestEntry);
+
+            
         }
     }
 }

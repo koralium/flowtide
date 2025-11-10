@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Buffers.Binary;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
@@ -20,6 +21,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private long? _minValue;
         private long? _maxValue;
         private readonly int? _nullCount;
+
+        public int? NullCount => _nullCount;
 
         public Int64StatisticsComparer(long? minValue, long? maxValue, int? nullCount)
         {
@@ -74,6 +77,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             {
                 writer.WriteNumber(propertyName, _nullCount.Value);
             }
+        }
+
+        public byte[]? GetMinValueIcebergBinary()
+        {
+            if (_minValue.HasValue)
+            {
+                byte[] bytes = new byte[8];
+                BinaryPrimitives.WriteInt64LittleEndian(bytes, _minValue.Value);
+                return bytes;
+            }
+            return default;
+        }
+
+        public byte[]? GetMaxValueIcebergBinary()
+        {
+            if (_maxValue.HasValue)
+            {
+                byte[] bytes = new byte[8];
+                BinaryPrimitives.WriteInt64LittleEndian(bytes, _maxValue.Value);
+                return bytes;
+            }
+            return default;
         }
     }
 }

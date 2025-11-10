@@ -29,6 +29,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             _nullCount = nullCount;
         }
 
+        public int? NullCount => _nullCount;
+
+        public byte[]? GetMaxValueIcebergBinary()
+        {
+            return _maxValue;
+        }
+
+        public byte[]? GetMinValueIcebergBinary()
+        {
+            return _minValue;
+        }
+
         public bool IsInBetween<T>(T value) where T : IDataValue
         {
             if (value.IsNull)

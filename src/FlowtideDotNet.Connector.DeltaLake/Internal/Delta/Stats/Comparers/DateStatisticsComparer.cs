@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Buffers.Binary;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
@@ -20,6 +21,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private DateTime? _minValue;
         private DateTime? _maxValue;
         private readonly int? _nullCount;
+
+        public int? NullCount => _nullCount;
 
         public DateStatisticsComparer(DateTime? minValue, DateTime? maxValue, int? nullCount)
         {
@@ -73,6 +76,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             {
                 writer.WriteNumber(propertyName, _nullCount.Value);
             }
+        }
+
+        private static long DateTimeToUnixMicroseconds(DateTime dateTime)
+        {
+            var unixTime = ((DateTimeOffset)dateTime).ToUnixTimeMilliseconds();
+            return unixTime * 1000;
+        }
+
+        private static byte[] GetDateTimeBytes(DateTime dateTime)
+        {
+            var bytes = new byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(bytes, DateTimeToUnixMicroseconds(dateTime));
+            return bytes;
+        }
+
+        public byte[]? GetMinValueIcebergBinary()
+        {
+            if (_minValue.HasValue)
+            {
+                return GetDateTimeBytes(_minValue.Value);
+            }
+            return null;
+        }
+
+        public byte[]? GetMaxValueIcebergBinary()
+        {
+            if (_maxValue.HasValue)
+            {
+                return GetDateTimeBytes(_maxValue.Value);
+            }
+            return null;
         }
     }
 }

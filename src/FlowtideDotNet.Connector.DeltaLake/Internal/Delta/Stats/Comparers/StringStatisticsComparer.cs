@@ -21,6 +21,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private byte[]? _maxValue;
         private readonly int? _nullCount;
 
+        public int? NullCount => _nullCount;
+
         public StringStatisticsComparer(byte[]? minValue, byte[]? maxValue, int? nullCount)
         {
             _minValue = minValue;
@@ -73,6 +75,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             {
                 writer.WriteNumber(propertyName, _nullCount.Value);
             }
+        }
+
+        public byte[]? GetMinValueIcebergBinary()
+        {
+            return _minValue;
+        }
+
+        public byte[]? GetMaxValueIcebergBinary()
+        {
+            return _maxValue;
         }
     }
 }

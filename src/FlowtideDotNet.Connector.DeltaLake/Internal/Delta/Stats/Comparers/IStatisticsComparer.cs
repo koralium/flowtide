@@ -30,5 +30,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         void WriteMaxValue(Utf8JsonWriter writer, string propertyName);
 
         void WriteNullValue(Utf8JsonWriter writer, string propertyName);
+
+        int? NullCount { get; }
+
+        byte[]? GetMinValueIcebergBinary();
+
+        byte[]? GetMaxValueIcebergBinary();
     }
 }
