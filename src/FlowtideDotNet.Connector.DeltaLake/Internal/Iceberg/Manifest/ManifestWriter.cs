@@ -24,123 +24,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Manifest
 {
     internal class ManifestWriter
     {
-        public ManifestWriter()
+        private RecordSchema _manifestSchema;
+        private RecordSchema _partitionSchema;
+        private RecordSchema _dataFileSchema;
+        private readonly Avro.File.IFileWriter<GenericRecord> _writer;
+        private readonly long snapshotId;
+        private readonly Stream stream;
+        private readonly string manifestPath;
+        private const string ParquetFormat = "PARQUET";
+        private readonly long streamStartPosition;
+
+        private int _addedFilesCount;
+        private long _addedRowCount;
+
+        public ManifestWriter(long snapshotId, Stream stream, string manifestPath)
         {
-            var partitions = RecordSchema.Create("partition", new List<Field>());
-
-
-            var lowerBoundsSchema = MapSchema.CreateMap(PrimitiveSchema.Create(Schema.Type.Bytes));
-
-            var dataFileSchema = RecordSchema.Create("data_file", new List<Field>()
-            {
-                new Field(PrimitiveSchema.Create(Schema.Type.Int), "content", 0, customProperties: new PropertyMap()
-                {
-                    {"field-id", "134" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.String), "file_path", 1, customProperties: new PropertyMap()
-                {
-                    {"field-id", "100" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.String), "file_format", 2, customProperties: new PropertyMap()
-                {
-                    {"field-id", "101" }
-                }),
-                new Field(partitions, "partition", 3, customProperties: new PropertyMap()
-                {
-                    {"field-id", "102" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "record_count", 4, customProperties: new PropertyMap()
-                {
-                    {"field-id", "103" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "file_size_in_bytes", 5, customProperties: new PropertyMap()
-                {
-                    {"field-id", "104" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "column_sizes", 6, customProperties: new PropertyMap()
-                {
-                    {"field-id", "108" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "value_counts", 7, customProperties: new PropertyMap()
-                {
-                    {"field-id", "109" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "null_value_counts", 8, customProperties: new PropertyMap()
-                {
-                    {"field-id", "110" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "nan_value_counts", 9, customProperties: new PropertyMap()
-                {
-                    {"field-id", "137" }
-                }),
-                new Field(lowerBoundsSchema, "lower_bounds", 10, customProperties: new PropertyMap()
-                {
-                    {"field-id", "125" }
-                }),
-                new Field(lowerBoundsSchema, "upper_bounds", 11, customProperties: new PropertyMap()
-                {
-                    {"field-id", "128" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Bytes), "key_metadata", 12, customProperties: new PropertyMap()
-                {
-                    {"field-id", "111" }
-                }),
-                new Field(ArraySchema.Create(PrimitiveSchema.Create(Schema.Type.Long)), "split_offsets", 13, customProperties: new PropertyMap()
-                {
-                    {"field-id", "132" }
-                }),
-                new Field(ArraySchema.Create(PrimitiveSchema.Create(Schema.Type.Long)), "equality_ids", 14, customProperties: new PropertyMap()
-                {
-                    {"field-id", "135" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Int), "sort_order_id", 15, customProperties: new PropertyMap()
-                {
-                    {"field-id", "140" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "first_row_id", 16, customProperties: new PropertyMap()
-                {
-                    {"field-id", "142" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.String), "referenced_data_file", 17, customProperties: new PropertyMap()
-                {
-                    {"field-id", "143" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "content_offset", 18, customProperties: new PropertyMap()
-                {
-                    {"field-id", "144" }
-                }),
-                new Field(PrimitiveSchema.Create(Schema.Type.Long), "content_size_in_bytes", 19, customProperties: new PropertyMap()
-                {
-                    {"field-id", "145" }
-                }),
-
-            });
-
-            var manifestSchema = RecordSchema.Create("manifest_entry", new List<Field>()
-            {
-                new Field(Avro.PrimitiveSchema.Create(Schema.Type.Int), "status", 0, customProperties: new PropertyMap()
-                {
-                    {"field-id", "0" }
-                }),
-                new Field(Avro.PrimitiveSchema.Create(Schema.Type.Long), "snapshot_id", 1, customProperties: new PropertyMap()
-                {
-                    {"field-id", "1" }
-                }),
-                new Field(Avro.PrimitiveSchema.Create(Schema.Type.Long), "sequence_number", 2, customProperties: new PropertyMap()
-                {
-                    {"field-id", "3" }
-                }),
-                new Field(Avro.PrimitiveSchema.Create(Schema.Type.Long), "file_sequence_number", 3, customProperties: new PropertyMap()
-                {
-                    {"field-id", "4" }
-                }),
-                new Field(dataFileSchema, "data_file", 2, customProperties: new PropertyMap()
-                {
-                    {"field-id", "2" }
-                }),
-            });
-
-            //new GenericRecord(manifestSchema).Add("data_file", ;
+            _partitionSchema = RecordSchema.Create("partition", new List<Field>());
+            _dataFileSchema = AvroSchemas.CreateDataFileSchema(_partitionSchema);
+            _manifestSchema = AvroSchemas.CreateManifestEntrySchema(_dataFileSchema);
+            
+            var datumWriter = new Avro.Generic.GenericDatumWriter<GenericRecord>(_manifestSchema);
+            _writer = Avro.File.DataFileWriter<GenericRecord>.OpenWriter(datumWriter, stream, true);
+            this.snapshotId = snapshotId;
+            this.stream = stream;
+            this.manifestPath = manifestPath;
+            streamStartPosition = stream.Position;
         }
 
         public void AddDataFile(
@@ -149,71 +57,93 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Manifest
             DeltaStatistics stats,
             long snapshotId)
         {
-            var record = new GenericRecord(null);
-            record.Add("content", 0);
-            record.Add("file_path", addAction.Path);
-            record.Add("file_format", "parquet");
+            var dataFileRecord = new GenericRecord(_dataFileSchema);
+            dataFileRecord.Add("content", 0);
+            dataFileRecord.Add("file_path", addAction.Path);
+            dataFileRecord.Add("file_format", ParquetFormat);
 
-            GenericRecord partitionRecord = new GenericRecord(null);
-            record.Add("partition", partitionRecord);
-            record.Add("record_count", stats.NumRecords);
-            record.Add("file_size_in_bytes", addAction.Size);
+            GenericRecord partitionRecord = new GenericRecord(_partitionSchema);
+            dataFileRecord.Add("partition", partitionRecord);
+            dataFileRecord.Add("record_count", stats.NumRecords);
+            dataFileRecord.Add("file_size_in_bytes", addAction.Size);
 
-            
-            Dictionary<string, long> nullValueCount = new Dictionary<string, long>();
-            Dictionary<string, byte[]> lowerBounds = new Dictionary<string, byte[]>();
-            Dictionary<string, byte[]> maxBounds = new Dictionary<string, byte[]>();
+            List<GenericRecord> nullValueCounts = new List<GenericRecord>();
+            List<GenericRecord> lowerBoundsList = new List<GenericRecord>();
+            List<GenericRecord> upperBoundsList = new List<GenericRecord>();
 
             if (stats.ValueComparers != null)
             {
                 foreach (var val in stats.ValueComparers)
                 {
                     var field = schema.Fields.First(x => x.PhysicalName == val.Key);
-                    var fieldId = field.FieldId!.Value.ToString();
+                    var fieldId = field.FieldId!.Value;
                     if (val.Value.NullCount.HasValue)
                     {
-                        nullValueCount.Add(fieldId, val.Value.NullCount.Value);
+                        GenericRecord nullCount = new GenericRecord(AvroSchemas.NullValueCountSchema);
+                        nullCount.Add("key", fieldId);
+                        nullCount.Add("value", (long)val.Value.NullCount.Value);
+
+                        nullValueCounts.Add(nullCount);
                     }
                     var minValue = val.Value.GetMinValueIcebergBinary();
                     if (minValue != null)
                     {
-                        lowerBounds.Add(fieldId, minValue);
+                        GenericRecord lowerBound = new GenericRecord(AvroSchemas.lowerBoundSchema);
+                        lowerBound.Add("key", fieldId);
+                        lowerBound.Add("value", minValue);
+
+                        lowerBoundsList.Add(lowerBound);
                     }
                     var maxValue = val.Value.GetMaxValueIcebergBinary();
                     if (maxValue != null)
                     {
-                        maxBounds.Add(fieldId, maxValue);
+                        GenericRecord upperBound = new GenericRecord(AvroSchemas.UpperBoundSchema);
+                        upperBound.Add("key", fieldId);
+                        upperBound.Add("value", maxValue);
+                        upperBoundsList.Add(upperBound);
                     }
                 }
             }
-            
 
-            record.Add("null_value_counts", nullValueCount);
-            record.Add("lower_bounds", lowerBounds);
-            record.Add("upper_bounds", maxBounds);
 
-            var manifestEntry = new ManifestEntry()
+            dataFileRecord.Add("null_value_counts", nullValueCounts.ToArray());
+            dataFileRecord.Add("lower_bounds", lowerBoundsList.ToArray());
+            dataFileRecord.Add("upper_bounds", upperBoundsList.ToArray());
+
+            GenericRecord manifestRecord = new GenericRecord(_manifestSchema);
+
+            manifestRecord.Add("status", 1);
+            manifestRecord.Add("snapshot_id", snapshotId);
+            manifestRecord.Add("data_file", dataFileRecord);
+            _writer.Append(manifestRecord);
+
+            _addedFilesCount++;
+            _addedRowCount += stats.NumRecords;
+        }
+
+        public ManifestFile Finish()
+        {
+            _writer.Flush();
+            _writer.Dispose();
+
+            var byteLength = stream.Position - streamStartPosition;
+
+            return new ManifestFile()
             {
-                Status = 1,
-                SnapshotId = snapshotId,
-                DataFile = new DataFile()
-                {
-                    Content = 0,
-                    FilePath = addAction.Path,
-                    FileFormat = "parquet",
-                    Partition = new Dictionary<string, object>(),
-                    RecordCount = stats.NumRecords,
-                    FileSizeInBytes = addAction.Size,
-                    NullValueCounts = nullValueCount,
-                    LowerBounds = lowerBounds,
-                    UpperBounds = maxBounds
-                }
+                AddedFilesCount = _addedFilesCount,
+                AddedRowsCount = _addedRowCount,
+                AddedSnapshotId = snapshotId,
+                Content = 0,
+                DeletedFilesCount = 0,
+                DeletedRowsCount = 0,
+                ExistingFilesCount = 0,
+                ExistingRowsCount = 0,
+                ManifestLength = byteLength,
+                ManifestPath = manifestPath,
+                MinSequenceNumber = 0,
+                PartitionSpecId = 0,
+                SequenceNumber = 0,
             };
-            var datumWriter = new Avro.Generic.GenericDatumWriter<ManifestEntry>(default);
-            var writer = Avro.File.DataFileWriter<ManifestEntry>.OpenWriter(datumWriter, "");
-            writer.Append(manifestEntry);
-
-            
         }
     }
 }

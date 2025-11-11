@@ -72,5 +72,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
 
         [JsonPropertyName("current-schema-id")]
         public int CurrentSchemaId { get; set; }
+
+        [JsonPropertyName("partition-specs")]
+        public List<PartitionSpec>? PartitionSpecs { get; set; }
+
+        [JsonPropertyName("default-spec-id")]
+        public int DefaultSpecId { get; set; }
+
+        [JsonPropertyName("last-partition-id")]
+        public int LastPartitionId { get; set; }
+
+        [JsonPropertyName("properties")]
+        public Dictionary<string, string>? Properties { get; set; }
+
+        [JsonPropertyName("current-snapshot-id")]
+        public long? CurrentSnapshotId { get; set; }
+
+        [JsonPropertyName("snapshots")]
+        public List<MetadataSnapshot>? Snapshots { get; set; }
+
+        [JsonPropertyName("snapshot-log")]
+        public List<MetadataSnapshotLog>? SnapshotLog { get; set; }
+
+        [JsonPropertyName("sort-orders")]
+        public List<MetadataSortOrder>? SortOrders { get; set; }
+
+        [JsonPropertyName("default-sort-order-id")]
+        public int defaultSortOrderId { get; set; }
+
+        [JsonPropertyName("refs")]
+        public Dictionary<string, MetadataRef>? Refs { get; set; }
+
+        [JsonPropertyName("encryption-keys")]
+        public List<MetadataEncryptionKey>? EncryptionKeys { get; set; }
     }
 }

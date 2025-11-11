@@ -19,12 +19,18 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
 {
-    internal class PartitionSpec
+    internal class MetadataSortOrderField
     {
-        [JsonPropertyName("spec-id")]
-        public int SpecId { get; set; }
+        [JsonPropertyName("transform")]
+        public string? Transform { get; set; }
 
-        [JsonPropertyName("fields")]
-        public List<PartitionField> Fields { get; set; } = new List<PartitionField>();
+        [JsonPropertyName("source-id")]
+        public long SourceId { get; set; }
+
+        [JsonPropertyName("direction")]
+        public string? Direction { get; set; }
+
+        [JsonPropertyName("null-order")]
+        public string? NullOrder { get; set; }
     }
 }

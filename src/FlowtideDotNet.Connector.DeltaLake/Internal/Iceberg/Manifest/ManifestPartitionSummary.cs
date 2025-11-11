@@ -14,17 +14,18 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
+namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Manifest
 {
-    internal class PartitionSpec
+    internal class ManifestPartitionSummary
     {
-        [JsonPropertyName("spec-id")]
-        public int SpecId { get; set; }
+        public required bool ContainsNull { get; set; }
 
-        [JsonPropertyName("fields")]
-        public List<PartitionField> Fields { get; set; } = new List<PartitionField>();
+        public bool? ContainsNan { get; set; }
+
+        public byte? LowerBound { get; set; }
+
+        public byte? UpperBound { get; set; }
     }
 }

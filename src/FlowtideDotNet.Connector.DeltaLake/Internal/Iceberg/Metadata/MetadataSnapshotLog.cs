@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
 {
-    internal class PartitionSpec
+    internal class MetadataSnapshotLog
     {
-        [JsonPropertyName("spec-id")]
-        public int SpecId { get; set; }
+        [JsonPropertyName("snapshot-id")]
+        public long SnapshotId { get; set; }
 
-        [JsonPropertyName("fields")]
-        public List<PartitionField> Fields { get; set; } = new List<PartitionField>();
+        [JsonPropertyName("timestamp-ms")]
+        public long TimestampMs { get; set; }
     }
 }

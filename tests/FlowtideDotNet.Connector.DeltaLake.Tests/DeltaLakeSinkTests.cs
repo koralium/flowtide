@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TestCreateTable()
         {
-            var storage = Files.Of.InternalMemory("./test");
+            var storage = Files.Of.LocalDisk("./test");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable), storage);
 
             stream.Generate(10);
@@ -59,6 +59,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(storage, "test", stream, 2);
 
             await AssertResult(nameof(TestCreateTable), storage, "test", 3, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+        }
+
+        [Fact]
+        public async Task TestCreateTableNoUpdates()
+        {
+            var storage = Files.Of.LocalDisk("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCreateTable), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE testnoupdates (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO testnoupdates
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "testnoupdates", stream, 0);
+
+            await AssertResult(nameof(TestCreateTable), storage, "testnoupdates", 1, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
         }
 
 

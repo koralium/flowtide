@@ -19,12 +19,12 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata
 {
-    internal class PartitionSpec
+    internal class MetadataEncryptionKey
     {
-        [JsonPropertyName("spec-id")]
-        public int SpecId { get; set; }
+        [JsonPropertyName("key-id")]
+        public string? KeyId { get; set; }
 
-        [JsonPropertyName("fields")]
-        public List<PartitionField> Fields { get; set; } = new List<PartitionField>();
+        [JsonPropertyName("key-metadata")]
+        public string? KeyMetadata { get; set; }
     }
 }

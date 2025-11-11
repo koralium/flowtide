@@ -21,6 +21,9 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Manifest;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Metadata;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Iceberg.Utils;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
@@ -213,6 +216,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
             var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
+            var icebergSnapshotId = SnapshotIdGenerator.GenerateSnapshotId();
+
+            using var icebergManifestStream = await _options.StorageLocation.OpenWrite(_tablePath.Combine($"metadata/snap-{icebergSnapshotId}.avro"));
+            ManifestWriter manifestWriter = new ManifestWriter(icebergSnapshotId, icebergManifestStream, "test.avro");
+
             ParquetSharpWriter? cdcWriter = default;
             if (changeDataEnabled)
             {
@@ -302,7 +310,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
                 if (writer.WrittenCount >= 100_000)
                 {
-                    await WriteNewFile(writer, actions, currentTime, schema);
+                    await WriteNewFile(writer, actions, currentTime, schema, manifestWriter);
                 }
                 if (cdcWriter != null && cdcWriter.WrittenCount >= 100_000)
                 {
@@ -326,7 +334,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             if (writer.WrittenCount > 0)
             {
-                await WriteNewFile(writer, actions, currentTime, schema);
+                await WriteNewFile(writer, actions, currentTime, schema, manifestWriter);
             }
             if (cdcWriter != null)
             {
@@ -344,7 +352,88 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
+            var manifestFile = manifestWriter.Finish();
+            using var icebergManifestListStream = await _options.StorageLocation.OpenWrite(_tablePath.Combine($"metadata/{icebergSnapshotId}.avro"));
+            ManifestListWriter manifestListWriter = new ManifestListWriter(icebergManifestListStream);
+            manifestListWriter.AddManifestFile(manifestFile);
+            manifestListWriter.Finish();
+
+            var icebergMetadataFile = new MetadataFile()
+            {
+                FormatVersion = 2,
+                TableUuid = Guid.NewGuid().ToString(),
+                Location = "" + _tablePath.ToString(),
+                LastSequenceNumber = 0,
+                LastUpdatedMs = currentTime,
+                LastColumnId = 0,
+                Schemas = new List<MetadataSchema>()
+                {
+                    new MetadataSchema()
+                    {
+                        SchemaId = 0,
+                        Type = schema
+                    }
+                },
+                CurrentSchemaId = 0,
+                DefaultSpecId = 0,
+                PartitionSpecs = new List<PartitionSpec>()
+                {
+                    new PartitionSpec()
+                    {
+                        SpecId = 0,
+                        Fields = new List<PartitionField>()
+                    }
+                },
+                LastPartitionId = 999,
+                defaultSortOrderId = 0,
+                SortOrders = new List<MetadataSortOrder>()
+                {
+                    new MetadataSortOrder()
+                    {
+                        OrderId = 0,
+                        Fields = new List<MetadataSortOrderField>()
+                    }
+                },
+                Refs = new Dictionary<string, MetadataRef>()
+                {
+                    { "main", new MetadataRef(){ SnapshotId = icebergSnapshotId, Type = "branch" } }
+                },
+                SnapshotLog = new List<MetadataSnapshotLog>()
+                {
+                    new MetadataSnapshotLog()
+                    {
+                        SnapshotId = icebergSnapshotId,
+                        TimestampMs = currentTime
+                    }
+                },
+                CurrentSnapshotId = icebergSnapshotId,
+                Snapshots = new List<MetadataSnapshot>()
+                {
+                    new MetadataSnapshot()
+                    {
+                        SchemaId = 0,
+                        SnapshotId = icebergSnapshotId,
+                        ManifestList = $"metadata/{icebergSnapshotId}.avro",
+                        Summary = new MetadataSnapshotSummary()
+                        {
+                            Operation = "append"
+                        },
+                        TimestampMs = currentTime,
+                    }
+                }
+            };
+
+            JsonSerializerOptions jsonSerializerOptions = new JsonSerializerOptions();
+            jsonSerializerOptions.WriteIndented = true;
+            jsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+            var metadataJson = JsonSerializer.Serialize(icebergMetadataFile, jsonSerializerOptions);
+
+            await _options.StorageLocation.WriteText(_tablePath.Combine("metadata/metadata.json"), metadataJson);
+
             await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+
+            // Write iceberg manifest files
+
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
@@ -466,7 +555,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             cdcWriter.NewBatch();
         }
 
-        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)
+        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema, ManifestWriter manifestWriter)
         {
             string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
 
@@ -477,19 +566,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var statsString = JsonSerializer.Serialize(stats, jsonOptions);
 
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
+
+            var deltaAddAction = new DeltaAddAction()
+            {
+                Path = addFilePath,
+                PartitionValues = new Dictionary<string, string>(),
+                Size = fileSize,
+                ModificationTime = currentTime,
+                DataChange = true,
+                Statistics = statsString
+            };
             actions.Add(new DeltaAction()
             {
-                Add = new DeltaAddAction()
-                {
-                    Path = addFilePath,
-                    PartitionValues = new Dictionary<string, string>(),
-                    Size = fileSize,
-                    ModificationTime = currentTime,
-                    DataChange = true,
-                    Statistics = statsString
-                }
+                Add = deltaAddAction
             });
             writer.NewBatch();
+
+            manifestWriter.AddDataFile(schema, deltaAddAction, stats, 0);
         }
 
         private async Task ScanDataFileForRows(
