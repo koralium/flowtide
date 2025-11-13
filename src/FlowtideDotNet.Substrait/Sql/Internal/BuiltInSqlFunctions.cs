@@ -1194,6 +1194,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
 
             RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "datediff", FunctionsDatetime.Uri, FunctionsDatetime.Datediff, (p1, p2, p3) => new Int64Type());
 
             // Hash functions
             sqlFunctionRegister.RegisterScalarFunction("xxhash128_guid_string", (sqlFunc, visitor, emitData) =>

@@ -203,3 +203,37 @@ SELECT TIMESTAMP_ADD(component, amount, timestamp) FROM ...
 SELECT TIMESTAMP_ADD('DAY', 7, timestamp_column) FROM ...
 SELECT TIMESTAMP_ADD('MONTH', 3, timestamp_column) FROM ...
 ```
+
+## Datediff
+
+*This function has no Substrait equivalent*
+
+Calculates the number of datepart boundaries crossed between two timestamp values.  
+The result is an integer representing how many complete intervals of the given component exist between the `start` and `end` timestamps.
+
+This behavior matches **SQL Server’s `DATEDIFF`**, meaning it counts **boundary crossings**, not elapsed time.  
+For example, one minute boundary is crossed between `12:00:00` and `12:01:00`, even if only one second of that minute passes.
+
+### Supported Components
+
+* `YEAR` — Number of year boundaries crossed.  
+* `QUARTER` — Number of quarter (3-month) boundaries crossed.  
+* `MONTH` — Number of month boundaries crossed.  
+* `WEEK` — Number of week boundaries crossed (weeks start on Sunday).  
+* `DAY` — Number of day boundaries crossed (midnight-to-midnight).  
+* `HOUR` — Number of hour boundaries crossed.  
+* `MINUTE` — Number of minute boundaries crossed.  
+* `SECOND` — Number of second boundaries crossed.  
+* `MILLISECOND` — Number of millisecond boundaries crossed.  
+* `MICROSECOND` — Number of microsecond boundaries crossed.
+
+### SQL Usage
+
+```sql
+SELECT DATEDIFF(component, start, end) FROM ...;
+
+-- Examples
+SELECT DATEDIFF('DAY', '2024-01-01T00:00:00', '2024-01-02T00:00:00');   
+SELECT DATEDIFF('MINUTE', '2025-01-01T12:00:00', '2025-01-01T12:01:00'); 
+SELECT DATEDIFF('MONTH', order_date, ship_date);
+```
