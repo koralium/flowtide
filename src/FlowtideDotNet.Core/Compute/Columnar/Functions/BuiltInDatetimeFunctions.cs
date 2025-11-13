@@ -346,7 +346,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 throw new InvalidOperationException($"Method {methodName} not found");
             }
 
-            var genericMethod = method!.MakeGenericMethod(startDateExpr.Type, endDateExpr.Type);
+            var genericMethod = method.MakeGenericMethod(startDateExpr.Type, endDateExpr.Type);
 
             System.Linq.Expressions.Expression[] parameters = [startDateExpr, endDateExpr, System.Linq.Expressions.Expression.Constant(new DataValueContainer())];
 
