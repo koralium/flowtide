@@ -18,7 +18,6 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
 using System.Reflection;
-using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
