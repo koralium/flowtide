@@ -211,7 +211,7 @@ SELECT TIMESTAMP_ADD('MONTH', 3, timestamp_column) FROM ...
 Calculates the number of datepart boundaries crossed between two timestamp values.  
 The result is an integer representing how many complete intervals of the given component exist between the `start` and `end` timestamps.
 
-This behavior matches **SQL Server’s `DATEDIFF`**, meaning it counts **boundary crossings**, not elapsed time**.  
+This behavior matches **SQL Server’s `DATEDIFF`**, meaning it counts **boundary crossings**, not elapsed time.  
 For example, one minute boundary is crossed between `12:00:00` and `12:01:00`, even if only one second of that minute passes.
 
 ### Supported Components
