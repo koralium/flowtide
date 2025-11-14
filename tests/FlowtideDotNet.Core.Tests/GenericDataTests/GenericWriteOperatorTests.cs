@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
 
             await stream.StartStream(@"
                 INSERT INTO output
-                SELECT userKey, firstName
+                SELECT userKey, firstName, active
                 FROM users
             ");
 
@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 await stream.SchedulerTick();
             }
 
-            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
+            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName, Active = x.Active }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
 
             var firstUser = stream.Users[0];
             stream.DeleteUser(firstUser);
@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                 await stream.SchedulerTick();
             }
 
-            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
+            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName, Active = x.Active }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
         }
     }
 }
