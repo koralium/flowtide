@@ -247,7 +247,6 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                     throw new InvalidOperationException($"Could not deserialize property {property.Name}, Check inner exception for type details", e);
                 }
                 
-                
                 if (property.SetFunc == null)
                 {
                     throw new InvalidOperationException("Cannot deserialize object without a set function");
