@@ -259,7 +259,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 
                 try
                 {
-                    property.SetFunc(obj, value!);
+                    property.SetFunc(obj, value);
                 }
                 catch (Exception e)
                 {
