@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         {
             await foreach (var row in rows)
             {
-                var obj = (T)_batchConverter.ConvertToDotNetObject(row.EventBatchData.Columns, row.Index);
+                var obj = (T)_batchConverter.ConvertToDotNetObject(row.EventBatchData.Columns, row.Index, row.IsDeleted);
                 if (obj == null)
                 {
                     throw new InvalidOperationException("Could not convert row to generic object");

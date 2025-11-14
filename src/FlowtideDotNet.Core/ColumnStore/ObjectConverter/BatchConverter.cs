@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
             }
         }
 
-        public object ConvertToDotNetObject(IReadOnlyList<IColumn> columns, int index)
+        public object ConvertToDotNetObject(IReadOnlyList<IColumn> columns, int index, bool useDefaultsForNull = false)
         {
             if (createObject == null)
             {
@@ -247,15 +247,20 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                     throw new InvalidOperationException($"Could not deserialize property {property.Name}, Check inner exception for type details", e);
                 }
                 
-
+                
                 if (property.SetFunc == null)
                 {
                     throw new InvalidOperationException("Cannot deserialize object without a set function");
                 }
 
+                if (value == null && useDefaultsForNull)
+                {
+                    value = property.TypeInfo.DefaultValue;
+                }
+
                 try
                 {
-                    property.SetFunc(obj, value);
+                    property.SetFunc(obj, value!);
                 }
                 catch (Exception e)
                 {
