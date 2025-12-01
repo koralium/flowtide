@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
 {
