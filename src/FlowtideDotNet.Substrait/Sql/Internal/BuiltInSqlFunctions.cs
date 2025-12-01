@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsString.Upper,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
-                        new StringType()
+                        new StringType() { Nullable = true }
                         );
                 }
                 else
