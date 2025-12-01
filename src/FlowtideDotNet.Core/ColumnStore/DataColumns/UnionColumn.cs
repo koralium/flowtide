@@ -646,7 +646,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         }
                         valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, toCopy, default);
                         _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy);
-                        nextOccurenceOffset += nextNullLocation - currentStart;
+                        nextOccurenceOffset += toCopy;
                         // Type list must be added after so the offset is not incremented
                         _typeList.InsertStaticRange(currentIndex, valueColumnIndex, toCopy);
                         currentIndex += toCopy;
