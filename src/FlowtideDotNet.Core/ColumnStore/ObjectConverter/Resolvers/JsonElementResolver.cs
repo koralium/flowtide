@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
-using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using System;
 using System.Collections.Generic;
 using System.Linq;
