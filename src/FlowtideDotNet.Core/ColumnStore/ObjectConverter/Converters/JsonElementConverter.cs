@@ -15,10 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using FlowtideDotNet.Substrait.Type;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
 {
