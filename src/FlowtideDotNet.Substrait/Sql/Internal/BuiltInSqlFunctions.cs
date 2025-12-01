@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsString.Upper,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
-                        expr.Type
+                        new StringType()
                         );
                 }
                 else
@@ -832,7 +832,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
                             Arguments = new List<Expressions.Expression>()
                         },
-                        new StringType() { Nullable = true }
+                        new Int64Type() { Nullable = true }
                         );
             });
 
