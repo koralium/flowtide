@@ -639,13 +639,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                                 nextOccurenceOffset = _offsets.Get(nextOccurence);
                             }
                         }
-
-                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
-                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
+                        var toCopy = nextNullLocation - currentStart;
+                        if (toCopy > count)
+                        {
+                            toCopy = count;
+                        }
+                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, toCopy, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy);
                         nextOccurenceOffset += nextNullLocation - currentStart;
                         // Type list must be added after so the offset is not incremented
-                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
-                        currentIndex += nextNullLocation - currentStart;
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, toCopy);
+                        currentIndex += toCopy;
                     }
 
                     var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);
