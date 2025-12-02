@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers
