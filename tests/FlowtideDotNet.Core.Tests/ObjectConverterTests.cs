@@ -713,7 +713,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("\"hello\"").RootElement
+                JsonElement = JsonSerializer.SerializeToElement("hello")
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -727,7 +727,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("42").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(42)
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -741,7 +741,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("true").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(true)
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -755,7 +755,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("false").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(false)
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -769,7 +769,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("[\"hello\",\"world\"]").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(new string[] { "hello", "world" })
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -788,7 +788,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("{\"greeting\":\"hello\",\"target\":\"world\"}").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(new { greeting = "hello", target = "world" })
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
@@ -803,7 +803,7 @@ namespace FlowtideDotNet.Core.Tests
         {
             var testObject = new TestClass()
             {
-                JsonElement = JsonDocument.Parse("null").RootElement
+                JsonElement = JsonSerializer.SerializeToElement(default(object?))
             };
             var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
             IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
