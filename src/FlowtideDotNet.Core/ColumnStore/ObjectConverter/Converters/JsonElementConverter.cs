@@ -116,11 +116,27 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                         }
                     case JsonValueKind.Object:
                         var objConverter = GetConverter(typeof(Dictionary<string, object>));
-                        objConverter.Serialize(JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetRawText())!, ref addFunc);
+                        var dictObj = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetRawText());
+                        if (dictObj != null)
+                        {
+                            objConverter.Serialize(dictObj, ref addFunc);
+                        }
+                        else
+                        {
+                            addFunc.AddValue(NullValue.Instance);
+                        }
                         return;
                     case JsonValueKind.Array:
                         var listConverter = GetConverter(typeof(List<object>));
-                        listConverter.Serialize(JsonSerializer.Deserialize<List<object>>(jsonElement.GetRawText())!, ref addFunc);
+                        var listObj = JsonSerializer.Deserialize<List<object>>(jsonElement.GetRawText());
+                        if (listObj != null)
+                        {
+                            listConverter.Serialize(listObj, ref addFunc);
+                        }
+                        else
+                        {
+                            addFunc.AddValue(NullValue.Instance);
+                        }
                         return;
                     case JsonValueKind.Null:
                         addFunc.AddValue(NullValue.Instance);
