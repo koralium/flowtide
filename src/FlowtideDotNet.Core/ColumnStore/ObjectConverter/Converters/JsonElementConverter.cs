@@ -81,11 +81,6 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
         {
             if (obj is JsonElement jsonElement)
             {
-                if (obj == null)
-                {
-                    addFunc.AddValue(NullValue.Instance);
-                    return;
-                }
                 switch (jsonElement.ValueKind)
                 {
                     case JsonValueKind.String:
