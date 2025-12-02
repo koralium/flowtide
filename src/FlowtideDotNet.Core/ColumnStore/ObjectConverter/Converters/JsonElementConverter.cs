@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
     internal class JsonElementConverter : IObjectColumnConverter
     {
         private readonly ObjectConverterResolver resolver;
-        private Dictionary<Type, IObjectColumnConverter> typeConverters;
+        private readonly Dictionary<Type, IObjectColumnConverter> typeConverters;
 
         public JsonElementConverter(ObjectConverterResolver resolver)
         {
@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
         {
             if (obj is JsonElement jsonElement)
             {
+                if (obj == null)
+                {
+                    addFunc.AddValue(NullValue.Instance);
+                    return;
+                }
                 switch (jsonElement.ValueKind)
                 {
                     case JsonValueKind.String:
