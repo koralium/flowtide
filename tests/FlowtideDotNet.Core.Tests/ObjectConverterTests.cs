@@ -797,5 +797,34 @@ namespace FlowtideDotNet.Core.Tests
             Assert.Equal(testObject.JsonElement.GetProperty("greeting").GetString(), deserialized.JsonElement.GetProperty("greeting").GetString());
             Assert.Equal(testObject.JsonElement.GetProperty("target").GetString(), deserialized.JsonElement.GetProperty("target").GetString());
         }
+
+        [Fact]
+        public void TestJsonElementNull()
+        {
+            var testObject = new TestClass()
+            {
+                JsonElement = JsonDocument.Parse("null").RootElement
+            };
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+            converter.AppendToColumns(testObject, arr);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
+            Assert.Equal(testObject.JsonElement.ValueKind, deserialized.JsonElement.ValueKind);
+        }
+
+        [Fact]
+        public void TestJsonElementUndefined()
+        {
+            var testObject = new TestClass()
+            {
+                JsonElement = default
+            };
+            Assert.Equal(JsonValueKind.Undefined, testObject.JsonElement.ValueKind);
+            var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "jsonElement" });
+            IColumn[] arr = [new Column(GlobalMemoryManager.Instance)];
+            converter.AppendToColumns(testObject, arr);
+            var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
+            Assert.Equal(JsonValueKind.Null, deserialized.JsonElement.ValueKind);
+        }
     }
 }

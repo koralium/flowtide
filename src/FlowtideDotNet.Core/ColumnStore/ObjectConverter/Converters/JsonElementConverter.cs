@@ -65,6 +65,8 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                     return JsonSerializer.SerializeToElement(GetConverter(typeof(decimal)).Deserialize(value));
                 case ArrowTypeId.Struct:
                     return JsonSerializer.SerializeToElement(GetConverter(typeof(Dictionary<string, object>)).Deserialize(value));
+                case ArrowTypeId.Null:
+                    return JsonSerializer.SerializeToElement((object?)null);
                 default:
                     throw new NotImplementedException($"Can not deserialize {value.Type} to object");
             }
@@ -144,6 +146,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
                         }
                         return;
                     case JsonValueKind.Null:
+                    case JsonValueKind.Undefined:
                         addFunc.AddValue(NullValue.Instance);
                         return;
                     default:
