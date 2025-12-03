@@ -10,10 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers;
+using System.IO;
+
 namespace FlowtideDotNet.Storage.DataStructures
 {
     internal class RoaringArray
     {
+        private const int SerialCookieNoRuncontainer = 12346;
+        private const int SerialCookie = 12347;
+        private const int NoOffsetThreshold = 4;
+
         private int size = 0;
         private ushort[] keys;
         private Container?[] values;
@@ -116,6 +123,104 @@ namespace FlowtideDotNet.Storage.DataStructures
         internal ushort GetKeyAtIndex(int i)
         {
             return this.keys[i];
+        }
+
+        private static bool HasRunContainer(RoaringArray roaringArray)
+        {
+            for (var i = 0; i < roaringArray.size; i++)
+            {
+                var container = roaringArray.values[i];
+                if (container != null && (container.Equals(ArrayContainer.One) || container.Equals(BitmapContainer.One)))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public void Serialize(IBufferWriter<byte> bufferWriter)
+        {
+            var hasRun = HasRunContainer(this);
+
+            var startOffset = 0;
+            if (hasRun)
+            {
+                Utils.WriteInt(in bufferWriter, SerialCookie | size - 1 << 16);
+
+                var bitmapOfRunContainers = bufferWriter.GetSpan((size + 7) / 8);
+                for (var i = 0; i < size; ++i)
+                {
+                    var val = values[i];
+                    if (val != null && (val.Equals(ArrayContainer.One) || val.Equals(BitmapContainer.One)))
+                    {
+                        bitmapOfRunContainers[i / 8] |= (byte)(1 << i % 8);
+                    }
+                }
+                bufferWriter.Advance((size + 7) / 8);
+            }
+            else
+            {
+                Utils.WriteInt(in bufferWriter, SerialCookieNoRuncontainer);
+                Utils.WriteInt(in bufferWriter, in size);
+                startOffset = 4 + 4 + 4 * size + 4 * size;
+            }
+
+            for (var k = 0; k < size; ++k)
+            {
+                var val = values[k];
+                if (val != null)
+                {
+                    Utils.WriteUshort(in bufferWriter, in keys[k]);
+                    Utils.WriteUshort(in bufferWriter, (ushort)(val.GetCardinality() - 1));
+                }
+            }
+
+            if (!hasRun || size >= NoOffsetThreshold)
+            {
+                for (var k = 0; k < size; k++)
+                {
+                    var val = values[k];
+
+                    if (val != null)
+                    {
+                        Utils.WriteInt(in bufferWriter, in startOffset);
+                        startOffset += val.ArraySizeInBytes;
+                    }
+                }
+            }
+
+            for (var k = 0; k < size; ++k)
+            {
+                var container = values[k];
+                ArrayContainer ac;
+                BitmapContainer bc;
+                if ((ac = (container as ArrayContainer)!) != null)
+                {
+                    if (ac.Equals(ArrayContainer.One))
+                    {
+                        Utils.WriteUshort(in bufferWriter, 1);
+                        Utils.WriteUshort(in bufferWriter, 0);
+                        Utils.WriteUshort(in bufferWriter, ArrayContainer.DEFAULT_MAX_SIZE - 1);
+                    }
+                    else
+                    {
+                        ArrayContainer.Serialize(ac, binaryWriter);
+                    }
+                }
+                else if ((bc = (container as BitmapContainer)!) != null)
+                {
+                    if (bc.Equals(BitmapContainer.One))
+                    {
+                        binaryWriter.Write((ushort)1);
+                        binaryWriter.Write((ushort)0);
+                        binaryWriter.Write((ushort)(Container.MaxCapacity - 1));
+                    }
+                    else
+                    {
+                        BitmapContainer.Serialize(bc, binaryWriter);
+                    }
+                }
+            }
         }
     }
 }

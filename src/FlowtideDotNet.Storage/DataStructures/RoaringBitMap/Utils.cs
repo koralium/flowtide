@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -53,6 +55,22 @@ namespace FlowtideDotNet.Storage.DataStructures
                 }
                 b += 64;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteInt(ref readonly IBufferWriter<byte> writer, in int value)
+        {
+            Span<byte> span = writer.GetSpan(4);
+            BinaryPrimitives.WriteInt32LittleEndian(span, value);
+            writer.Advance(4);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void WriteUshort(ref readonly IBufferWriter<byte> writer, in ushort value)
+        {
+            Span<byte> span = writer.GetSpan(2);
+            BinaryPrimitives.WriteUInt16LittleEndian(span, value);
+            writer.Advance(2);
         }
     }
 }

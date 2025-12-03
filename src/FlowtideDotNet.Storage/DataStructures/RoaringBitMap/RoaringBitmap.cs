@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures.RoaringBitMap;
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -27,6 +28,37 @@ namespace FlowtideDotNet.Storage.DataStructures
         public RoaringBitmap()
         {
             highLowContainer = new RoaringArray();
+        }
+
+        public bool this[int index]
+        {
+            get
+            {
+                return Contains(index);
+            }
+            set
+            {
+                if (value)
+                {
+                    Add(index);
+                }
+                else
+                {
+                    Remove(index);
+                }
+            }
+        }
+
+        public int Count => GetCardinality();
+
+        public int GetCardinality()
+        {
+            int size = 0;
+            for (int i = 0; i < this.highLowContainer.Size; i++)
+            {
+                size += this.highLowContainer.GetContainerAtIndex(i).GetCardinality();
+            }
+            return size;
         }
 
         public void Add(int x)
@@ -87,6 +119,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         IEnumerator IEnumerable.GetEnumerator()
         {
             return GetEnumerator();
+        }
+
+        public void Serialize(IBufferWriter<byte> writer)
+        {
+
         }
     }
 }

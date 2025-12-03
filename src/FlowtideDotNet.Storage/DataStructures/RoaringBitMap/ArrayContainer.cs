@@ -22,8 +22,20 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
-    internal class ArrayContainer : Container
+    internal class ArrayContainer : Container, IEquatable<ArrayContainer>
     {
+        public static readonly ArrayContainer One;
+
+        static ArrayContainer()
+        {
+            var data = new ushort[DEFAULT_MAX_SIZE];
+            for (ushort i = 0; i < DEFAULT_MAX_SIZE; i++)
+            {
+                data[i] = i;
+            }
+            One = new ArrayContainer(data, DEFAULT_MAX_SIZE);
+        }
+
         internal ushort[] content;
         internal int cardinality;
 
@@ -31,6 +43,8 @@ namespace FlowtideDotNet.Storage.DataStructures
         internal const int DEFAULT_MAX_SIZE = 4096;
 
         public override bool IsEmpty => cardinality == 0;
+
+        public override int ArraySizeInBytes => cardinality * sizeof(ushort);
 
         public ArrayContainer()
             : this(DEFAULT_INIT_SIZE)
@@ -173,6 +187,30 @@ namespace FlowtideDotNet.Storage.DataStructures
         public override IContainerEnumerator GetContainerEnumerator()
         {
             return new ArrayContainerEnumerator(this);
+        }
+
+        public bool Equals(ArrayContainer? other)
+        {
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+            if (cardinality != other.cardinality)
+            {
+                return false;
+            }
+            for (var i = 0; i < cardinality; i++)
+            {
+                if (content[i] != other.content[i])
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }

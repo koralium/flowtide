@@ -62,6 +62,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             Assert.True(bitmap.Contains(7));
             Assert.True(bitmap.Contains(72));
             Assert.True(bitmap.Contains(63));
+
+            HashSet<int> asd;
         }
     }
 }

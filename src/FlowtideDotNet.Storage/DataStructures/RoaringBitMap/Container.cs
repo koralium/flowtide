@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public abstract int GetCardinality();
 
+        public abstract int ArraySizeInBytes { get; }
+
         public abstract IEnumerator<ushort> GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator()

@@ -20,8 +20,20 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
-    internal class BitmapContainer : Container
+    internal class BitmapContainer : Container, IEquatable<BitmapContainer>
     {
+        public static readonly BitmapContainer One;
+
+        static BitmapContainer()
+        {
+            var data = new long[MAX_CAPACITY_LONG];
+            for (var i = 0; i < MAX_CAPACITY_LONG; i++)
+            {
+                data[i] = -1;
+            }
+            One = new BitmapContainer(data, MAX_CAPACITY);
+        }
+
         public const int MAX_CAPACITY = 1 << 16;
         private const int MAX_CAPACITY_BYTE = MAX_CAPACITY / 1;
         private const int MAX_CAPACITY_LONG = MAX_CAPACITY / 8;
@@ -31,10 +43,18 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public override bool IsEmpty => throw new NotImplementedException();
 
+        public override int ArraySizeInBytes => MAX_CAPACITY / 8;
+
         public BitmapContainer()
         {
             this.cardinality = 0;
             this.bitmap = new long[MAX_CAPACITY_LONG];
+        }
+
+        public BitmapContainer(long[] bitmap, int cardinality)
+        {
+            this.bitmap = bitmap;
+            this.cardinality = cardinality;
         }
 
         internal void LoadData(ArrayContainer arrayContainer)
@@ -111,6 +131,30 @@ namespace FlowtideDotNet.Storage.DataStructures
         public override IContainerEnumerator GetContainerEnumerator()
         {
             return new BitmapContainerEnumerator(bitmap);
+        }
+
+        public bool Equals(BitmapContainer? other)
+        {
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+            if (ReferenceEquals(null, other))
+            {
+                return false;
+            }
+            if (cardinality != other.cardinality)
+            {
+                return false;
+            }
+            for (var i = 0; i < MAX_CAPACITY_LONG; i++)
+            {
+                if (bitmap[i] != other.bitmap[i])
+                {
+                    return false;
+                }
+            }
+            return true;
         }
     }
 }
