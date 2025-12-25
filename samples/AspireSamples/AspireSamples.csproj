@@ -15,7 +15,7 @@
     <PackageReference Include="Aspire.Hosting.Azure.Storage" Version="13.1.0" />
     <PackageReference Include="Aspire.Hosting.Elasticsearch" Version="13.0.0" />
     <PackageReference Include="Aspire.Hosting.MongoDB" Version="13.1.0" />
-    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.0.2" />
+    <PackageReference Include="Aspire.Hosting.SqlServer" Version="13.1.0" />
     <PackageReference Include="Bogus" Version="35.6.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.0">
       <PrivateAssets>all</PrivateAssets>
