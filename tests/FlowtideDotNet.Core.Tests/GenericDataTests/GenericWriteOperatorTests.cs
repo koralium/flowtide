@@ -36,10 +36,29 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
     {
         public Dictionary<int, User> users = new Dictionary<int, User>();
         public int changeCounter = 0;
+        private List<User>? _existing;
 
         public override Task<List<string>> GetPrimaryKeyNames()
         {
             return Task.FromResult(new List<string> { "UserKey" });
+        }
+
+        public void AddExistingUsers(List<User> users)
+        {
+            _existing = users;
+            foreach(var user in users)
+            {
+                this.users[user.UserKey] = user;
+            }
+        }
+
+        public override IAsyncEnumerable<User> GetExistingData()
+        {
+            if (_existing != null)
+            {
+                return _existing.ToAsyncEnumerable();
+            }
+            return base.GetExistingData();
         }
 
         public override async Task OnChanges(IAsyncEnumerable<FlowtideGenericWriteObject<User>> changes, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
@@ -93,6 +112,50 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             while (true)
             {
                 if (sink.changeCounter > 1)
+                {
+                    break;
+                }
+                await Task.Delay(10);
+                await stream.SchedulerTick();
+            }
+
+            Assert.Equal(stream.Users.Select(x => new User() { UserKey = x.UserKey, FirstName = x.FirstName, Active = x.Active }).OrderBy(x => x.UserKey), sink.users.Values.OrderBy(x => x.UserKey));
+        }
+
+        [Fact]
+        public async Task TestGenericDataSinkExistingUsers()
+        {
+            var sink = new TestDataSink();
+            GenericDataSinkTestStream stream = new GenericDataSinkTestStream(sink, "testgenericsink");
+
+            stream.Generate(1000);
+
+            var firstUser = stream.Users.First();
+            sink.AddExistingUsers(new List<User>()
+            {
+                new User()
+                {
+                    UserKey = firstUser.UserKey,
+                    FirstName = firstUser.FirstName,
+                    Active = firstUser.Active
+                },
+                new User()
+                {
+                    UserKey = int.MaxValue,
+                    FirstName = "a",
+                    Active = true
+                }
+            });
+
+            await stream.StartStream(@"
+                INSERT INTO output
+                SELECT userKey, firstName, active
+                FROM users
+            ");
+
+            while (true)
+            {
+                if (sink.changeCounter > 0)
                 {
                     break;
                 }

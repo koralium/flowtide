@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Resolvers;
 using FlowtideDotNet.Substrait.Relations;
 
@@ -24,6 +25,8 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// <returns></returns>
         public abstract Task<List<string>> GetPrimaryKeyNames();
 
+        public virtual bool FetchExistingData { get; } = true;
+
         public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
         {
             yield break;
@@ -34,6 +37,11 @@ namespace FlowtideDotNet.Core.Sources.Generic
         public virtual Task Initialize(WriteRelation writeRelation)
         {
             return Task.CompletedTask;
+        }
+
+        public virtual IAsyncEnumerable<T> GetExistingData()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
     }
 }
