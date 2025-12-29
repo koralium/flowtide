@@ -209,12 +209,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                         // Check that a match was made
                         if (!m_writeTreeSearchComparer.noMatch)
                         {
-                            var enumerator = treeIterator.GetAsyncEnumerator();
-                            await enumerator.MoveNextAsync();
-                            var existingpage = enumerator.Current;
                             yield return new ColumnWriteOperation()
                             {
-                                EventBatchData = existingpage.Keys._data,
+                                // This is never null if there is a match
+                                EventBatchData = m_writeTreeSearchComparer.CurrentContainer!._data,
                                 Index = m_writeTreeSearchComparer.start,
                                 IsDeleted = false
                             };

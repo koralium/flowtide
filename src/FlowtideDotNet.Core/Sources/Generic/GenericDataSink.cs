@@ -25,6 +25,10 @@ namespace FlowtideDotNet.Core.Sources.Generic
         /// <returns></returns>
         public abstract Task<List<string>> GetPrimaryKeyNames();
 
+        /// <summary>
+        /// Whether to fetch existing data on initial stream startup.
+        /// This is default 'true'.
+        /// </summary>
         public virtual bool FetchExistingData { get; } = true;
 
         public virtual IEnumerable<IObjectColumnResolver> GetCustomConverters()
@@ -39,6 +43,12 @@ namespace FlowtideDotNet.Core.Sources.Generic
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Fetches existing data from the sink.
+        /// Used to compare against incoming data to avoid duplicates on initial load.
+        /// It also produces deletes if existing data is not in the stream result.
+        /// </summary>
+        /// <returns></returns>
         public virtual IAsyncEnumerable<T> GetExistingData()
         {
             return EmptyAsyncEnumerable<T>.Instance;
