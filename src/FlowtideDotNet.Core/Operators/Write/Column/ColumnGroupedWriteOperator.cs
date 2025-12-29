@@ -320,7 +320,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     for (int i = 0; i < m_primaryKeyColumns.Count; i++)
                     {
-                        _deleteBatchColumns[m_primaryKeyColumns[i]] = persistentEnumerator.Current.referenceBatch.Columns[i];
+                        _deleteBatchColumns[m_primaryKeyColumns[i]] = persistentEnumerator.Current.referenceBatch.Columns[m_primaryKeyColumns[i]];
                     }
                     yield return new ColumnWriteOperation()
                     {
