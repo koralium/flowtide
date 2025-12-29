@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         public void AddExistingUsers(List<User> users)
         {
             _existing = users;
-            foreach(var user in users)
+            foreach (var user in users)
             {
                 this.users[user.UserKey] = user;
             }
