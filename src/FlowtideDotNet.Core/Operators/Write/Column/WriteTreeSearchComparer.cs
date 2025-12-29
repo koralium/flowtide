@@ -14,7 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
-using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
