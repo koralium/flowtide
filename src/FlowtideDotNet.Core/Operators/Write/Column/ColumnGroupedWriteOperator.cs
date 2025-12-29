@@ -287,7 +287,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             
             var hasOld = await persistentEnumerator.MoveNextAsync();
 
-            // Go through both trees and find deletions
+            // Calculate delta between modified and existing data (insertions, updates, deletions)
             while (hasNew || hasOld)
             {
                 int comparison = hasNew && hasOld ? primaryKeyComparer.CompareTo(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
@@ -338,7 +338,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                         await enumerator.MoveNextAsync();
                         var existingpage = enumerator.Current;
 
-                        comparison = hasNew && hasOld ? m_existingRowComparer.CompareTo(new ColumnRowReference() { referenceBatch = existingpage.Keys._data, RowIndex = m_writeTreeSearchComparer.start }, persistentEnumerator.Current) : 0;
+                        comparison = m_existingRowComparer.CompareTo(
+                            new ColumnRowReference()
+                            {
+                                referenceBatch = existingpage.Keys._data,
+                                RowIndex = m_writeTreeSearchComparer.start
+                            },
+                            persistentEnumerator.Current);
 
                         if (comparison != 0)
                         {
