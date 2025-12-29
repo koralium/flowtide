@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Sources.Generic
 
         /// <summary>
         /// Whether to fetch existing data on initial stream startup.
-        /// This is default 'true'.
+        /// This defaults to 'true'.
         /// </summary>
         public virtual bool FetchExistingData { get; } = true;
 
