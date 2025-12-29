@@ -43,10 +43,10 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             return Task.FromResult(new List<string> { "UserKey" });
         }
 
-        public void AddExistingUsers(List<User> users)
+        public void AddExistingUsers(List<User> existingUsers)
         {
-            _existing = users;
-            foreach (var user in users)
+            _existing = existingUsers;
+            foreach (var user in existingUsers)
             {
                 this.users[user.UserKey] = user;
             }
