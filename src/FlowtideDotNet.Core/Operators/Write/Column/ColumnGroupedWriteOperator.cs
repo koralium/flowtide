@@ -338,7 +338,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                         await enumerator.MoveNextAsync();
                         var existingpage = enumerator.Current;
 
-                        comparison = hasNew && hasOld ? m_existingRowComparer.CompareTo(new ColumnRowReference() { referenceBatch = existingpage.Keys._data, RowIndex = m_writeTreeSearchComparer.start }, persistentEnumerator.Current) : 0;
+                        comparison = m_existingRowComparer.CompareTo(
+                            new ColumnRowReference()
+                            {
+                                referenceBatch = existingpage.Keys._data,
+                                RowIndex = m_writeTreeSearchComparer.start
+                            },
+                            persistentEnumerator.Current);
 
                         if (comparison != 0)
                         {
