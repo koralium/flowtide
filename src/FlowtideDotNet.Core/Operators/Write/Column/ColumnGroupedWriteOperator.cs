@@ -299,12 +299,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                     // Check that a match was made
                     if (!m_writeTreeSearchComparer.noMatch)
                     {
-                        var enumerator = actualDataIterator.GetAsyncEnumerator();
-                        await enumerator.MoveNextAsync();
-                        var existingpage = enumerator.Current;
                         yield return new ColumnWriteOperation()
                         {
-                            EventBatchData = existingpage.Keys._data,
+                            // This is never null if there is a match
+                            EventBatchData = m_writeTreeSearchComparer.CurrentContainer!.Data,
                             Index = m_writeTreeSearchComparer.start,
                             IsDeleted = false
                         };
@@ -334,14 +332,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     if (!m_writeTreeSearchComparer.noMatch)
                     {
-                        var enumerator = actualDataIterator.GetAsyncEnumerator();
-                        await enumerator.MoveNextAsync();
-                        var existingpage = enumerator.Current;
-
                         comparison = m_existingRowComparer.CompareTo(
                             new ColumnRowReference()
                             {
-                                referenceBatch = existingpage.Keys._data,
+                                // This is never null if there is a match
+                                referenceBatch = m_writeTreeSearchComparer.CurrentContainer!.Data,
                                 RowIndex = m_writeTreeSearchComparer.start
                             },
                             persistentEnumerator.Current);
@@ -350,7 +345,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                         {
                             yield return new ColumnWriteOperation()
                             {
-                                EventBatchData = existingpage.Keys._data,
+                                // This is never null if there is a match
+                                EventBatchData = m_writeTreeSearchComparer.CurrentContainer!.Data,
                                 Index = m_writeTreeSearchComparer.start,
                                 IsDeleted = false
                             };

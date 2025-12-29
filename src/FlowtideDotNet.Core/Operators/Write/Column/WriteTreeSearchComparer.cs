@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
@@ -28,6 +29,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         public bool noMatch = false;
 
         public bool SeekNextPageForValue => true;
+
+        public ColumnKeyStorageContainer? CurrentContainer { get; private set; }
 
         public WriteTreeSearchComparer(List<KeyValuePair<int, ReferenceSegment?>> selfColumns, List<KeyValuePair<int, ReferenceSegment?>> referenceColumns)
         {
@@ -52,6 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             start = 0;
             end = keyContainer.Count - 1;
             noMatch = false;
+            CurrentContainer = keyContainer;
             for (int i = 0; i < selfColumns.Count; i++)
             {
                 // Get value by container to skip boxing for each value
