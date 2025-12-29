@@ -287,7 +287,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             
             var hasOld = await persistentEnumerator.MoveNextAsync();
 
-            // Go through both trees and find deletions
+            // Calculate delta between modified and existing data (insertions, updates, deletions)
             while (hasNew || hasOld)
             {
                 int comparison = hasNew && hasOld ? primaryKeyComparer.CompareTo(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
