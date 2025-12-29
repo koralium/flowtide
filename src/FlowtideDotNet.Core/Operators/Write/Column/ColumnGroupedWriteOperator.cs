@@ -139,6 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     await m_existingData.Upsert(new ColumnRowReference() { referenceBatch = batch, RowIndex = i }, 1);
                 }
+                batch.Dispose();
             }
         }
 
