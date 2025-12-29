@@ -131,6 +131,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             stream.Generate(1000);
 
             var firstUser = stream.Users.First();
+            var secondUser = stream.Users[1];
             sink.AddExistingUsers(new List<User>()
             {
                 new User()
@@ -138,6 +139,12 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
                     UserKey = firstUser.UserKey,
                     FirstName = firstUser.FirstName,
                     Active = firstUser.Active
+                },
+                new User()
+                {
+                    UserKey = secondUser.UserKey,
+                    FirstName = "a",
+                    Active = secondUser.Active
                 },
                 new User()
                 {

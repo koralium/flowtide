@@ -123,6 +123,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                     {
                         columns[i] = Column.Create(MemoryAllocator);
                     }
+                    count = 0;
                 }
             }
 
