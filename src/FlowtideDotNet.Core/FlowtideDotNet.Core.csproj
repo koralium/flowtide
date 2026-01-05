@@ -14,7 +14,7 @@
     <PackageReference Include="Apache.Arrow" Version="22.1.0" />
     <PackageReference Include="System.IO.Hashing" Version="8.0.0" />
 
-	  <PackageReference Include="Fody" Version="6.6.3" PrivateAssets="all" />
+	  <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all" />
 	  <PackageReference Include="InlineIL.Fody" Version="1.7.2" PrivateAssets="all" />
   </ItemGroup>
 
