@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Debug.Assert(State.Value?.ChangeTrackingVersion != null);
             Debug.Assert(PrimaryKeys != null);
             Debug.Assert(PrimaryKeyOrdinals != null);
+            Debug.Assert(PrimaryKeyToOrdinal != null);
             Debug.Assert(ConvertFunctions != null);
 
             Logger.SelectingAllData(FullTableName, StreamName, Name);
@@ -78,7 +79,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                     primaryKeyValues.Count > 0,
                     batchSize,
                     Filter,
-                    primaryKeyValues);
+                    primaryKeyValues,
+                    PrimaryKeyToOrdinal);
 
                 var pipelineResult = await Options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
                 {
@@ -94,7 +96,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                         foreach (var pk in state.PrimaryKeyValues)
                         {
-                            command.Parameters.AddWithValue($"@{pk.Key}", pk.Value);
+                            if (!state.PrimaryKeyToOrdinal.TryGetValue(pk.Key, out var ordinal))
+                            {
+                                throw new InvalidOperationException($"Primary key '{pk.Key}' not found in the primary key ordinals.");
+                            }
+                            command.Parameters.AddWithValue($"@pk{ordinal}", pk.Value);
                         }
 
                         var reader = await command.ExecuteReaderAsync(ctx.CancellationToken);
@@ -177,7 +183,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             bool IncludePkParameters,
             int BatchSize,
             string? Filter,
-            Dictionary<string, object> PrimaryKeyValues)
+            Dictionary<string, object> PrimaryKeyValues,
+            Dictionary<string, int> PrimaryKeyToOrdinal)
         {
 
         }

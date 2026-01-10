@@ -23,11 +23,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context = context;
         }
 
-        public abstract void Initialize(StreamStateValue previousState);
+        public abstract Task Initialize(StreamStateValue previousState);
 
         public abstract Task OnFailure();
 
         public abstract void EgressCheckpointDone(string name);
+
+        public abstract void EgressDependenciesDone(string name);
 
         public abstract Task TriggerCheckpoint(bool isScheduled = false);
 

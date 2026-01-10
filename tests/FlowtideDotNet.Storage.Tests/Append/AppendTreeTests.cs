@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = cachePageCount,
-                PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>(path, deleteOnClose))
+                PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>(path, deleteOnClose))
             }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
@@ -240,6 +240,23 @@ namespace FlowtideDotNet.Storage.Tests.Append
                 Assert.Equal(counter, kv.Value);
                 counter++;
             }
+        }
+
+        [Fact]
+        public async Task TestIteratorEmptyTree()
+        {
+            var tree = await CreateTree(2);
+
+            var iterator = tree.CreateIterator();
+            await iterator.Seek(0);
+
+            int counter = 0;
+            await foreach (var kv in iterator)
+            {
+                counter++;
+            }
+
+            Assert.Equal(0, counter);
         }
     }
 }

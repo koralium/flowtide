@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistent"
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentfail"
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Storage.Tests
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
@@ -201,6 +201,72 @@ namespace FlowtideDotNet.Storage.Tests
 
             Assert.Equal("hello", val);
             ;
+        }
+
+        [Fact]
+        public async Task TestRestoreTwoCheckpointsBack()
+        {
+            if (Directory.Exists("./data/tmp/persistentrestoretwo"))
+            {
+                Directory.Delete("./data/tmp/persistentrestoretwo", true);
+            }
+            var device = Devices.CreateLogDevice("./data/tmp/persistentrestoretwo");
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
+                    {
+                        LogDevice = device,
+                        CheckpointDir = "./data/tmp/persistentrestoretwo",
+                        RemoveOutdatedCheckpoints = false
+                    })
+                }, NullLogger.Instance, new Meter($"storage"), "storage");
+
+            await stateManager.InitializeAsync();
+            Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);
+
+            var nodeClient = stateManager.GetOrCreateClient("node1");
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+            {
+                BucketSize = 8,
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
+            });
+
+            await tree.Upsert(1, "hello");
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
+
+            await tree.Upsert(1, "helloOther");
+
+            var (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
+
+            // Restore to latest checkpoint
+            await stateManager.InitializeAsync();
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
+            (found, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            // Restore to the previous checkpoint
+            await stateManager.InitializeAsync(checkpointVersion: 1);
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
+
+            (found, val) = await tree.GetValue(1);
+
+            Assert.Equal("hello", val);
         }
     }
 }

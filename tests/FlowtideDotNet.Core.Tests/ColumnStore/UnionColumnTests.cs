@@ -868,5 +868,65 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(columnHash, valueHash);
         }
+
+        [Fact]
+        public void InsertRangeFromBasicNullInColumn()
+        {
+            Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3),
+                new StringValue("1a")
+            };
+
+            Column otherUnionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2"),
+                new StringValue("3"),
+                new StringValue("4"),
+                new NullValue()
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 2);
+
+            Assert.Equal(5, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            for (int i = 2; i <= 3; i++)
+            {
+                Assert.Equal(i.ToString(), unionColumn.GetValueAt(i - 1, default).AsString.ToString());
+            }
+            Assert.Equal(3, unionColumn.GetValueAt(3, default).AsDecimal);
+        }
+
+        [Fact]
+        public void InsertRangeFromBasicNullInRange()
+        {
+            Column unionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new Int64Value(1),
+                new DecimalValue(3)
+            };
+
+            Column otherUnionColumn = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("1"),
+                new StringValue("2"),
+                new NullValue(),
+                new NullValue(),
+                new StringValue("3"),
+                new StringValue("4"),
+            };
+
+            unionColumn.InsertRangeFrom(1, otherUnionColumn, 1, 4);
+
+            Assert.Equal(6, unionColumn.Count);
+            Assert.Equal(1, unionColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("2", unionColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.True(unionColumn.GetValueAt(2, default).IsNull);
+            Assert.True(unionColumn.GetValueAt(3, default).IsNull);
+            Assert.Equal("3", unionColumn.GetValueAt(4, default).AsString.ToString());
+            Assert.Equal(3, unionColumn.GetValueAt(5, default).AsDecimal);
+        }
     }
 }

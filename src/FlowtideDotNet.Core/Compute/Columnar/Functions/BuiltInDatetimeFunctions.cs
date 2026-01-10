@@ -18,7 +18,6 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Globalization;
 using System.Reflection;
-using static SqlParser.Ast.AlterRoleOperation;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -242,6 +241,83 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
                     return call;
                 });
+
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Datediff,
+                (function, parameterInfo, visitor, functionServices) =>
+                {
+                    if (function.Arguments.Count != 3)
+                    {
+                        throw new InvalidOperationException("datediff function must have three arguments");
+                    }
+
+                    var componentArg = function.Arguments[0];
+                    var startDateArg = function.Arguments[1];
+                    var endDateArg = function.Arguments[2];
+
+                    var startDateExpr = visitor.Visit(startDateArg, parameterInfo);
+
+                    if (startDateExpr == null)
+                    {
+                        throw new InvalidOperationException("StartDate argument could not be compiled for datediff");
+                    }
+
+                    var endDateExpr = visitor.Visit(endDateArg, parameterInfo);
+
+                    if (endDateExpr == null)
+                    {
+                        throw new InvalidOperationException("EndDate argument could not be compiled for datediff");
+                    }
+
+                    if (componentArg is StringLiteral stringLiteral)
+                    {
+                        // If the component is hard-coded we can directly find the correct function
+                        var component = stringLiteral.Value.ToUpper();
+
+                        switch (component)
+                        {
+                            case "YEAR":
+                                return CallDatediffFunction(nameof(TimestampDatediffYear), startDateExpr, endDateExpr);
+                            case "QUARTER":
+                                return CallDatediffFunction(nameof(TimestampDatediffQuarter), startDateExpr, endDateExpr);
+                            case "MONTH":
+                                return CallDatediffFunction(nameof(TimestampDatediffMonth), startDateExpr, endDateExpr);
+                            case "DAYOFYEAR":
+                            case "DAY":
+                            case "WEEKDAY":
+                                return CallDatediffFunction(nameof(TimestampDatediffDays), startDateExpr, endDateExpr);
+                            case "WEEK":
+                                return CallDatediffFunction(nameof(TimestampDatediffWeek), startDateExpr, endDateExpr);
+                            case "HOUR":
+                                return CallDatediffFunction(nameof(TimestampDatediffHours), startDateExpr, endDateExpr);
+                            case "MINUTE":
+                                return CallDatediffFunction(nameof(TimestampDatediffMinute), startDateExpr, endDateExpr);
+                            case "SECOND":
+                                return CallDatediffFunction(nameof(TimestampDatediffSecond), startDateExpr, endDateExpr);
+                            case "MILLISECOND":
+                                return CallDatediffFunction(nameof(TimestampDatediffMillisecond), startDateExpr, endDateExpr);
+                            case "MICROSECOND":
+                                return CallDatediffFunction(nameof(TimestampDatediffMicrosecond), startDateExpr, endDateExpr);
+                            default:
+                                throw new InvalidOperationException($"Unknown component {component} for datediff function");
+                        }
+                    }
+
+                    var method = typeof(BuiltInDatetimeFunctions).GetMethod(nameof(TimestampDatediff), BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+                    var componentExpr = visitor.Visit(componentArg, parameterInfo);
+
+                    var genericMethod = method!.MakeGenericMethod(componentExpr!.Type, startDateExpr.Type, endDateExpr.Type);
+
+                    System.Linq.Expressions.Expression[] parameters =
+                    [
+                        componentExpr,
+                        startDateExpr,
+                        endDateExpr,
+                        System.Linq.Expressions.Expression.Constant(new DataValueContainer()),
+                    ];
+                    var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+                    return call;
+                });
         }
 
         private static System.Linq.Expressions.Expression CallExtractFunction(string methodName, System.Linq.Expressions.Expression valueExpr)
@@ -256,6 +332,23 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             var genericMethod = method!.MakeGenericMethod(valueExpr.Type);
 
             System.Linq.Expressions.Expression[] parameters = [valueExpr, System.Linq.Expressions.Expression.Constant(new DataValueContainer())];
+
+            var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
+            return call;
+        }
+
+        private static System.Linq.Expressions.Expression CallDatediffFunction(string methodName, System.Linq.Expressions.Expression startDateExpr, System.Linq.Expressions.Expression endDateExpr)
+        {
+            var method = typeof(BuiltInDatetimeFunctions).GetMethod(methodName, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException($"Method {methodName} not found");
+            }
+
+            var genericMethod = method.MakeGenericMethod(startDateExpr.Type, endDateExpr.Type);
+
+            System.Linq.Expressions.Expression[] parameters = [startDateExpr, endDateExpr, System.Linq.Expressions.Expression.Constant(new DataValueContainer())];
 
             var call = System.Linq.Expressions.Expression.Call(genericMethod, parameters);
             return call;
@@ -1106,6 +1199,287 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             var newDate = dt.AddMicroseconds(amountValue);
             result._type = ArrowTypeId.Timestamp;
             result._timestampValue = new TimestampTzValue(newDate);
+            return result;
+        }
+
+        private static bool TryGetDates<T1, T2>(
+            T1 x,
+            T2 y,
+            out DateTimeOffset xval,
+            out DateTimeOffset yval)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (x.Type != ArrowTypeId.Timestamp)
+            {
+                xval = default;
+                yval = default;
+                return false;
+            }
+
+            if (y.Type != ArrowTypeId.Timestamp)
+            {
+                xval = default;
+                yval = default;
+                return false;
+            }
+
+            xval = x.AsTimestamp.ToDateTimeOffset();
+            yval = y.AsTimestamp.ToDateTimeOffset();
+            return true;
+        }
+
+        internal static IDataValue TimestampDatediff<T1, T2, T3>(T1 component, T2 x, T3 y, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+        {
+            if (component.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (x.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (y.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var componentStr = component.AsString;
+
+            if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("YEAR"u8) == 0)
+            {
+                return TimestampDatediffYear(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("QUARTER"u8) == 0)
+            {
+                return TimestampDatediffQuarter(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MONTH"u8) == 0)
+            {
+                return TimestampDatediffMonth(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("DAYOFYEAR"u8) == 0)
+            {
+                return TimestampDatediffDays(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("DAY"u8) == 0)
+            {
+                return TimestampDatediffDays(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("WEEK"u8) == 0)
+            {
+                return TimestampDatediffWeek(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("WEEKDAY"u8) == 0)
+            {
+                return TimestampDatediffDays(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("HOUR"u8) == 0)
+            {
+                return TimestampDatediffHours(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MINUTE"u8) == 0)
+            {
+                return TimestampDatediffMinute(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("SECOND"u8) == 0)
+            {
+                return TimestampDatediffSecond(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MILLISECOND"u8) == 0)
+            {
+                return TimestampDatediffMillisecond(x, y, result);
+            }
+            else if (componentStr.Span.CompareToOrdinalIgnoreCaseUtf8("MICROSECOND"u8) == 0)
+            {
+                return TimestampDatediffMicrosecond(x, y, result);
+            }
+
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffYear<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var yearDiff = endDate.Year - startDate.Year;
+
+            result._int64Value = new Int64Value(yearDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffQuarter<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var endQuarter = (endDate.Month - 1) / 3;
+            var startQuarter = (startDate.Month - 1) / 3;
+
+            var quarterDiff = (endDate.Year - startDate.Year) * 4 + (endQuarter - startQuarter);
+
+            result._int64Value = new Int64Value(quarterDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffMonth<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var quarterDiff = (endDate.Year - startDate.Year) * 12 + (endDate.Month - startDate.Month);
+
+            result._int64Value = new Int64Value(quarterDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffDays<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var dayDiff = (long)(endDate.Date - startDate.Date).TotalDays;
+
+            result._int64Value = new Int64Value(dayDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffWeek<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            static long WeekIndex(DateTimeOffset d)
+            {
+                DateTimeOffset sundayStart = d.AddDays(-(int)d.DayOfWeek);
+                return (long)(sundayStart.Date.Subtract(DateTime.MinValue)).TotalDays / 7;
+            }
+            long weekDiff = WeekIndex(endDate) - WeekIndex(startDate);
+
+            result._int64Value = new Int64Value(weekDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffHours<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var hourDiff = (endDate.Ticks / TimeSpan.TicksPerHour) - (startDate.Ticks / TimeSpan.TicksPerHour);
+
+            result._int64Value = new Int64Value(hourDiff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffMinute<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var diff = ((endDate.Ticks / TimeSpan.TicksPerMinute) - (startDate.Ticks / TimeSpan.TicksPerMinute));
+
+            result._int64Value = new Int64Value(diff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffSecond<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var diff = ((endDate.Ticks / TimeSpan.TicksPerSecond) - (startDate.Ticks / TimeSpan.TicksPerSecond));
+
+            result._int64Value = new Int64Value(diff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffMillisecond<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var diff = ((endDate.Ticks / TimeSpan.TicksPerMillisecond) - (startDate.Ticks / TimeSpan.TicksPerMillisecond));
+
+            result._int64Value = new Int64Value(diff);
+            result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampDatediffMicrosecond<T1, T2>(T1 start, T2 end, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (!TryGetDates(start, end, out var startDate, out var endDate))
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var diff = ((endDate.Ticks / TimeSpan.TicksPerMicrosecond) - (startDate.Ticks / TimeSpan.TicksPerMicrosecond));
+
+            result._int64Value = new Int64Value(diff);
+            result._type = ArrowTypeId.Int64;
             return result;
         }
     }

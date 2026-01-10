@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.Utils;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -429,7 +430,7 @@ namespace FlowtideDotNet.Storage.FileCache
             where T : ICacheObject
         {
             var memory = ReadSync(pageKey);
-            return ValueTask.FromResult(serializer.Deserialize(memory, memory.Length));
+            return ValueTask.FromResult(serializer.Deserialize(new ReadOnlySequence<byte>(memory), memory.Length));
         }
 
         public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey)

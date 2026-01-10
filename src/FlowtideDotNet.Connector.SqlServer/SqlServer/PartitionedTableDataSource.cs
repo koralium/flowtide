@@ -39,6 +39,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             Debug.Assert(ConvertFunctions != null);
             Debug.Assert(State != null);
             Debug.Assert(State.Value != null);
+            Debug.Assert(PrimaryKeyToOrdinal != null);
 
             var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
             InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns);
@@ -99,7 +100,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                         batchSize,
                         Filter,
                         primaryKeyValues,
-                        partitionId);
+                        partitionId,
+                        PrimaryKeyToOrdinal);
 
                     var pipelineResult = await Options.ResiliencePipeline.ExecuteOutcomeAsync(static async (ctx, state) =>
                     {
@@ -118,7 +120,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
                             foreach (var pk in state.PrimaryKeyValues)
                             {
-                                command.Parameters.AddWithValue($"@{pk.Key}", pk.Value);
+                                if (!state.PrimaryKeyToOrdinal.TryGetValue(pk.Key, out var ordinal))
+                                {
+                                    throw new InvalidOperationException($"Primary key '{pk.Key}' not found in the primary key ordinals.");
+                                }
+                                command.Parameters.AddWithValue($"@pk{ordinal}", pk.Value);
                             }
 
                             var reader = await command.ExecuteReaderAsync(ctx.CancellationToken);
@@ -203,7 +209,8 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             int BatchSize,
             string? Filter,
             Dictionary<string, object> PrimaryKeyValues,
-            int partitionId)
+            int partitionId,
+            Dictionary<string, int> PrimaryKeyToOrdinal)
         {
 
         }

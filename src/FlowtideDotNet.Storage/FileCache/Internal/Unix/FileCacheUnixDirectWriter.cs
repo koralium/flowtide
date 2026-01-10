@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -187,7 +188,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             {
                 ReadIntoAlignedBuffer_NoLock(position, length);
 
-                return serializer.Deserialize(alignedBuffer.Memory, length);
+                return serializer.Deserialize(new ReadOnlySequence<byte>(alignedBuffer.Memory), length);
             }
             throw new NotImplementedException();
         }

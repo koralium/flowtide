@@ -18,6 +18,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner.Models
 
         public required string Relation { get; set; }
 
+        public string LoopId => $"{Type}_{Relation}";
+
         public override T Accept<T, TState>(ZanzibarVisitor<T, TState> visitor, TState state)
         {
             return visitor.VisitZanzibarReadLoop(this, state);

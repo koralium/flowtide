@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         /// Tree used to store the existing data in the destination, it will be used to compare the existing data with the new data and create delete operations
         /// for those keys that does not exist in the new data.
         /// </summary>
-        private IBPlusTree<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>? m_existingData;
+        private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>? m_existingData;
         private bool m_hasModified;
         private Watermark? m_latestWatermark;
         private WriteTreeSearchComparer? m_writeTreeSearchComparer;
@@ -64,6 +64,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         protected virtual bool FetchExistingData => false;
 
         public IReadOnlyList<int> PrimaryKeyColumns => m_primaryKeyColumns ?? throw new InvalidOperationException("Must be called after initialize and restore");
+
+        protected ExistingRowComparer ExistingRowComparer => m_existingRowComparer ?? throw new InvalidOperationException("ExistingRowComparer not yet initialized");
 
         public override Task Compact()
         {
@@ -113,14 +115,13 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
             if (FetchExistingData && !m_hasSentInitialData.Value)
             {
-                var primaryKeySelectorList = m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList();
-                m_existingRowComparer = new ExistingRowComparer(primaryKeySelectorList, primaryKeySelectorList);
+                m_existingRowComparer = new ExistingRowComparer(m_writeRelation.OutputLength);
                 m_existingData = await stateManagerClient.GetOrCreateTree("existing",
-                new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
+                new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>()
                 {
-                    Comparer = new ModifiedTreeComparer(m_primaryKeyColumns.ToList()),
+                    Comparer = new WriteTreeInsertComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(m_primaryKeyColumns.ToList(), MemoryAllocator),
+                    KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
@@ -138,6 +139,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 {
                     await m_existingData.Upsert(new ColumnRowReference() { referenceBatch = batch, RowIndex = i }, 1);
                 }
+                batch.Dispose();
             }
         }
 
@@ -161,6 +163,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 await SendData();
             }
+            if (!m_hasSentInitialData.Value)
+            {
+                await OnInitialDataSent();
+                m_hasSentInitialData.Value = true;
+            }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
             await m_tree.Commit();
@@ -176,54 +183,54 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_primaryKeyColumns != null);
             Debug.Assert(m_hasSentInitialData != null);
 
-            using var modifiedIterator = m_modified.CreateIterator();
-            await modifiedIterator.SeekFirst();
-            using var treeIterator = m_tree.CreateIterator();
-
-            await foreach (var page in modifiedIterator)
-            {
-                int pageCount = page.Keys._data.Count;
-
-                for (int i = 0; i < pageCount; i++)
-                {
-                    // Search up the existing row for the changed primary key
-                    await treeIterator.Seek(new ColumnRowReference() { referenceBatch = page.Keys._data, RowIndex = i }, m_writeTreeSearchComparer);
-
-                    // Check that a match was made
-                    if (!m_writeTreeSearchComparer.noMatch)
-                    {
-                        var enumerator = treeIterator.GetAsyncEnumerator();
-                        await enumerator.MoveNextAsync();
-                        var existingpage = enumerator.Current;
-                        yield return new ColumnWriteOperation()
-                        {
-                            EventBatchData = existingpage.Keys._data,
-                            Index = m_writeTreeSearchComparer.start,
-                            IsDeleted = false
-                        };
-                    }
-                    else
-                    {
-                        for (int k = 0; k < m_primaryKeyColumns.Count; k++)
-                        {
-                            _deleteBatchColumns[m_primaryKeyColumns[k]] = page.Keys._data.Columns[k];
-                        }
-                        yield return new ColumnWriteOperation()
-                        {
-                            EventBatchData = _deleteEventBatch,
-                            Index = i,
-                            IsDeleted = true
-                        };
-                    }
-                }
-            }
-
             if (!m_hasSentInitialData.Value &&
                 FetchExistingData)
             {
-                await foreach (var row in DeleteExistingData())
+                await foreach (var row in CalculateDeltaWithExistingData())
                 {
                     yield return row;
+                }
+            }
+            else
+            {
+                using var modifiedIterator = m_modified.CreateIterator();
+                await modifiedIterator.SeekFirst();
+                using var treeIterator = m_tree.CreateIterator();
+
+                await foreach (var page in modifiedIterator)
+                {
+                    int pageCount = page.Keys._data.Count;
+
+                    for (int i = 0; i < pageCount; i++)
+                    {
+                        // Search up the existing row for the changed primary key
+                        await treeIterator.Seek(new ColumnRowReference() { referenceBatch = page.Keys._data, RowIndex = i }, m_writeTreeSearchComparer);
+
+                        // Check that a match was made
+                        if (!m_writeTreeSearchComparer.noMatch)
+                        {
+                            yield return new ColumnWriteOperation()
+                            {
+                                // This is never null if there is a match
+                                EventBatchData = m_writeTreeSearchComparer.CurrentContainer!._data,
+                                Index = m_writeTreeSearchComparer.start,
+                                IsDeleted = false
+                            };
+                        }
+                        else
+                        {
+                            for (int k = 0; k < m_primaryKeyColumns.Count; k++)
+                            {
+                                _deleteBatchColumns[m_primaryKeyColumns[k]] = page.Keys._data.Columns[k];
+                            }
+                            yield return new ColumnWriteOperation()
+                            {
+                                EventBatchData = _deleteEventBatch,
+                                Index = i,
+                                IsDeleted = true
+                            };
+                        }
+                    }
                 }
             }
         }
@@ -239,15 +246,31 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             }
         }
 
-        private async IAsyncEnumerable<ColumnWriteOperation> DeleteExistingData()
+        private static async IAsyncEnumerable<ColumnRowReference> IteratePerRow(IBPlusTreeIterator<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>> iterator)
+        {
+            await foreach (var page in iterator)
+            {
+                foreach (var kv in page)
+                {
+                    yield return kv.Key;
+                }
+            }
+        }
+
+        private async IAsyncEnumerable<ColumnWriteOperation> CalculateDeltaWithExistingData()
         {
             Debug.Assert(m_modified != null);
             Debug.Assert(m_existingData != null);
             Debug.Assert(m_existingRowComparer != null);
             Debug.Assert(m_primaryKeyColumns != null);
+            Debug.Assert(m_tree != null);
+            Debug.Assert(m_writeTreeSearchComparer != null);
+
+            var primaryKeyComparer = new ModifiedKeyExistingComparer(m_primaryKeyColumns);
 
             using var treeIterator = m_modified.CreateIterator();
             using var existingIterator = m_existingData.CreateIterator();
+            using var actualDataIterator = m_tree.CreateIterator();
 
             await treeIterator.SeekFirst();
             await existingIterator.SeekFirst();
@@ -256,27 +279,45 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             var persistentEnumerator = IteratePerRow(existingIterator).GetAsyncEnumerator();
 
             var hasNew = await tmpEnumerator.MoveNextAsync();
+            if (hasNew)
+            {
+                await actualDataIterator.Seek(new ColumnRowReference() { referenceBatch = tmpEnumerator.Current.referenceBatch, RowIndex = tmpEnumerator.Current.RowIndex }, m_writeTreeSearchComparer);
+            }
+            
             var hasOld = await persistentEnumerator.MoveNextAsync();
 
-            // Go through both trees and find deletions
+            // Calculate delta between modified and existing data (insertions, updates, deletions)
             while (hasNew || hasOld)
             {
-                int comparison = hasNew && hasOld ? m_existingRowComparer.CompareTo(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
+                int comparison = hasNew && hasOld ? primaryKeyComparer.CompareTo(tmpEnumerator.Current, persistentEnumerator.Current) : 0;
 
                 // If there is no more old data, then we are done
-                if (!hasOld)
+                if ((!hasOld) || (hasNew && comparison < 0))
                 {
-                    break;
-                }
-                if (hasNew && comparison < 0)
-                {
+
+                    // Check that a match was made
+                    if (!m_writeTreeSearchComparer.noMatch)
+                    {
+                        yield return new ColumnWriteOperation()
+                        {
+                            // This is never null if there is a match
+                            EventBatchData = m_writeTreeSearchComparer.CurrentContainer!.Data,
+                            Index = m_writeTreeSearchComparer.start,
+                            IsDeleted = false
+                        };
+                    }
+                    // If no match was found, the row was modified but then deleted in a later event, so it does no longer exist
                     hasNew = await tmpEnumerator.MoveNextAsync();
+                    if (hasNew)
+                    {
+                        await actualDataIterator.Seek(new ColumnRowReference() { referenceBatch = tmpEnumerator.Current.referenceBatch, RowIndex = tmpEnumerator.Current.RowIndex }, m_writeTreeSearchComparer);
+                    }
                 }
                 else if (!hasNew || comparison > 0)
                 {
                     for (int i = 0; i < m_primaryKeyColumns.Count; i++)
                     {
-                        _deleteBatchColumns[m_primaryKeyColumns[i]] = persistentEnumerator.Current.referenceBatch.Columns[i];
+                        _deleteBatchColumns[m_primaryKeyColumns[i]] = persistentEnumerator.Current.referenceBatch.Columns[m_primaryKeyColumns[i]];
                     }
                     yield return new ColumnWriteOperation()
                     {
@@ -288,8 +329,37 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 }
                 else
                 {
+                    if (!m_writeTreeSearchComparer.noMatch)
+                    {
+                        comparison = m_existingRowComparer.CompareTo(
+                            new ColumnRowReference()
+                            {
+                                // This is never null if there is a match
+                                referenceBatch = m_writeTreeSearchComparer.CurrentContainer!.Data,
+                                RowIndex = m_writeTreeSearchComparer.start
+                            },
+                            persistentEnumerator.Current);
+
+                        if (comparison != 0)
+                        {
+                            yield return new ColumnWriteOperation()
+                            {
+                                // This is never null if there is a match
+                                EventBatchData = m_writeTreeSearchComparer.CurrentContainer!.Data,
+                                Index = m_writeTreeSearchComparer.start,
+                                IsDeleted = false
+                            };
+                        }
+                    }
+
                     hasNew = await tmpEnumerator.MoveNextAsync();
                     hasOld = await persistentEnumerator.MoveNextAsync();
+                    
+
+                    if (hasNew)
+                    {
+                        await actualDataIterator.Seek(new ColumnRowReference() { referenceBatch = tmpEnumerator.Current.referenceBatch, RowIndex = tmpEnumerator.Current.RowIndex }, m_writeTreeSearchComparer);
+                    }
                 }
             }
             await m_existingData.Clear();
@@ -298,6 +368,16 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         protected virtual IAsyncEnumerable<EventBatchData> GetExistingData()
         {
             return new EmptyAsyncEnumerable<EventBatchData>();
+        }
+
+        protected ValueTask<(bool found, ColumnRowReference key)> GetExistingDataRow(ColumnRowReference e)
+        {
+            Debug.Assert(m_hasSentInitialData != null);
+            if (m_existingData != null && !m_hasSentInitialData.Value && FetchExistingData)
+            {
+                return m_existingData.GetKey(e);
+            }
+            return ValueTask.FromResult((false, default(ColumnRowReference)));
         }
 
         private async Task SendData()
@@ -311,11 +391,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 await UploadChanges(changedRows, m_latestWatermark, !m_hasSentInitialData.Value, CancellationToken);
                 await m_modified.Clear();
                 m_hasModified = false;
-            }
-            if (m_hasSentInitialData.Value == false)
-            {
-                await OnInitialDataSent();
-                m_hasSentInitialData.Value = true;
             }
         }
 

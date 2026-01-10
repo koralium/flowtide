@@ -246,5 +246,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
             );
         }
+
+        [Fact]
+        public async Task Datediff()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                datediff('DAY', CAST('2017-01-01' AS TIMESTAMP), Orderdate) as days
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    days = (long)o.Orderdate.Date.Subtract(DateTime.Parse("2017-01-01")).TotalDays
+                })
+            );
+        }
     }
 }

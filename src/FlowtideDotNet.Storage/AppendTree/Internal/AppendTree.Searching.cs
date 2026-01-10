@@ -28,6 +28,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         internal ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>> FindLeafNode(in K key, in IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
             Debug.Assert(m_rightNode != null);
+            if (m_stateClient.Metadata!.Root == m_rightNode.Id && m_rightNode.keys.Count == 0)
+            {
+                // If the tree is empty, return the right node which is the root
+                return new ValueTask<LeafNode<K, V, TKeyContainer, TValueContainer>>(m_rightNode);
+            }
             // Check if the most right node contains the data, if so no need to search the tree
             if (searchComparer.CompareTo(m_rightNode.keys.Get(0), key) <= 0)
             {

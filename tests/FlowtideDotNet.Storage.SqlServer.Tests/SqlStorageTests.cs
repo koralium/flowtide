@@ -286,7 +286,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await storage.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
             await storage.CheckpointAsync([], false);
 
-            await storage.CompactAsync();
+            await storage.CompactAsync(0, 0);
 
             var hasPage = storage.TryGetValue(pageId, out var page);
 

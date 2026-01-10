@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Core.Engine
         private TaskScheduler? _taskScheduler;
         private bool _useColumnStore = true;
         private string _version = "";
-        private bool _useHashPlanAsVersion = false;
+        private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckFailureRegistered = false;
 
         public FlowtideBuilder(string streamName)
@@ -204,9 +205,9 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder SetHashPlanAsVersion()
+        public FlowtideBuilder SetVersionParts(IEnumerable<(string?, bool?)> versionParts)
         {
-            _useHashPlanAsVersion = true;
+            _versionParts = [.. versionParts];
             return this;
         }
 
@@ -245,7 +246,7 @@ namespace FlowtideDotNet.Core.Engine
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
-                return Convert.ToBase64String(hashBytes);
+                return Base62.Encode(hashBytes);
             }
         }
 
@@ -262,9 +263,30 @@ namespace FlowtideDotNet.Core.Engine
 
             var hash = ComputePlanHash();
 
-            if (_useHashPlanAsVersion)
+            if (_versionParts?.Count > 0)
             {
-                SetVersion(hash);
+                StringBuilder sb = new();
+                foreach (var (stringVersion, addHashVersion) in _versionParts)
+                {
+                    string? part = null;
+                    if (!string.IsNullOrEmpty(stringVersion))
+                    {
+                        part = stringVersion;
+                    }
+                    else if (addHashVersion ?? false)
+                    {
+                        part = hash;
+                    }
+
+                    if (sb.Length > 0)
+                    {
+                        sb.Append('-');
+                    }
+
+                    sb.Append(part);
+                }
+
+                SetVersion(sb.ToString());
             }
 
             dataflowStreamBuilder.SetVersionInformation(hash, _version);

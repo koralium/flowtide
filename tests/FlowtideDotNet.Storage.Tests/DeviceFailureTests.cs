@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Storage.Tests
             var manager = new StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = new WriteFailureDevice(),
                         MemorySize = 128,
@@ -292,7 +292,7 @@ namespace FlowtideDotNet.Storage.Tests
             var manager = new StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
                     {
                         LogDevice = device,
                         MemorySize = 512,

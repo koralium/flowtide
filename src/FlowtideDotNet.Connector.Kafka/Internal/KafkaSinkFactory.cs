@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new KafkaSink(writeRelation, options, executionMode, dataflowBlockOptions);
+            return new KafkaSink(options, executionMode, writeRelation, dataflowBlockOptions);
         }
     }
 }

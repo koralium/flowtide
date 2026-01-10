@@ -98,9 +98,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        public IBPlusTreeNode Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        public IBPlusTreeNode Deserialize(ReadOnlySequence<byte> bytes, int length)
         {
-            var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
+            var sequenceReader = new SequenceReader<byte>(bytes);
             if (!sequenceReader.TryRead(out byte typeId))
             {
                 throw new Exception("Could not read typeId");
@@ -171,7 +171,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             throw new NotImplementedException();
         }
 
-        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
         {
             return Deserialize(bytes, length);
         }

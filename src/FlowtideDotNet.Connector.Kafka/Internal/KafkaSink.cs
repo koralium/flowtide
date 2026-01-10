@@ -12,31 +12,36 @@
 
 using Confluent.Kafka;
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Core.Operators.Write.Column;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.Kafka.Internal
 {
-    internal class KafkaSink : SimpleGroupedWriteOperator
+    internal class KafkaSink : ColumnGroupedWriteOperator
     {
+        private readonly FlowtideKafkaSinkOptions _flowtideKafkaSinkOptions;
         private readonly WriteRelation _writeRelation;
-        private readonly FlowtideKafkaSinkOptions flowtideKafkaSinkOptions;
         private IProducer<byte[], byte[]?>? _producer;
         private readonly IReadOnlyList<int> _primaryKeys;
         private readonly int _primaryKeyIndex;
         private readonly string topicName;
 
-        public KafkaSink(WriteRelation writeRelation, FlowtideKafkaSinkOptions flowtideKafkaSinkOptions, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
+        public KafkaSink(FlowtideKafkaSinkOptions flowtideKafkaSinkOptions, ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, writeRelation, executionDataflowBlockOptions)
         {
+            this._flowtideKafkaSinkOptions = flowtideKafkaSinkOptions;
+            this._writeRelation = writeRelation;
             if ((flowtideKafkaSinkOptions.FetchExistingKeyDeserializer != null ||
-                flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null ||
-                flowtideKafkaSinkOptions.FetchExistingConfig != null) &&
-                (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null ||
-                flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null ||
-                flowtideKafkaSinkOptions.FetchExistingConfig == null))
+               flowtideKafkaSinkOptions.FetchExistingValueDeserializer != null ||
+               flowtideKafkaSinkOptions.FetchExistingConfig != null) &&
+               (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null ||
+               flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null ||
+               flowtideKafkaSinkOptions.FetchExistingConfig == null))
             {
                 throw new InvalidOperationException("FetchExistingConfig, FetchExistingKeyDeserializer and FetchExistingValueDeserializer must be set or all must be null");
             }
@@ -57,69 +62,47 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             _primaryKeys = new List<int>() { keyIndex };
             _primaryKeyIndex = keyIndex;
             _writeRelation = writeRelation;
-            this.flowtideKafkaSinkOptions = flowtideKafkaSinkOptions;
         }
 
         public override string DisplayName => "Kafka Sink";
 
-        protected override async Task<MetadataResult> SetupAndLoadMetadataAsync()
+        protected override void Checkpoint(long checkpointTime)
         {
-            await flowtideKafkaSinkOptions.ValueSerializer.Initialize(_writeRelation);
-            _producer = new ProducerBuilder<byte[], byte[]?>(flowtideKafkaSinkOptions.ProducerConfig).Build();
-
-            if (flowtideKafkaSinkOptions.FetchExistingConfig != null)
-            {
-                if (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
-                {
-                    throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
-                }
-                var readRel = new ReadRelation()
-                {
-                    BaseSchema = _writeRelation.TableSchema,
-                    NamedTable = _writeRelation.NamedObject
-                };
-                await flowtideKafkaSinkOptions.FetchExistingValueDeserializer.Initialize(readRel);
-            }
-
-            return new MetadataResult(_primaryKeys);
+            // No checkpointing required for KafkaSink as it does not maintain operator state.
         }
 
-        protected override async Task OnInitialDataSent()
-        {
-            Debug.Assert(_producer != null);
-            if (flowtideKafkaSinkOptions.OnInitialDataSent != null)
-            {
-                await flowtideKafkaSinkOptions.OnInitialDataSent(_producer, _writeRelation, topicName);
-            }
-        }
+        protected override bool FetchExistingData => _flowtideKafkaSinkOptions.FetchExistingConfig != null;
 
-        protected override bool FetchExistingData => flowtideKafkaSinkOptions.FetchExistingConfig != null;
-
-        protected override IAsyncEnumerable<RowEvent> GetExistingData()
+        protected override IAsyncEnumerable<EventBatchData> GetExistingData()
         {
-            if (flowtideKafkaSinkOptions.FetchExistingConfig == null)
+            if (_flowtideKafkaSinkOptions.FetchExistingConfig == null)
             {
                 throw new InvalidOperationException("FetchExistingConfig must be set for the kafka sink");
             }
-            if (flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
+            if (_flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
             {
                 throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
             }
-            if (flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null)
+            if (_flowtideKafkaSinkOptions.FetchExistingKeyDeserializer == null)
             {
                 throw new InvalidOperationException("FetchExistingKeyDeserializer must be set for the kafka sink");
             }
 
             var client = new KafkaReadClient(
-                flowtideKafkaSinkOptions.FetchExistingConfig,
+                _flowtideKafkaSinkOptions.FetchExistingConfig,
                 topicName,
-                flowtideKafkaSinkOptions.FetchExistingValueDeserializer,
-                flowtideKafkaSinkOptions.FetchExistingKeyDeserializer);
+                _flowtideKafkaSinkOptions.FetchExistingValueDeserializer,
+                _flowtideKafkaSinkOptions.FetchExistingKeyDeserializer);
 
-            return client.ReadInitial().ToAsyncEnumerable();
+            return client.ReadInitial(_writeRelation.TableSchema.Names.Count, MemoryAllocator).ToAsyncEnumerable();
         }
 
-        protected override async Task UploadChanges(IAsyncEnumerable<SimpleChangeEvent> rows, Watermark watermark, CancellationToken cancellationToken)
+        protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns()
+        {
+            return ValueTask.FromResult(_primaryKeys);
+        }
+
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(_producer != null);
             var errorsReceived = 0;
@@ -133,22 +116,24 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                     Interlocked.Increment(ref errorsReceived);
                 }
             }
-
             List<KeyValuePair<byte[], byte[]?>> output = new List<KeyValuePair<byte[], byte[]?>>();
             await foreach (var row in rows)
             {
+                var rowReference = new ColumnRowReference() { referenceBatch = row.EventBatchData, RowIndex = row.Index };
+
                 if (FetchExistingData && !row.IsDeleted)
                 {
                     // Compare against existing
-                    var (exist, existingVal) = await GetExistingDataRow(row.Row);
+                    var (exist, existingVal) = await GetExistingDataRow(rowReference);
                     // Check if the rows completely match, then do nothing since the data is already in the stream
-                    if (exist && RowEvent.Compare(existingVal, row.Row) == 0)
+                    
+                    if (exist && ExistingRowComparer.CompareTo(existingVal, rowReference) == 0)
                     {
                         continue;
                     }
                 }
-                var key = flowtideKafkaSinkOptions.KeySerializer.Serialize(row.Row.GetColumn(_primaryKeyIndex));
-                var val = flowtideKafkaSinkOptions.ValueSerializer.Serialize(row.Row, row.IsDeleted);
+                var key = _flowtideKafkaSinkOptions.KeySerializer.Serialize(row.EventBatchData.Columns[_primaryKeyIndex].GetValueAt(row.Index, default));
+                var val = _flowtideKafkaSinkOptions.ValueSerializer.Serialize(rowReference, row.IsDeleted);
 
                 if (Volatile.Read(ref errorsReceived) > 0)
                 {
@@ -159,9 +144,9 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
                 if (output.Count > 100)
                 {
-                    if (flowtideKafkaSinkOptions.EventProcessor != null)
+                    if (_flowtideKafkaSinkOptions.EventProcessor != null)
                     {
-                        await flowtideKafkaSinkOptions.EventProcessor(output);
+                        await _flowtideKafkaSinkOptions.EventProcessor(output);
                     }
                     foreach (var kvp in output)
                     {
@@ -177,9 +162,9 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
             if (output.Count > 0)
             {
-                if (flowtideKafkaSinkOptions.EventProcessor != null)
+                if (_flowtideKafkaSinkOptions.EventProcessor != null)
                 {
-                    await flowtideKafkaSinkOptions.EventProcessor(output);
+                    await _flowtideKafkaSinkOptions.EventProcessor(output);
                 }
                 foreach (var kvp in output)
                 {
@@ -203,5 +188,28 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 queue = _producer.Flush(TimeSpan.FromSeconds(10));
             } while (queue > 0);
         }
+
+        protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
+        {
+            await _flowtideKafkaSinkOptions.ValueSerializer.Initialize(_writeRelation);
+            _producer = new ProducerBuilder<byte[], byte[]?>(_flowtideKafkaSinkOptions.ProducerConfig).Build();
+
+            if (_flowtideKafkaSinkOptions.FetchExistingConfig != null)
+            {
+                if (_flowtideKafkaSinkOptions.FetchExistingValueDeserializer == null)
+                {
+                    throw new InvalidOperationException("FetchExistingValueDeserializer must be set for the kafka sink");
+                }
+                var readRel = new ReadRelation()
+                {
+                    BaseSchema = _writeRelation.TableSchema,
+                    NamedTable = _writeRelation.NamedObject
+                };
+                await _flowtideKafkaSinkOptions.FetchExistingValueDeserializer.Initialize(readRel);
+            }
+
+            await base.InitializeOrRestore(restoreTime, stateManagerClient);
+        }
+
     }
 }

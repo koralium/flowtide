@@ -16,7 +16,6 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
-using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
 using static SqlParser.Ast.WindowType;
@@ -278,7 +277,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsString.Upper,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
-                        expr.Type
+                        new StringType() { Nullable = true }
                         );
                 }
                 else
@@ -833,7 +832,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
                             Arguments = new List<Expressions.Expression>()
                         },
-                        new StringType() { Nullable = true }
+                        new Int64Type() { Nullable = true }
                         );
             });
 
@@ -1195,6 +1194,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
 
             RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "datediff", FunctionsDatetime.Uri, FunctionsDatetime.Datediff, (p1, p2, p3) => new Int64Type());
+
+            // Hash functions
+            sqlFunctionRegister.RegisterScalarFunction("xxhash128_guid_string", (sqlFunc, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(sqlFunc.Args);
+
+                if (argList.Args == null || argList.Args.Count < 1)
+                {
+                    throw new SubstraitParseException("xxhash128_guid_string requires at least one argument");
+                }
+
+                List<Expressions.Expression> argumentList = new List<Expressions.Expression>();
+                for (int i = 0; i < argList.Args.Count; i++)
+                {
+                    if (argList.Args[i] is FunctionArg.Unnamed unnamedTag && unnamedTag.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedExpr)
+                    {
+                        var expr = visitor.Visit(unnamedExpr.Expression, emitData);
+                        argumentList.Add(expr.Expr);
+                    }
+                    else
+                    {
+                        throw new SubstraitParseException($"xxhash128_guid_string value arguments cannot be '*'");
+                    }
+                }
+
+                return new ScalarResponse(new ScalarFunction()
+                {
+                    Arguments = argumentList,
+                    ExtensionName = FunctionsHash.XxHash128GuidString,
+                    ExtensionUri = FunctionsHash.Uri
+                }, new StringType());
+            });
         }
 
         private static void RegisterSingleVariableAggregateFunction(

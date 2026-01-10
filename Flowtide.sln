@@ -121,7 +121,11 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.TPCDI.Aspire
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant", "src\FlowtideDotNet.Connector.Qdrant\FlowtideDotNet.Connector.Qdrant.csproj", "{1E365C19-368D-46B4-8F62-10746EA785CC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FlowtideDotNet.Connector.Qdrant.Tests", "tests\FlowtideDotNet.Connector.Qdrant.Tests\FlowtideDotNet.Connector.Qdrant.Tests.csproj", "{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.Qdrant.Tests", "tests\FlowtideDotNet.Connector.Qdrant.Tests\FlowtideDotNet.Connector.Qdrant.Tests.csproj", "{20501E8B-8645-4F64-BBF0-D21AC8C7D35C}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.StarRocks", "src\FlowtideDotNet.Connector.Starrocks\FlowtideDotNet.Connector.StarRocks.csproj", "{3EDF1DD3-6057-2471-48C9-E73BBA458AF6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FlowtideDotNet.Connector.StarRocks.Tests", "tests\FlowtideDotNet.Connector.Starrocks.Tests\FlowtideDotNet.Connector.StarRocks.Tests.csproj", "{B4B3D78A-2254-4712-D5E4-47B2D347E01C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

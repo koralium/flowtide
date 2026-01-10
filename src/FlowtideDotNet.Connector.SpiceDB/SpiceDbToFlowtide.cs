@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Connector.SpiceDB
 {
     public static class SpiceDbToFlowtide
     {
-        public static Plan Convert(string schemaText, string type, string relation, string inputTypeName, params string[]? stopAtTypes)
+        public static Plan Convert(string schemaText, string type, string relation, string inputTypeName, bool recurseAtStopType = false, params string[]? stopAtTypes)
         {
             HashSet<string> stopTypes = new HashSet<string>();
             if (stopAtTypes != null)
@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Connector.SpiceDB
             }
 
             var schema = SpiceDbParser.ParseSchema(schemaText);
-            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(schema, type, relation, stopTypes);
+            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(schema, type, relation, recurseAtStopType, stopTypes);
 
             var visitor = new ZanzibarToFlowtideVisitor(
                 inputTypeName,

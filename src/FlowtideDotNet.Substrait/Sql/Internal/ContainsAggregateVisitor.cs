@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using SqlParser.Ast;
+using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
 {
@@ -179,6 +180,22 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 containsAggregate |= Visit(like.Expression, state);
             }
             containsAggregate |= Visit(like.Pattern, state);
+            return containsAggregate;
+        }
+
+        protected override bool VisitIsDistinctFrom(Expression.IsDistinctFrom isDistinctFrom, object? state)
+        {
+            bool containsAggregate = false;
+            containsAggregate |= Visit(isDistinctFrom.Expression1, state);
+            containsAggregate |= Visit(isDistinctFrom.Expression2, state);
+            return containsAggregate;
+        }
+
+        protected override bool VisitIsNotDistinctFrom(Expression.IsNotDistinctFrom isNotDistinctFrom, object? state)
+        {
+            bool containsAggregate = false;
+            containsAggregate |= Visit(isNotDistinctFrom.Expression1, state);
+            containsAggregate |= Visit(isNotDistinctFrom.Expression2, state);
             return containsAggregate;
         }
     }

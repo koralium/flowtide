@@ -19,5 +19,7 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
         internal void DoLockingEvent(ILockingEvent lockingEvent);
 
         Task CheckpointDone(long checkpointVersion);
+
+        internal void SetDependenciesDoneFunction(Action<string> dependenciesDone);
     }
 }

@@ -21,8 +21,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private Task? _initialBatchTask;
         private readonly object _lock = new object();
         private HashSet<string>? nonCheckpointedEgresses;
+        private HashSet<string>? waitingForDependencies;
         private Checkpoint? _currentCheckpoint;
         private bool _doingCheckpoint = false;
+        private bool _initialCheckpointTaken = false;
+        private bool _compactionStarted = false;
 
         public override void EgressCheckpointDone(string name)
         {
@@ -41,6 +44,44 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
+        public override void EgressDependenciesDone(string name)
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            Debug.Assert(waitingForDependencies != null, nameof(waitingForDependencies));
+            lock (_context._checkpointLock)
+            {
+                waitingForDependencies.Remove(name);
+
+                // Check if all egresses has done their dependencies
+                if (waitingForDependencies.Count > 0 || !_initialCheckpointTaken || _compactionStarted)
+                {
+                    return;
+                }
+                _compactionStarted = true;
+            }
+
+            Task.Factory.StartNew(async (state) =>
+            {
+                var run = (RunningStreamState)state!;
+                Debug.Assert(run._context != null);
+
+                try
+                {
+                    await DoCompaction();
+                }
+                catch(Exception e)
+                {
+                    await run._context.OnFailure(e);
+                    return;
+                }
+                
+                // Finish the checkpoint
+                run.CheckpointCompleted();
+                run._context._logger.CheckpointDone(_context.streamName);
+            }, this)
+                .Unwrap();
+        }
+
         private void StartCheckpointDoneTask()
         {
             Debug.Assert(_context != null, nameof(_context));
@@ -51,6 +92,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 var run = (RunningStreamState)state!;
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
+                Debug.Assert(run.waitingForDependencies != null);
 
                 // Write the latest state
                 run._context._lastState = new StreamState(
@@ -58,15 +100,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     _context._streamVersionInformation?.Hash ?? string.Empty);
 
                 run._context._stateManager.Metadata = run._context._lastState;
-
-                long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
-                var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
-
-                // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                if (changesSinceLastCompaction > compactionThreshold)
-                {
-                    await run._context._stateManager.Compact();
-                }
 
                 await _context.ForEachBlockAsync(static async (key, block) =>
                 {
@@ -93,41 +126,72 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     }
                     return Task.CompletedTask;
                 });
-
-
-                // After writing do compaction
-                _context._logger.StartingCompactionOnVertices(_context.streamName);
-                List<Task> tasks = new List<Task>();
-                foreach (var ingressNode in run._context.ingressBlocks)
-                {
-                    tasks.Add(ingressNode.Value.Compact());
-                }
-                foreach (var block in run._context.propagatorBlocks)
-                {
-                    tasks.Add(block.Value.Compact());
-                }
-                foreach (var block in run._context.egressBlocks)
-                {
-                    tasks.Add(block.Value.Compact());
-                }
-
-                await Task.WhenAll(tasks);
-                _context._logger.CompactionDoneOnVertices(_context.streamName);
             }, this)
                 .Unwrap()
-                 .ContinueWith((t, state) =>
+                 .ContinueWith(async (t, state) =>
                  {
                      RunningStreamState @this = (RunningStreamState)state!;
+                     Debug.Assert(@this.waitingForDependencies != null);
                      if (t.IsFaulted)
                      {
-                         return _context.OnFailure(t.Exception);
+                         await _context.OnFailure(t.Exception);
+                         return;
                      }
+
+                     lock (_context._checkpointLock)
+                     {
+                         _initialCheckpointTaken = true;
+                         // Check if all egresses has done their dependencies
+                         // if not return
+                         if (@this.waitingForDependencies.Count > 0 || _compactionStarted)
+                         {
+                             return;
+                         }
+                         _compactionStarted = true;
+                     }
+
+                     try
+                     {
+                         await DoCompaction();
+                     }
+                     catch (Exception e)
+                     {
+                         await _context.OnFailure(e);
+                         return;
+                     }
+
+                     
                      // Finish the checkpoint
                      @this.CheckpointCompleted();
                      _context._logger.CheckpointDone(_context.streamName);
-                     return Task.CompletedTask;
                  }, this)
                  .Unwrap();
+        }
+
+        private async Task DoCompaction()
+        {
+            Debug.Assert(_context != null);
+
+            // After writing do compaction
+            _context._logger.StartingCompactionOnVertices(_context.streamName);
+            List<Task> tasks = new List<Task>();
+            foreach (var ingressNode in _context.ingressBlocks)
+            {
+                tasks.Add(ingressNode.Value.Compact());
+            }
+            foreach (var block in _context.propagatorBlocks)
+            {
+                tasks.Add(block.Value.Compact());
+            }
+            foreach (var block in _context.egressBlocks)
+            {
+                tasks.Add(block.Value.Compact());
+            }
+
+            await Task.WhenAll(tasks);
+
+            await _context._stateManager.Compact();
+            _context._logger.CompactionDoneOnVertices(_context.streamName);
         }
 
         private void CheckpointCompleted()
@@ -176,7 +240,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             }
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.CheckForPause();
@@ -192,7 +256,13 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             {
                 if (_initialBatchTask != null)
                 {
-                    return;
+                    return Task.CompletedTask;
+                }
+
+                lock (_context._checkpointLock)
+                {
+                    // Reset the checkpoint version after the stream is in a running state
+                    _context._restoreCheckpointVersion = default;
                 }
 
                 if (_context._dataflowStreamOptions.WaitForCheckpointAfterInitialData)
@@ -231,6 +301,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     })
                     .Unwrap();
             }
+            return Task.CompletedTask;
         }
 
         public override Task OnFailure()
@@ -258,11 +329,21 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return _context.checkpointTask.Task;
                 }
                 _context._logger.StartingCheckpoint(_context.streamName);
+
+                _initialCheckpointTaken = false;
+                _compactionStarted = false;
                 nonCheckpointedEgresses = new HashSet<string>();
+                waitingForDependencies = new HashSet<string>();
                 foreach (var key in _context.egressBlocks.Keys)
                 {
                     nonCheckpointedEgresses.Add(key);
+                    waitingForDependencies.Add(key);
                 }
+                foreach(var key in _context.ingressBlocks.Keys)
+                {
+                    waitingForDependencies.Add(key);
+                }
+
                 _context.checkpointTask = new TaskCompletionSource();
                 var newTime = _context.producingTime + 1;
                 checkpoint = new Checkpoint(_context.producingTime, newTime);

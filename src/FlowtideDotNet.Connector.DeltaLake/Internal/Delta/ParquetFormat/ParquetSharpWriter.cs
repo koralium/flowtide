@@ -69,7 +69,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             foreach (var field in schema.Fields)
             {
                 var type = schemaVisitor.Visit(field.Type);
-                fields.Add(new Field(field.Name, type, true));
+
+                var name = field.Name;
+                
+                if (field.PhysicalName != null)
+                {
+                    name = field.PhysicalName;
+                }
+
+                Dictionary<string, string> metadata = new Dictionary<string, string>();
+                
+                if (field.FieldId.HasValue)
+                {
+                    metadata.Add("PARQUET:field_id", field.FieldId.Value.ToString());
+                }
+
+                var structField = new Field(name, type, true, metadata);
+                
+                fields.Add(structField);
             }
 
             if (isCdcWriter)
@@ -177,7 +194,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 var stats = writers[i].GetStatisticsComparer();
                 if (stats != null)
                 {
-                    statistics.Add(schema.Fields[i].Name, stats);
+                    var field = schema.Fields[i];
+                    var fieldName = field.Name;
+                    if (field.PhysicalName != null)
+                    {
+                        fieldName = field.PhysicalName;
+                    }
+                    statistics.Add(fieldName, stats);
                 }
             }
 
@@ -194,14 +217,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public async Task<int> WriteData(IFileStorage storage, IOPath tablePath, string fileName)
         {
             using var stream = await storage.OpenWrite(tablePath.Combine(fileName));
-
-            using var writer = new ParquetSharp.Arrow.FileWriter(stream, _schema);
+            using var deltaStream = new DeltaWriteStream(stream);
+            using var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, _schema);
 
             var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);
             writer.Close();
 
-            var length = stream.Position;
+            var length = deltaStream.Position;
 
             return (int)length;
         }
