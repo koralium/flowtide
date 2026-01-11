@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
         public async Task TestGenericDataSinkExistingUsers()
         {
             var sink = new TestDataSink();
-            GenericDataSinkTestStream stream = new GenericDataSinkTestStream(sink, "testgenericsink");
+            GenericDataSinkTestStream stream = new GenericDataSinkTestStream(sink, "TestGenericDataSinkExistingUsers");
 
             stream.Generate(1000);
 
