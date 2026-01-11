@@ -35,7 +35,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
                     }
 
                     var hashInstanceExpr = Expression.Constant(new XxHash64());
-                    var outputExpr = Expression.Constant(new DataValueContainer());
 
                     List<Expression> hashExpressions = new List<Expression>();
                     for (int i = 0; i < func.Arguments.Count; i++)
