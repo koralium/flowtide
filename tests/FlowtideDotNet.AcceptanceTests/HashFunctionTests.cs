@@ -50,5 +50,29 @@ namespace FlowtideDotNet.AcceptanceTests
                 return new { hash = new Guid(hash).ToString() };
             }));
         }
+
+        [Fact]
+        public async Task SelectWithXxHash64()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    xxhash64(userkey) AS hash
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                XxHash64 hash64 = new XxHash64();
+                byte[] bytes = new byte[8];
+                BinaryPrimitives.WriteInt64LittleEndian(bytes, x.UserKey);
+                hash64.Append(bytes);
+                var longHash = (long)hash64.GetCurrentHashAsUInt64();
+                hash64.Reset();
+
+                return new { hash = longHash };
+            }));
+        }
     }
 }
