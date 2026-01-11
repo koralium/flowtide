@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
 
                     var longVariable = Expression.Variable(typeof(long), "result");
 
-                    // Call GetHashAndReset
+                    // Call GetCurrentHashAsUInt64
                     var callGetHash = Expression.Call(hashInstanceExpr, hashMethod);
                     var castToLong = Expression.Convert(callGetHash, typeof(long));
                     var assignToResult = Expression.Assign(longVariable, castToLong);
