@@ -1256,7 +1256,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     Arguments = argumentList,
                     ExtensionName = FunctionsHash.XxHash64,
                     ExtensionUri = FunctionsHash.Uri
-                }, new StringType());
+                }, new Int64Type());
             });
         }
 
