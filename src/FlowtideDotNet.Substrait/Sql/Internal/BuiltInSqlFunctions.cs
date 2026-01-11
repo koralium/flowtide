@@ -1227,6 +1227,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     ExtensionUri = FunctionsHash.Uri
                 }, new StringType());
             });
+
+            sqlFunctionRegister.RegisterScalarFunction("xxhash64", (sqlFunc, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(sqlFunc.Args);
+
+                if (argList.Args == null || argList.Args.Count < 1)
+                {
+                    throw new SubstraitParseException("xxhash64 requires at least one argument");
+                }
+
+                List<Expressions.Expression> argumentList = new List<Expressions.Expression>();
+                for (int i = 0; i < argList.Args.Count; i++)
+                {
+                    if (argList.Args[i] is FunctionArg.Unnamed unnamedTag && unnamedTag.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedExpr)
+                    {
+                        var expr = visitor.Visit(unnamedExpr.Expression, emitData);
+                        argumentList.Add(expr.Expr);
+                    }
+                    else
+                    {
+                        throw new SubstraitParseException($"xxhash64 value arguments cannot be '*'");
+                    }
+                }
+
+                return new ScalarResponse(new ScalarFunction()
+                {
+                    Arguments = argumentList,
+                    ExtensionName = FunctionsHash.XxHash64,
+                    ExtensionUri = FunctionsHash.Uri
+                }, new Int64Type());
+            });
         }
 
         private static void RegisterSingleVariableAggregateFunction(
