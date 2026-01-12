@@ -35,8 +35,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
         internal Column _data;
         internal Column _compareData;
         internal PrimitiveList<long> _indices;
-        private DataValueContainer _valueContainer;
-        private DataValueContainer _compareContainer;
+        private readonly DataValueContainer _valueContainer;
+        private readonly DataValueContainer _compareContainer;
 
         public MinMaxByIndexValueContainer(IMemoryAllocator memoryAllocator)
         {
