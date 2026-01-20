@@ -497,7 +497,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotImplementedException(
+                    $"Unsupported map type: Key={mapType.KeyField.DataType.GetType().Name}, " +
+                    $"Value={mapType.ValueField.DataType.GetType().Name}. Only string-to-string maps are currently supported.");
             }
         }
 
