@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         IArrowArrayVisitor<BooleanArray>
     {
         private readonly Stack<int> indexStack = new Stack<int>();
-        private Stack<Field> fieldStack = new Stack<Field>();
+        private readonly Stack<Field> fieldStack = new Stack<Field>();
         private object? result;
 
         public CheckpointReadVisitor(Field field, int index)
