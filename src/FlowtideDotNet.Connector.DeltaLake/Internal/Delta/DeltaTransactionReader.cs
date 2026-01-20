@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     continue;
                 }
 
-                var dotIndex = file.Name.LastIndexOf('.');
+                var dotIndex = file.Name.IndexOf('.');
 
                 long version = 0;
                 if (dotIndex >= 0)

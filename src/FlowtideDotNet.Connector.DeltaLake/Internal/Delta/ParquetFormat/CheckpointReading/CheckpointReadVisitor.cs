@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             }
             else
             {
-                throw new InvalidOperationException();
+                throw new NotImplementedException($"Struct field '{field.Name}' not implemented in CheckpointReadVisitor.");
             }
         }
 

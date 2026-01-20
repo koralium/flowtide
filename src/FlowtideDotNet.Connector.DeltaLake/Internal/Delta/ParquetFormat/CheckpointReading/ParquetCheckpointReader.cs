@@ -27,16 +27,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
     {
         public async Task<List<DeltaAction>> ReadCheckpointFile(IFileStorage storage, IOEntry path)
         {
-            var stream = await storage.OpenRead(path.Path);
+            using var stream = await storage.OpenRead(path.Path);
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path}");
+                throw new Exception($"File not found: {path.Path}");
             }
 
-            ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
 
-            var batchReader = fileReader.GetRecordBatchReader();
+            using var batchReader = fileReader.GetRecordBatchReader();
 
             List<DeltaAction> actions = new List<DeltaAction>();
             Apache.Arrow.RecordBatch batch;
