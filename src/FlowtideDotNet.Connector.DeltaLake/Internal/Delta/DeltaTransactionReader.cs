@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
@@ -45,18 +47,52 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             long startVersion = 0;
 
-            // Wait with parquet checkpoint reading
-            //if (checkpoint != null)
-            //{
-            //    startVersion = checkpoint.Version;
-            //    await ReadCheckpoint(storage, checkpoint, actions, addFiles);
-            //}
-
-
-
             long currentVersion = startVersion;
 
-            foreach (var log in logs)
+            var filteredLogs = logs.Where(x => (x.Version >= startVersion && x.Version <= maxVersion) && (x.IsJson || x.IsCheckpoint)).ToList();
+
+            if (filteredLogs.Count > 0 && filteredLogs[0].IsCheckpoint)
+            {
+                var checkpointReader = new ParquetCheckpointReader();
+                var checkpointEntries = await checkpointReader.ReadCheckpointFile(storage, filteredLogs[0].IOEntry);
+
+                var entryName = filteredLogs[0].FileName.Replace("checkpoint.parquet", "json");
+
+                // Remove any logs that are part of the checkpoint
+                filteredLogs = filteredLogs.Where(x => x.FileName != entryName).ToList();
+
+                foreach (var action in checkpointEntries)
+                {
+                    if (action.Add != null)
+                    {
+                        // Mark all these as data change true since they are part of the checkpoint
+                        // so the data must be read
+                        action.Add.DataChange = true;
+                        addFiles.Add(action.Add.GetKey(), action.Add);
+                    }
+                    if (action.Remove != null)
+                    {
+                        addFiles.Remove(action.Remove.GetKey());
+                    }
+                    if (action.MetaData != null)
+                    {
+                        metadata = action.MetaData;
+                    }
+                    if (action.Protocol != null)
+                    {
+                        protocol = action.Protocol;
+                    }
+
+                    var genericAction = ToGenericAction(action);
+                    
+                    if (genericAction != null)
+                    {
+                        actions.Add(genericAction);
+                    }
+                }
+            }
+            
+            foreach (var log in filteredLogs)
             {
                 if (log.Version < startVersion)
                 {
@@ -161,8 +197,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             List<DeltaFile> deltaFiles = new List<DeltaFile>();
             foreach (var addFile in addFiles)
             {
-                var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
-                deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
+                if (addFile.Value.Statistics != null)
+                {
+                    var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
+                    deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
+                }
+                else
+                {
+                    deltaFiles.Add(new DeltaFile(addFile.Value, new DeltaStatistics()));
+                }
+                
+                
             }
 
 
