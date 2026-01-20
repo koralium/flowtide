@@ -441,7 +441,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             }
             else
             {
-                throw new InvalidOperationException();
+                throw new InvalidOperationException($"Unsupported list element type: {innerField.DataType.GetType().Name}. Only StringType is currently supported.");
             }
 
             fieldStack.Pop();
