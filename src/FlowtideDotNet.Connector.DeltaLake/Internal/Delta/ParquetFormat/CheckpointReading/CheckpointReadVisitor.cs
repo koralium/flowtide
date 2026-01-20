@@ -31,8 +31,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         IArrowArrayVisitor<Int64Array>,
         IArrowArrayVisitor<BooleanArray>
     {
-        private Stack<int> indexStack = new Stack<int>();
-        private Stack<Field> fieldStack = new Stack<Field>();
+        private readonly Stack<int> indexStack = new Stack<int>();
+        private readonly Stack<Field> fieldStack = new Stack<Field>();
         private object? result;
 
         public CheckpointReadVisitor(Field field, int index)
@@ -333,12 +333,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                         deltaMetadataAction.CreatedTime = System.Convert.ToInt64(result);
                     }
                 }
-                else
-                {
-                    //configuration
-
-                }
-
                 fieldStack.Pop();
             }
 
