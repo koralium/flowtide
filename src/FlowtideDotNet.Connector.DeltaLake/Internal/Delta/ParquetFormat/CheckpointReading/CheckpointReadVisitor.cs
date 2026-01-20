@@ -14,14 +14,12 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading
 {
+    /// <summary>
+    /// Visitor that parses rows in a checkpoint file and converts them to DeltaAction objects.
+    /// </summary>
     internal class CheckpointReadVisitor : 
         IArrowArrayVisitor<StructArray>,
         IArrowArrayVisitor<Int32Array>,
@@ -31,8 +29,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         IArrowArrayVisitor<Int64Array>,
         IArrowArrayVisitor<BooleanArray>
     {
+        /// <summary>
+        /// Stack to keep track of the current index being processed in nested arrays.
+        /// </summary>
         private readonly Stack<int> indexStack = new Stack<int>();
+
+        /// <summary>
+        /// Stack to keep track of the current field being processed in nested structures.
+        /// </summary>
         private readonly Stack<Field> fieldStack = new Stack<Field>();
+
+        /// <summary>
+        /// Holds the result of the current visit operation.
+        /// </summary>
         private object? result;
 
         public CheckpointReadVisitor(Field field, int index)
@@ -43,7 +52,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
 
         public void Visit(StructArray array)
         {
-            var index = indexStack.Peek();
             var field = fieldStack.Peek();
 
             if (field.Name.Equals("protocol", StringComparison.OrdinalIgnoreCase))
