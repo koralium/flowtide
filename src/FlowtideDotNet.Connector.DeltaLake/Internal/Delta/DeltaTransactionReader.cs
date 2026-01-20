@@ -53,13 +53,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             if (filteredLogs.Count > 0 && filteredLogs[0].IsCheckpoint)
             {
+                var entry = filteredLogs[0];
                 var checkpointReader = new ParquetCheckpointReader();
-                var checkpointEntries = await checkpointReader.ReadCheckpointFile(storage, filteredLogs[0].IOEntry);
-
-                var entryName = filteredLogs[0].FileName.Replace("checkpoint.parquet", "json");
+                var checkpointEntries = await checkpointReader.ReadCheckpointFile(storage, entry.IOEntry);
 
                 // Remove any logs that are part of the checkpoint
-                filteredLogs = filteredLogs.Where(x => x.FileName != entryName).ToList();
+                filteredLogs = filteredLogs.Where(x => !(x.Version == entry.Version && x.IsJson)).ToList();
 
                 foreach (var action in checkpointEntries)
                 {
@@ -70,10 +69,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                         action.Add.DataChange = true;
                         addFiles.Add(action.Add.GetKey(), action.Add);
                     }
-                    if (action.Remove != null)
-                    {
-                        addFiles.Remove(action.Remove.GetKey());
-                    }
                     if (action.MetaData != null)
                     {
                         metadata = action.MetaData;
@@ -82,6 +77,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     {
                         protocol = action.Protocol;
                     }
+                    // Remove action will not exist here since its a first entry checkpoint
 
                     var genericAction = ToGenericAction(action);
                     
@@ -204,10 +200,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 else
                 {
+                    // Empty statistics is fine - just means no stats were collected
                     deltaFiles.Add(new DeltaFile(addFile.Value, new DeltaStatistics()));
                 }
-                
-                
             }
 
 
