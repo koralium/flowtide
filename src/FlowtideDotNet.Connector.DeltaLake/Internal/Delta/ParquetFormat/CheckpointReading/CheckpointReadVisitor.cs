@@ -333,12 +333,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                         deltaMetadataAction.CreatedTime = System.Convert.ToInt64(result);
                     }
                 }
-                else
-                {
-                    //configuration
-
-                }
-
                 fieldStack.Pop();
             }
 
