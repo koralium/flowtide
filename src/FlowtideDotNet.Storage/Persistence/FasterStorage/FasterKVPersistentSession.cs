@@ -74,12 +74,12 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             if (value.PreSerializedData.HasValue)
             {
-                var handle = value.PreSerializedData.Value.Pin();
-                var spanByte = CreateSpanByteFromHandle(handle, value.PreSerializedData.Value.Length);
                 if (value.PreSerializedData.Value.Length > _maxPageSize)
                 {
                     throw new InvalidOperationException($"Serialized data size {value.PreSerializedData.Value.Length} exceeds maximum page size {_maxPageSize}");
                 }
+                var handle = value.PreSerializedData.Value.Pin();
+                var spanByte = CreateSpanByteFromHandle(handle, value.PreSerializedData.Value.Length);
                 var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
                 var status = result.Complete();
                 handle.Dispose();
@@ -88,14 +88,12 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             {
                 var writer = new ArrayBufferWriter<byte>();
                 value.Serialize(writer);
-                var handle = writer.WrittenMemory.Pin();
-                var spanByte = CreateSpanByteFromHandle(handle, writer.WrittenMemory.Length);
-
                 if (writer.WrittenMemory.Length > _maxPageSize)
                 {
                     throw new InvalidOperationException($"Serialized data size {writer.WrittenMemory.Length} exceeds maximum page size {_maxPageSize}");
                 }
-
+                var handle = writer.WrittenMemory.Pin();
+                var spanByte = CreateSpanByteFromHandle(handle, writer.WrittenMemory.Length);
                 var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
                 var status = result.Complete();
                 handle.Dispose();
