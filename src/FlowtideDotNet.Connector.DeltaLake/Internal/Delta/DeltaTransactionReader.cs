@@ -90,6 +90,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                         actions.Add(genericAction);
                     }
                 }
+                currentVersion = entry.Version;
             }
             
             foreach (var log in filteredLogs)

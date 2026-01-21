@@ -10,16 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow;
-using Apache.Arrow.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
-using FlowtideDotNet.Storage.Memory;
 using Stowage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading
 {
