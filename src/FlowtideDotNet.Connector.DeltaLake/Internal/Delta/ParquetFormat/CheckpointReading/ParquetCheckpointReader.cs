@@ -34,20 +34,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             Apache.Arrow.RecordBatch batch;
             while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
             {
-                for (int i = 0; i < batch.Length; i++)
+                using (batch)
                 {
-                    for (int c = 0; c < batch.ColumnCount; c++)
+                    for (int i = 0; i < batch.Length; i++)
                     {
-                        var field = batch.Schema.FieldsList[c];
-                        var col = batch.Column(c);
-                        
-                        if (!col.IsNull(i))
+                        for (int c = 0; c < batch.ColumnCount; c++)
                         {
-                            CheckpointReadVisitor checkpointReadVisitor = new CheckpointReadVisitor(field, i);
-                            var action = checkpointReadVisitor.GetAction(col);
-                            if (action != null)
+                            var field = batch.Schema.FieldsList[c];
+                            var col = batch.Column(c);
+
+                            if (!col.IsNull(i))
                             {
-                                actions.Add(action);
+                                CheckpointReadVisitor checkpointReadVisitor = new CheckpointReadVisitor(field, i);
+                                var action = checkpointReadVisitor.GetAction(col);
+                                if (action != null)
+                                {
+                                    actions.Add(action);
+                                }
                             }
                         }
                     }
