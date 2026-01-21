@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                         deltaProtocolAction.MinReaderVersion = System.Convert.ToInt32(val);
                     }
                 }
-                if (structType.Fields[c].Name.Equals("MinWriterVersion", StringComparison.OrdinalIgnoreCase))
+                else if (structType.Fields[c].Name.Equals("MinWriterVersion", StringComparison.OrdinalIgnoreCase))
                 {
                     array.Fields[c].Accept(this);
                     var val = result;
@@ -253,7 +253,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                         deltaProtocolAction.MinWriterVersion = System.Convert.ToInt32(val);
                     }
                 }
-                if (structType.Fields[c].Name.Equals("ReaderFeatures", StringComparison.OrdinalIgnoreCase))
+                else if (structType.Fields[c].Name.Equals("ReaderFeatures", StringComparison.OrdinalIgnoreCase))
                 {
                     array.Fields[c].Accept(this);
                     var val = result;
@@ -263,7 +263,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                         deltaProtocolAction.ReaderFeatures = (List<string>)val;
                     }
                 }
-                if (structType.Fields[c].Name.Equals("writerFeatures", StringComparison.OrdinalIgnoreCase))
+                else if (structType.Fields[c].Name.Equals("writerFeatures", StringComparison.OrdinalIgnoreCase))
                 {
                     array.Fields[c].Accept(this);
                     var val = result;
