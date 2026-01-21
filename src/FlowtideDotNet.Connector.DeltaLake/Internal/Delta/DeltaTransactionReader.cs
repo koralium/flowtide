@@ -52,6 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 .ThenBy(x => x.IsCheckpoint ? 0 : 1)
                 .ToList();
 
+            // Check if the first log is a checkpoint, this happens if the table is purged and the first log entry is a checkpoint
             if (filteredLogs.Count > 0 && filteredLogs[0].IsCheckpoint)
             {
                 var entry = filteredLogs[0];
