@@ -492,6 +492,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                     var value = (string?)result;
                     indexStack.Pop();
                     fieldStack.Pop();
+
+                    // Check that both key and value is not null
+                    // This check is required since either one can be null when fetched from the result field
+                    // after the Accept call above.
                     if (key != null && value != null)
                     {
                         vals[key] = value;
