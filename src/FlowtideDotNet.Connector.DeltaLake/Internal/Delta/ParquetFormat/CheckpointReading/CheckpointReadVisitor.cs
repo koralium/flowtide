@@ -434,7 +434,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                 {
                     indexStack.Push(offset + i);
                     array.Values.Accept(this);
-                    values.Add(((string?)result)!);
+
+                    if (result != null)
+                    {
+                        values.Add((string)result);
+                    }
+                    
                     indexStack.Pop();
                 }
                 result = values;

@@ -38,9 +38,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             List<DeltaBaseAction> actions = new List<DeltaBaseAction>();
 
-            // Check if there is a checkpoint file that is less than or equal to the max version
-            var checkpoint = logs.FirstOrDefault(l => l.IsCheckpoint && l.Version <= maxVersion);
-
             DeltaMetadataAction? metadata = null;
             DeltaProtocolAction? protocol = null;
             Dictionary<DeltaFileKey, DeltaAddAction> addFiles = new Dictionary<DeltaFileKey, DeltaAddAction>();
