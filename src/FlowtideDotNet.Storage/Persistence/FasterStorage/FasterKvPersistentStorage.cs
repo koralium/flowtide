@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions>? m_adminSession;
         private Functions m_functions;
         private FasterCheckpointMetadata _checkpointMetadata;
+        private long _maxPageSize;
 
         public FasterKvPersistentStorage(Func<StorageInitializationMetadata, FasterKVSettings<long, SpanByte>> settingsFunc)
         {
@@ -102,7 +103,7 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 
             var functions = new Functions();
             var session = m_persistentStorage.For(functions).NewSession(functions);
-            return new FasterKVPersistentSession(session);
+            return new FasterKVPersistentSession(_maxPageSize, session);
         }
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
@@ -111,7 +112,9 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             {
                 if (m_persistentStorage == null)
                 {
-                    m_persistentStorage = new FasterKV<long, SpanByte>(m_settingsFunc(metadata));
+                    var settings = m_settingsFunc(metadata);
+                    _maxPageSize = settings.PageSize;
+                    m_persistentStorage = new FasterKV<long, SpanByte>(settings);
                     m_adminSession = m_persistentStorage.For(m_functions).NewSession(m_functions);
                 }
                 await m_persistentStorage.RecoverAsync();
