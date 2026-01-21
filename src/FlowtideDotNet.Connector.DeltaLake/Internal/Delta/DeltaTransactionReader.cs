@@ -46,6 +46,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             long currentVersion = startVersion;
 
+            if (maxVersion == 0)
+            {
+                maxVersion = logs.Where(x => x.IsJson || x.IsCheckpoint).Min(x => x.Version);
+            }
+
             var filteredLogs = logs
                 .Where(x => (x.Version >= startVersion && x.Version <= maxVersion) && (x.IsJson || x.IsCheckpoint))
                 .OrderBy(x => x.Version)
