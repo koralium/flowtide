@@ -29,8 +29,8 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task WriteAbovePageSizeThrowError()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistent/pagesize");
-            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+            using var device = Devices.CreateLogDevice("./data/tmp/persistent/pagesize");
+            using StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
                     PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
