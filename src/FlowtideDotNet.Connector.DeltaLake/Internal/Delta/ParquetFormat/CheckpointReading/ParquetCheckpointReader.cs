@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path.Path}");
+                throw new FileNotFoundException($"File not found: {path.Path}");
             }
 
             using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
