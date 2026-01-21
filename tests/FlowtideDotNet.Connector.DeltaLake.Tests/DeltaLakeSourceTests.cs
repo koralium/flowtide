@@ -487,6 +487,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await stream.WaitForUpdate();
 
+            // Check against the data in the parquet files, there are two zeros and then numbers 1 to 9.
             stream.AssertCurrentDataEqual(new[]
             {
                 new { version = 0 },
