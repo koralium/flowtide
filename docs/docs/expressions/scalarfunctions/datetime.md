@@ -252,7 +252,7 @@ round_calendar(x, rounding, unit, origin, multiple)
 **Parameters**
 
 - **x**  
-  Timestamp or date value to be rounded.
+  Timestamp value to be rounded.
 
 - **rounding**  
   Rounding strategy to apply:
