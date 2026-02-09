@@ -617,7 +617,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (!(argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
+                    if (argList.Args[0] is FunctionArg.Unnamed unnamed2 && 
+                    unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                    argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                    {
+                        // Visit the argument to ensure it is valid, even though we will ignore it in the actual count implementation
+                        var columnExpr = visitor.Visit(funcExpr2.Expression, emitData);
+                        return new AggregateResponse(
+                            new AggregateFunction()
+                            {
+                                ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                ExtensionName = FunctionsAggregateGeneric.CountDistinct,
+                                Arguments = new List<Expressions.Expression>() { columnExpr.Expr }
+                            },
+                            new Int64Type()
+                            );
+                    }
+                    else
+                    {
                     throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                }
                 }
                 return new AggregateResponse(
                     new AggregateFunction()
