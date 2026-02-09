@@ -909,7 +909,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64)
                 {
-                    return new Fp64Type();
+                    return new Fp64Type() { Nullable = true };
                 }
                 else if (p1.Type == SubstraitType.Decimal)
                 {
