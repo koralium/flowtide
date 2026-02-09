@@ -10,13 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.FunctionExtensions
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.AcceptanceTests.Entities
 {
-    public static class FunctionsAggregateGeneric
+    public class GraphNode
     {
-        public const string Uri = "/functions_aggregate_generic.yaml";
-        public const string Count = "count";
-        public const string CountDistinct = "count_distinct";
-        public const string SurrogateKeyInt64 = "surrogate_key_int64";
+        [Key]
+        public int? Id { get; set; }
+
+        public int? ParentId { get; set; }
+
+
     }
 }

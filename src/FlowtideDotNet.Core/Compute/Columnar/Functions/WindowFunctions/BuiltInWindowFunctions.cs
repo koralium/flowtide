@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new LastValueWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, new MinByWindowFunctionDefinition());
             functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, new MaxByWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Average, new AverageWindowFunctionDefinition());
         }
     }
 }

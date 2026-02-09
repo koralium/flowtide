@@ -617,7 +617,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (!(argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
-                    throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                    if (argList.Args[0] is FunctionArg.Unnamed unnamed2 && 
+                        unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                        argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                    {
+                        // Visit the argument to ensure it is valid and pass it as the argument to the count_distinct aggregate function
+                        var columnExpr = visitor.Visit(funcExpr2.Expression, emitData);
+                        return new AggregateResponse(
+                            new AggregateFunction()
+                            {
+                                ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                ExtensionName = FunctionsAggregateGeneric.CountDistinct,
+                                Arguments = new List<Expressions.Expression>() { columnExpr.Expr }
+                            },
+                            new Int64Type()
+                        );
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                    }
                 }
                 return new AggregateResponse(
                     new AggregateFunction()
@@ -906,6 +925,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, (p1) =>
+            {
+                if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64)
+                {
+                    return new Fp64Type() { Nullable = true };
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return p1;
+                }
+                return NullType.Instance;
+            }, true, false);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>

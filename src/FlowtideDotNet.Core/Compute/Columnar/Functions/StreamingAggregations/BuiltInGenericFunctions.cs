@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.CountDistinct;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.SurrogateKey;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -63,6 +64,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                 );
 
             SurrogateKeyInt64Aggregation.Register(functionsRegister);
+            CountDistinctAggregation.RegisterCountDistinct(functionsRegister);
         }
 
         private static LambdaExpression GetCountWithArgBody(System.Type inputType)
