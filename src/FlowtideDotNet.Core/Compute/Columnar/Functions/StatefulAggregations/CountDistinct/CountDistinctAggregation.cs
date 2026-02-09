@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Co
         {
             internal readonly IBPlusTreeIterator<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> iterator;
             private readonly int keyLength;
-            internal DataValueContainer _valueContainer;
+            internal readonly DataValueContainer _valueContainer;
 
             public CountDistinctAggregationSingleton(
                 IBPlusTree<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>> tree,
