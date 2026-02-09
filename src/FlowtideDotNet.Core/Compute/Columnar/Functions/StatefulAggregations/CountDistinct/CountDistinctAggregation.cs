@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Co
         {
             if (function.Arguments.Count != 1)
             {
-                throw new InvalidOperationException("Min must have one argument.");
+                throw new InvalidOperationException("count_distinct must have exactly one argument.");
             }
             var arg = visitor.Visit(function.Arguments[0], parametersInfo);
             var expr = GetCountDistinctBody(arg!.Type);
