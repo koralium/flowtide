@@ -10,125 +10,128 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Aspire.Hosting.Eventing;
 using Aspire.Hosting.Lifecycle;
 using Microsoft.Extensions.Logging;
 
 namespace AspireSamples.DataMigration
 {
-    internal class DataInsertLifecyclehook : IDistributedApplicationLifecycleHook, IAsyncDisposable
+    internal class DataInsertEventingSubscriber : IDistributedApplicationEventingSubscriber
     {
-        private readonly DistributedApplicationExecutionContext executionContext;
         private readonly ResourceNotificationService resourceNotificationService;
         private readonly ResourceLoggerService resourceLoggerService;
         private CancellationTokenSource tokenSource;
-        public DataInsertLifecyclehook(DistributedApplicationExecutionContext executionContext,
+
+        public DataInsertEventingSubscriber(
             ResourceNotificationService resourceNotificationService,
             ResourceLoggerService resourceLoggerService)
         {
-            tokenSource = new CancellationTokenSource();
-            this.executionContext = executionContext;
             this.resourceNotificationService = resourceNotificationService;
             this.resourceLoggerService = resourceLoggerService;
+            tokenSource = new CancellationTokenSource();
         }
 
-        public async Task BeforeStartAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken = default)
+        public Task SubscribeAsync(IDistributedApplicationEventing eventing, DistributedApplicationExecutionContext executionContext, CancellationToken cancellationToken)
         {
-
-            var dataInsertResource = appModel.Resources.OfType<DataInsertResource>().SingleOrDefault();
-
-            if (dataInsertResource is null)
+            eventing.Subscribe<BeforeStartEvent>(async (beforeStartEvent, c) =>
             {
-                return;
-            }
+                var dataInsertResource = beforeStartEvent.Model.Resources.OfType<DataInsertResource>().SingleOrDefault();
 
-            await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
-            {
-                ResourceType = "Data-Insert",
-                State = "Starting"
-            });
-        }
+                if (dataInsertResource is null)
+                {
+                    return;
+                }
 
-        public Task AfterEndpointsAllocatedAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken = default)
-        {
-            var dataInsertResource = appModel.Resources.OfType<DataInsertResource>().SingleOrDefault();
-
-            if (dataInsertResource is null)
-            {
-                return Task.CompletedTask;
-            }
-
-            var statusUpdater = (string status) =>
-            {
-                resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                 {
                     ResourceType = "Data-Insert",
-                    State = status
+                    State = "Starting"
                 });
-            };
 
-            var logger = resourceLoggerService.GetLogger(dataInsertResource);
+                await eventing.PublishAsync<BeforeResourceStartedEvent>(new BeforeResourceStartedEvent(dataInsertResource, executionContext.ServiceProvider));
+            });
 
-            _ = Task.Run(async () =>
+            eventing.Subscribe<BeforeResourceStartedEvent>((resourceEndpointsAllocatedEvent, token) =>
             {
-                if (dataInsertResource.TryGetAnnotationsOfType<WaitAnnotation>(out var waitAnnotations))
+                if (!(resourceEndpointsAllocatedEvent.Resource is DataInsertResource dataInsertResource))
                 {
-                    await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
-                    {
-                        ResourceType = "Data-Insert",
-                        State = "Waiting"
-                    });
-                    List<Task> waitTasks = new List<Task>();
-                    foreach (var r in waitAnnotations)
-                    {
-                        waitTasks.Add(resourceNotificationService.WaitForResourceHealthyAsync(r.Resource.Name, cancellationToken));
-                    }
-                    await Task.WhenAll(waitTasks);
+                    return Task.CompletedTask;
+                }
 
-                    logger.LogInformation("Inserting initial data");
-                    await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                if (dataInsertResource is null)
+                {
+                    return Task.CompletedTask;
+                }
+
+                var statusUpdater = (string status) =>
+                {
+                    resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                     {
                         ResourceType = "Data-Insert",
-                        State = "Insert initial"
+                        State = status
                     });
-                    try
+                };
+
+                var logger = resourceLoggerService.GetLogger(dataInsertResource);
+
+                _ = Task.Run(async () =>
+                {
+                    if (dataInsertResource.TryGetAnnotationsOfType<WaitAnnotation>(out var waitAnnotations))
                     {
-                        await dataInsertResource.initialInsert(logger, statusUpdater, dataInsertResource, tokenSource.Token);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogError(e, "Error inserting initial data");
                         await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                         {
                             ResourceType = "Data-Insert",
-                            State = "Failed"
+                            State = "Waiting"
                         });
-                        return;
+                        List<Task> waitTasks = new List<Task>();
+                        foreach (var r in waitAnnotations)
+                        {
+                            waitTasks.Add(resourceNotificationService.WaitForResourceHealthyAsync(r.Resource.Name, cancellationToken));
+                        }
+                        await Task.WhenAll(waitTasks);
+
+                        logger.LogInformation("Inserting initial data");
+                        await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                        {
+                            ResourceType = "Data-Insert",
+                            State = "Insert initial"
+                        });
+                        try
+                        {
+                            await dataInsertResource.initialInsert(logger, statusUpdater, dataInsertResource, tokenSource.Token);
+                        }
+                        catch (Exception e)
+                        {
+                            logger.LogError(e, "Error inserting initial data");
+                            await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                            {
+                                ResourceType = "Data-Insert",
+                                State = "Failed"
+                            });
+                            return;
+                        }
+
+
+                        await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                        {
+                            ResourceType = "Data-Insert",
+                            State = "Running"
+                        });
+
+                        await dataInsertResource.afterStart(logger, dataInsertResource, tokenSource.Token);
+
+                        await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
+                        {
+                            ResourceType = "Data-Insert",
+                            State = "Finished"
+                        });
                     }
+                });
 
-
-                    await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
-                    {
-                        ResourceType = "Data-Insert",
-                        State = "Running"
-                    });
-
-                    await dataInsertResource.afterStart(logger, dataInsertResource, tokenSource.Token);
-
-                    await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
-                    {
-                        ResourceType = "Data-Insert",
-                        State = "Finished"
-                    });
-                }
+                return Task.CompletedTask;
             });
 
             return Task.CompletedTask;
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            tokenSource.Cancel();
-            return ValueTask.CompletedTask;
         }
     }
 
@@ -151,7 +154,7 @@ namespace AspireSamples.DataMigration
         {
             var resource = new DataInsertResource(name, before, after);
 
-            builder.Services.TryAddLifecycleHook<DataInsertLifecyclehook>();
+            builder.Services.AddEventingSubscriber<DataInsertEventingSubscriber>();
 
             var res = builder.AddResource<DataInsertResource>(resource);
 
