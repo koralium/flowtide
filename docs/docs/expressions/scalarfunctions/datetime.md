@@ -237,3 +237,62 @@ SELECT DATEDIFF('DAY', '2024-01-01T00:00:00', '2024-01-02T00:00:00');
 SELECT DATEDIFF('MINUTE', '2025-01-01T12:00:00', '2025-01-01T12:01:00'); 
 SELECT DATEDIFF('MONTH', order_date, ship_date);
 ```
+
+
+## Round Calendar
+
+[Substrait definition](https://substrait.io/extensions/functions_datetime/#round_calendar)
+
+Round a temporal value to a calendar boundary using a specified rounding strategy, unit, and origin. This follows the Substrait model and allows flexible alignment to calendar-based periods.
+
+**Signature**
+
+round_calendar(x, rounding, unit, origin, multiple)
+
+**Parameters**
+
+- **x**  
+  Timestamp value to be rounded.
+
+- **rounding**  
+  Rounding strategy to apply:
+  - **FLOOR** Round down to the nearest boundary.
+  - **CEIL** Round up to the nearest boundary.
+  - **ROUND_TIE_DOWN** Round to the nearest boundary; ties round downward.
+  - **ROUND_TIE_UP** Round to the nearest boundary; ties round upward.
+
+- **unit**  
+  Target unit to round to:
+  - **YEAR** Round to a year boundary.
+  - **MONTH** Round to a month boundary.
+  - **WEEK** Round to a week boundary (as defined by `origin`).
+  - **DAY** Round to a day boundary.
+  - **HOUR** Round to an hour boundary.
+  - **MINUTE** Round to a minute boundary.
+  - **SECOND** Round to a second boundary.
+  - **MILLISECOND** Round to a millisecond boundary.
+
+- **origin**  
+  Calendar alignment reference used when rounding:
+  - **YEAR** Align to the start of the calendar year.
+  - **MONTH** Align to the start of each month.
+  - **MONDAY_WEEK** Weeks begin on Monday.
+  - **SUNDAY_WEEK** Weeks begin on Sunday.
+  - **ISO_WEEK** ISO 8601 week definition; weeks start Monday and the first week has the majority of its days in January.
+  - **US_WEEK** US epidemiological week definition; weeks start Sunday and the first week has the majority of its days in January.
+  - **DAY** Align to day boundaries.
+  - **HOUR** Align to hour boundaries.
+  - **MINUTE** Align to minute boundaries.
+  - **SECOND** Align to second boundaries.
+  - **MILLISECOND** Align to millisecond boundaries.
+
+- **multiple**  
+  Integer factor specifying grouping of the chosen unit (for example, every 5 minutes, every 2 months, etc.).
+
+### SQL Usage
+
+```sql
+SELECT round_calendar(val, 'FLOOR', 'MONTH', 'YEAR', 1) FROM ...
+SELECT round_calendar(val, 'CEIL', 'WEEK', 'MONDAY_WEEK', 1) FROM ...
+SELECT round_calendar(val, 'ROUND_TIE_UP', 'MINUTE', 'HOUR', 5) FROM ...
+```
