@@ -71,7 +71,7 @@
     <PackageVersion Include="Testcontainers.Elasticsearch" Version="4.10.0" />
     <PackageVersion Include="Testcontainers.Qdrant" Version="4.10.0" />
     <!-- Entity framework -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="7.0.17" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.0" />
     <!-- Serilog -->
     <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />

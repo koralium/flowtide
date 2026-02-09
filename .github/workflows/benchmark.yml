@@ -34,7 +34,7 @@ jobs:
         path: ./cache
         key: ${{ runner.os }}-benchmark
     - name: Run benchmark
-      run: dotnet run --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
+      run: dotnet run --framework net10.0 --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
     - name: Git reset
       run: git reset --hard
     - name: Store benchmark result
