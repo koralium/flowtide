@@ -152,10 +152,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                         return result;
                     }
                 }
-                else if (onLogZero == OnLogZero.MINUS_INFINITY && logResult == double.NegativeInfinity)
-                {
-                    // Handle log(0) case if needed
-                }
 
                 switch (rounding)
                 {
