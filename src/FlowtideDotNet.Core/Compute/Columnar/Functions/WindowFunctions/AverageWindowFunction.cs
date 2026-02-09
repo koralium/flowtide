@@ -109,6 +109,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         internal static IDataValue DivideWithCount<T>(T value, long count)
             where T : IDataValue
         {
+            if (count == 0)
+            {
+                return NullValue.Instance;
+            }
             if (value.Type == ArrowTypeId.Int64)
             {
                 var sum = value.AsLong;
@@ -125,6 +129,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                 return new DecimalValue(sum / count);
             }
             return NullValue.Instance;
+        }
+
+        internal static void ModifyCount(ref long count, int addition, ArrowTypeId valueType)
+        {
+            if (valueType == ArrowTypeId.Int64 || valueType == ArrowTypeId.Double || valueType == ArrowTypeId.Decimal128)
+            {
+                count += addition;
+            }
         }
     }
 
@@ -175,14 +187,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                 await _queue.Enqueue(val);
                 _windowRowIndex++;
                 SumWindowUtils.DoSum(val, _currentSumContainer, 1);
-                _countCounter++;
+                AverageWindowUtils.ModifyCount(ref _countCounter, 1, val.Type);
             }
 
             while (_queue.Count > 0 && _windowRowIndex - _queue.Count < updateRowIndex + _from)
             {
                 var firstVal = await _queue.Dequeue();
                 SumWindowUtils.DoSum(firstVal, _currentSumContainer, -1);
-                _countCounter--;
+                AverageWindowUtils.ModifyCount(ref _countCounter, -1, firstVal.Type);
             }
 
             return AverageWindowUtils.DivideWithCount(_currentSumContainer, _countCounter);
@@ -260,7 +272,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                 var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
                 _windowRowIndex++;
                 SumWindowUtils.DoSum(val, _currentSumContainer, 1);
-                _countCounter++;
+                AverageWindowUtils.ModifyCount(ref _countCounter, 1, val.Type);
             }
 
             return AverageWindowUtils.DivideWithCount(_currentSumContainer, _countCounter);
@@ -296,7 +308,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
         private DataValueContainer _currentSumContainer = new DataValueContainer();
-        private int _countCounter = 0;
+        private long _countCounter = 0;
 
         public AverageWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction)
         {
@@ -316,7 +328,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
             {
                 var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
                 SumWindowUtils.DoSum(val, _currentSumContainer, 1);
-                _countCounter++;
+                AverageWindowUtils.ModifyCount(ref _countCounter, 1, val.Type);
             }
         }
 

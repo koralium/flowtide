@@ -1820,8 +1820,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(g =>
                 {
