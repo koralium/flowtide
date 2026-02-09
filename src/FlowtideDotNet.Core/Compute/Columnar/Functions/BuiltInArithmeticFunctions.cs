@@ -25,9 +25,85 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     {
         public static void AddBuiltInArithmeticFunctions(FunctionsRegister functionsRegister)
         {
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Add, typeof(BuiltInArithmeticFunctions), nameof(AddImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, typeof(BuiltInArithmeticFunctions), nameof(MultiplyImplementation));
+        }
+
+        private static IDataValue AddImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (x.Type == ArrowTypeId.Double)
+            {
+                // Float add float always return a float
+                if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsDouble + y.AsDouble);
+                    return result;
+                }
+                // Float add int, will always return a float
+                else if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsDouble + y.AsLong);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue((decimal)x.AsDouble + y.AsDecimal);
+                    return result;
+                }
+            }
+            else if (x.Type == ArrowTypeId.Int64)
+            {
+                // Int add int, will always return an int
+                if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Int64;
+                    result._int64Value = new Int64Value(x.AsLong + y.AsLong);
+                    return result;
+                }
+                // Int add float, will always return a float
+                else if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsLong + y.AsDouble);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsLong + y.AsDecimal);
+                    return result;
+                }
+            }
+            else if (x.Type == ArrowTypeId.Decimal128)
+            {
+                if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal + y.AsLong);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal + (decimal)y.AsDouble);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal + y.AsDecimal);
+                    return result;
+                }
+            }
+            result._type = ArrowTypeId.Null;
+            return result;
         }
 
         private static IDataValue ModuloImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
