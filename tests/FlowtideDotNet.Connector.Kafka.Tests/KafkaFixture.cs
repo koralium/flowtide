@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
         private readonly KafkaContainer _container;
         public KafkaFixture()
         {
-            _container = new Testcontainers.Kafka.KafkaBuilder()
+            _container = new Testcontainers.Kafka.KafkaBuilder("confluentinc/cp-kafka:7.5.12")
                 .Build();
         }
 

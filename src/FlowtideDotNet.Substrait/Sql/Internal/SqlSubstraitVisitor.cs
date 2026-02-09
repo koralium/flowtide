@@ -317,6 +317,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     cteContainers.Add(alias, container);
                     var p = Visit(with.Query, state);
 
+                    if (p == null)
+                    {
+                        throw new SubstraitParseException($"Could not create a plan for CTE '{alias}'");
+                    }
+
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Data.SqlClient;
+using Microsoft.Data.SqlClient;
 using Testcontainers.MsSql;
 
 namespace FlowtideDotNet.SqlServer.Tests.e2e
@@ -28,6 +28,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         {
             get
             {
+                
                 var connectionStringBuilder = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
                 connectionStringBuilder.InitialCatalog = "test-db";
                 var tpchConnectionString = connectionStringBuilder.ToString();

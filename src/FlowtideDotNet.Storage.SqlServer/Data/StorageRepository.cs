@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Storage.SqlServer.Data
 #if DEBUG_WRITE
             DebugWriter!.WriteCall();
 #endif
-            ArgumentNullException.ThrowIfNull(Stream.Metadata.StreamKey);
             using var connection = new SqlConnection(Settings.ConnectionStringFunc());
             using var cmd = new SqlCommand(
                 $"DELETE FROM {Settings.StreamPageTableName} WHERE StreamKey = @StreamKey; " +
