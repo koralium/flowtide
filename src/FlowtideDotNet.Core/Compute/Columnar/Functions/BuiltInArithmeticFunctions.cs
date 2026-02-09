@@ -66,7 +66,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     result._type = ArrowTypeId.Int64;
                     result._int64Value = new Int64Value(x.AsLong + y.AsLong);
                     return result;
-
                 }
                 // Int add float, will always return a float
                 else if (y.Type == ArrowTypeId.Double)
