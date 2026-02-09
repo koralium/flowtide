@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 var starrocksName = tableInfo.ColumnNames.FirstOrDefault(x => x.Equals(_writeRelation.TableSchema.Names[i], StringComparison.OrdinalIgnoreCase));
                 if (starrocksName == null)
                 {
-                    throw new InvalidOperationException($"The column '{_writeRelation.TableSchema.Names[i]}' does not exist in the target Starrocks table.");
+                    throw new StarRocksConfigurationException($"The column '{_writeRelation.TableSchema.Names[i]}' does not exist in the target Starrocks table.");
                 }
                 starrocksColumnNames.Add(starrocksName);
             }
