@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             var relation = relationData.Relation;
-
+            
             var viewName = createView.Name.ToSql();
 
             if (isBuffered)
@@ -315,29 +315,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var container = new CTEContainer(alias, cteEmitData, cteEmitData.GetNames().Count);
 
                     cteContainers.Add(alias, container);
-                    var p = Visit(with.Query, state)!.Relation;
+                    var p = Visit(with.Query, state);
 
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {
-                        p = new IterationRelation()
+                        p = new RelationData(new IterationRelation()
                         {
-                            LoopPlan = p,
+                            LoopPlan = p.Relation,
                             IterationName = alias
-                        };
+                        }, p.EmitData);
                     }
                     var plan = new Plan()
                     {
                         Relations = new List<Relation>()
                         {
-                            p
+                            p.Relation
                         }
                     };
                     // Remove from containers since it will be added as a view now.
                     cteContainers.Remove(alias);
                     // With queries should be registered as views in the plan
                     // So they can be reused multiple times in the query
-                    sqlPlanBuilder._planModifier.AddPlanAsView(alias, plan);
+                    viewRelations.Add(alias, new ViewContainer(p.EmitData, p.Relation, p.Relation.OutputLength));
                     tablesMetadata.AddTable(alias, cteEmitData.GetNamedStruct());
                 }
             }
@@ -1208,7 +1208,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     viewContainer.RelationId = subRelations.Count;
                     subRelations.Add(viewContainer.Relation);
                 }
-
                 return new RelationData(new ReferenceRelation()
                 {
                     ReferenceOutputLength = viewContainer.OutputLength,

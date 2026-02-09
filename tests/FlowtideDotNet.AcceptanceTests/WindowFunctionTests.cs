@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Substrait.Exceptions;
 using System;
 using System.Collections.Generic;
@@ -28,6 +29,8 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         public record SumResult(string? companyId, int userkey, long value);
+
+        public record AverageResult(string? companyId, int userkey, double value);
 
         [Fact]
         public async Task SumTestBoundedStartToCurrentRow()
@@ -1659,5 +1662,223 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
         }
+
+        [Fact]
+        public async Task MinByInIterationLoop()
+        {
+            GenerateGraphNodes(10);
+
+            await StartStream(@"
+            WITH cte AS (
+            SELECT
+                Id,
+                parentId,
+                min_by(g.Id, g.Id) OVER (PARTITION BY ParentId ORDER BY Id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as reducedId,
+                1 as level
+            FROM graphnodes g
+            UNION ALL
+            SELECT
+               g.Id,
+               c.reducedId as parentId,
+               min_by(g.Id, g.Id) OVER (PARTITION BY c.reducedId ORDER BY g.Id ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as reducedId,
+               c.level + 1 as level
+            FROM graphnodes g
+            INNER JOIN cte c ON g.parentId = c.reducedId
+            )
+            INSERT INTO output
+            SELECT 
+                Id,
+                reducedId,
+                parentId
+            FROM cte
+            WHERE ROW_NUMBER() OVER (PARTITION BY Id ORDER BY level DESC) = 1;
+            ");
+
+            await WaitForUpdate();
+
+            ValidateGraphData();
+
+            // Add more nodes
+            GenerateGraphNodes(10);
+
+            await WaitForUpdate();
+
+            ValidateGraphData();
+
+            // Delete the first node that is dependent on the root, replace its children to be dependent on the root
+            var firstNode = GraphNodes.First();
+            var firstDependentOnFirst = GraphNodes.First(x => x.ParentId == firstNode.Id);
+            var dependents = GraphNodes.Where(x => x.ParentId == firstDependentOnFirst.Id).ToList();
+
+            foreach(var d in dependents)
+            {
+                d.ParentId = firstNode.Id;
+                AddOrUpdateGraphNode(d);
+            }
+            DeleteGraphNode(firstDependentOnFirst);
+
+            await WaitForUpdate();
+
+            ValidateGraphData();
+        }
+
+        private void ValidateGraphData()
+        {
+            List<ExpectedGraphNode> expected = new List<ExpectedGraphNode>();
+            foreach (var e in GraphNodes)
+            {
+                expected.Add(new ExpectedGraphNode()
+                {
+                    id = e.Id,
+                    parentId = e.ParentId,
+                    reducedId = e.Id,
+                    level = 1
+                });
+            }
+
+            var firstNode = expected.First();
+            CreateExpectedGraphNodes(firstNode.id!.Value, firstNode, expected, 2);
+
+            AssertCurrentDataEqual(expected.Select(x => new { x.id, x.reducedId, x.parentId }));
+        }
+
+        private class ExpectedGraphNode
+        {
+            public int? id;
+            public int? reducedId;
+            public int? parentId;
+            public int level;
+
+            public override string ToString()
+            {
+                return $"{{ id = {id}, reducedId = {reducedId}, parentId = {parentId}, level = {level} }}";
+            }
+        }
+
+        private void CreateExpectedGraphNodes(int lookupId, ExpectedGraphNode node, List<ExpectedGraphNode> nodes, int level)
+        {
+            var dependentNodes = nodes.Where(x => x.parentId == lookupId).ToList();
+
+            var firstNode = dependentNodes.OrderBy(x => x.id).FirstOrDefault();
+            foreach (var dependentNode in dependentNodes)
+            {
+                var currentId = dependentNode.id;
+                dependentNode.reducedId = firstNode!.id;
+                dependentNode.parentId = node.id;
+                dependentNode.level = level;
+                CreateExpectedGraphNodes(currentId!.Value, dependentNode, nodes, level + 1);
+            }
+        }
+
+        [Fact]
+        public async Task AverageTestUnboundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<AverageResult> output = new List<AverageResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        sum += orderedByKey[i].DoubleValue;
+                        output.Add(new AverageResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, ((double)sum / (i + 1))));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task AverageTestBoundedStartToCurrentRow()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(AVG(DoubleValue) OVER (PARTITION BY CompanyId ORDER BY userkey ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var sum = 0.0;
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    Queue<double> values = new Queue<double>();
+                    List<SumResult> output = new List<SumResult>();
+                    int counter = 0;
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        while (values.Count > 4)
+                        {
+                            var dequeued = values.Dequeue();
+                            sum -= dequeued;
+                            counter--;
+                        }
+                        values.Enqueue(orderedByKey[i].DoubleValue);
+                        sum += orderedByKey[i].DoubleValue;
+                        counter++;
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, (int)((double)sum / counter)));
+
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task AverageTestUnbounded()
+        {
+            GenerateData();
+
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CompanyId,
+                UserKey,
+                CAST(AVG(DoubleValue) OVER (PARTITION BY CompanyId) AS INT) as value
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId)
+                .SelectMany(g =>
+                {
+                    var avg = (long)g.Average(x => x.DoubleValue);
+                    var orderedByKey = g.OrderBy(x => x.UserKey).ToList();
+                    List<SumResult> output = new List<SumResult>();
+                    for (int i = 0; i < orderedByKey.Count; i++)
+                    {
+                        output.Add(new SumResult(orderedByKey[i].CompanyId, orderedByKey[i].UserKey, avg));
+                    }
+                    return output;
+                }).ToList();
+
+            AssertCurrentDataEqual(expected);
+        }
+
     }
 }
