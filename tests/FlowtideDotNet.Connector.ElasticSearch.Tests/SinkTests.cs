@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             var mappingInfo = await elasticClient.Indices.GetMappingAsync<User>(b => b.Indices("testindex"));
             var birthDateField = mappingInfo.Mappings["testindex"].Mappings.Properties!["birthDate"];
             Assert.Equal("date", birthDateField.Type);
-            Assert.Equal(lastUser.BirthDate!.Value, resp.Body.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
+            Assert.Equal(lastUser.BirthDate!.Value, resp.Source.BirthDate!.Value.ToUniversalTime(), TimeSpan.FromMilliseconds(1));
         }
 
         [Fact]

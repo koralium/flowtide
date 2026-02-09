@@ -20,7 +20,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         MsSqlContainer _msSqlContainer;
         public SqlServerEndToEndFixture()
         {
-            _msSqlContainer = new MsSqlBuilder()
+            _msSqlContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04")
                 .Build();
         }
 

@@ -43,8 +43,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
 
         public async Task InitializeAsync()
         {
-            container = new ContainerBuilder()
-                .WithImage("starrocks/allin1-ubuntu")
+            container = new ContainerBuilder("starrocks/allin1-ubuntu")
                 .WithPortBinding(9030, true)
                 .WithPortBinding(8030, true)
                 .WithPortBinding(8040, true)
