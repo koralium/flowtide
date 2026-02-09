@@ -621,7 +621,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
                     argList.DuplicateTreatment == DuplicateTreatment.Distinct)
                     {
-                        // Visit the argument to ensure it is valid, even though we will ignore it in the actual count implementation
+                        // Visit the argument to ensure it is valid and pass it as the argument to the count_distinct aggregate function
                         var columnExpr = visitor.Visit(funcExpr2.Expression, emitData);
                         return new AggregateResponse(
                             new AggregateFunction()
