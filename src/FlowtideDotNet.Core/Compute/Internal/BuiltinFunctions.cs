@@ -26,13 +26,14 @@ namespace FlowtideDotNet.Core.Compute.Internal
             ArithmaticStreamingFunctions.AddBuiltInArithmaticFunctions(functionsRegister);
             Columnar.Functions.StringFunctions.BuiltInStringFunctions.RegisterFunctions(functionsRegister);
             Columnar.Functions.BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);
-            Columnar.Functions.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
+            Columnar.Functions.Datetime.BuiltInDatetimeFunctions.AddBuiltInDatetimeFunctions(functionsRegister);
             Columnar.Functions.BuiltInRoundingFunctions.AddRoundingFunctions(functionsRegister);
             BuiltInCheckFunctions.RegisterCheckFunctions(functionsRegister);
             Columnar.Functions.BuiltInStructFunctions.AddBuiltInStructFunctions(functionsRegister);
             Columnar.Functions.BuiltInListFunctions.AddBuiltInListFunctions(functionsRegister);
             Columnar.Functions.BuiltInArithmeticFunctions.AddBuiltInArithmeticFunctions(functionsRegister);
             Columnar.Functions.HashFunctions.HashFunctions.RegisterHashFunctions(functionsRegister);
+            Columnar.Functions.BuiltInLogarithmicFunctions.AddBuiltInLogarithmicFunctions(functionsRegister);
 
             BuiltInComparisonFunctions.AddComparisonFunctions(functionsRegister);
             BuiltInBooleanFunctions.AddBooleanFunctions(functionsRegister);

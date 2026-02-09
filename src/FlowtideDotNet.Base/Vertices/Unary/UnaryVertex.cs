@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Base.Vertices.Unary
                 }
                 if (streamEvent is LockingEventPrepare lockingEventPrepare)
                 {
-                    return Passthrough(lockingEventPrepare);
+                    return HandleLockEventPrepare(lockingEventPrepare);
                 }
                 if (streamEvent is TriggerEvent triggerEvent)
                 {
@@ -302,6 +302,24 @@ namespace FlowtideDotNet.Base.Vertices.Unary
         {
             var transformedCheckpoint = await HandleCheckpoint(checkpointEvent);
             yield return transformedCheckpoint;
+        }
+
+        private async IAsyncEnumerable<IStreamEvent> HandleLockEventPrepare(LockingEventPrepare prepare)
+        {
+            await foreach (var e in OnLockingEventPrepare())
+            {
+                if (e is IRentable rentable)
+                {
+                    rentable.Rent(_links.Count);
+                }
+                yield return new StreamMessage<T>(e, _currentTime);
+            }
+            yield return prepare;
+        }
+
+        protected virtual IAsyncEnumerable<T> OnLockingEventPrepare()
+        {
+            return EmptyAsyncEnumerable<T>.Instance;
         }
 
         private async Task<ILockingEvent> HandleCheckpointParallel(ILockingEvent checkpointEvent)

@@ -12,11 +12,9 @@
 
 namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
-    public static class FunctionsAggregateGeneric
+    public static class FunctionsLogarithmic
     {
-        public const string Uri = "/functions_aggregate_generic.yaml";
-        public const string Count = "count";
-        public const string CountDistinct = "count_distinct";
-        public const string SurrogateKeyInt64 = "surrogate_key_int64";
+        public const string Uri = "/functions_logarithmic.yaml";
+        public const string Log10 = "log10";
     }
 }
