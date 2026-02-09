@@ -105,7 +105,19 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             _primaryKeyOrdinals = primaryKeyOrdinals;
             _primaryKeyColumnNames = primaryKeyColumnNames;
-            _jsonWriter = new StarRocksJsonWriter(tableInfo.ColumnNames);
+
+            List<string> starrocksColumnNames = new List<string>();
+            for(int i = 0; i < _writeRelation.TableSchema.Names.Count; i++)
+            {
+                var starrocksName = tableInfo.ColumnNames.FirstOrDefault(x => x.Equals(_writeRelation.TableSchema.Names[i], StringComparison.OrdinalIgnoreCase));
+                if (starrocksName == null)
+                {
+                    throw new StarRocksConfigurationException($"The column '{_writeRelation.TableSchema.Names[i]}' does not exist in the target Starrocks table.");
+                }
+                starrocksColumnNames.Add(starrocksName);
+            }
+
+            _jsonWriter = new StarRocksJsonWriter(starrocksColumnNames);
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 
