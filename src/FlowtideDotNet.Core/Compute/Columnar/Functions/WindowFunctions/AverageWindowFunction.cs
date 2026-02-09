@@ -181,13 +181,28 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 
             long updateRowIndex = partitionRowIndex;
 
-            while (_windowRowIndex <= (updateRowIndex + _to) && await _windowEnumerator.MoveNextAsync())
+            if (_to == long.MaxValue)
             {
-                var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
-                await _queue.Enqueue(val);
-                _windowRowIndex++;
-                SumWindowUtils.DoSum(val, _currentSumContainer, 1);
-                AverageWindowUtils.ModifyCount(ref _countCounter, 1, val.Type);
+                // UNBOUNDED FOLLOWING: iterate until the enumerator is exhausted.
+                while (await _windowEnumerator.MoveNextAsync())
+                {
+                    var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
+                    await _queue.Enqueue(val);
+                    _windowRowIndex++;
+                    SumWindowUtils.DoSum(val, _currentSumContainer, 1);
+                    _countCounter++;
+                }
+            }
+            else
+            {
+                while (_windowRowIndex <= (updateRowIndex + _to) && await _windowEnumerator.MoveNextAsync())
+                {
+                    var val = _fetchValueFunction(_windowEnumerator.Current.Key.referenceBatch, _windowEnumerator.Current.Key.RowIndex);
+                    await _queue.Enqueue(val);
+                    _windowRowIndex++;
+                    SumWindowUtils.DoSum(val, _currentSumContainer, 1);
+                    _countCounter++;
+                }
             }
 
             while (_queue.Count > 0 && _windowRowIndex - _queue.Count < updateRowIndex + _from)
