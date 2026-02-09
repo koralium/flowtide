@@ -47,6 +47,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         {
             functionsRegister.RegisterColumnScalarFunction(FunctionsLogarithmic.Uri, FunctionsLogarithmic.Log10, (func, paramInfo, visitor, functionServices) =>
             {
+                if (func.Arguments.Count != 1)
+                {
+                    throw new InvalidOperationException($"Function {FunctionsLogarithmic.Log10} expects exactly 1 argument, but got {func.Arguments.Count}");
+                }
                 var method = typeof(BuiltInLogarithmicFunctions).GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(x => x.Name.StartsWith(nameof(Log10Implementation))).First();
 
                 var methodParameters = method.GetParameters();
