@@ -1478,7 +1478,23 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Operation = operation
             };
 
-            return new RelationData(setRelation, left.EmitData);
+            var cloned = left.EmitData.Clone();
+            var leftTypesList = cloned.GetTypes();
+            var rightTypesList = right.EmitData.GetTypes();
+            for (int i = 0; i < leftTypesList.Count; i++)
+            {
+                if (leftTypesList[i] is NullType)
+                {
+                    // If the type is null, replace it with the corresponding type from the right relation
+                    var rightType = rightTypesList[i];
+                    if (rightType is not NullType)
+                    {
+                        cloned.UpdateType(i, rightType);
+                    }
+                }
+            }
+
+            return new RelationData(setRelation, cloned);
         }
 
         protected override RelationData? VisitBeginSubStream(BeginSubStream beginSubStream)
