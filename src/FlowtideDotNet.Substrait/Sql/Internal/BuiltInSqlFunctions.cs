@@ -1517,6 +1517,14 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
                 }
+                if ((argList.Args[3] is FunctionArg.Unnamed unnamed4 && unnamed4.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[4] is FunctionArg.Unnamed unnamed5 && unnamed5.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
                 if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
                 argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
                 argList.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3 &&
@@ -1546,7 +1554,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         returnType
                         );
                 }
-                throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+                throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
             });
         }
 
