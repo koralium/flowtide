@@ -878,6 +878,22 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "abs", FunctionsArithmetic.Uri, FunctionsArithmetic.Abs);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Uri, FunctionsArithmetic.Sign);
 
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "log10", FunctionsLogarithmic.Uri, FunctionsLogarithmic.Log10, (p1) =>
+            {
+                if (p1.Type == SubstraitType.Int64)
+                {
+                    return new Fp64Type();
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return new DecimalType();
+                }
+                else
+                {
+                    return new Fp64Type();
+                }
+            });
+
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "starts_with", FunctionsString.Uri, FunctionsString.StartsWith);
             RegisterThreeVariableScalarFunction(sqlFunctionRegister, "replace", FunctionsString.Uri, FunctionsString.Replace);
 
