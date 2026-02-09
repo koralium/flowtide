@@ -618,8 +618,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (!(argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     if (argList.Args[0] is FunctionArg.Unnamed unnamed2 && 
-                    unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
-                    argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                        unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                        argList.DuplicateTreatment == DuplicateTreatment.Distinct)
                     {
                         // Visit the argument to ensure it is valid and pass it as the argument to the count_distinct aggregate function
                         var columnExpr = visitor.Visit(funcExpr2.Expression, emitData);
@@ -631,12 +631,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                                 Arguments = new List<Expressions.Expression>() { columnExpr.Expr }
                             },
                             new Int64Type()
-                            );
+                        );
                     }
                     else
                     {
-                    throw new InvalidOperationException("count must have exactly one argument, and be '*'");
-                }
+                        throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                    }
                 }
                 return new AggregateResponse(
                     new AggregateFunction()
