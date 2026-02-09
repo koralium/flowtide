@@ -14,8 +14,11 @@
     <PackageReference Include="Apache.Arrow" />
     <PackageReference Include="System.IO.Hashing" />
 
-	  <PackageReference Include="Fody" PrivateAssets="all" />
-	  <PackageReference Include="InlineIL.Fody" PrivateAssets="all" />
+	<PackageReference Include="Fody" PrivateAssets="all" />
+	<PackageReference Include="InlineIL.Fody" PrivateAssets="all" />
+	<PackageReference Include="System.Linq.Async">
+      <ExcludeAssets>compile</ExcludeAssets>
+	</PackageReference>
   </ItemGroup>
 
   <ItemGroup>

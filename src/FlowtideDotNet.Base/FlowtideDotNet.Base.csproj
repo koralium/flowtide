@@ -9,5 +9,8 @@
   <ItemGroup>
     <ProjectReference Include="..\FlowtideDotNet.Storage\FlowtideDotNet.Storage.csproj" />
 	<PackageReference Include="System.Linq.AsyncEnumerable" />
+	<PackageReference Include="System.Linq.Async">
+      <ExcludeAssets>compile</ExcludeAssets>
+	</PackageReference>
   </ItemGroup>
 </Project>

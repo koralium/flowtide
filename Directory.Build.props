@@ -6,10 +6,4 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <DefineConstants>$(DefineConstants)$(FeatureFlags.Replace("#",";"))</DefineConstants>
   </PropertyGroup>
-  
-  <ItemGroup Condition="'$(MSBuildProjectExtension)' == '.csproj'">
-    <PackageReference Include="System.Linq.Async">
-      <ExcludeAssets>compile</ExcludeAssets>
-    </PackageReference>
-  </ItemGroup>
 </Project>
