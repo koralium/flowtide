@@ -304,16 +304,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void GenerateGraphNodes(int count)
         {
-            //if (!firstGraphNodeGenerated)
-            //{
-            //    var firstNode = new GraphNode()
-            //    {
-            //        Id = "1",
-            //        ParentId = null
-            //    };
-            //    GraphNodes.Add(firstNode);
-            //}
-
             var testGraphNodes = new Faker<GraphNode>()
                 .RuleFor(x => x.Id, (f, u) => f.UniqueIndex)
                 .RuleFor(x => x.ParentId, (f, u) =>
@@ -323,7 +313,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         return null;
                     }
                     var parentGraphNode = f.PickRandom(GraphNodes);
-                    //availableManagers.Add(u.UserKey);
                     return parentGraphNode.Id;
                 })
                 .FinishWith((f, g) =>
