@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
 
         private long _windowRowIndex = 0;
         private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
-        private DataValueContainer _currentSumContainer = new DataValueContainer();
+        private readonly DataValueContainer _currentSumContainer = new DataValueContainer();
         private long _countCounter = 0;
 
         public async ValueTask NewPartition(ColumnRowReference partitionValues)
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private readonly long _to;
         private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
         private long _windowRowIndex = 0;
-        private DataValueContainer _currentSumContainer = new DataValueContainer();
+        private readonly DataValueContainer _currentSumContainer = new DataValueContainer();
         private long _countCounter = 0;
 
         public AverageWindowUnboundedFrom(Func<EventBatchData, int, IDataValue> fetchValueFunction, long to)
@@ -307,7 +307,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
         private PartitionIterator? _windowPartitionIterator;
         private readonly Func<EventBatchData, int, IDataValue> _fetchValueFunction;
         private IAsyncEnumerator<KeyValuePair<ColumnRowReference, WindowStateReference>>? _windowEnumerator;
-        private DataValueContainer _currentSumContainer = new DataValueContainer();
+        private readonly DataValueContainer _currentSumContainer = new DataValueContainer();
         private long _countCounter = 0;
 
         public AverageWindowFunctionUnbounded(Func<EventBatchData, int, IDataValue> fetchValueFunction)
