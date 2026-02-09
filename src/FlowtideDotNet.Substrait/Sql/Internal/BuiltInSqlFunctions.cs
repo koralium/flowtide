@@ -905,6 +905,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, (p1) =>
+            {
+                if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64)
+                {
+                    return new Fp64Type() { Nullable = true };
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return p1;
+                }
+                return NullType.Instance;
+            }, true, false);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>

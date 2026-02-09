@@ -129,3 +129,24 @@ This function **requires an ORDER BY clause** to establish row sequence and supp
 SELECT max_by(x, y) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
 SELECT max_by(x, y) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM ...
 ```
+
+## Average
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#avg)
+
+Calculates the average of numeric values within a window.  
+If there are no rows in the window, the result is `NULL`.  
+Non-numeric values (such as strings or `NULL`s) are ignored during calculation.
+
+### SQL Usage
+
+```sql
+ -- Average of all rows
+SELECT AVG(column1) OVER () FROM ...
+ -- Average of each partition
+SELECT AVG(column1) OVER (PARTITION BY column2) FROM ...
+-- Average from start to current row
+SELECT AVG(column1) OVER (PARTITION BY column2 ORDER BY column3) FROM ...
+-- Average of the previous four rows and current row
+SELECT AVG(column1) OVER (PARTITION BY column2 ORDER BY column3 ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM ...
+```

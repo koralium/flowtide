@@ -158,7 +158,17 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
         }
 
-        protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
+        protected override IAsyncEnumerable<StreamEventBatch> OnLockingEventPrepare()
+        {
+            return SendData();
+        }
+
+        protected override IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
+        {
+            return SendData();
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> SendData()
         {
             Debug.Assert(_eventsOutCounter != null);
             Debug.Assert(_outputBuilder != null);
@@ -182,7 +192,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                         await _windowFunctions[w].NewPartition(partitionKv.Key);
                     }
 
-                    await foreach(var row in _partitionIterator)
+                    await foreach (var row in _partitionIterator)
                     {
                         for (int w = 0; w < _windowFunctions.Length; w++)
                         {
