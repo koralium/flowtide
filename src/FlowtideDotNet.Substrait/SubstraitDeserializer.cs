@@ -711,7 +711,7 @@ namespace FlowtideDotNet.Substrait
             {
                 if (fetchRel.Offset < int.MinValue || fetchRel.Count < int.MinValue)
                 {
-                    throw new InvalidOperationException("Offset and count in fetch relation must greater than int min value");
+                    throw new InvalidOperationException("Offset and count in fetch relation must be greater than int min value");
                 }
                 if (fetchRel.Count > int.MaxValue)
                 {
