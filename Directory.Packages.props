@@ -17,7 +17,7 @@
     <PackageVersion Include="Microsoft.Graph" Version="5.58.0" />
     <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
     <!-- Grpc -->
-    <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.78.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.33.5" />
     <!-- Polly -->
