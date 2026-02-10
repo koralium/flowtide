@@ -169,11 +169,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                             actions.Add(genericAction);
                         }
 
-                        if (textReader.EndOfStream)
+                        line = await textReader.ReadLineAsync();
+                        if (line == null)
                         {
                             break;
                         }
-                        line = await textReader.ReadLineAsync();
                     }
                 }
             }
@@ -265,11 +265,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     cdcActions.Add(action.Cdc);
                 }
 
-                if (textReader.EndOfStream)
+                line = await textReader.ReadLineAsync();
+                if (line == null)
                 {
                     break;
                 }
-                line = await textReader.ReadLineAsync();
             }
 
             return new DeltaCommit(addedFiles, removedFiles, cdcActions, metadata);

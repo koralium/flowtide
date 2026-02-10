@@ -300,8 +300,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.AddOrUpdate(newProjectMembers);
         }
 
-        private bool firstGraphNodeGenerated = false;
-
         public void GenerateGraphNodes(int count)
         {
             var testGraphNodes = new Faker<GraphNode>()

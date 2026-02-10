@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         private readonly MsSqlContainer _msSqlContainer;
         public SqlServerFixture()
         {
-            _msSqlContainer = new MsSqlBuilder().Build();
+            _msSqlContainer = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
         }
 
         public string ConnectionString => _msSqlContainer.GetConnectionString();
