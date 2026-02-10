@@ -1212,7 +1212,7 @@ namespace FlowtideDotNet.Substrait
                 }
                 else
                 {
-                    throw new NotImplementedException("Only scatter and broadcast exchange kinds are implemented");
+                    throw new NotImplementedException("Unsupported exchange kind type");
                 }
 
                 output.Input = Visit(exchangeRelation.Input, state);
