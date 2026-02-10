@@ -707,6 +707,18 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitFetch(Protobuf.FetchRel fetchRel)
             {
+                if (fetchRel.Offset < 0 || fetchRel.Count < 0)
+                {
+                    throw new InvalidOperationException("Offset and count in fetch relation must be non-negative");
+                }
+                if (fetchRel.Count > int.MaxValue)
+                {
+                    throw new InvalidOperationException("Count in fetch relation cannot be greater than int max value");
+                }
+                if (fetchRel.Offset > int.MaxValue)
+                {
+                    throw new InvalidOperationException("Offset in fetch relation cannot be greater than int max value");
+                }
                 var output = new FetchRelation()
                 {
                     Input = VisitRel(fetchRel.Input),
@@ -1177,7 +1189,7 @@ namespace FlowtideDotNet.Substrait
                 };
 
                 
-                if (readRel.NamedTable != null)
+                if (readRel.ReadTypeCase == Protobuf.ReadRel.ReadTypeOneofCase.NamedTable)
                 {
                     List<string> namedTable = new List<string>();
                     namedTable.AddRange(readRel.NamedTable.Names);
@@ -1192,7 +1204,7 @@ namespace FlowtideDotNet.Substrait
                         Emit = GetEmit(readRel.Common)
                     };
                 }
-                else if (readRel.VirtualTable.Expressions.Count > 0)
+                else if (readRel.ReadTypeCase == Protobuf.ReadRel.ReadTypeOneofCase.VirtualTable)
                 {
                     List<StructExpression> virtualTableExprs = new List<StructExpression>();
                     foreach (var expr in readRel.VirtualTable.Expressions)

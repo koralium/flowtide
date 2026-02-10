@@ -514,6 +514,10 @@ namespace FlowtideDotNet.Substrait
 
             public override Protobuf.Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, SerializerVisitorState state)
             {
+                if (binaryLiteral.Value == null)
+                {
+                    throw new InvalidOperationException("Binary literal value cannot be null");
+                }
                 var literal = new Protobuf.Expression.Types.Literal();
                 literal.Binary = ByteString.CopyFrom(binaryLiteral.Value);
                 return new Protobuf.Expression()
