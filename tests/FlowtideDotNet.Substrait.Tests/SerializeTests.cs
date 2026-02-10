@@ -15,7 +15,6 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
-using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -584,6 +583,38 @@ namespace FlowtideDotNet.Substrait.Tests
                 INSERT INTO output
                 SELECT TOP 1 a
                 FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void BroadcastExchange()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                CREATE VIEW dataview WITH(DISTRIBUTED = true) AS
+                SELECT a FROM table1;
+
+                INSERT INTO outputtable
+                SELECT* FROM dataview
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void HexValue()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                INSERT INTO output 
+                SELECT hex FROM 
+                (
+                    VALUES 
+                    (0x544F2041)
+                ) t(hex)
             ");
             var plan = sqlPlanBuilder.GetPlan();
             AssertPlanCanSerializeDeserialize(plan);

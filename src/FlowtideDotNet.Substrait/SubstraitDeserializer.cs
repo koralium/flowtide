@@ -161,6 +161,11 @@ namespace FlowtideDotNet.Substrait
                         {
                             Nullable = type.TimestampTz.Nullability != Protobuf.Type.Types.Nullability.Required
                         };
+                    case Protobuf.Type.KindOneofCase.Binary:
+                        return new BinaryType()
+                        {
+                            Nullable = type.Binary.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                 }
@@ -258,6 +263,19 @@ namespace FlowtideDotNet.Substrait
                         return VisitSingularOrList(expression.SingularOrList);
                 }
                 throw new NotImplementedException();
+            }
+
+            public StructExpression VisitStruct(Protobuf.Expression.Types.Nested.Types.Struct structExpr)
+            {
+                var fields = new List<Expression>();
+                foreach(var field in structExpr.Fields)
+                {
+                    fields.Add(VisitExpression(field));
+                }
+                return new StructExpression()
+                {
+                    Fields = fields
+                };
             }
 
             public Expression VisitSingularOrList(Protobuf.Expression.Types.SingularOrList singularOrList)
@@ -507,6 +525,11 @@ namespace FlowtideDotNet.Substrait
                         {
                             Value = literal.FixedChar
                         };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Binary:
+                        return new BinaryLiteral()
+                        {
+                            Value = literal.Binary.ToByteArray()
+                        };
                     default:
                         throw new NotImplementedException();
                 }
@@ -710,6 +733,11 @@ namespace FlowtideDotNet.Substrait
                     }
                     exchangeKind = scatterExchangeKind;
                 }
+                else if (exchange.ExchangeKindCase == Protobuf.ExchangeRel.ExchangeKindOneofCase.Broadcast)
+                {
+                    exchangeKind = new BroadcastExchangeKind();
+                    
+                }
                 else
                 {
                     throw new NotImplementedException();
@@ -736,7 +764,7 @@ namespace FlowtideDotNet.Substrait
                     ExchangeKind = exchangeKind,
                     Targets = targets,
                     Emit = GetEmit(exchange.Common),
-                    PartitionCount = exchange.PartitionCount
+                    PartitionCount = exchange.PartitionCount == 0 ? null : exchange.PartitionCount
                 };
             }
 
@@ -1136,13 +1164,6 @@ namespace FlowtideDotNet.Substrait
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
 
-
-                List<string> namedTable = new List<string>();
-                if (readRel.NamedTable != null)
-                {
-                    namedTable.AddRange(readRel.NamedTable.Names);
-                }
-
                 Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
@@ -1154,15 +1175,45 @@ namespace FlowtideDotNet.Substrait
                     Names = names,
                     Struct = schema
                 };
-                return new ReadRelation()
+
+                
+                if (readRel.NamedTable != null)
                 {
-                    BaseSchema = namedStruct,
-                    NamedTable = new Type.NamedTable()
+                    List<string> namedTable = new List<string>();
+                    namedTable.AddRange(readRel.NamedTable.Names);
+
+                    return new ReadRelation()
                     {
-                        Names = namedTable
-                    },
-                    Emit = GetEmit(readRel.Common)
-                };
+                        BaseSchema = namedStruct,
+                        NamedTable = new Type.NamedTable()
+                        {
+                            Names = namedTable
+                        },
+                        Emit = GetEmit(readRel.Common)
+                    };
+                }
+                else if (readRel.VirtualTable.Expressions.Count > 0)
+                {
+                    List<StructExpression> virtualTableExprs = new List<StructExpression>();
+                    foreach (var expr in readRel.VirtualTable.Expressions)
+                    {
+                        virtualTableExprs.Add(expressionDeserializer.VisitStruct(expr));
+                    }
+                    VirtualTable virtualTable = new VirtualTable()
+                    {
+                        Expressions = virtualTableExprs
+                    };
+                    return new VirtualTableReadRelation()
+                    {
+                        BaseSchema = namedStruct,
+                        Emit = GetEmit(readRel.Common),
+                        Values = virtualTable
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("Read relation must have either named table or virtual table expressions");
+                }
             }
 
             private Relation VisitFilter(Protobuf.FilterRel filterRel)

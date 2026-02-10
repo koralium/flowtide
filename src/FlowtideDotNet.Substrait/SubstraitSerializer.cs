@@ -512,6 +512,16 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Protobuf.Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, SerializerVisitorState state)
+            {
+                var literal = new Protobuf.Expression.Types.Literal();
+                literal.Binary = ByteString.CopyFrom(binaryLiteral.Value);
+                return new Protobuf.Expression()
+                {
+                    Literal = literal
+                };
+            }
+
             public override Protobuf.Expression? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, SerializerVisitorState state)
             {
                 var output = new Protobuf.Expression()
@@ -1136,6 +1146,7 @@ namespace FlowtideDotNet.Substrait
                         rel.VirtualTable.Expressions.Add(expr.Nested.Struct);
                     }
                 }
+                rel.BaseSchema = SerializeNamedStruct(virtualTableReadRelation.BaseSchema, state);
                 if (virtualTableReadRelation.EmitSet)
                 {
                     rel.Common = new Protobuf.RelCommon();
@@ -1195,9 +1206,13 @@ namespace FlowtideDotNet.Substrait
                         }
                     }
                 }
+                else if (exchangeRelation.ExchangeKind.Type == ExchangeKindType.Broadcast)
+                {
+                    output.Broadcast = new ExchangeRel.Types.Broadcast();
+                }
                 else
                 {
-                    throw new NotImplementedException("Only scatter exchange kind is implemented");
+                    throw new NotImplementedException("Only scatter and broadcast exchange kinds are implemented");
                 }
 
                 output.Input = Visit(exchangeRelation.Input, state);
@@ -1499,12 +1514,13 @@ namespace FlowtideDotNet.Substrait
         {
             var rootPlan = new Protobuf.Plan();
 
+            var state = new SerializerVisitorState(rootPlan);
             var visitor = new SerializerVisitor();
             foreach (var relation in plan.Relations)
             {
                 rootPlan.Relations.Add(new Protobuf.PlanRel()
                 {
-                    Rel = visitor.Visit(relation, new SerializerVisitorState(rootPlan))
+                    Rel = visitor.Visit(relation, state)
                 });
             }
             return rootPlan;
