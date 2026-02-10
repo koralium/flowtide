@@ -23,6 +23,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
@@ -79,6 +80,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         protected float Backpressure => ((float)(_transformBlock?.OutputCount ?? throw new InvalidOperationException("OutputCount can only be fetched after initialization."))) / executionDataflowBlockOptions.BoundedCapacity;
 
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter? allInput;
+#endif
+
         protected MultipleInputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             _targetCheckpointLock = new object();
@@ -102,6 +108,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             {
                 if (r.Value is ILockingEvent ev)
                 {
+#if DEBUG_WRITE
+                    allInput?.WriteLine($"Received locking event {ev.GetType().Name} from target {r.Key}");
+                    allInput?.Flush();
+#endif
                     if (TargetInCheckpoint(r.Key, ev, out var checkpoints))
                     {
                         _lastSeenCheckpointEvents = checkpoints;
@@ -362,6 +372,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             Debug.Assert(_targetSentWatermark != null);
             Debug.Assert(_targetSentDataSinceLastWatermark != null);
 
+#if DEBUG_WRITE
+            allInput?.WriteLine($"Watermark: {JsonSerializer.Serialize(watermark)} from target {targetId}");
+            allInput?.Flush();
+#endif
+
             if (_currentWatermark == null)
             {
                 _currentWatermark = new Watermark(ImmutableDictionary<string, AbstractWatermarkValue>.Empty, watermark.StartTime)
@@ -415,6 +430,10 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
                 {
                     if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
                     {
+#if DEBUG_WRITE
+                        allInput?.WriteLine($"Not sending watermark because target {i} has sent data but not watermark since last watermark");
+                        allInput?.Flush();
+#endif
                         yield break;
                     }
                 }
@@ -726,6 +745,20 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             });
 
             _currentTime = newTime;
+
+
+#if DEBUG_WRITE
+            // Debug data
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.vertex.txt");
+            }
+#endif
+
             return InitializeOrRestore(vertexHandler.StateClient);
         }
 
