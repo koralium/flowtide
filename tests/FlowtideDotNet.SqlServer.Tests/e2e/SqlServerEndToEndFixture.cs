@@ -28,7 +28,6 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
         {
             get
             {
-                
                 var connectionStringBuilder = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
                 connectionStringBuilder.InitialCatalog = "test-db";
                 var tpchConnectionString = connectionStringBuilder.ToString();
