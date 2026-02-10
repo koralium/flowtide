@@ -239,6 +239,14 @@ namespace FlowtideDotNet.Substrait
                         {
                             throw new InvalidOperationException("Map type must be MapType");
                         }
+                    case SubstraitType.TimestampTz:
+                        return new Protobuf.Type()
+                        {
+                            TimestampTz = new Protobuf.Type.Types.TimestampTZ()
+                            {
+                                Nullability = nullable
+                            }
+                        };
                     default:
                         throw new NotImplementedException(type.Type.ToString());
                 }
@@ -301,7 +309,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         Literal = new Protobuf.Expression.Types.Literal()
                         {
-                            I64 = (int)numericLiteral.Value
+                            I64 = (long)numericLiteral.Value
                         }
                     };
                 }
@@ -1453,6 +1461,26 @@ namespace FlowtideDotNet.Substrait
                 return new Rel()
                 {
                     ExtensionSingle = rel
+                };
+            }
+
+            public override Rel VisitFetchRelation(FetchRelation fetchRelation, SerializerVisitorState state)
+            {
+                var fetchRel = new Protobuf.FetchRel();
+
+                fetchRel.Offset = fetchRelation.Offset;
+                fetchRel.Count = fetchRelation.Count;
+                if (fetchRelation.EmitSet)
+                {
+                    fetchRel.Common = new Protobuf.RelCommon();
+                    fetchRel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    fetchRel.Common.Emit.OutputMapping.AddRange(fetchRelation.Emit);
+                }
+
+                fetchRel.Input = Visit(fetchRelation.Input, state);
+                return new Rel()
+                {
+                    Fetch = fetchRel
                 };
             }
         }

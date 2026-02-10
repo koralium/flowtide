@@ -156,6 +156,11 @@ namespace FlowtideDotNet.Substrait
                         {
                             Nullable = type.Map.Nullability != Protobuf.Type.Types.Nullability.Required
                         };
+                    case Protobuf.Type.KindOneofCase.TimestampTz:
+                        return new TimestampType()
+                        {
+                            Nullable = type.TimestampTz.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                 }
@@ -670,9 +675,23 @@ namespace FlowtideDotNet.Substrait
                         return VisitMergeJoin(rel.MergeJoin);
                     case Protobuf.Rel.RelTypeOneofCase.Exchange:
                         return VisitExchange(rel.Exchange);
+                    case Protobuf.Rel.RelTypeOneofCase.Fetch:
+                        return VisitFetch(rel.Fetch);
                     default:
                         throw new NotImplementedException(rel.RelTypeCase.ToString());
                 }
+            }
+
+            private Relation VisitFetch(Protobuf.FetchRel fetchRel)
+            {
+                var output = new FetchRelation()
+                {
+                    Input = VisitRel(fetchRel.Input),
+                    Emit = GetEmit(fetchRel.Common),
+                    Offset = (int)fetchRel.Offset,
+                    Count = (int)fetchRel.Count
+                };
+                return output;
             }
 
             private Relation VisitExchange(Protobuf.ExchangeRel exchange)

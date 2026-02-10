@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -543,6 +544,52 @@ namespace FlowtideDotNet.Substrait.Tests
             var plan = sqlPlanBuilder.GetPlan();
             AssertPlanCanSerializeDeserialize(plan);
         }
+
+        [Fact]
+        public void LargeIntegerNumber()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                16094592000000000 AS nr
+            FROM table1
+            "); 
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TimestampType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                CAST(16094592000000000 AS TIMESTAMP) as nr
+            FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void FetchRelation()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+                SELECT TOP 1 a
+                FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
