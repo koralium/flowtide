@@ -20,7 +20,6 @@ namespace AspireSamples.DataMigration
     {
         private readonly ResourceNotificationService resourceNotificationService;
         private readonly ResourceLoggerService resourceLoggerService;
-        private CancellationTokenSource tokenSource;
 
         public DataInsertEventingSubscriber(
             ResourceNotificationService resourceNotificationService,
@@ -28,7 +27,6 @@ namespace AspireSamples.DataMigration
         {
             this.resourceNotificationService = resourceNotificationService;
             this.resourceLoggerService = resourceLoggerService;
-            tokenSource = new CancellationTokenSource();
         }
 
         public Task SubscribeAsync(IDistributedApplicationEventing eventing, DistributedApplicationExecutionContext executionContext, CancellationToken cancellationToken)
@@ -98,7 +96,7 @@ namespace AspireSamples.DataMigration
                         });
                         try
                         {
-                            await dataInsertResource.initialInsert(logger, statusUpdater, dataInsertResource, tokenSource.Token);
+                            await dataInsertResource.initialInsert(logger, statusUpdater, dataInsertResource, cancellationToken);
                         }
                         catch (Exception e)
                         {
@@ -118,7 +116,7 @@ namespace AspireSamples.DataMigration
                             State = "Running"
                         });
 
-                        await dataInsertResource.afterStart(logger, dataInsertResource, tokenSource.Token);
+                        await dataInsertResource.afterStart(logger, dataInsertResource, cancellationToken);
 
                         await resourceNotificationService.PublishUpdateAsync(dataInsertResource, s => s with
                         {
