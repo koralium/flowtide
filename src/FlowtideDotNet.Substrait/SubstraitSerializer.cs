@@ -239,6 +239,16 @@ namespace FlowtideDotNet.Substrait
                         {
                             throw new InvalidOperationException("Map type must be MapType");
                         }
+                    case SubstraitType.Null:
+                        var anyTypeIdForNull = GetAnyTypeId();
+                        return new Protobuf.Type()
+                        {
+                            UserDefined = new Protobuf.Type.Types.UserDefined()
+                            {
+                                Nullability = Protobuf.Type.Types.Nullability.Nullable,
+                                TypeReference = anyTypeIdForNull
+                            }
+                        };
                     default:
                         throw new NotImplementedException(type.Type.ToString());
                 }

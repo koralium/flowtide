@@ -317,6 +317,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     cteContainers.Add(alias, container);
                     var p = Visit(with.Query, state);
 
+                    if (p == null)
+                    {
+                        throw new SubstraitParseException($"Could not create a plan for CTE '{alias}'");
+                    }
+
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {
@@ -1473,7 +1478,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Operation = operation
             };
 
-            return new RelationData(setRelation, left.EmitData);
+            var cloned = left.EmitData.Clone();
+            var leftTypesList = cloned.GetTypes();
+            var rightTypesList = right.EmitData.GetTypes();
+
+            if (leftTypesList.Count != rightTypesList.Count)
+            {
+                throw new SubstraitParseException("Set operation inputs must have the same number of columns.");
+            }
+
+            for (int i = 0; i < leftTypesList.Count; i++)
+            {
+                if (leftTypesList[i] is NullType)
+                {
+                    // If the type is null, replace it with the corresponding type from the right relation
+                    var rightType = rightTypesList[i];
+                    if (rightType is not NullType)
+                    {
+                        cloned.UpdateType(i, rightType);
+                    }
+                }
+            }
+
+            return new RelationData(setRelation, cloned);
         }
 
         protected override RelationData? VisitBeginSubStream(BeginSubStream beginSubStream)
