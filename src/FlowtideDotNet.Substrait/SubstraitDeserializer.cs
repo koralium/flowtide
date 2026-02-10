@@ -709,9 +709,9 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitFetch(Protobuf.FetchRel fetchRel)
             {
-                if (fetchRel.Offset < 0 || fetchRel.Count < 0)
+                if (fetchRel.Offset < int.MinValue || fetchRel.Count < int.MinValue)
                 {
-                    throw new InvalidOperationException("Offset and count in fetch relation must be non-negative");
+                    throw new InvalidOperationException("Offset and count in fetch relation must greater than int min value");
                 }
                 if (fetchRel.Count > int.MaxValue)
                 {

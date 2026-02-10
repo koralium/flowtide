@@ -1491,11 +1491,6 @@ namespace FlowtideDotNet.Substrait
 
             public override Rel VisitFetchRelation(FetchRelation fetchRelation, SerializerVisitorState state)
             {
-                if (fetchRelation.Offset < 0 || fetchRelation.Count < 0)
-                {
-                    throw new InvalidOperationException("Offset and count in FetchRelation must be non-negative");
-                }
-
                 var fetchRel = new Protobuf.FetchRel();
 
                 fetchRel.Offset = fetchRelation.Offset;
