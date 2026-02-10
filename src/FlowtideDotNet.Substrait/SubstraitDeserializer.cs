@@ -303,6 +303,8 @@ namespace FlowtideDotNet.Substrait
                         return VisitListNestedExpression(nested.List);
                     case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.Map:
                         return VisitMapNestedExpression(nested.Map);
+                    case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.Struct:
+                        return VisitStruct(nested.Struct);
                     default:
                         throw new NotImplementedException();
                 }
