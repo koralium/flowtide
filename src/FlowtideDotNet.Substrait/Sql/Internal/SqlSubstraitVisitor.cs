@@ -1481,6 +1481,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             var cloned = left.EmitData.Clone();
             var leftTypesList = cloned.GetTypes();
             var rightTypesList = right.EmitData.GetTypes();
+
+            if (leftTypesList.Count != rightTypesList.Count)
+            {
+                throw new SubstraitParseException("Set operation inputs must have the same number of columns.");
+            }
+
             for (int i = 0; i < leftTypesList.Count; i++)
             {
                 if (leftTypesList[i] is NullType)
