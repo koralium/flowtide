@@ -156,6 +156,16 @@ namespace FlowtideDotNet.Substrait
                         {
                             Nullable = type.Map.Nullability != Protobuf.Type.Types.Nullability.Required
                         };
+                    case Protobuf.Type.KindOneofCase.TimestampTz:
+                        return new TimestampType()
+                        {
+                            Nullable = type.TimestampTz.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Binary:
+                        return new BinaryType()
+                        {
+                            Nullable = type.Binary.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
                 }
@@ -255,6 +265,19 @@ namespace FlowtideDotNet.Substrait
                 throw new NotImplementedException();
             }
 
+            public StructExpression VisitStruct(Protobuf.Expression.Types.Nested.Types.Struct structExpr)
+            {
+                var fields = new List<Expression>();
+                foreach(var field in structExpr.Fields)
+                {
+                    fields.Add(VisitExpression(field));
+                }
+                return new StructExpression()
+                {
+                    Fields = fields
+                };
+            }
+
             public Expression VisitSingularOrList(Protobuf.Expression.Types.SingularOrList singularOrList)
             {
                 var valueExpr = VisitExpression(singularOrList.Value);
@@ -280,6 +303,8 @@ namespace FlowtideDotNet.Substrait
                         return VisitListNestedExpression(nested.List);
                     case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.Map:
                         return VisitMapNestedExpression(nested.Map);
+                    case Protobuf.Expression.Types.Nested.NestedTypeOneofCase.Struct:
+                        return VisitStruct(nested.Struct);
                     default:
                         throw new NotImplementedException();
                 }
@@ -502,6 +527,11 @@ namespace FlowtideDotNet.Substrait
                         {
                             Value = literal.FixedChar
                         };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Binary:
+                        return new BinaryLiteral()
+                        {
+                            Value = literal.Binary.ToByteArray()
+                        };
                     default:
                         throw new NotImplementedException();
                 }
@@ -670,9 +700,35 @@ namespace FlowtideDotNet.Substrait
                         return VisitMergeJoin(rel.MergeJoin);
                     case Protobuf.Rel.RelTypeOneofCase.Exchange:
                         return VisitExchange(rel.Exchange);
+                    case Protobuf.Rel.RelTypeOneofCase.Fetch:
+                        return VisitFetch(rel.Fetch);
                     default:
                         throw new NotImplementedException(rel.RelTypeCase.ToString());
                 }
+            }
+
+            private Relation VisitFetch(Protobuf.FetchRel fetchRel)
+            {
+                if (fetchRel.Offset < int.MinValue || fetchRel.Count < int.MinValue)
+                {
+                    throw new InvalidOperationException("Offset and count in fetch relation must be greater than int min value");
+                }
+                if (fetchRel.Count > int.MaxValue)
+                {
+                    throw new InvalidOperationException("Count in fetch relation cannot be greater than int max value");
+                }
+                if (fetchRel.Offset > int.MaxValue)
+                {
+                    throw new InvalidOperationException("Offset in fetch relation cannot be greater than int max value");
+                }
+                var output = new FetchRelation()
+                {
+                    Input = VisitRel(fetchRel.Input),
+                    Emit = GetEmit(fetchRel.Common),
+                    Offset = (int)fetchRel.Offset,
+                    Count = (int)fetchRel.Count
+                };
+                return output;
             }
 
             private Relation VisitExchange(Protobuf.ExchangeRel exchange)
@@ -690,6 +746,11 @@ namespace FlowtideDotNet.Substrait
                         scatterExchangeKind.Fields.Add(ExpressionDeserializerImpl.VisitFieldReference(field));
                     }
                     exchangeKind = scatterExchangeKind;
+                }
+                else if (exchange.ExchangeKindCase == Protobuf.ExchangeRel.ExchangeKindOneofCase.Broadcast)
+                {
+                    exchangeKind = new BroadcastExchangeKind();
+                    
                 }
                 else
                 {
@@ -717,7 +778,7 @@ namespace FlowtideDotNet.Substrait
                     ExchangeKind = exchangeKind,
                     Targets = targets,
                     Emit = GetEmit(exchange.Common),
-                    PartitionCount = exchange.PartitionCount
+                    PartitionCount = exchange.PartitionCount == 0 ? null : exchange.PartitionCount
                 };
             }
 
@@ -1117,13 +1178,6 @@ namespace FlowtideDotNet.Substrait
                 List<string> names = new List<string>();
                 names.AddRange(readRel.BaseSchema.Names);
 
-
-                List<string> namedTable = new List<string>();
-                if (readRel.NamedTable != null)
-                {
-                    namedTable.AddRange(readRel.NamedTable.Names);
-                }
-
                 Struct? schema = default;
                 if (readRel.BaseSchema.Struct != null)
                 {
@@ -1135,15 +1189,45 @@ namespace FlowtideDotNet.Substrait
                     Names = names,
                     Struct = schema
                 };
-                return new ReadRelation()
+
+                
+                if (readRel.ReadTypeCase == Protobuf.ReadRel.ReadTypeOneofCase.NamedTable)
                 {
-                    BaseSchema = namedStruct,
-                    NamedTable = new Type.NamedTable()
+                    List<string> namedTable = new List<string>();
+                    namedTable.AddRange(readRel.NamedTable.Names);
+
+                    return new ReadRelation()
                     {
-                        Names = namedTable
-                    },
-                    Emit = GetEmit(readRel.Common)
-                };
+                        BaseSchema = namedStruct,
+                        NamedTable = new Type.NamedTable()
+                        {
+                            Names = namedTable
+                        },
+                        Emit = GetEmit(readRel.Common)
+                    };
+                }
+                else if (readRel.ReadTypeCase == Protobuf.ReadRel.ReadTypeOneofCase.VirtualTable)
+                {
+                    List<StructExpression> virtualTableExprs = new List<StructExpression>();
+                    foreach (var expr in readRel.VirtualTable.Expressions)
+                    {
+                        virtualTableExprs.Add(expressionDeserializer.VisitStruct(expr));
+                    }
+                    VirtualTable virtualTable = new VirtualTable()
+                    {
+                        Expressions = virtualTableExprs
+                    };
+                    return new VirtualTableReadRelation()
+                    {
+                        BaseSchema = namedStruct,
+                        Emit = GetEmit(readRel.Common),
+                        Values = virtualTable
+                    };
+                }
+                else
+                {
+                    throw new NotImplementedException("Read relation must have either named table or virtual table expressions");
+                }
             }
 
             private Relation VisitFilter(Protobuf.FilterRel filterRel)

@@ -544,6 +544,84 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        [Fact]
+        public void LargeIntegerNumber()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                16094592000000000 AS nr
+            FROM table1
+            "); 
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TimestampType()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+            SELECT 
+                CAST(16094592000000000 AS TIMESTAMP) as nr
+            FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void FetchRelation()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT INTO output
+                SELECT TOP 1 a
+                FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void BroadcastExchange()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                CREATE VIEW dataview WITH(DISTRIBUTED = true) AS
+                SELECT a FROM table1;
+
+                INSERT INTO outputtable
+                SELECT* FROM dataview
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void HexValue()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                INSERT INTO output 
+                SELECT hex FROM 
+                (
+                    VALUES 
+                    (0x544F2041)
+                ) t(hex)
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);

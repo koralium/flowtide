@@ -249,6 +249,14 @@ namespace FlowtideDotNet.Substrait
                                 TypeReference = anyTypeIdForNull
                             }
                         };
+                    case SubstraitType.TimestampTz:
+                        return new Protobuf.Type()
+                        {
+                            TimestampTz = new Protobuf.Type.Types.TimestampTZ()
+                            {
+                                Nullability = nullable
+                            }
+                        };
                     default:
                         throw new NotImplementedException(type.Type.ToString());
                 }
@@ -311,7 +319,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         Literal = new Protobuf.Expression.Types.Literal()
                         {
-                            I64 = (int)numericLiteral.Value
+                            I64 = (long)numericLiteral.Value
                         }
                     };
                 }
@@ -501,6 +509,16 @@ namespace FlowtideDotNet.Substrait
                     {
                         Struct = s
                     }
+                };
+            }
+
+            public override Protobuf.Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, SerializerVisitorState state)
+            {
+                var literal = new Protobuf.Expression.Types.Literal();
+                literal.Binary = ByteString.CopyFrom(binaryLiteral.Value);
+                return new Protobuf.Expression()
+                {
+                    Literal = literal
                 };
             }
 
@@ -1128,6 +1146,7 @@ namespace FlowtideDotNet.Substrait
                         rel.VirtualTable.Expressions.Add(expr.Nested.Struct);
                     }
                 }
+                rel.BaseSchema = SerializeNamedStruct(virtualTableReadRelation.BaseSchema, state);
                 if (virtualTableReadRelation.EmitSet)
                 {
                     rel.Common = new Protobuf.RelCommon();
@@ -1187,9 +1206,13 @@ namespace FlowtideDotNet.Substrait
                         }
                     }
                 }
+                else if (exchangeRelation.ExchangeKind.Type == ExchangeKindType.Broadcast)
+                {
+                    output.Broadcast = new ExchangeRel.Types.Broadcast();
+                }
                 else
                 {
-                    throw new NotImplementedException("Only scatter exchange kind is implemented");
+                    throw new NotImplementedException("Unsupported exchange kind type");
                 }
 
                 output.Input = Visit(exchangeRelation.Input, state);
@@ -1465,18 +1488,39 @@ namespace FlowtideDotNet.Substrait
                     ExtensionSingle = rel
                 };
             }
+
+            public override Rel VisitFetchRelation(FetchRelation fetchRelation, SerializerVisitorState state)
+            {
+                var fetchRel = new Protobuf.FetchRel();
+
+                fetchRel.Offset = fetchRelation.Offset;
+                fetchRel.Count = fetchRelation.Count;
+                if (fetchRelation.EmitSet)
+                {
+                    fetchRel.Common = new Protobuf.RelCommon();
+                    fetchRel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    fetchRel.Common.Emit.OutputMapping.AddRange(fetchRelation.Emit);
+                }
+
+                fetchRel.Input = Visit(fetchRelation.Input, state);
+                return new Rel()
+                {
+                    Fetch = fetchRel
+                };
+            }
         }
 
         public static Protobuf.Plan Serialize(Plan plan)
         {
             var rootPlan = new Protobuf.Plan();
 
+            var state = new SerializerVisitorState(rootPlan);
             var visitor = new SerializerVisitor();
             foreach (var relation in plan.Relations)
             {
                 rootPlan.Relations.Add(new Protobuf.PlanRel()
                 {
-                    Rel = visitor.Visit(relation, new SerializerVisitorState(rootPlan))
+                    Rel = visitor.Visit(relation, state)
                 });
             }
             return rootPlan;
