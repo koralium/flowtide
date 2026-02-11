@@ -45,7 +45,7 @@
     <PackageVersion Include="Stowage" Version="2.0.1" />
     <PackageVersion Include="Confluent.Kafka" Version="2.13.0" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="8.19.4" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.0" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <!-- Deprecated only for .net 8 -->

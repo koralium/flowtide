@@ -51,9 +51,9 @@ builder.Services.AddFlowtideStream("sqlservertoelastic")
 
                 List<string>? oldIndices;
 
-                if (getAliasResponse.Values != null)
+                if (getAliasResponse.Aliases != null)
                 {
-                    oldIndices = getAliasResponse.Values.Keys.ToList();
+                    oldIndices = getAliasResponse.Aliases.Keys.ToList();
                 }
                 else
                 {
