@@ -41,5 +41,5 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: debugwrites
-        path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net8.0/debugwrite
+        path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net10.0/debugwrite
 
