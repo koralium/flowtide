@@ -1,9 +1,9 @@
 "use client"
 import React, { useEffect, useState } from 'react';
-import {ReactFlow, Node, Position, Edge, Background, Controls} from 'reactflow';
+import {ReactFlow, Node, Position, Edge, Background, Controls} from '@xyflow/react';
 import dagre from '@dagrejs/dagre';
 
-import 'reactflow/dist/style.css';
+import '@xyflow/react/dist/style.css';
 import { GraphNodeRender } from './noderender';
 import { useStreamGraphData } from '../hooks/useStreamGraphData';
 
