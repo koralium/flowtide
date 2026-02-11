@@ -35,7 +35,7 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -p:FeatureFlags=#DEBUG_WRITE
     - name: Test
-      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false
+      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false --framework net10.0
     - name: Upload logs
       if: always()
       uses: actions/upload-artifact@v4
