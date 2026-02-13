@@ -753,7 +753,6 @@ namespace FlowtideDotNet.Substrait
 #pragma warning disable CS0612 // Type or member is obsolete
                     count = fetchRel.Count;
 #pragma warning restore CS0612 // Type or member is obsolete
-                    throw new SubstraitParseException("Only count mode with direct count is supported in Flowtide for fetch relation");
                 }
                 else if (fetchRel.CountModeCase == Protobuf.FetchRel.CountModeOneofCase.CountExpr)
                 {
