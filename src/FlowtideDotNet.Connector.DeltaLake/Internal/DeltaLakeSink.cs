@@ -49,9 +49,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             this._writeRelation = writeRelation;
             _tableName = string.Join("/", writeRelation.NamedObject.Names);
             _tablePath = _tableName;
+
+            if (writeRelation.TableSchema.Struct != null)
+            {
+                for (int i = 0; i < writeRelation.TableSchema.Struct.Types.Count; i++)
+                {
+                    if (writeRelation.TableSchema.Struct.Types[i].Type == Substrait.Type.SubstraitType.Any)
+                    {
+                        var columnName = writeRelation.TableSchema.Names[i];
+                        throw new NotSupportedException($"Delta Lake Sink does not support columns of type Any, destination: '{_tableName}', columnName: '{columnName}'");
+                    }
+                }
+            }
         }
 
-        public override string DisplayName => "DeltaLakeSink";
+        public override string DisplayName => $"DeltaLakeSink({_tableName})";
 
         public override Task Compact()
         {
@@ -527,6 +539,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
 
+            int globalOffset = 0;
             await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)
@@ -541,7 +554,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             continue;
                         }
                     }
-                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, 0, deleteVector);
+                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, globalOffset, deleteVector);
                     if (index >= 0)
                     {
                         lock (toFind[i].Lock)
@@ -569,10 +582,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 modifiedVector = new ModifiableDeleteVector(deleteVector);
                                 deleteVectors.Add(file.Path!, modifiedVector);
                             }
-                            modifiedVector.Add(index);
+                            modifiedVector.Add(index + globalOffset);
                         }
                     }
                 }
+                globalOffset += batch.Length;
             }
         }
 

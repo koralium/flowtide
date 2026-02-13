@@ -817,6 +817,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(nameof(TestCreateTableWithMap), storage, "createmap", 2, stream.Users.Select(x => new { val = new Dictionary<string, string>() { { x.FirstName!, x.LastName! } } }));
         }
 
+        [Fact]
+        public async Task TestLargeSelect()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestLargeSelect), storage);
+
+            stream.Generate(100_000);
+
+            // Insert companyId first since it is not unique to force multiple matches on first column for delete
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    CompanyId STRING,
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING
+                );
+
+                INSERT INTO test
+                SELECT CompanyId, userKey, firstName as Name, lastName FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            var lastUser = stream.Users[stream.Users.Count - 1];
+            stream.DeleteUser(lastUser);
+
+            stream.Generate(50);
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            await AssertResult(nameof(TestLargeSelect), storage, "test", 2, stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
+        }
+
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result
         /// </summary>
