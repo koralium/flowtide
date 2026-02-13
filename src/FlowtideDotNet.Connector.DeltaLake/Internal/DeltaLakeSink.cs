@@ -43,6 +43,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private string _tableName;
         private IOPath _tablePath;
 
+        private IObjectState<bool>? _firstInsertDone;
+
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
@@ -85,16 +87,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 MemoryAllocator = MemoryAllocator,
                 UseByteBasedPageSizes = true,
             });
+            _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
         }
 
-        protected override Task OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return SaveData();
+            Debug.Assert(_firstInsertDone != null);
+
+            await SaveData();
+            await _firstInsertDone.Commit();
         }
 
         private async Task SaveData()
         {
             Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_firstInsertDone != null);
+
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
 
@@ -219,6 +227,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (table.PartitionColumns.Count > 0)
                 {
                     throw new NotImplementedException("Partition columns are not implemented yet");
+                }
+
+                if (!_firstInsertDone.Value && _writeRelation.Overwrite)
+                {
+                    table.AddFiles.ForEach(x =>
+                    {
+                        actions.Add(new DeltaAction()
+                        {
+                            Remove = new DeltaRemoveFileAction()
+                            {
+                                Path = x.Path,
+                                DeletionVector = x.DeletionVector,
+                                DataChange = true,
+                                DeletionTimestamp = currentTime,
+                                Stats = x.Statistics,
+                                Size = x.Size,
+                                PartitionValues = x.PartitionValues,
+                            }
+                        });
+                    });
+                    table.AddFiles.Clear();
+                    table.Files.Clear();
                 }
             }
 
@@ -360,6 +390,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
+            // Set that the first insert is done, this is used to determine if we need to write delete files for overwrite writes
+            _firstInsertDone.Value = true;
         }
 
         private async Task RemoveWrittenCdcFiles(List<DeltaAction> actions)

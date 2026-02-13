@@ -850,6 +850,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(nameof(TestLargeSelect), storage, "test", 2, stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
         }
 
+        [Fact]
+        public async Task InsertOverwrite()
+        {
+            var storage = Files.Of.InternalMemory("./test");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(InsertOverwrite), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            await AssertResult(nameof(InsertOverwrite), storage, "test", 1, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+
+            await stream.DisposeAsync();
+
+            var newStream = new DeltaLakeSinkStream(nameof(InsertOverwrite) + "_overwrite", storage);
+            newStream.Generate(20);
+
+            await newStream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT OVERWRITE test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", newStream, 1);
+
+            await AssertResult(nameof(InsertOverwrite) + "_overwrite", storage, "test", 2, newStream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+
+        }
+
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result
         /// </summary>
