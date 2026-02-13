@@ -56,13 +56,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     if (writeRelation.TableSchema.Struct.Types[i].Type == Substrait.Type.SubstraitType.Any)
                     {
-                        throw new NotSupportedException("Delta Lake Sink does not support columns of type Any");
+                        var columnName = writeRelation.TableSchema.Names[i];
+                        throw new NotSupportedException($"Delta Lake Sink does not support columns of type Any, destination: '{_tableName}', columnName: '{columnName}'");
                     }
                 }
             }
         }
 
-        public override string DisplayName => "DeltaLakeSink";
+        public override string DisplayName => $"DeltaLakeSink({_tableName})";
 
         public override Task Compact()
         {
