@@ -1169,6 +1169,13 @@ namespace FlowtideDotNet.Substrait
                     writeRel.NamedTable = new Protobuf.NamedObjectWrite();
                     writeRel.NamedTable.Names.AddRange(writeRelation.NamedObject.Names);
                 }
+                writeRel.CreateMode = WriteRel.Types.CreateMode.Unspecified;
+
+                if (writeRelation.Overwrite)
+                {
+                    writeRel.CreateMode = WriteRel.Types.CreateMode.ReplaceIfExists;
+                }
+
                 writeRel.Input = Visit(writeRelation.Input, state);
 
                 return new Protobuf.Rel()

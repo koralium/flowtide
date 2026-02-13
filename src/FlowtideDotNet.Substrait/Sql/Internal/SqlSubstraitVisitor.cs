@@ -121,7 +121,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 Input = source.Relation,
                 NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
-                TableSchema = tableSchema
+                TableSchema = tableSchema,
+                Overwrite = insert.InsertOperation.Overwrite
             };
 
             Relation relation = writeRelation;

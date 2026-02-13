@@ -18873,7 +18873,7 @@ namespace Substrait.Protobuf {
         /// The operator returns the AFTER-image of any change. This can be further manipulated by operators upstreams
         /// (e.g., retunring the typical "count of modified records").
         /// For scenarios in which the BEFORE image is required, the user must implement a spool (via references to
-        /// subplans in the body of the Rel input) and return those with anounter PlanRel.relations.
+        /// subplans in the body of the Rel input) and return those with another PlanRel.relations.
         /// </summary>
         [pbr::OriginalName("OUTPUT_MODE_MODIFIED_RECORDS")] ModifiedRecords = 2,
       }

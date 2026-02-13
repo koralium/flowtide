@@ -620,7 +620,18 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
-        
+        [Fact]
+        public void InsertOverwrite()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                INSERT OVERWRITE outputtable
+                SELECT * FROM table1
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
+        }
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
