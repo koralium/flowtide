@@ -640,6 +640,8 @@ namespace FlowtideDotNet.Substrait
 
                 if (aggregateRelation.Groupings != null)
                 {
+                    List<Expressions.Expression> uniqueExpresions = new List<Expressions.Expression>();
+
                     var exprVisitor = new SerializerExpressionVisitor();
 
                     foreach (var grouping in aggregateRelation.Groupings)
@@ -647,10 +649,20 @@ namespace FlowtideDotNet.Substrait
                         var grp = new Protobuf.AggregateRel.Types.Grouping();
                         foreach (var groupExpr in grouping.GroupingExpressions)
                         {
-                            grp.GroupingExpressions.Add(exprVisitor.Visit(groupExpr, state));
+                            var index = uniqueExpresions.IndexOf(groupExpr);
+
+                            if (index >= 0)
+                            {
+                                grp.ExpressionReferences.Add((uint)index);
+                                continue;
+                            }
+
+                            uniqueExpresions.Add(groupExpr);
+                            grp.ExpressionReferences.Add((uint)uniqueExpresions.Count - 1);
                         }
                         aggRel.Groupings.Add(grp);
                     }
+                    aggRel.GroupingExpressions.AddRange(uniqueExpresions.Select(e => exprVisitor.Visit(e, state)));
                 }
 
                 if (aggregateRelation.Measures != null)
@@ -774,12 +786,6 @@ namespace FlowtideDotNet.Substrait
 
                 switch (joinRelation.Type)
                 {
-                    case JoinType.Anti:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Anti;
-                        break;
-                    case JoinType.Semi:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Semi;
-                        break;
                     case JoinType.Inner:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Inner;
                         break;
@@ -794,9 +800,6 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case JoinType.Right:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Right;
-                        break;
-                    case JoinType.Single:
-                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.Single;
                         break;
                 }
 
@@ -982,10 +985,6 @@ namespace FlowtideDotNet.Substrait
 
                 switch (mergeJoinRelation.Type)
                 {
-                    case JoinType.Anti:
-                        throw new NotSupportedException("Anti not supported in merge join");
-                    case JoinType.Semi:
-                        throw new NotSupportedException("Semi not supported in merge join");
                     case JoinType.Inner:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Inner;
                         break;
@@ -1001,8 +1000,6 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Right;
                         break;
-                    case JoinType.Single:
-                        throw new NotSupportedException("Single not supported in merge join");
                 }
 
                 if (mergeJoinRelation.EmitSet)
@@ -1493,8 +1490,20 @@ namespace FlowtideDotNet.Substrait
             {
                 var fetchRel = new Protobuf.FetchRel();
 
-                fetchRel.Offset = fetchRelation.Offset;
-                fetchRel.Count = fetchRelation.Count;
+                fetchRel.OffsetExpr = new Protobuf.Expression()
+                {
+                    Literal = new Protobuf.Expression.Types.Literal()
+                    {
+                        I64 = fetchRelation.Offset
+                    }
+                };
+                fetchRel.CountExpr = new Protobuf.Expression()
+                {
+                    Literal = new Protobuf.Expression.Types.Literal()
+                    {
+                        I64 = fetchRelation.Count
+                    }
+                };
                 if (fetchRelation.EmitSet)
                 {
                     fetchRel.Common = new Protobuf.RelCommon();
