@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         {
             if (writeRelation.Overwrite)
             {
-                throw new NotSupportedException("Custom sink sink does not support overwrite.");
+                throw new NotSupportedException("Custom sink does not support overwrite.");
             }
 
             return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), executionMode, writeRelation, dataflowBlockOptions);
