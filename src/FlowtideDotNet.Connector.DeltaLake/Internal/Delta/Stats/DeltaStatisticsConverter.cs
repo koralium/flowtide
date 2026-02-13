@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
     {
         private readonly StructType schema;
         private Dictionary<string, IStatisticsParser> parsers;
-        private Dictionary<string, IStatisticsParser> physicalParsers = new Dictionary<string, IStatisticsParser>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, IStatisticsParser> physicalParsers = new Dictionary<string, IStatisticsParser>(StringComparer.OrdinalIgnoreCase);
 
         public DeltaStatisticsConverter(StructType schema)
         {
