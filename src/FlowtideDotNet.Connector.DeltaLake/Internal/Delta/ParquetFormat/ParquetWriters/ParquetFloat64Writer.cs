@@ -101,9 +101,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _builder.AppendNull();
                 return;
             }
-
-            var doubleValue = value.AsDouble;
-            WriteValue(doubleValue);
+            if (value.Type == ArrowTypeId.Double)
+            {
+                var doubleValue = value.AsDouble;
+                WriteValue(doubleValue);
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                var longValue = value.AsLong;
+                var doubleValue = Convert.ToDouble(longValue);
+                WriteValue(doubleValue);
+            }
+            else
+            {
+                throw new NotImplementedException($"Unsupported type {value.Type} for ParquetFloat64Writer");
+            }
         }
     }
 }
