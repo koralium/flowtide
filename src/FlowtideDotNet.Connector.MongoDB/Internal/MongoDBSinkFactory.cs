@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("MongoDB sink does not support overwrite.");
+            }
             return new MongoDBSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
     }

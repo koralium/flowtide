@@ -34,6 +34,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         public IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Delta lake sink does not support overwrite.");
+            }
             return new DeltaLakeSink(options, writeRelation, dataflowBlockOptions);
         }
 

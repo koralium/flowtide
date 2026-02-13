@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Connector.Permify.Internal
             IFunctionsRegister functionsRegister,
             ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Permify sink does not support overwrite.");
+            }
             return new PermifyRelationSink(writeRelation, _permifySinkOptions, dataflowBlockOptions);
         }
     }

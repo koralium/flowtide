@@ -994,12 +994,19 @@ namespace FlowtideDotNet.Substrait
 
                 var emitData = GetEmit(writeRel.Common);
 
+                bool overwrite = false;
+                if (writeRel.CreateMode == Protobuf.WriteRel.Types.CreateMode.ReplaceIfExists)
+                {
+                    overwrite = true;
+                }
+
                 var writeRelation = new WriteRelation()
                 {
                     Input = input,
                     NamedObject = namedTableObj,
                     TableSchema = namedStruct,
-                    Emit = emitData
+                    Emit = emitData,
+                    Overwrite = overwrite
                 };
 
                 return writeRelation;
