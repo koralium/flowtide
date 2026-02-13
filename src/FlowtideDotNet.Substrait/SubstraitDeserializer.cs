@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
@@ -709,15 +710,89 @@ namespace FlowtideDotNet.Substrait
 
             private Relation VisitFetch(Protobuf.FetchRel fetchRel)
             {
-                if (fetchRel.Offset < int.MinValue || fetchRel.Count < int.MinValue)
+                long offset = 0;
+
+                if (fetchRel.OffsetModeCase == Protobuf.FetchRel.OffsetModeOneofCase.Offset)
+                {
+#pragma warning disable CS0612 // Type or member is obsolete
+                    offset = fetchRel.Offset;
+#pragma warning restore CS0612 // Type or member is obsolete
+                }
+                else if (fetchRel.OffsetModeCase == Protobuf.FetchRel.OffsetModeOneofCase.OffsetExpr)
+                {
+                    if (fetchRel.OffsetExpr.RexTypeCase != Protobuf.Expression.RexTypeOneofCase.Literal)
+                    {
+                        throw new SubstraitParseException("Only literal expressions are supported for fetch offset in Flowtide");
+                    }
+                    if (fetchRel.OffsetExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I8)
+                    {
+                        offset = fetchRel.OffsetExpr.Literal.I8;
+                    }
+                    else if (fetchRel.OffsetExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I16)
+                    {
+                        offset = fetchRel.OffsetExpr.Literal.I16;
+                    }
+                    else if (fetchRel.OffsetExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I32)
+                    {
+                        offset = fetchRel.OffsetExpr.Literal.I32;
+                    }
+                    else if (fetchRel.OffsetExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I64)
+                    {
+                        offset = fetchRel.OffsetExpr.Literal.I64;
+                    }
+                    else
+                    {
+                        throw new SubstraitParseException("Only integer literals are supported for fetch offset in Flowtide");
+                    }
+                }
+
+                long count = 0;
+
+                if (fetchRel.CountModeCase == Protobuf.FetchRel.CountModeOneofCase.Count)
+                {
+#pragma warning disable CS0612 // Type or member is obsolete
+                    count = fetchRel.Count;
+#pragma warning restore CS0612 // Type or member is obsolete
+                    throw new SubstraitParseException("Only count mode with direct count is supported in Flowtide for fetch relation");
+                }
+                else if (fetchRel.CountModeCase == Protobuf.FetchRel.CountModeOneofCase.CountExpr)
+                {
+                    if (fetchRel.CountExpr.RexTypeCase != Protobuf.Expression.RexTypeOneofCase.Literal)
+                    {
+                        throw new SubstraitParseException("Only literal expressions are supported for fetch count in Flowtide");
+                    }
+                    if (fetchRel.CountExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I8)
+                    {
+                        count = fetchRel.CountExpr.Literal.I8;
+                    }
+                    else if (fetchRel.CountExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I16)
+                    {
+                        count = fetchRel.CountExpr.Literal.I16;
+                    }
+                    else if (fetchRel.CountExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I32)
+                    {
+                        count = fetchRel.CountExpr.Literal.I32;
+                    }
+                    else if (fetchRel.CountExpr.Literal.LiteralTypeCase == Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I64)
+                    {
+                        count = fetchRel.CountExpr.Literal.I64;
+                    }
+                    else
+                    {
+                        throw new SubstraitParseException("Only integer literals are supported for fetch count in Flowtide");
+                    }
+
+                }
+
+                if (offset < int.MinValue || count < int.MinValue)
                 {
                     throw new InvalidOperationException("Offset and count in fetch relation must be greater than int min value");
                 }
-                if (fetchRel.Count > int.MaxValue)
+                if (count > int.MaxValue)
                 {
                     throw new InvalidOperationException("Count in fetch relation cannot be greater than int max value");
                 }
-                if (fetchRel.Offset > int.MaxValue)
+                if (offset > int.MaxValue)
                 {
                     throw new InvalidOperationException("Offset in fetch relation cannot be greater than int max value");
                 }
@@ -725,8 +800,8 @@ namespace FlowtideDotNet.Substrait
                 {
                     Input = VisitRel(fetchRel.Input),
                     Emit = GetEmit(fetchRel.Common),
-                    Offset = (int)fetchRel.Offset,
-                    Count = (int)fetchRel.Count
+                    Offset = (int)offset,
+                    Count = (int)count
                 };
                 return output;
             }
@@ -1092,10 +1167,23 @@ namespace FlowtideDotNet.Substrait
                         {
                             GroupingExpressions = new List<Expression>()
                         };
-                        foreach (var expr in grouping.GroupingExpressions)
+                        if (grouping.ExpressionReferences.Count > 0)
                         {
-                            aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(expr));
+                            foreach(var index in grouping.ExpressionReferences)
+                            {
+                                aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(aggregateRel.GroupingExpressions[(int)index]));
+                            }
                         }
+                        else
+                        {
+#pragma warning disable CS0612 // Type or member is obsolete
+                            foreach (var expr in grouping.GroupingExpressions)
+                            {
+                                aggGroup.GroupingExpressions.Add(expressionDeserializer.VisitExpression(expr));
+                            }
+#pragma warning restore CS0612 // Type or member is obsolete
+                        }
+                            
                         relation.Groupings.Add(aggGroup);
                     }
                 }
@@ -1262,17 +1350,8 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.JoinRel.Types.JoinType.Inner:
                         joinType = JoinType.Inner;
                         break;
-                    case Protobuf.JoinRel.Types.JoinType.Single:
-                        joinType = JoinType.Single;
-                        break;
                     case Protobuf.JoinRel.Types.JoinType.Left:
                         joinType = JoinType.Left;
-                        break;
-                    case Protobuf.JoinRel.Types.JoinType.Anti:
-                        joinType = JoinType.Anti;
-                        break;
-                    case Protobuf.JoinRel.Types.JoinType.Semi:
-                        joinType = JoinType.Semi;
                         break;
                     default:
                         throw new NotSupportedException("Join type not supported");
