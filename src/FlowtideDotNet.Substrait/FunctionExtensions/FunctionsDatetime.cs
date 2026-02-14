@@ -18,9 +18,11 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Strftime = "strftime";
         public const string GetTimestamp = "gettimestamp";
         public const string FloorTimestampDay = "floor_timestamp_day";
+        public const string RoundCalendar = "round_calendar";
         public const string ParseTimestamp = "parse_timestamp";
         public const string Extract = "extract";
         public const string Format = "format";
         public const string TimestampAdd = "timestamp_add";
+        public const string Datediff = "datediff";
     }
 }

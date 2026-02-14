@@ -11,15 +11,16 @@ on:
 
 jobs:
   build:
-
+    permissions:
+      contents: write
+      pull-requests: write
     runs-on: windows-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
     - uses: actions/cache@v3
       with:
         path: ~/.nuget/packages
@@ -33,7 +34,7 @@ jobs:
         path: ./cache
         key: ${{ runner.os }}-benchmark
     - name: Run benchmark
-      run: dotnet run --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
+      run: dotnet run --framework net10.0 --project ./tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj -c Release --filter *StreamBenchmark* --exporters json
     - name: Git reset
       run: git reset --hard
     - name: Store benchmark result

@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _maxValue = val;
             }
 
-            _builder.Append((short)val);
+            _builder.Append(val);
         }
 
         public void WriteValue<T>(T value) where T : IDataValue

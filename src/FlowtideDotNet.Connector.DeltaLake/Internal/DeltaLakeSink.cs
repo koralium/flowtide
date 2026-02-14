@@ -43,15 +43,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private string _tableName;
         private IOPath _tablePath;
 
+        private IObjectState<bool>? _firstInsertDone;
+
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
             this._writeRelation = writeRelation;
             _tableName = string.Join("/", writeRelation.NamedObject.Names);
             _tablePath = _tableName;
+
+            if (writeRelation.TableSchema.Struct != null)
+            {
+                for (int i = 0; i < writeRelation.TableSchema.Struct.Types.Count; i++)
+                {
+                    if (writeRelation.TableSchema.Struct.Types[i].Type == Substrait.Type.SubstraitType.Any)
+                    {
+                        var columnName = writeRelation.TableSchema.Names[i];
+                        throw new NotSupportedException($"Delta Lake Sink does not support columns of type Any, destination: '{_tableName}', columnName: '{columnName}'");
+                    }
+                }
+            }
         }
 
-        public override string DisplayName => "DeltaLakeSink";
+        public override string DisplayName => $"DeltaLakeSink({_tableName})";
 
         public override Task Compact()
         {
@@ -73,16 +87,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 MemoryAllocator = MemoryAllocator,
                 UseByteBasedPageSizes = true,
             });
+            _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
         }
 
-        protected override Task OnCheckpoint(long checkpointTime)
+        protected override async Task OnCheckpoint(long checkpointTime)
         {
-            return SaveData();
+            Debug.Assert(_firstInsertDone != null);
+
+            await SaveData();
+            await _firstInsertDone.Commit();
         }
 
         private async Task SaveData()
         {
             Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_firstInsertDone != null);
+
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
 
@@ -94,15 +114,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             bool changeDataEnabled = false;
             bool deletionVectorEnabled = false;
+            bool columnMappingEnabled = false;
+
+            int maxColumnId = 0;
 
             StructType? schema;
             if (table == null)
             {
                 changeDataEnabled = _options.WriteChangeDataOnNewTables;
                 deletionVectorEnabled = _options.EnableDeletionVectorsOnNewTables;
+                columnMappingEnabled = _options.EnableColumnMappingOnNewTables;
 
                 // Create schema
-                schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema);
+                schema = SubstraitTypeToDeltaType.GetSchema(_writeRelation.TableSchema, ref maxColumnId, columnMappingEnabled);
 
                 var jsonOptions = new JsonSerializerOptions();
                 jsonOptions.Converters.Add(new TypeConverter());
@@ -129,22 +153,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     tableConfiguration.Add("delta.enableDeletionVectors", "true");
                 }
+                if (columnMappingEnabled)
+                {
+                    tableConfiguration.Add("delta.columnMapping.mode", "name");
+                    tableConfiguration.Add("delta.columnMapping.maxColumnId", maxColumnId.ToString());
+                }
 
+                var metadataAction = new DeltaMetadataAction()
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    SchemaString = schemaString,
+                    Configuration = tableConfiguration,
+                    Format = new DeltaMetadataFormat()
+                    {
+                        Provider = "parquet",
+                        Options = new Dictionary<string, string>()
+                    },
+                    PartitionColumns = new List<string>(),
+                    CreatedTime = currentTime
+                };
                 actions.Add(new DeltaAction()
                 {
-                    MetaData = new DeltaMetadataAction()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        SchemaString = schemaString,
-                        Configuration = tableConfiguration,
-                        Format = new DeltaMetadataFormat()
-                        {
-                            Provider = "parquet",
-                            Options = new Dictionary<string, string>()
-                        },
-                        PartitionColumns = new List<string>(),
-                        CreatedTime = currentTime
-                    }
+                    MetaData = metadataAction
                 });
 
                 var writerFeatures = new List<string>();
@@ -161,6 +191,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (deletionVectorEnabled)
                 {
                     readerFeatures.Add("deletionVectors");
+                }
+                if (columnMappingEnabled)
+                {
+                    writerFeatures.Add("columnMapping");
+                    readerFeatures.Add("columnMapping");
                 }
 
                 actions.Add(new DeltaAction()
@@ -180,6 +215,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
                 deletionVectorEnabled = table.DeleteVectorEnabled;
+
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
@@ -191,6 +227,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (table.PartitionColumns.Count > 0)
                 {
                     throw new NotImplementedException("Partition columns are not implemented yet");
+                }
+
+                if (!_firstInsertDone.Value && _writeRelation.Overwrite)
+                {
+                    table.AddFiles.ForEach(x =>
+                    {
+                        actions.Add(new DeltaAction()
+                        {
+                            Remove = new DeltaRemoveFileAction()
+                            {
+                                Path = x.Path,
+                                DeletionVector = x.DeletionVector,
+                                DataChange = true,
+                                DeletionTimestamp = currentTime,
+                                Stats = x.Statistics,
+                                Size = x.Size,
+                                PartitionValues = x.PartitionValues,
+                            }
+                        });
+                    });
+                    table.AddFiles.Clear();
+                    table.Files.Clear();
                 }
             }
 
@@ -332,6 +390,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();
+            // Set that the first insert is done, this is used to determine if we need to write delete files for overwrite writes
+            _firstInsertDone.Value = true;
         }
 
         private async Task RemoveWrittenCdcFiles(List<DeltaAction> actions)
@@ -511,6 +571,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             // Open file without deletion vector, it will be used when finding rows
             var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
 
+            int globalOffset = 0;
             await foreach (var batch in iterator)
             {
                 for (int i = 0; i < toFind.Count; i++)
@@ -525,7 +586,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             continue;
                         }
                     }
-                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, 0, deleteVector);
+                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, globalOffset, deleteVector);
                     if (index >= 0)
                     {
                         lock (toFind[i].Lock)
@@ -553,10 +614,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 modifiedVector = new ModifiableDeleteVector(deleteVector);
                                 deleteVectors.Add(file.Path!, modifiedVector);
                             }
-                            modifiedVector.Add(index);
+                            modifiedVector.Add(index + globalOffset);
                         }
                     }
                 }
+                globalOffset += batch.Length;
             }
         }
 

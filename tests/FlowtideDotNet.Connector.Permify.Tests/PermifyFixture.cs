@@ -28,8 +28,7 @@ namespace FlowtideDotNet.Connector.Permify.Tests
             _network = new NetworkBuilder()
                 .Build();
 
-            _postgresContainer = new DotNet.Testcontainers.Builders.ContainerBuilder()
-                .WithImage("postgres:16")
+            _postgresContainer = new DotNet.Testcontainers.Builders.ContainerBuilder("postgres:16")
                 .WithNetwork(_network)
                 .WithNetworkAliases("postgres")
                 .WithPortBinding(5432, 5432)
@@ -43,8 +42,7 @@ namespace FlowtideDotNet.Connector.Permify.Tests
                 .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("database system is ready to accept connections"))
                 .Build();
 
-            var builder = new ContainerBuilder()
-                .WithImage("ghcr.io/permify/permify")
+            var builder = new ContainerBuilder("ghcr.io/permify/permify")
                 .WithNetwork(_network)
                 .WithPortBinding(3478, true)
                 .WithPortBinding(3476, true)

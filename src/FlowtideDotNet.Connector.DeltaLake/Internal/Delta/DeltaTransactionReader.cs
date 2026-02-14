@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
@@ -36,27 +38,65 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             List<DeltaBaseAction> actions = new List<DeltaBaseAction>();
 
-            // Check if there is a checkpoint file that is less than or equal to the max version
-            var checkpoint = logs.FirstOrDefault(l => l.IsCheckpoint && l.Version <= maxVersion);
-
             DeltaMetadataAction? metadata = null;
             DeltaProtocolAction? protocol = null;
             Dictionary<DeltaFileKey, DeltaAddAction> addFiles = new Dictionary<DeltaFileKey, DeltaAddAction>();
 
             long startVersion = 0;
 
-            // Wait with parquet checkpoint reading
-            //if (checkpoint != null)
-            //{
-            //    startVersion = checkpoint.Version;
-            //    await ReadCheckpoint(storage, checkpoint, actions, addFiles);
-            //}
-
-
-
             long currentVersion = startVersion;
 
-            foreach (var log in logs)
+            if (maxVersion == 0)
+            {
+                maxVersion = logs.Where(x => x.IsJson || x.IsCheckpoint).Min(x => x.Version);
+            }
+
+            var filteredLogs = logs
+                .Where(x => (x.Version >= startVersion && x.Version <= maxVersion) && (x.IsJson || x.IsCheckpoint))
+                .OrderBy(x => x.Version)
+                .ThenBy(x => x.IsCheckpoint ? 0 : 1)
+                .ToList();
+
+            // Check if the first log is a checkpoint, this happens if the table is purged and the first log entry is a checkpoint
+            if (filteredLogs.Count > 0 && filteredLogs[0].IsCheckpoint)
+            {
+                var entry = filteredLogs[0];
+                var checkpointReader = new ParquetCheckpointReader();
+                var checkpointEntries = await checkpointReader.ReadCheckpointFile(storage, entry.IOEntry);
+
+                // Remove any logs that are part of the checkpoint
+                filteredLogs = filteredLogs.Where(x => !(x.Version == entry.Version && x.IsJson)).ToList();
+
+                foreach (var action in checkpointEntries)
+                {
+                    if (action.Add != null)
+                    {
+                        // Mark all these as data change true since they are part of the checkpoint
+                        // so the data must be read
+                        action.Add.DataChange = true;
+                        addFiles.Add(action.Add.GetKey(), action.Add);
+                    }
+                    if (action.MetaData != null)
+                    {
+                        metadata = action.MetaData;
+                    }
+                    if (action.Protocol != null)
+                    {
+                        protocol = action.Protocol;
+                    }
+                    // Remove action will not exist here since its a first entry checkpoint
+
+                    var genericAction = ToGenericAction(action);
+                    
+                    if (genericAction != null)
+                    {
+                        actions.Add(genericAction);
+                    }
+                }
+                currentVersion = entry.Version;
+            }
+            
+            foreach (var log in filteredLogs)
             {
                 if (log.Version < startVersion)
                 {
@@ -129,11 +169,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                             actions.Add(genericAction);
                         }
 
-                        if (textReader.EndOfStream)
+                        line = await textReader.ReadLineAsync();
+                        if (line == null)
                         {
                             break;
                         }
-                        line = await textReader.ReadLineAsync();
                     }
                 }
             }
@@ -161,8 +201,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             List<DeltaFile> deltaFiles = new List<DeltaFile>();
             foreach (var addFile in addFiles)
             {
-                var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
-                deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
+                if (addFile.Value.Statistics != null)
+                {
+                    var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
+                    deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
+                }
+                else
+                {
+                    // Empty statistics is fine - just means no stats were collected
+                    deltaFiles.Add(new DeltaFile(addFile.Value, new DeltaStatistics()));
+                }
             }
 
 
@@ -217,11 +265,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     cdcActions.Add(action.Cdc);
                 }
 
-                if (textReader.EndOfStream)
+                line = await textReader.ReadLineAsync();
+                if (line == null)
                 {
                     break;
                 }
-                line = await textReader.ReadLineAsync();
             }
 
             return new DeltaCommit(addedFiles, removedFiles, cdcActions, metadata);
@@ -262,7 +310,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     continue;
                 }
 
-                var dotIndex = file.Name.LastIndexOf('.');
+                var dotIndex = file.Name.IndexOf('.');
 
                 long version = 0;
                 if (dotIndex >= 0)

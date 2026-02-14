@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsString.Upper,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
-                        expr.Type
+                        new StringType() { Nullable = true }
                         );
                 }
                 else
@@ -617,7 +617,26 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 if (!(argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
-                    throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                    if (argList.Args[0] is FunctionArg.Unnamed unnamed2 && 
+                        unnamed2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                        argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                    {
+                        // Visit the argument to ensure it is valid and pass it as the argument to the count_distinct aggregate function
+                        var columnExpr = visitor.Visit(funcExpr2.Expression, emitData);
+                        return new AggregateResponse(
+                            new AggregateFunction()
+                            {
+                                ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                ExtensionName = FunctionsAggregateGeneric.CountDistinct,
+                                Arguments = new List<Expressions.Expression>() { columnExpr.Expr }
+                            },
+                            new Int64Type()
+                        );
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("count must have exactly one argument, and be '*'");
+                    }
                 }
                 return new AggregateResponse(
                     new AggregateFunction()
@@ -832,7 +851,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
                             Arguments = new List<Expressions.Expression>()
                         },
-                        new StringType() { Nullable = true }
+                        new Int64Type() { Nullable = true }
                         );
             });
 
@@ -859,6 +878,22 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "abs", FunctionsArithmetic.Uri, FunctionsArithmetic.Abs);
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Uri, FunctionsArithmetic.Sign);
 
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "log10", FunctionsLogarithmic.Uri, FunctionsLogarithmic.Log10, (p1) =>
+            {
+                if (p1.Type == SubstraitType.Int64)
+                {
+                    return new Fp64Type();
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return new DecimalType();
+                }
+                else
+                {
+                    return new Fp64Type();
+                }
+            });
+
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "starts_with", FunctionsString.Uri, FunctionsString.StartsWith);
             RegisterThreeVariableScalarFunction(sqlFunctionRegister, "replace", FunctionsString.Uri, FunctionsString.Replace);
 
@@ -876,6 +911,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, (p1) => new TimestampType());
             RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_extract", FunctionsDatetime.Uri, FunctionsDatetime.Extract, (p1, p2) => new Int64Type());
+            RegisterFiveVariableScalarFunction(sqlFunctionRegister, "round_calendar", FunctionsDatetime.Uri, FunctionsDatetime.RoundCalendar, (p1, p2, p3, p4, p5) => new TimestampType());
 
             RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, p1 =>
             {
@@ -905,6 +941,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
             RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, (p1) =>
+            {
+                if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64)
+                {
+                    return new Fp64Type() { Nullable = true };
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return p1;
+                }
+                return NullType.Instance;
+            }, true, false);
 
             sqlFunctionRegister.RegisterWindowFunction("lead",
                 (func, visitor, emitData) =>
@@ -1194,6 +1242,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
 
             RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "datediff", FunctionsDatetime.Uri, FunctionsDatetime.Datediff, (p1, p2, p3) => new Int64Type());
 
             // Hash functions
             sqlFunctionRegister.RegisterScalarFunction("xxhash128_guid_string", (sqlFunc, visitor, emitData) =>
@@ -1225,6 +1274,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     ExtensionName = FunctionsHash.XxHash128GuidString,
                     ExtensionUri = FunctionsHash.Uri
                 }, new StringType());
+            });
+
+            sqlFunctionRegister.RegisterScalarFunction("xxhash64", (sqlFunc, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(sqlFunc.Args);
+
+                if (argList.Args == null || argList.Args.Count < 1)
+                {
+                    throw new SubstraitParseException("xxhash64 requires at least one argument");
+                }
+
+                List<Expressions.Expression> argumentList = new List<Expressions.Expression>();
+                for (int i = 0; i < argList.Args.Count; i++)
+                {
+                    if (argList.Args[i] is FunctionArg.Unnamed unnamedTag && unnamedTag.FunctionArgExpression is FunctionArgExpression.FunctionExpression unnamedExpr)
+                    {
+                        var expr = visitor.Visit(unnamedExpr.Expression, emitData);
+                        argumentList.Add(expr.Expr);
+                    }
+                    else
+                    {
+                        throw new SubstraitParseException($"xxhash64 value arguments cannot be '*'");
+                    }
+                }
+
+                return new ScalarResponse(new ScalarFunction()
+                {
+                    Arguments = argumentList,
+                    ExtensionName = FunctionsHash.XxHash64,
+                    ExtensionUri = FunctionsHash.Uri
+                }, new Int64Type());
             });
         }
 
@@ -1455,6 +1535,73 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         );
                 }
                 throw new InvalidOperationException($"{functionName} must have exactly three arguments, and not be '*'");
+            });
+        }
+
+        private static void RegisterFiveVariableScalarFunction(
+            SqlFunctionRegister sqlFunctionRegister,
+            string functionName,
+            string extensionUri,
+            string extensionName,
+            Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
+        {
+            sqlFunctionRegister.RegisterScalarFunction(functionName, (f, visitor, emitData) =>
+            {
+                var argList = GetFunctionArguments(f.Args);
+                if (argList.Args == null || argList.Args.Count != 5)
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[1] is FunctionArg.Unnamed unnamed2 && unnamed2.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[2] is FunctionArg.Unnamed unnamed3 && unnamed3.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[3] is FunctionArg.Unnamed unnamed4 && unnamed4.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if ((argList.Args[4] is FunctionArg.Unnamed unnamed5 && unnamed5.FunctionArgExpression is FunctionArgExpression.Wildcard))
+                {
+                    throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
+                }
+                if (argList.Args[0] is FunctionArg.Unnamed arg && arg.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr &&
+                argList.Args[1] is FunctionArg.Unnamed arg2 && arg2.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr2 &&
+                argList.Args[2] is FunctionArg.Unnamed arg3 && arg3.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr3 &&
+                argList.Args[3] is FunctionArg.Unnamed arg4 && arg4.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr4 &&
+                argList.Args[4] is FunctionArg.Unnamed arg5 && arg5.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr5)
+                {
+                    var argExpr = visitor.Visit(funcExpr.Expression, emitData);
+                    var argExpr2 = visitor.Visit(funcExpr2.Expression, emitData);
+                    var argExpr3 = visitor.Visit(funcExpr3.Expression, emitData);
+                    var argExpr4 = visitor.Visit(funcExpr4.Expression, emitData);
+                    var argExpr5 = visitor.Visit(funcExpr5.Expression, emitData);
+
+                    SubstraitBaseType returnType = AnyType.Instance;
+
+                    if (typeFunc != null)
+                    {
+                        returnType = typeFunc(argExpr.Type, argExpr2.Type, argExpr3.Type, argExpr4.Type, argExpr5.Type);
+                    }
+
+                    return new ScalarResponse(
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = extensionUri,
+                            ExtensionName = extensionName,
+                            Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr, argExpr3.Expr, argExpr4.Expr, argExpr5.Expr }
+                        },
+                        returnType
+                        );
+                }
+                throw new InvalidOperationException($"{functionName} must have exactly five arguments, and not be '*'");
             });
         }
 

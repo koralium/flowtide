@@ -39,6 +39,11 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Custom sink does not support overwrite.");
+            }
+
             return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), executionMode, writeRelation, dataflowBlockOptions);
         }
     }

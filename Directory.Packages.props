@@ -1,0 +1,107 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Microsoft basic packages -->
+    <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+    <PackageVersion Include="System.IO.Hashing" Version="10.0.2" />
+    <PackageVersion Include="System.IO.Pipelines" Version="10.0.2" />
+    <!-- Microsoft clients -->
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageVersion Include="Microsoft.Graph" Version="5.58.0" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
+    <!-- Grpc -->
+    <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
+    <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
+    <PackageVersion Include="Google.Protobuf" Version="3.33.5" />
+    <!-- Polly -->
+    <PackageVersion Include="Polly.Core" Version="8.6.4" />
+    <PackageVersion Include="Polly.RateLimiting" Version="8.5.2" />
+    <!-- Apache Arrow -->
+    <PackageVersion Include="Apache.Arrow" Version="22.1.0" />
+    <PackageVersion Include="Apache.Arrow.Compression" Version="22.1.0" />
+    <!-- FasterKV -->
+    <PackageVersion Include="Microsoft.FASTER.Core" Version="2.6.5" />
+    <PackageVersion Include="Microsoft.FASTER.Devices.AzureStorage" Version="2.6.5" />
+    <!-- Vector/token packages -->
+    <PackageVersion Include="Microsoft.ML.Tokenizers" Version="1.0.2" />
+    <PackageVersion Include="Qdrant.Client" Version="1.14.0" />
+    <!-- Fody -->
+    <PackageVersion Include="Fody" Version="6.9.2" />
+    <PackageVersion Include="InlineIL.Fody" Version="1.10.1" />
+    <!-- Others -->
+    <PackageVersion Include="ZstdSharp.Port" Version="0.8.5" />
+    <PackageVersion Include="SqlParserCS" Version="0.6.5" />
+    <PackageVersion Include="OpenFga.Sdk" Version="0.3.1" />
+    <PackageVersion Include="MongoDB.Driver" Version="3.5.0" />
+    <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageVersion Include="ParquetSharp" Version="18.1.0" />
+    <PackageVersion Include="Stowage" Version="2.0.1" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.13.0" />
+    <PackageVersion Include="CsvHelper" Version="33.1.0" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.0" />
+    <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
+    <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+    <!-- Deprecated only for .net 8 -->
+    <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
+    <!-- Test packages -->
+    <!-- Microsoft basic packages -->
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.2" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
+    <!-- Microsoft test packages -->
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="xunit" Version="2.7.0" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <PackageVersion Include="xunit.v3" Version="2.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.23" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.0" />
+    <!-- Testcontainers -->
+    <PackageVersion Include="Testcontainers" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.Kafka" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.MsSql" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.CosmosDb" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.MongoDb" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.Elasticsearch" Version="4.10.0" />
+    <PackageVersion Include="Testcontainers.Qdrant" Version="4.10.0" />
+    <!-- Entity framework -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.12" />
+    <!-- Serilog -->
+    <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
+    <!-- Other -->
+    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="Bogus" Version="35.6.5" />
+    <PackageVersion Include="FastMember" Version="1.5.0" />
+    <PackageVersion Include="MySql.Data" Version="9.4.0" />
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
+    <!-- Sample packages -->
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.0" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
+    <PackageVersion Include="Spectre.Console.Cli" Version="0.49.1" />
+    <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.7.0-rc.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
+    <PackageVersion Include="AspNetCore.HealthChecks.Publisher.ApplicationInsights" Version="9.0.0" />
+    <PackageVersion Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.6.0" />
+    <!-- Benchmarks -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.15.8" />
+  </ItemGroup>
+</Project>

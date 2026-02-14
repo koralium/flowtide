@@ -28,6 +28,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types
         [JsonPropertyName("metadata")]
         public IReadOnlyDictionary<string, object> Metadata { get; }
 
+        public string? PhysicalName { get; set; }
+
+        public int? FieldId { get; set; }
+
+        public bool HasMetadata => (Metadata != null && Metadata.Count > 0) || PhysicalName != null || FieldId != null;
+
         public StructField(string name, SchemaBaseType type, bool nullable, IReadOnlyDictionary<string, object> metadata)
         {
             Name = name;

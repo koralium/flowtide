@@ -66,6 +66,10 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("SpiceDB sink does not support overwrite.");
+            }
             return new ColumnSpiceDbSink(spiceDbSinkOptions, spiceDbSinkOptions.ExecutionMode, writeRelation, dataflowBlockOptions);
         }
     }

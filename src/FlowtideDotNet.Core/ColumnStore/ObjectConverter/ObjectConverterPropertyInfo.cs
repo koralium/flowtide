@@ -18,11 +18,11 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
 
         public Func<object, object?>? GetFunc { get; }
 
-        public Action<object, object>? SetFunc { get; }
+        public Action<object, object?>? SetFunc { get; }
 
         public ObjectConverterTypeInfo TypeInfo { get; }
 
-        public ObjectConverterPropertyInfo(string name, Func<object, object?>? getFunc, Action<object, object>? setFunc, ObjectConverterTypeInfo typeInfo)
+        public ObjectConverterPropertyInfo(string name, Func<object, object?>? getFunc, Action<object, object?>? setFunc, ObjectConverterTypeInfo typeInfo)
         {
             Name = name;
             GetFunc = getFunc;

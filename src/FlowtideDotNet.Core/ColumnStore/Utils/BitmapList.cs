@@ -677,6 +677,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int FindNextFalseIndex(int start)
         {
+            if (start >= Count)
+            {
+                return -1;
+            }
             var span = AccessSpan;
             var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
             var mod = start & 31; // Get the bit offset within the current integer
@@ -735,6 +739,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int FindNextTrueIndex(int start)
         {
+            if (start >= Count)
+            {
+                return -1;
+            }
+
             var span = AccessSpan;
             var fromIndex = start >> 5; // Divide by 32 to get the index of the integer
             var mod = start & 31; // Get the bit offset within the current integer

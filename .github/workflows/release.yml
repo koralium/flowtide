@@ -5,6 +5,9 @@ on:
     tags:
       - v*
 
+permissions:
+  contents: read
+
 jobs:
   publishNuget:
     runs-on: ubuntu-latest
@@ -14,9 +17,9 @@ jobs:
       id: tag
       run: echo ::set-output name=VERSION::$(echo ${GITHUB_REF##*/v})
     - name: Setup dotnet
-      uses: actions/setup-dotnet@v1
+      uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
     - name: Update project version
       uses: roryprimrose/set-vs-sdk-project-version@v1
       with:
@@ -70,5 +73,7 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.TestFramework/FlowtideDotNet.TestFramework.csproj
     - name: Package Qdrant
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj
+    - name: Package Starrocks
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json

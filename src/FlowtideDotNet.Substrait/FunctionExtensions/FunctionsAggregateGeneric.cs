@@ -16,6 +16,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
     {
         public const string Uri = "/functions_aggregate_generic.yaml";
         public const string Count = "count";
+        public const string CountDistinct = "count_distinct";
         public const string SurrogateKeyInt64 = "surrogate_key_int64";
     }
 }

@@ -369,6 +369,10 @@ namespace FlowtideDotNet.Core.Operators.Read
                             {
                                 if (exists)
                                 {
+                                    if (CompareRowReference(input, current) == 0)
+                                    {
+                                        return (current, GenericWriteOperation.None);
+                                    }
                                     bool updated = false;
                                     if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
                                     {

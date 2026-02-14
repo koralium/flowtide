@@ -35,12 +35,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
         internal Column _data;
         internal Column _compareData;
         internal PrimitiveList<long> _indices;
+        private readonly DataValueContainer _valueContainer;
+        private readonly DataValueContainer _compareContainer;
 
         public MinMaxByIndexValueContainer(IMemoryAllocator memoryAllocator)
         {
             _data = Column.Create(memoryAllocator);
             _compareData = Column.Create(memoryAllocator);
             _indices = new PrimitiveList<long>(memoryAllocator);
+            _valueContainer = new DataValueContainer();
+            _compareContainer = new DataValueContainer();
         }
 
         public MinMaxByIndexValueContainer(Column data, Column compareData, PrimitiveList<long> indices)
@@ -48,6 +52,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
             _data = data;
             _compareData = compareData;
             _indices = indices;
+            _valueContainer = new DataValueContainer();
+            _compareContainer = new DataValueContainer();
         }
         public int Count => _indices.Count;
 
@@ -74,10 +80,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
 
         public MinMaxByIndexValue Get(int index)
         {
+            _data.GetValueAt(index, _valueContainer, default);
+            _compareData.GetValueAt(index, _compareContainer, default);
             return new MinMaxByIndexValue()
             {
-                Value = _data.GetValueAt(index, default),
-                CompareValue = _compareData.GetValueAt(index, default),
+                Value = _valueContainer,
+                CompareValue = _compareContainer,
                 Index = _indices.Get(index)
             };
         }
