@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -27,6 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class CheckpointHandler
     {
+        private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
         private Channel<IPagesFile> _channel;
         private BlobNewCheckpoint _newCheckpoint;
@@ -49,11 +51,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private HashSet<long> _deletedFileIds = new HashSet<long>();
         private object _modifiedFileIdsLock = new object();
 
+        private long _checkpointVersion;
 
-        public CheckpointHandler(IMemoryAllocator memoryAllocator)
+
+        public CheckpointHandler(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
             _channel = Channel.CreateBounded<IPagesFile>(1000);
-            _newCheckpoint = new BlobNewCheckpoint(memoryAllocator);
+            _memoryPool = memoryPool;
+            _newCheckpoint = new BlobNewCheckpoint(memoryPool, memoryAllocator);
+            
             this._memoryAllocator = memoryAllocator;
         }
 
@@ -153,14 +159,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     }
                 }
             }
-            
+
             // All data has now been written to the checkpoint file
+            _newCheckpoint.FinishForWriting();
 
             // TODO: Write checkpoint file
+            var filewrite = File.OpenWrite($"checkpoint_{_checkpointVersion}.blob");
+            await _newCheckpoint.CopyToAsync(filewrite);
+            filewrite.Dispose();
 
-            _newCheckpoint = new BlobNewCheckpoint(_memoryAllocator);
+
+            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
             _channel = Channel.CreateBounded<IPagesFile>(1000);
+            _checkpointVersion++;
         }
 
         private long GetNextFileId()

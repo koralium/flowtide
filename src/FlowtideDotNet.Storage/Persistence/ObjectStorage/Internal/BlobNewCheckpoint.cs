@@ -12,20 +12,22 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Buffers;
+using System.Buffers.Binary;
+using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     /// <summary>
     /// Contains information for a new checkpoint
+    /// 
+    /// It also contains the code to return the serialized data as a pipereader
     /// </summary>
-    internal class BlobNewCheckpoint
+    internal class BlobNewCheckpoint : PipeReader
     {
+        private const int HeaderSize = 128;
+
         private readonly PrimitiveList<long> _upsertPageIds;
         private readonly PrimitiveList<long> _upsertPageFileIds;
         private readonly PrimitiveList<int> _upsertPageOffsets;
@@ -42,7 +44,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<int> _changedFileNonActivePageCounts;
         private readonly PrimitiveList<long> _deletedFileIds;
 
-        public BlobNewCheckpoint(IMemoryAllocator memoryAllocator)
+        // Read specific fields
+        private SequencePosition _advancedPosition;
+        private BufferSegment _headerData;
+        private BufferSegment _head;
+        private BufferSegment _end;
+        private int endIndex;
+
+        public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
+
+        public BlobNewCheckpoint(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
             _upsertPageIds = new PrimitiveList<long>(memoryAllocator);
             _upsertPageFileIds = new PrimitiveList<long>(memoryAllocator);
@@ -53,6 +64,122 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFilePageCounts = new PrimitiveList<int>(memoryAllocator);
             _changedFileNonActivePageCounts = new PrimitiveList<int>(memoryAllocator);
             _deletedFileIds = new PrimitiveList<long>(memoryAllocator);
+
+            // Create a segment for the header
+            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
+            _headerData.End = HeaderSize;
+            _head = _headerData;
+            _end = _headerData;
+            endIndex = HeaderSize;
+        }
+
+        /// <summary>
+        /// Finalize the header file for writing
+        /// This creates all the buffer segments, and writes the header information
+        /// </summary>
+        public void FinishForWriting()
+        {
+            var upsertPageIdsOffset = _end.RunningIndex + endIndex;
+            var pageIdSegment = new BufferSegment(_upsertPageIds.SlicedMemory);
+            _end.SetNext(pageIdSegment);
+            _end = pageIdSegment;
+            endIndex = pageIdSegment.Length;
+
+            var upsertPageFileIdsOffset = _end.RunningIndex + endIndex;
+            var upsertPageFileIdsSegment = new BufferSegment(_upsertPageFileIds.SlicedMemory);
+            _end.SetNext(upsertPageFileIdsSegment);
+            _end = upsertPageFileIdsSegment;
+            endIndex = upsertPageFileIdsSegment.Length;
+
+            var upsertPageFileOffsetsOffset = _end.RunningIndex + endIndex;
+            var upsertPageFileOffsetsSegment = new BufferSegment(_upsertPageOffsets.SlicedMemory);
+            _end.SetNext(upsertPageFileOffsetsSegment);
+            _end = upsertPageFileOffsetsSegment;
+            endIndex = upsertPageFileOffsetsSegment.Length;
+
+            var upsertPageSizesOffset = _end.RunningIndex + endIndex;
+            var upsertPageSizesOffsetSegment = new BufferSegment(_upsertPageSizes.SlicedMemory);
+            _end.SetNext(upsertPageSizesOffsetSegment);
+            _end = upsertPageSizesOffsetSegment;
+            endIndex = upsertPageSizesOffsetSegment.Length;
+
+            var deletedPageIdsOffset = _end.RunningIndex + endIndex;
+            var deletedPageIdsSegment = new BufferSegment(_deletedPageIds.SlicedMemory);
+            _end.SetNext(deletedPageIdsSegment);
+            _end = deletedPageIdsSegment;
+            endIndex = deletedPageIdsSegment.Length;
+
+            var updatedFileIdsOffset = _end.RunningIndex + endIndex;
+            var updatedFileIdsSegment = new BufferSegment(_changedFileIds.SlicedMemory);
+            _end.SetNext(updatedFileIdsSegment);
+            _end = updatedFileIdsSegment;
+            endIndex = updatedFileIdsSegment.Length;
+
+            var updatedFilePageCountOffset = _end.RunningIndex + endIndex;
+            var updatedFilePageCountSegment = new BufferSegment(_changedFilePageCounts.SlicedMemory);
+            _end.SetNext(updatedFilePageCountSegment);
+            _end = updatedFilePageCountSegment;
+            endIndex = updatedFilePageCountSegment.Length;
+
+            var updatedFileNonActivePageCountOffset = _end.RunningIndex + endIndex;
+            var updatedFileNonActivePageCountSegment = new BufferSegment(_changedFileNonActivePageCounts.SlicedMemory);
+            _end.SetNext(updatedFileNonActivePageCountSegment);
+            _end = updatedFileNonActivePageCountSegment;
+            endIndex = updatedFileNonActivePageCountSegment.Length;
+
+            var deletedFileIdsOffset = _end.RunningIndex + endIndex;
+            var deletedFileIdsSegment = new BufferSegment(_deletedFileIds.SlicedMemory);
+            _end.SetNext(deletedFileIdsSegment);
+            _end = deletedFileIdsSegment;
+            endIndex = deletedFileIdsSegment.Length;
+
+            var headerData = _headerData.AvailableMemory.Span;
+
+            // Write version
+            BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
+            // Next 6 bytes are reserved, so we skip 8
+            headerData = headerData.Slice(8);
+
+            // Write counts
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, _upsertPageIds.Count);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, _deletedPageIds.Count);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, _changedFileIds.Count);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, _deletedFileIds.Count);
+            headerData = headerData.Slice(8);
+
+            // Write offsets
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageIdsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageFileIdsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageFileOffsetsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageSizesOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedPageIdsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileIdsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFilePageCountOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileNonActivePageCountOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileIdsOffset);
+            headerData = headerData.Slice(8);
         }
 
         public void AddDeletedPageId(long pageId)
@@ -171,6 +298,42 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 // Set the new top value top limit how much is copied
                 top = position;
             }
+        }
+
+        public override bool TryRead(out ReadResult result)
+        {
+            var data = WrittenData;
+            if (data.End.Equals(_advancedPosition))
+            {
+                result = new ReadResult(ReadOnlySequence<byte>.Empty, false, true);
+                return false;
+            }
+            result = new ReadResult(data.Slice(_advancedPosition), false, true);
+            return true;
+        }
+
+        public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+        {
+            TryRead(out var result);
+            return ValueTask.FromResult(result);
+        }
+
+        public override void AdvanceTo(SequencePosition consumed)
+        {
+            _advancedPosition = consumed;
+        }
+
+        public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
+        {
+            _advancedPosition = consumed;
+        }
+
+        public override void CancelPendingRead()
+        {
+        }
+
+        public override void Complete(Exception? exception = null)
+        {
         }
     }
 }

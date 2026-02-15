@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             this.memoryPool = memoryPool;
             this.memoryAllocator = memoryAllocator;
             _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
-            _checkpointHandler = new CheckpointHandler(memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
             _adminSession = new BlobPersistentSession(this, memoryAllocator);
         }
 
@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _checkpointHandler = new CheckpointHandler(memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
 
             return Task.CompletedTask;
         }
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public ValueTask ResetAsync()
         {
-            _checkpointHandler = new CheckpointHandler(memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
             return ValueTask.CompletedTask;
         }
             

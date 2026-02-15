@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tests.BlobStore
 {
@@ -20,7 +21,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public void AddPagesToEmptyCheckpointInOrder()
         {
-            var checkpoint = new BlobNewCheckpoint(GlobalMemoryManager.Instance);
+            var checkpoint = new BlobNewCheckpoint(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
 
             checkpoint.AddUpsertPages(
                 new Storage.DataStructures.PrimitiveList<long>(GlobalMemoryManager.Instance)
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public void AddPagesToEmptyCheckpointUnordered()
         {
-            var checkpoint = new BlobNewCheckpoint(GlobalMemoryManager.Instance);
+            var checkpoint = new BlobNewCheckpoint(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
 
             checkpoint.AddUpsertPages(
                 new Storage.DataStructures.PrimitiveList<long>(GlobalMemoryManager.Instance)
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public void AddPagesToNonEmptyCheckpointUnordered()
         {
-            var checkpoint = new BlobNewCheckpoint(GlobalMemoryManager.Instance);
+            var checkpoint = new BlobNewCheckpoint(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
 
             checkpoint.AddUpsertPages(
                 new Storage.DataStructures.PrimitiveList<long>(GlobalMemoryManager.Instance)
