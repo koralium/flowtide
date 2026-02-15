@@ -18,93 +18,100 @@ using System.Buffers.Binary;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
+namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class BlobFileWriter : PipeReader, IBufferWriter<byte>, IDisposable
+    /// <summary>
+    /// Represents a file that is a combination of multiple blob files. 
+    /// This allows for writing multiple blob files and then combining them into a single file without copying the data.
+    /// 
+    /// This is used to gather multiple small files into a single file to reduce the number of files on disk and improve read performance.
+    /// </summary>
+    internal class MergedBlobFileWriter : PipeReader, IPagesFile, IDisposable
     {
-        private readonly MemoryPool<byte> _memoryPool;
-        private const int InitialSegmentSize = 4 * 1024 * 1024;
+        private const int HeaderSize = 64;
+        private PrimitiveList<long> _pageIds;
+        private PrimitiveList<int> _pageOffset;
+        private int _globalOffset;
+        private int endIndex;
+
+        public List<BlobFileWriter> _files = new List<BlobFileWriter>();
+
+        // Read fields
+        private SequencePosition _advancedPosition;
         private BufferSegment _headerData;
         private BufferSegment _head;
         private BufferSegment _end;
-        private int endIndex = 0;
-        private int _writtenBytes = 0;
-        private PrimitiveList<long> _pageIds;
-        private PrimitiveList<int> _pageOffset;
-        private SequencePosition _advancedPosition;
-        private bool disposedValue;
+        
 
-        public BlobFileWriter(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
-        {
-            this._memoryPool = memoryPool;
-            _headerData = new BufferSegment(memoryPool.Rent(64));
-            _headerData.End = 64;
-            _head = _headerData;
-            var firstDataSegment = new BufferSegment(memoryPool.Rent(InitialSegmentSize));
-            _head.SetNext(firstDataSegment);
-            _end = firstDataSegment;
-            _pageIds = new PrimitiveList<long>(memoryAllocator);
-            _pageOffset = new PrimitiveList<int>(memoryAllocator);
-            _advancedPosition = WrittenData.Start;
-        }
+
+        private bool disposedValue;
 
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
 
-        public BufferSegment CurrentSegment => _end;
-        public int CurrentIndex => endIndex;
+        public MergedBlobFileWriter(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        {
+            _pageIds = new PrimitiveList<long>(memoryAllocator);
+            _pageOffset = new PrimitiveList<int>(memoryAllocator);
+            _headerData = new BufferSegment(memoryPool.Rent(64));
+            _headerData.End = 64;
+            _head = _headerData;
+            _end = _headerData;
+        }
 
-        public int WrittenLength => _writtenBytes;
+        public void AddBlobFile(BlobFileWriter blobFileWriter)
+        {
+            blobFileWriter.FinishDataOnly();
+            _files.Add(blobFileWriter);
+
+            // Link the new file's data segments to the end of the current data
+            var segment = blobFileWriter.DataStartSegment;
+            while (segment != null)
+            {
+                _end.SetNext(segment);
+                endIndex = segment.End;
+                _end = segment;
+                if (segment.Next != null)
+                {
+                    if (segment.Next is BufferSegment bufferSegment)
+                    {
+                        segment = bufferSegment;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unexpected segment type");
+                    }
+                }
+                else
+                {
+                    segment = null;
+                }
+            }
+
+            for (int i = 0; i < blobFileWriter.PageIds.Count; i++)
+            {
+                _pageIds.Add(blobFileWriter.PageIds[i]);
+                _pageOffset.Add(blobFileWriter.PageOffsets[i] + _globalOffset);
+            }
+
+            _globalOffset += blobFileWriter.WrittenLength;
+        }
 
         public PrimitiveList<long> PageIds => _pageIds;
 
         public PrimitiveList<int> PageOffsets => _pageOffset;
 
-        public ReadOnlySequence<byte> Write(long key, SerializableObject value)
-        {
-            var position = WrittenLength;
-            var startSegment = CurrentSegment;
-            var segmentPosition = CurrentIndex;
-            value.Serialize(this);
-            var endSegment = CurrentSegment;
-            var endSegmentPosition = CurrentIndex;
-            _pageIds.Add(key);
-            _pageOffset.Add(position);
-
-            return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
-        }
-
-        public void Advance(int count)
-        {
-            endIndex += count;
-            _writtenBytes += count;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void EnsureCapacity(ref readonly int sizeHint)
-        {
-            if (endIndex + sizeHint > _end.AvailableMemory.Length)
-            {
-                var newSegment = new BufferSegment(_memoryPool.Rent(Math.Max(sizeHint, InitialSegmentSize)));
-                _end.SetNext(newSegment);
-                _end.End = endIndex;
-                _end = newSegment;
-                endIndex = 0;
-            }
-        }
-
         public void Finish()
         {
-            _end.End = endIndex;
-            var pageIdsOffset = _end.RunningIndex;
+            _pageOffset.Add(_globalOffset + HeaderSize);
+            var pageIdsOffset = _end.RunningIndex + endIndex;
             var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
             _end.SetNext(pageIdSegment);
             _end = pageIdSegment;
-            
-            var pageOffsetOffset = _end.RunningIndex;
+
+            var pageOffsetOffset = _end.RunningIndex + endIndex;
             var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
             _end.SetNext(offsetSegment);
             _end = offsetSegment;
@@ -131,18 +138,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
             BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
         }
 
-        public Memory<byte> GetMemory(int sizeHint = 0)
-        {
-            EnsureCapacity(in sizeHint);
-            return _end.AvailableMemory.Slice(endIndex);
-        }
-
-        public Span<byte> GetSpan(int sizeHint = 0)
-        {
-            EnsureCapacity(in sizeHint);
-            return _end.AvailableMemory.Span.Slice(endIndex);
-        }
-
         public override bool TryRead(out ReadResult result)
         {
             var data = WrittenData;
@@ -151,7 +146,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
                 result = new ReadResult(ReadOnlySequence<byte>.Empty, false, true);
                 return false;
             }
-            result = new ReadResult(WrittenData.Slice(_advancedPosition), false, true);
+            result = new ReadResult(data.Slice(_advancedPosition), false, true);
             return true;
         }
 
@@ -183,12 +178,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         {
             if (!disposedValue)
             {
-                var segment = _head;
-                while (segment != null)
+                if (disposing)
                 {
-                    var next = segment._next;
-                    segment.Dispose();
-                    segment = next;
+                    // TODO: dispose managed state (managed objects)
+                    foreach(var file in _files)
+                    {
+                        file.Dispose();
+                    }
                 }
 
                 _pageIds.Dispose();
@@ -198,7 +194,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
             }
         }
 
-        ~BlobFileWriter()
+        ~MergedBlobFileWriter()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: false);
@@ -209,6 +205,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void DoneWriting()
+        {
+            foreach(var file in _files)
+            {
+                file.DoneWriting();
+            }
         }
     }
 }

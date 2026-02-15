@@ -13,7 +13,7 @@
 using System.Buffers;
 using System.Diagnostics;
 
-namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
+namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class BufferSegment : ReadOnlySequenceSegment<byte>, IDisposable
     {
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 
         public bool TryRent()
         {
-            var localRentCount = Thread.VolatileRead(ref _rentCounter);
+            var localRentCount = Volatile.Read(ref _rentCounter);
             if (localRentCount == 0)
             {
                 return false;

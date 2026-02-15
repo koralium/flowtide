@@ -11,16 +11,32 @@
 // limitations under the License.
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
+namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal struct PageWriteLocation
+    internal class FileInformation
     {
-        public ReadOnlySequence<byte> data;
+        private object _lock = new object();
+        public long FileId { get; }
+        public int PageCount { get; }
+        public int NonActivePageCount { get; private set; }
+        public FileInformation(long fileId, int pageCount, int nonActivePageCount)
+        {
+            FileId = fileId;
+            PageCount = pageCount;
+            NonActivePageCount = nonActivePageCount;
+        }
+
+        public void AddNonActivePage()
+        {
+            lock (_lock)
+            {
+                NonActivePageCount++; 
+            }
+        }
     }
 }

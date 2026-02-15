@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -28,7 +28,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         {
             CheckpointHandler checkpointHandler = new CheckpointHandler(GlobalMemoryManager.Instance);
 
-            BlobFileWriter blobFileWriter = new BlobFileWriter(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            BlobFileWriter blobFileWriter = new BlobFileWriter((file) =>
+            {
+
+            }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
             blobFileWriter.Write(1, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
             blobFileWriter.Finish();
 

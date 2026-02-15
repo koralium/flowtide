@@ -11,12 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 
 namespace FlowtideDotNet.Storage.Tests.BlobStore
 {
@@ -39,6 +34,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
                 {
                     100, 200, 300, 400, 500
+                },
+                new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
+                {
+                    100, 100, 100, 100, 100
                 }
             );
         }
@@ -60,6 +59,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
                 {
                     100, 200, 300, 400, 500
+                },
+                new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
+                {
+                    100, 100, 100, 100, 100
                 }
             );
         }
@@ -81,6 +84,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
                 {
                     100, 200, 300, 400, 500
+                },
+                new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
+                {
+                    100, 100, 100, 100, 100
                 }
             );
 
@@ -96,6 +103,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
                 {
                     600, 700, 800, 900
+                },
+                new Storage.DataStructures.PrimitiveList<int>(GlobalMemoryManager.Instance)
+                {
+                    100, 100, 100, 100
                 }
             );
         }
