@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task Test()
         {
-            CheckpointHandler checkpointHandler = new CheckpointHandler(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            CheckpointHandler checkpointHandler = new CheckpointHandler(new LocalDiskProvider("./"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
 
             BlobFileWriter blobFileWriter = new BlobFileWriter((file) =>
             {

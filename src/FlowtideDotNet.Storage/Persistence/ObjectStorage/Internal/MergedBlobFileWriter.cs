@@ -29,13 +29,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     /// 
     /// This is used to gather multiple small files into a single file to reduce the number of files on disk and improve read performance.
     /// </summary>
-    internal class MergedBlobFileWriter : PipeReader, IPagesFile, IDisposable
+    internal class MergedBlobFileWriter : PagesFile
     {
         private const int HeaderSize = 64;
         private PrimitiveList<long> _pageIds;
         private PrimitiveList<int> _pageOffset;
         private int _globalOffset;
         private int endIndex;
+        private bool _finished;
 
         public List<BlobFileWriter> _files = new List<BlobFileWriter>();
 
@@ -63,6 +64,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void AddBlobFile(BlobFileWriter blobFileWriter)
         {
+            if (_finished)
+            {
+                throw new InvalidOperationException("Cannot add a blob file after the merged file has been finished");
+            }
+            _finished = false;
             blobFileWriter.FinishDataOnly();
             _files.Add(blobFileWriter);
 
@@ -70,9 +76,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var segment = blobFileWriter.DataStartSegment;
             while (segment != null)
             {
-                _end.SetNext(segment);
-                endIndex = segment.End;
-                _end = segment;
+                var clone = segment.CloneWithoutNext();
+                _end.SetNext(clone);
+                endIndex = clone.End;
+                _end = clone;
                 if (segment.Next != null)
                 {
                     if (segment.Next is BufferSegment bufferSegment)
@@ -99,9 +106,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _globalOffset += blobFileWriter.WrittenLength;
         }
 
-        public PrimitiveList<long> PageIds => _pageIds;
+        public override PrimitiveList<long> PageIds => _pageIds;
 
-        public PrimitiveList<int> PageOffsets => _pageOffset;
+        public override PrimitiveList<int> PageOffsets => _pageOffset;
 
         public void Finish()
         {
@@ -110,11 +117,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
             _end.SetNext(pageIdSegment);
             _end = pageIdSegment;
+            endIndex = pageIdSegment.Length;
 
             var pageOffsetOffset = _end.RunningIndex + endIndex;
             var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
             _end.SetNext(offsetSegment);
             _end = offsetSegment;
+            endIndex = offsetSegment.Length;
 
             var headerData = _headerData.AvailableMemory.Span;
 
@@ -136,6 +145,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             // Write offset to page data start
             BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
+            _finished = true;
         }
 
         public override bool TryRead(out ReadResult result)
@@ -200,14 +210,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             Dispose(disposing: false);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
-        public void DoneWriting()
+        public override void DoneWriting()
         {
             foreach(var file in _files)
             {

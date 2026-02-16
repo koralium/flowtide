@@ -287,5 +287,10 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
                 m_persistentStorage.Dispose();
             }
         }
+
+        public void ClearForRestore()
+        {
+            Dispose();
+        }
     }
 }

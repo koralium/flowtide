@@ -10,34 +10,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class BlobPersistentStorage : IPersistentStorage
+    public class BlobPersistentStorage : IPersistentStorage
     {
         private const int MaxFileSize = 10 * 1024 * 1024;
+        private readonly IFileStorageProvider fileProvider;
         private readonly MemoryPool<byte> memoryPool;
         private readonly IMemoryAllocator memoryAllocator;
         private MergedBlobFileWriter _mergedBlobFileWriter;
         private CheckpointHandler _checkpointHandler;
         private BlobPersistentSession _adminSession;
+        private SemaphoreSlim _mergedBlobLock = new SemaphoreSlim(1);
+        private List<BlobPersistentSession> _sessions = new List<BlobPersistentSession>();
+        private object _sessionsLock = new object();
 
-        public BlobPersistentStorage(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        public BlobPersistentStorage(IFileStorageProvider fileProvider, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
+            this.fileProvider = fileProvider;
             this.memoryPool = memoryPool;
             this.memoryAllocator = memoryAllocator;
             _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
-            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
             _adminSession = new BlobPersistentSession(this, memoryAllocator);
         }
 
-        public long CurrentVersion => throw new NotImplementedException();
+        public long CurrentVersion => _checkpointHandler.CheckpointVersion;
 
-        public async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
+        internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
         {
+            await _mergedBlobLock.WaitAsync();
             _mergedBlobFileWriter.AddBlobFile(blobFileWriter);
 
             if (_mergedBlobFileWriter.WrittenData.Length >= MaxFileSize)
@@ -49,11 +57,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
                 _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
             }
+            _mergedBlobLock.Release();
+        }
+
+        internal async Task AddCompleteBlobFile(BlobFileWriter blobFileWriter)
+        {
+            await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
         }
 
         public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
+            await _adminSession.Write(1, new SerializableObject(metadata));
+            await _adminSession.Commit();
             // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
+            await _mergedBlobLock.WaitAsync();
             if (_mergedBlobFileWriter.PageIds.Count > 0)
             {
                 _mergedBlobFileWriter.Finish();
@@ -61,23 +78,30 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
                 _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
             }
+            _mergedBlobLock.Release();
             await _checkpointHandler.FinishCheckpoint();
         }
 
-        public async ValueTask<ReadOnlySequence<byte>> ReadAsync(long key)
+        internal async ValueTask<ReadOnlySequence<byte>> ReadAsync(long key)
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                var stream = System.IO.File.OpenRead(GetBlobFileName(location.FileId));
-                stream.Position = location.Offset;
-                var buffer = new byte[location.Size];
-                await stream.ReadExactlyAsync(buffer, 0, location.Size);
-                return new ReadOnlySequence<byte>(buffer);
+                var memory = fileProvider.GetMemory(GetBlobFileName(location.FileId), location.Offset, location.Size);
+                return new ReadOnlySequence<byte>(memory);
             }
             throw new NotImplementedException();
         }
 
-        public void DeletePages(IReadOnlySet<long> keys)
+        internal ValueTask<T> ReadAsync<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+            {
+                return fileProvider.Read<T>(GetBlobFileName(location.FileId), location.Offset, location.Size, stateSerializer);
+            }
+            throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+        }
+
+        internal void DeletePages(IReadOnlySet<long> keys)
         {
             _checkpointHandler.AddDeletedPages(keys);
         }
@@ -89,34 +113,48 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
-            throw new NotImplementedException();
+            return ValueTask.CompletedTask;
         }
 
         public IPersistentStorageSession CreateSession()
         {
-            return new BlobPersistentSession(this, memoryAllocator);
+            var session = new BlobPersistentSession(this, memoryAllocator);
+            lock (_sessionsLock)
+            {
+                _sessions.Add(session);
+            }
+            return session;
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            // TODO: Implement
+            //throw new NotImplementedException();
         }
 
-        public Task InitializeAsync(StorageInitializationMetadata metadata)
+        public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
-
-            return Task.CompletedTask;
+            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
+            await _checkpointHandler.RecoverToLatest();
         }
 
-        public ValueTask RecoverAsync(long checkpointVersion)
+        public async ValueTask RecoverAsync(long checkpointVersion)
         {
-            return ValueTask.CompletedTask;
+            await _checkpointHandler.RecoverTo(checkpointVersion);
         }
 
         public ValueTask ResetAsync()
         {
-            _checkpointHandler = new CheckpointHandler(memoryPool, memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
+            
+            lock (_sessionsLock)
+            {
+                foreach(var session in _sessions)
+                {
+                    session.Reset();
+                }
+            }
+
             return ValueTask.CompletedTask;
         }
             
@@ -124,21 +162,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                var stream = System.IO.File.OpenRead(GetBlobFileName(location.FileId));
-                stream.Position = location.Offset;
-                var buffer = new byte[location.Size];
-                stream.ReadExactly(buffer, 0, location.Size);
-                value = buffer;
+                value = fileProvider.GetMemory(GetBlobFileName(location.FileId), location.Offset, location.Size);
                 return true;
             }
             value = null;
             return false;
         }
 
-        public ValueTask Write(long key, byte[] value)
+        public async ValueTask Write(long key, byte[] value)
         {
-            _adminSession.Write(key, new SerializableObject(value));
-            return ValueTask.CompletedTask;
+            await _adminSession.Write(key, new SerializableObject(value));
+        }
+
+        public void ClearForRestore()
+        {
+            lock (_sessionsLock)
+            {
+                foreach (var session in _sessions)
+                {
+                    session.Reset();
+                }
+            }
         }
     }
 }

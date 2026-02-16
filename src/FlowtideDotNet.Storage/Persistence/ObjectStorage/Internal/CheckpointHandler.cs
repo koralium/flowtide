@@ -28,9 +28,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class CheckpointHandler
     {
+        private readonly IFileStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
-        private Channel<IPagesFile> _channel;
+        private Channel<PagesFile> _channel;
         private BlobNewCheckpoint _newCheckpoint;
         private long _nextFileId = 0;
         private object _lock = new object();
@@ -51,20 +52,126 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private HashSet<long> _deletedFileIds = new HashSet<long>();
         private object _modifiedFileIdsLock = new object();
 
+        private long _currentCheckpointVersion = 0;
         private long _checkpointVersion;
+        private bool _modifiedSinceLastCheckpoint = false;
+
+        public long CheckpointVersion => _checkpointVersion;
 
 
-        public CheckpointHandler(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        public CheckpointHandler(IFileStorageProvider fileProvider, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
-            _channel = Channel.CreateBounded<IPagesFile>(1000);
+            _channel = Channel.CreateBounded<PagesFile>(1000);
+            this._fileProvider = fileProvider;
             _memoryPool = memoryPool;
             _newCheckpoint = new BlobNewCheckpoint(memoryPool, memoryAllocator);
             
             this._memoryAllocator = memoryAllocator;
+            _currentCheckpointVersion = 0;
+            _checkpointVersion = 1;
         }
 
-        public async Task EnqueueFileAsync(IPagesFile fileWriter)
+        public async Task RecoverToLatest()
         {
+            var checkpointFiles = (await _fileProvider.ListFilesAsync("./checkpoints"))
+                .Select(static x => new CheckpointFileInfo(x))
+                .Where(static x => x.IsCheckpoint)
+                .OrderBy(static x => x.Version)
+                .ToList();
+
+            if (checkpointFiles.Count == 0)
+            {
+                return;
+            }
+            await ReadCheckpointFiles(checkpointFiles);
+            var lastFile = checkpointFiles[checkpointFiles.Count - 1];
+
+            _currentCheckpointVersion = lastFile.Version;
+            _checkpointVersion = lastFile.Version + 1;
+        }
+
+        public async Task RecoverTo(long version)
+        {
+            if (_currentCheckpointVersion == version && !Volatile.Read(ref _modifiedSinceLastCheckpoint))
+            {
+                // If we are already at the checkpoint version and there is no modification since last checkpoint, we can skip recovery
+                return;
+            }
+
+            // List all checkpoint files and order them by version
+            var checkpointFiles = (await _fileProvider.ListFilesAsync("./checkpoints"))
+                .Select(static x => new CheckpointFileInfo(x))
+                .Where(x => x.IsCheckpoint && x.Version <= version)
+                .OrderBy(static x => x.Version)
+                .ToList();
+
+            if (checkpointFiles.Count == 0)
+            {
+                throw new InvalidOperationException($"No checkpoint files found for recovery.");
+            }
+
+            if (!checkpointFiles.Any(x => x.Version == version))
+            {
+                throw new InvalidOperationException($"Checkpoint file with version {version} not found for recovery.");
+            }
+
+            await ReadCheckpointFiles(checkpointFiles);
+            _currentCheckpointVersion = version;
+            _checkpointVersion = version + 1;
+        }
+
+        private async Task ReadCheckpointFiles(List<CheckpointFileInfo> checkpointFiles)
+        {
+            foreach (var checkpointFile in checkpointFiles)
+            {
+                var fileReader = _fileProvider.OpenReadFile(checkpointFile.FilePath);
+
+                // Read all content of the file
+                ReadResult readResult;
+                do
+                {
+                    readResult = await fileReader.ReadAsync();
+                    fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                } while (!readResult.IsCompleted);
+                ReadCheckpointFile(checkpointFile, readResult.Buffer);
+            }
+        }
+
+        private void ReadCheckpointFile(CheckpointFileInfo checkpointFileInfo, ReadOnlySequence<byte> buffer)
+        {
+            var reader = new CheckpointDataReader(buffer);
+            
+            while (reader.TryGetNextUpsertPageInfo(out var upsertPageInfo))
+            {
+                _pageFileLocations[upsertPageInfo.pageId] = new PageFileLocation()
+                {
+                    FileId = upsertPageInfo.fileId,
+                    Offset = upsertPageInfo.offset,
+                    Size = upsertPageInfo.size
+                };
+            }
+
+            while (reader.TryGetNextDeletedPageId(out var deletedPageId))
+            {
+                _pageFileLocations.TryRemove(deletedPageId, out _);
+            }
+
+            while (reader.TryGetFileInformation(out var fileInfo))
+            {
+                _fileInformations[fileInfo.FileId] = fileInfo;
+            }
+
+            while (reader.TryGetNextDeletedFileId(out var deletedFileId))
+            {
+                _fileInformations.TryRemove(deletedFileId, out _);
+            }
+
+            _nextFileId = reader.NextFileId;
+        }
+
+        public async Task EnqueueFileAsync(PagesFile fileWriter)
+        {
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, true);
             if (_writeTasks == null)
             {
                 lock (_taskLock)
@@ -87,6 +194,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void AddDeletedPages(IReadOnlySet<long> pageIds)
         {
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, true);
+
             // Deleted pages are stored locally until checkpoint
             // This is to solve race condition so all pages have been assigned a fileId
             // before deleting a page so the file statistics are updated correctly.
@@ -160,18 +269,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
 
+            _newCheckpoint.SetNextFileId(_nextFileId);
+
             // All data has now been written to the checkpoint file
             _newCheckpoint.FinishForWriting();
 
-            // TODO: Write checkpoint file
-            var filewrite = File.OpenWrite($"checkpoint_{_checkpointVersion}.blob");
-            await _newCheckpoint.CopyToAsync(filewrite);
-            filewrite.Dispose();
-
+            
+            var fileName = $"{_checkpointVersion.ToString("D20")}.checkpoint";
+            await _fileProvider.WriteFile(_newCheckpoint, $"./checkpoints/{fileName}");
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
-            _channel = Channel.CreateBounded<IPagesFile>(1000);
+            _channel = Channel.CreateBounded<PagesFile>(1000);
+            lock (_writeTasks)
+            {
+                _writeTasks = null;
+            }
+            _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
         }
 
@@ -216,12 +330,22 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     _newCheckpoint.AddUpsertPages(file.PageIds, fileIds, file.PageOffsets, pageSizes);
                 }
 
-                var filewrite = File.OpenWrite($"blob_{fileId}.blob");
-                await file.CopyToAsync(filewrite);
-                filewrite.Dispose();
+                await _fileProvider.WriteFile(file, $"blob_{fileId}.blob");
 
                 for (int i = 0; i < file.PageIds.Count; i++)
                 {
+                    // Check if the page already exists in another file, if it does, we need to update the file information of the existing file and add it to modified file ids
+                    if (_pageFileLocations.TryGetValue(file.PageIds[i], out var existingLocation))
+                    {
+                        if (_fileInformations.TryGetValue(existingLocation.FileId, out var existingFileInfo))
+                        {
+                            existingFileInfo.AddNonActivePage();
+                            lock (_modifiedFileIdsLock)
+                            {
+                                _modifiedFileIds.Add(existingLocation.FileId);
+                            }
+                        }
+                    }
                     _pageFileLocations[file.PageIds[i]] = new PageFileLocation()
                     {
                         FileId = fileId,

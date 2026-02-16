@@ -33,6 +33,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
             throw new NotImplementedException();
         }
 
+        public void ClearForRestore()
+        {
+            throw new NotImplementedException();
+        }
+
         public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
             throw new NotImplementedException();

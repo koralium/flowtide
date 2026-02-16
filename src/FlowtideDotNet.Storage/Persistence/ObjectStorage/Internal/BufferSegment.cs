@@ -53,11 +53,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = memory.Length;
         }
 
+        public BufferSegment CloneWithoutNext()
+        {
+            if (_owner != null)
+            {
+                var b = new BufferSegment(_owner);
+                b.End = _end;
+                return b;
+            }
+            var ba = new BufferSegment(AvailableMemory);
+            ba.End = _end;
+            return ba;
+        }
+
         public void SetNext(BufferSegment segment)
         {
             Debug.Assert(segment != null);
             Debug.Assert(Next == null);
-
             _next = segment;
             Next = _next;
 

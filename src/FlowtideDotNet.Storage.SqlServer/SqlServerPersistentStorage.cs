@@ -257,5 +257,10 @@ namespace FlowtideDotNet.Storage.SqlServer
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        public void ClearForRestore()
+        {
+            Dispose();
+        }
     }
 }

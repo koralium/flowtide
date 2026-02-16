@@ -13,11 +13,15 @@
 using FASTER.core;
 using FASTER.devices;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Buffers;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -139,6 +143,16 @@ namespace FlowtideDotNet.DependencyInjection
         public static IFlowtideStorageBuilder NoCompression(this IFlowtideStorageBuilder storageBuilder)
         {
             return storageBuilder.SetCompression(new FlowtideDotNet.Storage.StateSerializeOptions());
+        }
+
+        public static IFlowtideStorageBuilder AddFileStorage(this IFlowtideStorageBuilder storageBuilder, string basePath)
+        {
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                return new BlobPersistentStorage(new LocalDiskProvider(basePath), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            });
+            storageBuilder.ZstdPageCompression();
+            return storageBuilder;
         }
     }
 }

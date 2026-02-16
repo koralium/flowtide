@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
@@ -54,7 +55,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _fileWriter = new BlobFileWriter(OnFileWritten, MemoryPool<byte>.Shared, _memoryAllocator);
         }
 
-        private void OnFileWritten(IPagesFile pagesFile)
+        private void OnFileWritten(PagesFile pagesFile)
         {
             lock (_lock)
             {
@@ -117,7 +118,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
             
-            throw new NotImplementedException();
+            return _persistentStorage.ReadAsync(key, stateSerializer);
         }
 
         public ValueTask<ReadOnlyMemory<byte>> Read(long key)
@@ -164,25 +165,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return buffer;
         }
 
-        public Task Write(long key, SerializableObject value)
+        public async Task Write(long key, SerializableObject value)
         {
-            var sequence = _fileWriter.Write(key, value);
-
             lock (_lock)
             {
+                var sequence = _fileWriter.Write(key, value);
                 // If the page is in deleted pages, remove it from the set
                 // Since it has been written again
                 if (_deletedPages.Contains(key))
                 {
                     _deletedPages.Remove(key);
                 }
+                if (_temporaryWrittenPageLocations.ContainsKey(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
+                }
                 // Add info to lookup so reads can find the written data before its flushed to storage
                 _temporaryWrittenPageLocations.Add(key, new PageWriteLocation()
                 {
                     data = sequence
-                });
+                });   
             }
-            
 
             if (_fileWriter.WrittenLength >= MaxFileSize)
             {
@@ -190,12 +193,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _fileWriter.Finish();
 
                 // TODO: Send the file to the blob writer
+                await _persistentStorage.AddCompleteBlobFile(_fileWriter);
 
                 SetupFileWriter();
             }
+        }
 
-
-            return Task.CompletedTask;
+        public void Reset()
+        {
+            lock (_lock)
+            {
+                _temporaryWrittenPageLocations.Clear();
+                _deletedPages.Clear();
+                _fileWriter.Dispose();
+                SetupFileWriter();
+            }
         }
     }
 }

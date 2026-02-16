@@ -11,24 +11,21 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class BlobFileWriter : PipeReader, IPagesFile, IBufferWriter<byte>, IDisposable
+    internal class BlobFileWriter : PagesFile, IBufferWriter<byte>
     {
         private const int HeaderSize = 64;
 
-        private readonly Action<IPagesFile> doneFunc;
+        private readonly Action<PagesFile> doneFunc;
         private readonly MemoryPool<byte> _memoryPool;
         private const int InitialSegmentSize = 4 * 1024 * 1024;
         private BufferSegment _headerData;
@@ -41,8 +38,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequencePosition _advancedPosition;
         private bool disposedValue;
         private BufferSegment _dataStart;
+        private bool _finished = false;
+        private readonly object _lock = new object();
 
-        public BlobFileWriter(Action<IPagesFile> doneFunc, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        public BlobFileWriter(Action<PagesFile> doneFunc, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
             this.doneFunc = doneFunc;
             this._memoryPool = memoryPool;
@@ -67,21 +66,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public int WrittenLength => _writtenBytes;
 
-        public PrimitiveList<long> PageIds => _pageIds;
+        public override PrimitiveList<long> PageIds => _pageIds;
 
-        public PrimitiveList<int> PageOffsets => _pageOffset;
+        public override PrimitiveList<int> PageOffsets => _pageOffset;
 
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
         {
-            var position = WrittenLength;
-            var startSegment = CurrentSegment;
-            var segmentPosition = CurrentIndex;
-            value.Serialize(this);
-            var endSegment = CurrentSegment;
-            var endSegmentPosition = CurrentIndex;
-            _pageIds.Add(key);
-            _pageOffset.Add(position + HeaderSize);
-            return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
+            lock (_lock)
+            {
+                var position = WrittenLength;
+                var startSegment = CurrentSegment;
+                var segmentPosition = CurrentIndex;
+                value.Serialize(this);
+                var endSegment = CurrentSegment;
+                var endSegmentPosition = CurrentIndex;
+                _pageIds.Add(key);
+                _pageOffset.Add(position + HeaderSize);
+                return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
+            }
         }
         
         public void Advance(int count)
@@ -93,7 +95,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void EnsureCapacity(ref readonly int sizeHint)
         {
-            if (endIndex + sizeHint > _end.AvailableMemory.Length)
+            if (_finished) 
+            { 
+                throw new InvalidOperationException("Cannot write to BlobFileWriter after it has been finished.");
+            }
+            if (endIndex + sizeHint >= _end.AvailableMemory.Length)
             {
                 var newSegment = new BufferSegment(_memoryPool.Rent(Math.Max(sizeHint, InitialSegmentSize)));
                 _end.SetNext(newSegment);
@@ -105,42 +111,53 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void FinishDataOnly()
         {
+            _finished = true;
             _end.End = endIndex;
         }
 
         public void Finish()
         {
-            _end.End = endIndex;
-            var pageIdsOffset = _end.RunningIndex + endIndex;
-            var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
-            _end.SetNext(pageIdSegment);
-            _end = pageIdSegment;
-            
-            var pageOffsetOffset = _end.RunningIndex + endIndex;
-            var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
-            _end.SetNext(offsetSegment);
-            _end = offsetSegment;
+            lock (_lock)
+            {
+                if (_finished)
+                {
+                    throw new FlowtidePersistentStorageException("Tried to finish a file already finished");
+                }
+                _finished = true;
+                _end.End = endIndex;
+                var pageIdsOffset = _end.RunningIndex + endIndex;
+                var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
+                _end.SetNext(pageIdSegment);
+                _end = pageIdSegment;
+                endIndex = pageIdSegment.Length;
 
-            var headerData = _headerData.AvailableMemory.Span;
+                var pageOffsetOffset = _end.RunningIndex + endIndex;
+                var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
+                _end.SetNext(offsetSegment);
+                _end = offsetSegment;
+                endIndex = offsetSegment.Length;
 
-            // Write version
-            BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
-            headerData = headerData.Slice(4);
+                var headerData = _headerData.AvailableMemory.Span;
 
-            // Write page count
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, _pageIds.Count);
-            headerData = headerData.Slice(4);
+                // Write version
+                BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
+                headerData = headerData.Slice(4);
 
-            // Write offset to page ids
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageIdsOffset);
-            headerData = headerData.Slice(4);
+                // Write page count
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, _pageIds.Count);
+                headerData = headerData.Slice(4);
 
-            // Write offset to page offsets
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetOffset);
-            headerData = headerData.Slice(4);
+                // Write offset to page ids
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageIdsOffset);
+                headerData = headerData.Slice(4);
 
-            // Write offset to page data start
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
+                // Write offset to page offsets
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetOffset);
+                headerData = headerData.Slice(4);
+
+                // Write offset to page data start
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
+            }
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)
@@ -216,14 +233,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             Dispose(disposing: false);
         }
 
-        public void Dispose()
+        public override void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
-        public void DoneWriting()
+        public override void DoneWriting()
         {
             doneFunc(this);
         }

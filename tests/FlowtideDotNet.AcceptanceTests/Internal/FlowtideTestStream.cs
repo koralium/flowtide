@@ -31,6 +31,9 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
+using System.Buffers;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -301,11 +304,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new TestStorage(new Storage.FileCacheOptions()
-            {
-                DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                SegmentSize = 1024L * 1024 * 1024 * 64
-            }, ignoreSameDataCheck, true);
+            return new BlobPersistentStorage(new LocalDiskProvider($"./data/stateFiles/{testName}/persist"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            //return new TestStorage(new Storage.FileCacheOptions()
+            //{
+            //    DirectoryPath = $"./data/tempFiles/{testName}/persist",
+            //    SegmentSize = 1024L * 1024 * 1024 * 64
+            //}, ignoreSameDataCheck, true);
         }
 
         private void OnDataUpdate(EventBatchData actualData)

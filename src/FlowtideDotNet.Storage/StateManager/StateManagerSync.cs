@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
             if (m_persistentStorage != null)
             {
-                m_persistentStorage.Dispose();
+                m_persistentStorage.ClearForRestore();
                 m_persistentStorage = null;
             }
             if (options.PersistentStorage == null)

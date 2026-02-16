@@ -44,6 +44,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<int> _changedFileNonActivePageCounts;
         private readonly PrimitiveList<long> _deletedFileIds;
 
+        private long _nextFileId;
+
         // Read specific fields
         private SequencePosition _advancedPosition;
         private BufferSegment _headerData;
@@ -71,6 +73,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _head = _headerData;
             _end = _headerData;
             endIndex = HeaderSize;
+        }
+
+        public void SetNextFileId(long nextFileId)
+        {
+            _nextFileId = nextFileId;
         }
 
         /// <summary>
@@ -179,6 +186,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             headerData = headerData.Slice(8);
 
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileIdsOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
         }
 

@@ -10,26 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.DataStructures;
 using System;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
+namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 {
-    internal interface IPagesFile : IDisposable
+    public class BlobStorageOptions
     {
-        PrimitiveList<long> PageIds { get; }
-
-        PrimitiveList<int> PageOffsets { get; }
-
-        Task CopyToAsync(PipeWriter destination, CancellationToken cancellationToken = default(CancellationToken));
-
-        Task CopyToAsync(Stream destination, CancellationToken cancellationToken = default);
-
-        void DoneWriting();
+        public IFileStorageProvider? FileProvider { get; set; }
     }
 }
