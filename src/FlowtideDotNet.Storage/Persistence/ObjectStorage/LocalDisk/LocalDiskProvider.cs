@@ -92,5 +92,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             await filewrite.FlushAsync();
             await filewrite.DisposeAsync();
         }
+
+        public Task DeleteFile(string path)
+        {
+            if (!path.StartsWith(basePath))
+            {
+                path = Path.Combine(basePath, path);
+            }
+            File.Delete(path);
+            return Task.CompletedTask;
+        }
     }
 }

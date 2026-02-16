@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
+using static System.Net.WebRequestMethods;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
@@ -51,6 +52,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private HashSet<long> _modifiedFileIds = new HashSet<long>();
         private HashSet<long> _deletedFileIds = new HashSet<long>();
         private object _modifiedFileIdsLock = new object();
+        private List<DeletedFileInfo> deletedFilesList = new List<DeletedFileInfo>();
 
         private long _currentCheckpointVersion = 0;
         private long _checkpointVersion;
@@ -163,6 +165,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             while (reader.TryGetNextDeletedFileId(out var deletedFileId))
             {
+                deletedFilesList.Add(new DeletedFileInfo()
+                {
+                    fileId = deletedFileId,
+                    deletedAtVersion = checkpointFileInfo.Version
+                });
                 _fileInformations.TryRemove(deletedFileId, out _);
             }
 
@@ -262,10 +269,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     // Add all deleted file ids
                     foreach(var deletedFileId in _deletedFileIds)
                     {
+                        deletedFilesList.Add(new DeletedFileInfo()
+                        {
+                            fileId = deletedFileId,
+                            deletedAtVersion = _checkpointVersion
+                        });
+
                         _newCheckpoint.AddDeletedFileId(deletedFileId);
                         // Remove the deleted file from file informations
                         _fileInformations.TryRemove(deletedFileId, out _);
                     }
+                    _deletedFileIds.Clear();
                 }
             }
 
@@ -294,6 +308,45 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             lock (_lock)
             {
                 return _nextFileId++;
+            }
+        }
+
+        internal async Task Compact()
+        {
+            //foreach(var file in _fileInformations)
+            //{
+            //    var ratio = file.Value.NonActivePageCount / (float)file.Value.PageCount;
+            //    if (ratio > 0.3f)
+            //    {
+
+            //    }
+            //}
+
+            List<DeletedFileInfo>? filesToRemove = default;
+            lock (_modifiedFileIdsLock)
+            {
+                if (deletedFilesList.Count > 0)
+                {
+                    var minVersion = _currentCheckpointVersion - 2;
+                    filesToRemove = new List<DeletedFileInfo>();
+                    for (int i = 0; i < deletedFilesList.Count; i++)
+                    {
+                        if (deletedFilesList[i].deletedAtVersion < minVersion)
+                        {
+                            filesToRemove.Add(deletedFilesList[i]);
+                            deletedFilesList.RemoveAt(i);
+                            i--;
+                        }
+                    }
+                }
+            }
+
+            if (filesToRemove != null)
+            {
+                foreach (var fileToRemove in filesToRemove)
+                {
+                    await _fileProvider.DeleteFile($"blob_{fileToRemove.fileId}.blob");
+                }
             }
         }
 
@@ -343,6 +396,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                             lock (_modifiedFileIdsLock)
                             {
                                 _modifiedFileIds.Add(existingLocation.FileId);
+                                if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount)
+                                {
+                                    _deletedFileIds.Add(existingFileInfo.FileId);
+                                }
                             }
                         }
                     }

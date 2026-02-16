@@ -64,5 +64,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         ValueTask<T> Read<T>(string path, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject;
 
         ReadOnlyMemory<byte> GetMemory(string path, int offset, int length);
+
+        Task DeleteFile(string path);
     }
 }

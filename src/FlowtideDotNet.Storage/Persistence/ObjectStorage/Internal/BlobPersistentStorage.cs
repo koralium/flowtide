@@ -111,9 +111,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return $"blob_{fileId}.blob";
         }
 
-        public ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
+        public async ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
-            return ValueTask.CompletedTask;
+            await _checkpointHandler.Compact();
         }
 
         public IPersistentStorageSession CreateSession()
