@@ -24,47 +24,63 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     public interface IFileStorageProvider
     {
         /// <summary>
-        /// Asynchronously retrieves the names of all files in the specified directory.
+        /// Asynchronously retrieves a list of checkpoint versions available in the storage.
         /// </summary>
-        /// <param name="path">The path to the directory whose file names are to be listed.</param>
-        /// <returns>A task that represents the asynchronous operation. The task result contains an enumerable collection of file
-        /// names in the specified directory. The collection is empty if the directory contains no files.</returns>
-        public Task<IEnumerable<string>> ListFilesAsync(string path);
+        /// <returns></returns>
+        Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync();
 
         /// <summary>
-        /// Opens a file at the specified path for reading and returns a PipeReader that can be used to read the contents of the file.
+        /// Asynchronously reads the checkpoint file corresponding to the specified checkpoint version and returns a PipeReader 
+        /// that can be used to read the contents of the checkpoint file.
         /// </summary>
-        /// <param name="path">Path to read at</param>
-        /// <returns>A pipe reader to read the contents of the file</returns>
-        public PipeReader OpenReadFile(string path);
+        /// <param name="checkpointVersion">The checkpoint version to read</param>
+        /// <returns>A PipeReader that can be used to read the contents of the checkpoint file.</returns>
+        Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion);
 
         /// <summary>
-        /// Asynchronously writes the contents of the specified PipeReader to a file at the given path.
+        /// Asynchronously writes the contents of the specified PipeReader to a checkpoint file corresponding to the given checkpoint version.
         /// </summary>
-        /// <param name="data">The PipeReader that provides the data to write to the file. The reader is read until completion.</param>
-        /// <param name="path">The path of the file to which the data will be written. Cannot be null or empty.</param>
-        /// <returns>A ValueTask that represents the asynchronous write operation.</returns>
-        public ValueTask WriteFile(PipeReader data, string path);
+        /// <param name="checkpointVersion">Checkpoint version</param>
+        /// <param name="data">The PipeReader that provides the data to write to the checkpoint file.</param>
+        /// <returns>A task that represents the asynchronous write operation.</returns>
+        Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data);
 
         /// <summary>
-        /// Reads a serialized object of type T from the specified path, starting at the given offset and reading the
-        /// specified number of bytes.
+        /// Asynchronously writes the contents of the specified PipeReader to a file corresponding to the given file ID.
         /// </summary>
-        /// <remarks>
-        /// This method allows a provider to utilize internal buffers and do not return its internal memory only the deserialized object.
-        /// This can allow better utilization of memory and reduce the need for copying data when deserializing objects from storage.
-        /// </remarks>
-        /// <typeparam name="T">The type of the object to read. Must implement ICacheObject.</typeparam>
-        /// <param name="path">The path from which to read the serialized data. Cannot be null or empty.</param>
-        /// <param name="offset">The zero-based byte offset at which to begin reading from the path. Must be non-negative.</param>
-        /// <param name="length">The number of bytes to read from the specified offset. Must be greater than zero.</param>
-        /// <param name="stateSerializer">The serializer used to deserialize the object of type T. Cannot be null.</param>
+        /// <param name="fileId"></param>
+        /// <param name="data"></param>
+        /// <returns></returns>
+        Task WriteDataFileAsync(long fileId, PipeReader data);
+
+        /// <summary>
+        /// Asynchronously deletes the file corresponding to the given file ID from the storage. 
+        /// </summary>
+        /// <param name="fileId">The fileId to delete</param>
+        /// <returns>A task that completes whwen the file has been deleted.</returns>
+        Task DeleteDataFileAsync(long fileId);
+
+        /// <summary>
+        /// Reads a serialized object of type T from the specified file segment using the provided state serializer.
+        /// </summary>
+        /// <typeparam name="T">The type of object to read. Must implement ICacheObject.</typeparam>
+        /// <param name="fileId">The unique identifier of the file from which to read the object.</param>
+        /// <param name="offset">The zero-based byte offset in the file at which to begin reading.</param>
+        /// <param name="length">The number of bytes to read from the file, starting at the specified offset. Must be non-negative.</param>
+        /// <param name="stateSerializer">The serializer used to deserialize the object from the file segment. Cannot be null.</param>
         /// <returns>A ValueTask that represents the asynchronous read operation. The result contains the deserialized object of
         /// type T.</returns>
-        ValueTask<T> Read<T>(string path, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject;
+        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject;
 
-        ReadOnlyMemory<byte> GetMemory(string path, int offset, int length);
-
-        Task DeleteFile(string path);
+        /// <summary>
+        /// Asynchronously retrieves a read-only block of memory containing a specified range of bytes from the file
+        /// identified by the given file ID.
+        /// </summary>
+        /// <param name="fileId">The unique identifier of the file from which to read the memory segment.</param>
+        /// <param name="offset">The zero-based byte offset in the file at which to begin reading. Must be greater than or equal to 0.</param>
+        /// <param name="length">The number of bytes to read from the file. Must be greater than or equal to 0.</param>
+        /// <returns>A value task that represents the asynchronous operation. The result contains a read-only memory region with
+        /// the requested bytes.</returns>
+        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length);
     }
 }

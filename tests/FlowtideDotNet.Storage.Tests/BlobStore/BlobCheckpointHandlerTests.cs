@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task Test()
         {
-            CheckpointHandler checkpointHandler = new CheckpointHandler(new LocalDiskProvider("./"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            CheckpointHandler checkpointHandler = new CheckpointHandler(new LocalDiskProvider("./", "./checkpoints"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
 
             BlobFileWriter blobFileWriter = new BlobFileWriter((file) =>
             {

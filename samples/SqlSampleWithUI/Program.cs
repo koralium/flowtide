@@ -47,7 +47,7 @@ builder.Services.AddFlowtideStream("test")
 })
 .AddStorage(b =>
 {
-    b.AddFileStorage("./stateData");
+    b.AddFileStorage("./stateData", "./stateData/checkpoints");
     //b.AddTemporaryDevelopmentStorage();
     b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;

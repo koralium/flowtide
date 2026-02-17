@@ -11,11 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.FileCache;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -25,36 +27,86 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 {
     public class LocalDiskProvider : IFileStorageProvider
     {
-        private readonly string basePath;
+        private readonly string dataDirectory;
+        private readonly string checkpointDirectory;
 
-        public LocalDiskProvider(string basePath)
+        public LocalDiskProvider(string dataDirectory, string checkpointDirectory)
         {
-            this.basePath = basePath;
+            this.dataDirectory = dataDirectory;
+            this.checkpointDirectory = checkpointDirectory;
         }
-        public Task<IEnumerable<string>> ListFilesAsync(string path)
+
+        public Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync()
         {
-            path = Path.Combine(basePath, path);
-            if (Directory.Exists(path))
+            if (Directory.Exists(checkpointDirectory))
             {
-                return Task.FromResult(Directory.EnumerateFiles(path));
+                var checkpointVersions = Directory.EnumerateFiles(checkpointDirectory)
+                    .Select(x => new CheckpointFileInfo(x))
+                    .Where(x => x.IsCheckpoint)
+                    .Select(x => new CheckpointVersion(x.Version, false))
+                    .ToList();
+                return Task.FromResult<IEnumerable<CheckpointVersion>>(checkpointVersions);
             }
 
-            return Task.FromResult(Enumerable.Empty<string>());
+            return Task.FromResult(Enumerable.Empty<CheckpointVersion>());
         }
 
-        public PipeReader OpenReadFile(string path)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
         {
-            if (!path.StartsWith(basePath))
+            var fileName = $"{checkpointVersion.Version.ToString("D20")}.checkpoint";
+            var filePath = Path.Combine(checkpointDirectory, fileName);
+
+            return Task.FromResult(PipeReader.Create(File.OpenRead(filePath)));
+        }
+
+        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
+        {
+            var fileName = $"{checkpointVersion.Version.ToString("D20")}.checkpoint";
+            var filePath = Path.Combine(checkpointDirectory, fileName);
+            if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
             {
-                path = Path.Combine(basePath, path);
+                Directory.CreateDirectory(checkpointDirectory);
             }
-            
-            return PipeReader.Create(File.OpenRead(path));
+
+            var filewrite = File.OpenWrite(filePath);
+            await data.CopyToAsync(filewrite);
+            await filewrite.FlushAsync();
+            await filewrite.DisposeAsync();
         }
 
-        public async ValueTask<T> Read<T>(string path, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public async Task WriteDataFileAsync(long fileId, PipeReader data)
         {
-            path = Path.Combine(basePath, path);
+            var fileName = GetDataFileName(fileId);
+            var filePath = Path.Combine(dataDirectory, fileName);
+
+            if (!Directory.Exists(dataDirectory))
+            {
+                Directory.CreateDirectory(dataDirectory);
+            }
+
+            var filewrite = File.OpenWrite(filePath);
+            await data.CopyToAsync(filewrite);
+            await filewrite.FlushAsync();
+            await filewrite.DisposeAsync();
+        }
+
+        private string GetDataFileName(long fileId)
+        {
+            return $"dataFile_{fileId}.data";
+        }
+
+        public Task DeleteDataFileAsync(long fileId)
+        {
+            var fileName = GetDataFileName(fileId);
+            var filePath = Path.Combine(dataDirectory, fileName);
+            File.Delete(filePath);
+            return Task.CompletedTask;
+        }
+
+        public async ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            var fileName = GetDataFileName(fileId);
+            var path = Path.Combine(dataDirectory, fileName);
             using var stream = File.OpenRead(path);
             stream.Seek(offset, SeekOrigin.Begin);
 
@@ -64,43 +116,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return stateSerializer.Deserialize(new ReadOnlySequence<byte>(buffer), length);
         }
 
-        public ReadOnlyMemory<byte> GetMemory(string path, int offset, int length)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)
         {
-            if (!path.StartsWith(basePath))
-            {
-                path = Path.Combine(basePath, path);
-            }
-
+            var fileName = GetDataFileName(fileId);
+            var path = Path.Combine(dataDirectory, fileName);
             var stream = System.IO.File.OpenRead(path);
             stream.Position = offset;
             var buffer = new byte[length];
             stream.ReadExactly(buffer, 0, length);
-            return buffer;
-        }
-
-        public async ValueTask WriteFile(PipeReader data, string path)
-        {
-            path = Path.Combine(basePath, path);
-            var directory = Path.GetDirectoryName(path);
-            if (directory != null && !Directory.Exists(directory)) 
-            {
-                Directory.CreateDirectory(directory);
-            }
-            
-            var filewrite = File.OpenWrite(path);
-            await data.CopyToAsync(filewrite);
-            await filewrite.FlushAsync();
-            await filewrite.DisposeAsync();
-        }
-
-        public Task DeleteFile(string path)
-        {
-            if (!path.StartsWith(basePath))
-            {
-                path = Path.Combine(basePath, path);
-            }
-            File.Delete(path);
-            return Task.CompletedTask;
+            return ValueTask.FromResult<ReadOnlyMemory<byte>>(buffer);
         }
     }
 }

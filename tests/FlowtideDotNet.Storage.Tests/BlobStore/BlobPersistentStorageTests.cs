@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task Test()
         {
-            BlobPersistentStorage persistentStorage = new BlobPersistentStorage(new LocalDiskProvider("./"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            BlobPersistentStorage persistentStorage = new BlobPersistentStorage(new LocalDiskProvider("./", "./checkpoints"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
             var session = persistentStorage.CreateSession();
             await session.Write(1, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
 

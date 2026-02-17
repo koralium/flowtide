@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                var memory = fileProvider.GetMemory(GetBlobFileName(location.FileId), location.Offset, location.Size);
+                var memory = await fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size);
                 return new ReadOnlySequence<byte>(memory);
             }
             throw new NotImplementedException();
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                return fileProvider.Read<T>(GetBlobFileName(location.FileId), location.Offset, location.Size, stateSerializer);
+                return fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, stateSerializer);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
         }
@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                value = fileProvider.GetMemory(GetBlobFileName(location.FileId), location.Offset, location.Size);
+                value = fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size).GetAwaiter().GetResult();
                 return true;
             }
             value = null;

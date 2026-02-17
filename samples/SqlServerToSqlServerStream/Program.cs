@@ -72,7 +72,7 @@ builder.Services.AddFlowtideStream("my_stream")
         storage.MaxProcessMemory = 60 * 1024 * 1024;
 
         //storage.AddFasterKVFileSystemStorage("./fasterkvstate");
-        storage.AddFileStorage("./stateData");
+        storage.AddFileStorage("./stateData", "./stateData/checkpoints");
         // Use azure storage for persistence
         //storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
         //{
