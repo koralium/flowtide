@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
-            var stream = System.IO.File.OpenRead(path);
+            using var stream = System.IO.File.OpenRead(path);
             stream.Position = offset;
             var buffer = new byte[length];
             stream.ReadExactly(buffer, 0, length);

@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 var memory = await fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size);
                 return new ReadOnlySequence<byte>(memory);
             }
-            throw new NotImplementedException();
+            throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
         }
 
         internal ValueTask<T> ReadAsync<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject

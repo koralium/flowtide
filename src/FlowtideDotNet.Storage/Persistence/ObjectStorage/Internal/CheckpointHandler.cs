@@ -162,6 +162,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
                 } while (!readResult.IsCompleted);
                 ReadCheckpointFile(checkpointFile, readResult.Buffer);
+                fileReader.Complete();
             }
         }
 

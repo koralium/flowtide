@@ -14,64 +14,110 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using System.Buffers;
+using FlowtideDotNet.Storage.Exceptions;
+using FlowtideDotNet.Storage.Persistence;
 
 namespace FlowtideDotNet.Storage.Tests.BlobStore
 {
-    public class BlobPersistentStorageTests
+    public class BlobPersistentStorageTests : IDisposable
     {
-        [Fact]
-        public async Task Test()
+        private readonly string _tempPath;
+        private readonly string _dataPath;
+        private readonly string _checkpointPath;
+
+        public BlobPersistentStorageTests()
         {
-            BlobPersistentStorage persistentStorage = new BlobPersistentStorage(new LocalDiskProvider("./", "./checkpoints"), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            _dataPath = Path.Combine(_tempPath, "data");
+            _checkpointPath = Path.Combine(_tempPath, "checkpoints");
+            Directory.CreateDirectory(_tempPath);
+            Directory.CreateDirectory(_dataPath);
+            Directory.CreateDirectory(_checkpointPath);
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_tempPath))
+            {
+                Directory.Delete(_tempPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task TestWriteAndRead()
+        {
+            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+
             var session = persistentStorage.CreateSession();
-            await session.Write(1, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
+            await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
 
-            var writtenData = await session.Read(1);
-            Assert.Equal(new byte[] {1,2,3,4}, writtenData);
-
-             await session.Commit();
-            await persistentStorage.CheckpointAsync(new byte[] {1,2,3}, false);
-
-            writtenData = await session.Read(1);
-            Assert.Equal(new byte[] {1,2,3,4}, writtenData);
-
-            await session.Delete(1);
+            var writtenData = await session.Read(100);
+            Assert.Equal(new byte[] { 1, 2, 3, 4 }, writtenData.ToArray());
 
             await session.Commit();
             await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
 
-            //var checkpoint0 = File.ReadAllBytes("checkpoint_0.blob");
-            //ReadCheckpointData(checkpoint0);
-
-            //var checkpoint1 = File.ReadAllBytes("checkpoint_1.blob");
-            //ReadCheckpointData(checkpoint1);
-
-            await persistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("a"));
-            await persistentStorage.RecoverAsync(1);
+            writtenData = await session.Read(100);
+            Assert.Equal(new byte[] { 1, 2, 3, 4 }, writtenData.ToArray());
         }
 
-        private void ReadCheckpointData(byte[] checkpointData)
+        [Fact]
+        public async Task TestRecovery()
         {
-            var reader = new CheckpointDataReader(new ReadOnlySequence<byte>(checkpointData));
-
-            while (reader.TryGetNextUpsertPageInfo(out var pageInfo))
             {
+                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
+                var session = persistentStorage.CreateSession();
+                await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
             }
 
-            while (reader.TryGetNextDeletedPageId(out var pageId))
             {
+                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage.RecoverAsync(1);
 
+                var session = persistentStorage.CreateSession();
+                var data = await session.Read(100);
+                Assert.Equal(new byte[] { 1, 2, 3, 4 }, data.ToArray());
+            }
+        }
+
+        [Fact]
+        public async Task TestDelete()
+        {
+            {
+                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+
+                var session = persistentStorage.CreateSession();
+                await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
+
+                await session.Delete(100);
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
             }
 
-            while (reader.TryGetFileInformation(out var fileInformation))
             {
+                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage.RecoverAsync(2);
 
-            }
-
-            while (reader.TryGetNextDeletedFileId(out var fileId))
-            {
-
+                var session = persistentStorage.CreateSession();
+                await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+                {
+                    await session.Read(100);
+                });
             }
         }
     }
