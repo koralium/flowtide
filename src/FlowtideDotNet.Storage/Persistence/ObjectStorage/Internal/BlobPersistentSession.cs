@@ -112,12 +112,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             lock (_lock)
             {
+                if (_deletedPages.Contains(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+                }
                 if (_temporaryWrittenPageLocations.TryGetValue(key, out var location))
                 {
                     return ValueTask.FromResult(stateSerializer.Deserialize(location.data, (int)location.data.Length));
                 }
             }
-            
+
             return _persistentStorage.ReadAsync(key, stateSerializer);
         }
 
@@ -125,6 +129,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             lock (_lock)
             {
+                if (_deletedPages.Contains(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+                }
                 if (_temporaryWrittenPageLocations.TryGetValue(key, out var location))
                 {
                     //location.data.
