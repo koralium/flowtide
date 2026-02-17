@@ -827,52 +827,52 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // Insert companyId first since it is not unique to force multiple matches on first column for delete
             await stream.StartStream(@"
-                CREATE TABLE test (
+                CREATE TABLE largetest (
                     CompanyId STRING,
                     userkey INT,
                     Name STRING,
                     LastName STRING
                 );
 
-                INSERT INTO test
+                INSERT INTO largetest
                 SELECT CompanyId, userKey, firstName as Name, lastName FROM users
             ");
 
-            await WaitForVersion(storage, "test", stream, 0);
+            await WaitForVersion(storage, "largetest", stream, 0);
 
             var lastUser = stream.Users[stream.Users.Count - 1];
             stream.DeleteUser(lastUser);
 
             stream.Generate(50);
 
-            await WaitForVersion(storage, "test", stream, 1);
+            await WaitForVersion(storage, "largetest", stream, 1);
 
-            await AssertResult(nameof(TestLargeSelect), storage, "test", 2, stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
+            await AssertResult(nameof(TestLargeSelect), storage, "largetest", 2, stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
         }
 
         [Fact]
         public async Task InsertOverwrite()
         {
-            var storage = Files.Of.InternalMemory("./test");
+            var storage = Files.Of.InternalMemory("./overwritetest");
             DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(InsertOverwrite), storage);
 
             stream.Generate(10);
 
             await stream.StartStream(@"
-                CREATE TABLE test (
+                CREATE TABLE overwritetable (
                     userkey INT,
                     Name STRING,
                     LastName STRING,
                     NullableString STRING
                 );
 
-                INSERT INTO test
+                INSERT INTO overwritetable
                 SELECT userKey, firstName as Name, lastName, NullableString FROM users
             ");
 
-            await WaitForVersion(storage, "test", stream, 0);
+            await WaitForVersion(storage, "overwritetable", stream, 0);
 
-            await AssertResult(nameof(InsertOverwrite), storage, "test", 1, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(InsertOverwrite), storage, "overwritetable", 1, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
 
             await stream.DisposeAsync();
 
@@ -880,20 +880,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             newStream.Generate(20);
 
             await newStream.StartStream(@"
-                CREATE TABLE test (
+                CREATE TABLE overwritetable (
                     userkey INT,
                     Name STRING,
                     LastName STRING,
                     NullableString STRING
                 );
 
-                INSERT OVERWRITE test
+                INSERT OVERWRITE overwritetable
                 SELECT userKey, firstName as Name, lastName, NullableString FROM users
             ");
 
-            await WaitForVersion(storage, "test", newStream, 1);
+            await WaitForVersion(storage, "overwritetable", newStream, 1);
 
-            await AssertResult(nameof(InsertOverwrite) + "_overwrite", storage, "test", 2, newStream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(InsertOverwrite) + "_overwrite", storage, "overwritetable", 2, newStream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
 
         }
 
