@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
                 var checkpointVersions = Directory.EnumerateFiles(checkpointDirectory)
                     .Select(x => new CheckpointFileInfo(x))
                     .Where(x => x.IsCheckpoint)
-                    .Select(x => new CheckpointVersion(x.Version, false))
+                    .Select(x => new CheckpointVersion(x.Version, x.IsSnapshot))
                     .ToList();
                 return Task.FromResult<IEnumerable<CheckpointVersion>>(checkpointVersions);
             }
@@ -53,15 +53,28 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
         {
-            var fileName = $"{checkpointVersion.Version.ToString("D20")}.checkpoint";
+            string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(checkpointDirectory, fileName);
 
             return Task.FromResult(PipeReader.Create(File.OpenRead(filePath)));
         }
 
+        private string GetCheckpointFileName(CheckpointVersion checkpointVersion)
+        {
+            if (checkpointVersion.IsSnapshot)
+            {
+                return $"{checkpointVersion.Version.ToString("D20")}.snapshot.checkpoint";
+            }
+            else
+            {
+                return $"{checkpointVersion.Version.ToString("D20")}.checkpoint";
+            }
+        }
+
         public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
         {
-            var fileName = $"{checkpointVersion.Version.ToString("D20")}.checkpoint";
+            string fileName = GetCheckpointFileName(checkpointVersion);
+
             var filePath = Path.Combine(checkpointDirectory, fileName);
             if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
             {
@@ -72,6 +85,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             await data.CopyToAsync(filewrite);
             await filewrite.FlushAsync();
             await filewrite.DisposeAsync();
+        }
+
+        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        {
+            string fileName = GetCheckpointFileName(checkpointVersion);
+            var filePath = Path.Combine(checkpointDirectory, fileName);
+            File.Delete(filePath);
+            return Task.CompletedTask;
         }
 
         public async Task WriteDataFileAsync(long fileId, PipeReader data)
@@ -105,15 +126,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public async ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
-            var fileName = GetDataFileName(fileId);
-            var path = Path.Combine(dataDirectory, fileName);
-            using var stream = File.OpenRead(path);
-            stream.Seek(offset, SeekOrigin.Begin);
+            try
+            {
+                var fileName = GetDataFileName(fileId);
+                var path = Path.Combine(dataDirectory, fileName);
+                using var stream = File.OpenRead(path);
+                stream.Seek(offset, SeekOrigin.Begin);
 
-            var buffer = new byte[length];
-            await stream.ReadExactlyAsync(buffer, 0, length);
+                var buffer = new byte[length];
+                await stream.ReadExactlyAsync(buffer, 0, length);
 
-            return stateSerializer.Deserialize(new ReadOnlySequence<byte>(buffer), length);
+                return stateSerializer.Deserialize(new ReadOnlySequence<byte>(buffer), length);
+            }
+            catch(Exception e)
+            {
+                throw;
+            }
+            
         }
 
         public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)

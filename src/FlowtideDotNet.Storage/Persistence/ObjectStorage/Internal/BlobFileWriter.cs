@@ -123,6 +123,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new FlowtidePersistentStorageException("Tried to finish a file already finished");
                 }
+                // add the last offset
+                _pageOffset.Add(WrittenLength + HeaderSize);
                 _finished = true;
                 _end.End = endIndex;
                 var pageIdsOffset = _end.RunningIndex + endIndex;

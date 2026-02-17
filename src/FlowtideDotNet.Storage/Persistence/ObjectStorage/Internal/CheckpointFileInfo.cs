@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly string filePath;
         private readonly long version;
         private bool isCheckpoint;
+        private bool isSnapshot;
 
         public CheckpointFileInfo(string filePath)
         {
@@ -47,6 +48,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 isCheckpoint = true;
             }
+            else if (afterDotString == "snapshot.checkpoint")
+            {
+                isCheckpoint = true;
+                isSnapshot = true;
+            }
         }
 
         public bool IsCheckpoint => isCheckpoint;
@@ -54,5 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public long Version => version;
 
         public string FilePath => filePath;
+
+        public bool IsSnapshot => isSnapshot;
     }
 }

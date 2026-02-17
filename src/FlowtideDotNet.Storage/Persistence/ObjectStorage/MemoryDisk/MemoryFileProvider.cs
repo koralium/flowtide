@@ -32,6 +32,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
         private Dictionary<long, byte[]> _dataFiles = new Dictionary<long, byte[]>();
         private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
 
+        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        {
+            lock (_lock)
+            {
+                _checkpointFiles.Remove(checkpointVersion);
+                return Task.CompletedTask;
+            }
+        }
+
         public Task DeleteDataFileAsync(long fileId)
         {
             lock (_lock)

@@ -46,6 +46,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data);
 
         /// <summary>
+        /// Asynchronously deletes the checkpoint file corresponding to the specified checkpoint version from the storage.
+        /// </summary>
+        /// <param name="checkpointVersion">The checkpoint version to delete.</param>
+        /// <returns></returns>
+        Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion);
+
+        /// <summary>
         /// Asynchronously writes the contents of the specified PipeReader to a file corresponding to the given file ID.
         /// </summary>
         /// <param name="fileId"></param>

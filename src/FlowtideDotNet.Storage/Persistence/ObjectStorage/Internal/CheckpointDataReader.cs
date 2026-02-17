@@ -50,6 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long updatedFilePageCountOffset;
         private long updatedFileNonActivePageCountOffset;
         private long deletedFileIdsOffset;
+        private long deletedFileAtVersionOffset;
 
         private long nextFileId;
 
@@ -63,6 +64,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequenceReader<byte> _updatedFilePageCountReader;
         private SequenceReader<byte> _updatedFileNonActivePageCountReader;
         private SequenceReader<byte> _deletedFileIdsReader;
+        private SequenceReader<byte> _deletedFileAtVersionReader;
 
         public long NextFileId => nextFileId;
 
@@ -148,6 +150,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Could not read deleted file ids offset");
             }
 
+            if (!reader.TryReadLittleEndian(out deletedFileAtVersionOffset))
+            {
+                throw new InvalidOperationException("Could not read deleted file at version offset");
+            }
+
             if (!reader.TryReadLittleEndian(out nextFileId))
             {
                 throw new InvalidOperationException("Could not read next file id");
@@ -163,6 +170,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _updatedFilePageCountReader = new SequenceReader<byte>(dataSequence.Slice(updatedFilePageCountOffset, changedFilesCount * sizeof(int)));
             _updatedFileNonActivePageCountReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileNonActivePageCountOffset, changedFilesCount * sizeof(int)));
             _deletedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileIdsOffset, deletedFilesCount * sizeof(long)));
+            _deletedFileAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileAtVersionOffset, deletedFilesCount * sizeof(long)));
         }
 
         public bool TryGetNextUpsertPageInfo(out UpsertPageInfo upsertPageInfo)
@@ -193,14 +201,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return true;
         }
 
-        public bool TryGetNextDeletedPageId(out long pageId)
+        public bool TryGetNextDeletedPageId(out DeletedFileInfo deletedFileInfo)
         {
-            pageId = 0;
+            deletedFileInfo = new DeletedFileInfo();
             if (!_deletedPageIdsReader.TryReadLittleEndian(out long deletedPageId))
             {
                 return false;
             }
-            pageId = deletedPageId;
+            if (!_deletedFileAtVersionReader.TryReadLittleEndian(out long deletedAtVersion))
+            {
+                return false;
+            }
+            deletedFileInfo.fileId = deletedPageId;
+            deletedFileInfo.deletedAtVersion = deletedAtVersion;
             return true;
         }
 

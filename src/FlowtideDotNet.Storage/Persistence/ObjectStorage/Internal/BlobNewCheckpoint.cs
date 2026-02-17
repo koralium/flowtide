@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Runtime.CompilerServices;
 
@@ -43,6 +44,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<int> _changedFilePageCounts;
         private readonly PrimitiveList<int> _changedFileNonActivePageCounts;
         private readonly PrimitiveList<long> _deletedFileIds;
+        private readonly PrimitiveList<long> _deletedFileAtVersion;
 
         private long _nextFileId;
 
@@ -66,6 +68,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFilePageCounts = new PrimitiveList<int>(memoryAllocator);
             _changedFileNonActivePageCounts = new PrimitiveList<int>(memoryAllocator);
             _deletedFileIds = new PrimitiveList<long>(memoryAllocator);
+            _deletedFileAtVersion = new PrimitiveList<long>(memoryAllocator);
 
             // Create a segment for the header
             _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
@@ -140,6 +143,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = deletedFileIdsSegment;
             endIndex = deletedFileIdsSegment.Length;
 
+            var deletedFileAtVersionOffset = _end.RunningIndex + endIndex;
+            var deletedFileAtVersionSegment = new BufferSegment(_deletedFileAtVersion.SlicedMemory);
+            _end.SetNext(deletedFileAtVersionSegment);
+            _end = deletedFileAtVersionSegment;
+            endIndex = deletedFileAtVersionSegment.Length;
+
             var headerData = _headerData.AvailableMemory.Span;
 
             // Write version
@@ -188,6 +197,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileIdsOffset);
             headerData = headerData.Slice(8);
 
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileAtVersionOffset);
+            headerData = headerData.Slice(8);
+
             BinaryPrimitives.WriteInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
         }
@@ -204,9 +216,41 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFileNonActivePageCounts.Add(fileInformation.NonActivePageCount);
         }
 
-        public void AddDeletedFileId(long fileId)
+        public void AddDeletedFileId(DeletedFileInfo deletedFileInfo)
         {
-            _deletedFileIds.Add(fileId);
+            _deletedFileIds.Add(deletedFileInfo.fileId);
+            _deletedFileAtVersion.Add(deletedFileInfo.deletedAtVersion);
+        }
+
+        public void AddUpsertPages(ConcurrentDictionary<long, PageFileLocation> pageFileLocations)
+        {
+            if (_upsertPageFileIds.Count != 0)
+            {
+                throw new InvalidOperationException("Upsert pages have already been added to the checkpoint, passing the dictionary should only be used for snapshots");
+            }
+
+            var sortedKeys = pageFileLocations.Keys.OrderBy(x => x).ToArray();
+
+            // Ensure capacity
+            _upsertPageFileIds.EnsureCapacity(sortedKeys.Length);
+            _upsertPageIds.EnsureCapacity(sortedKeys.Length);
+            _upsertPageOffsets.EnsureCapacity(sortedKeys.Length);
+            _upsertPageSizes.EnsureCapacity(sortedKeys.Length);
+
+            foreach (var pageId in sortedKeys)
+            {
+                var location = pageFileLocations[pageId];
+
+                if (location.Size < 0)
+                {
+                    throw new InvalidOperationException($"Page file location for page id {pageId} has invalid size {location.Size}");
+                }
+
+                _upsertPageIds.Add(pageId);
+                _upsertPageFileIds.Add(location.FileId);
+                _upsertPageOffsets.Add(location.Offset);
+                _upsertPageSizes.Add(location.Size);
+            }
         }
 
         [SkipLocalsInit]
@@ -297,6 +341,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     files.Slice(position, top - position).CopyTo(files.Slice(elementIndex + 1));
                     offsets.Slice(position, top - position).CopyTo(offsets.Slice(elementIndex + 1));
                     sizes.Slice(position, top - position).CopyTo(sizes.Slice(elementIndex + 1));
+                }
+
+                if (pageSizes[index] < 0)
+                {
+                    throw new InvalidOperationException($"Page size for page id {pageIds[index]} is invalid with size {pageSizes[index]}");
                 }
 
                 // Insert new element
