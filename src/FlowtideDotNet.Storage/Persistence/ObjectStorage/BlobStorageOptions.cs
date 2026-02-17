@@ -10,7 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -21,5 +23,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     public class BlobStorageOptions
     {
         public IFileStorageProvider? FileProvider { get; set; }
+
+        public MemoryPool<byte> MemoryPool { get; set; } = MemoryPool<byte>.Shared;
+
+        public IMemoryAllocator MemoryAllocator { get; set; } = GlobalMemoryManager.Instance;
+
+        public int MaxFileSize { get; set; } = 64 * 1024 * 1024;
+
+        public int SnapshotCheckpointInterval { get; set; } = 20;
+
+        public float CompactionFileSizeRatioThreshold { get; set; } = 0.33f;
     }
 }

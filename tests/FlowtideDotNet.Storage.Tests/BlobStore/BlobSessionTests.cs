@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         public async Task TestReadYourDeletes()
         {
             var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-            var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
             var session = persistentStorage.CreateSession();
@@ -57,7 +57,11 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         public async Task TestLargeWriteFileRolling()
         {
             var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-            var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() 
+            { 
+                FileProvider = provider,
+                MaxFileSize = 1024 * 1024 // 1MB to force rolling after ~100 keys
+            });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
             var session = persistentStorage.CreateSession();
@@ -78,7 +82,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             // Recover and verify a few keys
             {
                 var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage2 = new BlobPersistentStorage(provider2, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage2 = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider2 });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
@@ -95,7 +99,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         public async Task TestConcurrentWriters()
         {
             var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-            var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
             // Two sessions writing non-overlapping keys concurrently
@@ -127,7 +131,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             // Recover and verify
             {
                 var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage2 = new BlobPersistentStorage(provider2, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage2 = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider2 });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session3 = persistentStorage2.CreateSession();

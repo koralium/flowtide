@@ -99,6 +99,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("Checkpoint file not found");
         }
 
+        public Task<PipeReader> ReadDataFileAsync(long fileId)
+        {
+            lock (_lock)
+            {
+                if (_dataFiles.TryGetValue(fileId, out var data))
+                {
+                    var pipe = new Pipe();
+                    pipe.Writer.Write(data);
+                    pipe.Writer.Complete();
+                    return Task.FromResult(pipe.Reader);
+                }
+            }
+            throw new InvalidOperationException("Data file not found");
+        }
+
         public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
         {
             using MemoryStream stream = new MemoryStream();

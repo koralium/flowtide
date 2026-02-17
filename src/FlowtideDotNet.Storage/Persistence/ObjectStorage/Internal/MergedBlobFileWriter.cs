@@ -62,6 +62,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = _headerData;
         }
 
+        public void AddSequence(long pageId, ReadOnlySequence<byte> data)
+        {
+            if (_finished)
+            {
+                throw new InvalidOperationException("Cannot add a blob file after the merged file has been finished");
+            }
+            _finished = false;
+            var pointer = data.Start;
+
+            while(data.TryGet(ref pointer, out var mem))
+            {
+                var segment = new BufferSegment(mem);
+                _end.SetNext(segment);
+                _end = segment;
+                endIndex = segment.Length;
+            }
+            _pageIds.Add(pageId);
+            _pageOffset.Add(_globalOffset);
+            _globalOffset += (int)data.Length;
+        }
+
         public void AddBlobFile(BlobFileWriter blobFileWriter)
         {
             if (_finished)

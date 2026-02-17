@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         public async Task TestWriteAndRead()
         {
             var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-            var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
             var session = persistentStorage.CreateSession();
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         {
             {
                 var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
                 var session = persistentStorage.CreateSession();
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             {
                 var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage.RecoverAsync(1);
 
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         {
             {
                 var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
                 var session = persistentStorage.CreateSession();
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             {
                 var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage = new BlobPersistentStorage(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage.RecoverAsync(2);
 

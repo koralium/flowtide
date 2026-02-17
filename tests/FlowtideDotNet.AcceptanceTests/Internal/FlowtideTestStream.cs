@@ -305,7 +305,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new BlobPersistentStorage(new MemoryFileProvider(), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
         private void OnDataUpdate(EventBatchData actualData)

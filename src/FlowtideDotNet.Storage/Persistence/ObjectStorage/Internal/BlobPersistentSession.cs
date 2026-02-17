@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class BlobPersistentSession : IPersistentStorageSession
     {
-        private const int MaxFileSize = 10 * 1024 * 1024;
+        private readonly int _maxFileSize;
         private BlobFileWriter _fileWriter;
 
         /// <summary>
@@ -40,8 +40,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly HashSet<long> _deletedPages;
 
-        public BlobPersistentSession(BlobPersistentStorage persistentStorage,  IMemoryAllocator memoryAllocator)
+        public BlobPersistentSession(
+            BlobPersistentStorage persistentStorage, 
+            IMemoryAllocator memoryAllocator,
+            int maxFileSize)
         {
+            _maxFileSize = maxFileSize;
             this._persistentStorage = persistentStorage;
             this._memoryAllocator = memoryAllocator;
             _temporaryWrittenPageLocations = new Dictionary<long, PageWriteLocation>();
@@ -195,7 +199,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 });   
             }
 
-            if (_fileWriter.WrittenLength >= MaxFileSize)
+            if (_fileWriter.WrittenLength >= _maxFileSize)
             {
                 // Finish the file writer, this adds the page ids and offsets
                 _fileWriter.Finish();

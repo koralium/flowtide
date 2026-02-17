@@ -155,5 +155,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             stream.ReadExactly(buffer, 0, length);
             return ValueTask.FromResult<ReadOnlyMemory<byte>>(buffer);
         }
+
+        public Task<PipeReader> ReadDataFileAsync(long fileId)
+        {
+            var fileName = GetDataFileName(fileId);
+            var path = Path.Combine(dataDirectory, fileName);
+            return Task.FromResult(PipeReader.Create(File.OpenRead(path)));
+        }
     }
 }

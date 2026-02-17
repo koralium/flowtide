@@ -15,15 +15,17 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     public class BlobPersistentStorage : IPersistentStorage
     {
-        private const int MaxFileSize = 10 * 1024 * 1024;
-        private readonly IFileStorageProvider fileProvider;
-        private readonly MemoryPool<byte> memoryPool;
-        private readonly IMemoryAllocator memoryAllocator;
+        private readonly int _maxFileSize;
+        private readonly IFileStorageProvider _fileProvider;
+        private readonly MemoryPool<byte> _memoryPool;
+        private readonly IMemoryAllocator _memoryAllocator;
+        private readonly BlobStorageOptions _blobStorageOptions;
         private MergedBlobFileWriter _mergedBlobFileWriter;
         private CheckpointHandler _checkpointHandler;
         private BlobPersistentSession _adminSession;
@@ -31,14 +33,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private List<BlobPersistentSession> _sessions = new List<BlobPersistentSession>();
         private object _sessionsLock = new object();
 
-        public BlobPersistentStorage(IFileStorageProvider fileProvider, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        public BlobPersistentStorage(BlobStorageOptions blobStorageOptions)
         {
-            this.fileProvider = fileProvider;
-            this.memoryPool = memoryPool;
-            this.memoryAllocator = memoryAllocator;
-            _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
-            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
-            _adminSession = new BlobPersistentSession(this, memoryAllocator);
+            if (blobStorageOptions.FileProvider == null)
+            {
+                throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
+            }
+            this._fileProvider = blobStorageOptions.FileProvider;
+            this._memoryPool = blobStorageOptions.MemoryPool;
+            this._memoryAllocator = blobStorageOptions.MemoryAllocator;
+            this._maxFileSize = blobStorageOptions.MaxFileSize;
+            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(blobStorageOptions);
+            _adminSession = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
+            this._blobStorageOptions = blobStorageOptions;
         }
 
         public long CurrentVersion => _checkpointHandler.CheckpointVersion;
@@ -48,14 +56,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             await _mergedBlobLock.WaitAsync();
             _mergedBlobFileWriter.AddBlobFile(blobFileWriter);
 
-            if (_mergedBlobFileWriter.WrittenData.Length >= MaxFileSize)
+            if (_mergedBlobFileWriter.WrittenData.Length >= _maxFileSize)
             {
                 // Finish the file writer, this adds the page ids and offsets
                 _mergedBlobFileWriter.Finish();
 
                 // Send the file to checkpoint handler
                 await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
+                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
             }
             _mergedBlobLock.Release();
         }
@@ -65,8 +73,55 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
         }
 
+        private async Task CompactFiles()
+        {
+            var files = _checkpointHandler.GetAllFileInformation().ToList();
+
+            foreach(var file in files)
+            {
+                var actualSize = file.FileSize - file.DeletedSize;
+                var sizeRatio = (double)actualSize / _maxFileSize;
+
+                // If the actual size of the file is less than 33% of the max file size, we consider it for compaction.
+                // This threshold can be tuned based on the workload and performance requirements.
+                if (sizeRatio < _blobStorageOptions.CompactionFileSizeRatioThreshold)
+                {
+                    var reader = await _fileProvider.ReadDataFileAsync(file.FileId);
+
+                    // Read all content to sequence
+                    ReadResult readResult;
+                    do
+                    {
+                        readResult = await reader.ReadAsync();
+                        reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                    } while (!readResult.IsCompleted);
+                    CopyDataFileContent(file.FileId, readResult);
+                    //ReadCheckpointFile(checkpointFile, readResult.Buffer);
+                    reader.Complete();
+
+                }
+            }
+        }
+
+        private void CopyDataFileContent(long fileId, ReadResult readResult)
+        {
+            BlobFileWriter blobFileWriter = new BlobFileWriter((file) => { }, _memoryPool, _memoryAllocator);
+            var reader = new DataFileReader(readResult.Buffer);
+
+            while(reader.TryGetNextPageInfo(out var pageInfo))
+            {
+                // Check that the current location of the page is in the same file, if not, it means the page has been updated and we should skip it
+                if (_checkpointHandler.TryGetPageFileLocation(pageInfo.PageId, out var location) &&
+                    location.FileId == fileId)
+                {
+                    _mergedBlobFileWriter.AddSequence(pageInfo.PageId, readResult.Buffer.Slice(pageInfo.Offset, pageInfo.Length));
+                }
+            }
+        }
+
         public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
+            await CompactFiles();
             await _adminSession.Write(1, new SerializableObject(metadata));
             await _adminSession.Commit();
             // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
@@ -76,7 +131,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _mergedBlobFileWriter.Finish();
                 // Send the file to checkpoint handler
                 await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                _mergedBlobFileWriter = new MergedBlobFileWriter(memoryPool, memoryAllocator);
+                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
             }
             _mergedBlobLock.Release();
             await _checkpointHandler.FinishCheckpoint();
@@ -86,7 +141,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                var memory = await fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size);
+                var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size);
                 return new ReadOnlySequence<byte>(memory);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
@@ -96,7 +151,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                return fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, stateSerializer);
+                return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, stateSerializer);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
         }
@@ -106,11 +161,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _checkpointHandler.AddDeletedPages(keys);
         }
 
-        private string GetBlobFileName(long fileId)
-        {
-            return $"blob_{fileId}.blob";
-        }
-
         public async ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
             await _checkpointHandler.Compact();
@@ -118,7 +168,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public IPersistentStorageSession CreateSession()
         {
-            var session = new BlobPersistentSession(this, memoryAllocator);
+            var session = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             lock (_sessionsLock)
             {
                 _sessions.Add(session);
@@ -134,7 +184,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
             await _checkpointHandler.RecoverToLatest();
         }
 
@@ -145,7 +195,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public ValueTask ResetAsync()
         {
-            _checkpointHandler = new CheckpointHandler(fileProvider, memoryPool, memoryAllocator);
+            _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
             
             lock (_sessionsLock)
             {
@@ -162,7 +212,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                value = fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size).GetAwaiter().GetResult();
+                value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size).GetAwaiter().GetResult();
                 return true;
             }
             value = null;

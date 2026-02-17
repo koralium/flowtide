@@ -68,6 +68,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         Task DeleteDataFileAsync(long fileId);
 
         /// <summary>
+        /// Asynchronously reads the file corresponding to the given file ID and returns a PipeReader that can be used to read the contents of the file.
+        /// </summary>
+        /// <param name="fileId"></param>
+        /// <returns></returns>
+        Task<PipeReader> ReadDataFileAsync(long fileId);
+
+        /// <summary>
         /// Reads a serialized object of type T from the specified file segment using the provided state serializer.
         /// </summary>
         /// <typeparam name="T">The type of object to read. Must implement ICacheObject.</typeparam>

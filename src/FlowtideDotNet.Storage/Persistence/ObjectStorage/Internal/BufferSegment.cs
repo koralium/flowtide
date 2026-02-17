@@ -53,6 +53,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = memory.Length;
         }
 
+        public BufferSegment(ReadOnlyMemory<byte> memory)
+        {
+            this.Memory = memory;
+            _end = memory.Length;
+        }
+
         public BufferSegment CloneWithoutNext()
         {
             if (_owner != null)

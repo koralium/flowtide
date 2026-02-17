@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class CheckpointHandler
     {
-        private const int VersionBetweenSnapshot = 5;
+        private readonly int VersionBetweenSnapshot = 5;
 
         private readonly IFileStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
@@ -66,14 +66,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public long CheckpointVersion => _checkpointVersion;
 
 
-        public CheckpointHandler(IFileStorageProvider fileProvider, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
+        public CheckpointHandler(BlobStorageOptions blobStorageOptions)
         {
+            if (blobStorageOptions.FileProvider == null)
+            {
+                throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
+            }
+
             _channel = Channel.CreateBounded<PagesFile>(1000);
-            this._fileProvider = fileProvider;
-            _memoryPool = memoryPool;
-            _newCheckpoint = new BlobNewCheckpoint(memoryPool, memoryAllocator);
-            
-            this._memoryAllocator = memoryAllocator;
+            this._fileProvider = blobStorageOptions.FileProvider;
+            _memoryPool = blobStorageOptions.MemoryPool;
+            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, blobStorageOptions.MemoryAllocator);
+            VersionBetweenSnapshot = blobStorageOptions.SnapshotCheckpointInterval;
+
+            this._memoryAllocator = blobStorageOptions.MemoryAllocator;
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
         }
@@ -333,6 +339,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
+        public IEnumerable<FileInformation> GetAllFileInformation()
+        {
+            return _fileInformations.Values;
+        }
+        
         public async Task FinishCheckpoint()
         {
             if (_writeSnapshotCheckpoint)

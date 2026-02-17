@@ -149,7 +149,10 @@ namespace FlowtideDotNet.DependencyInjection
         {
             storageBuilder.SetPersistentStorage((provider) =>
             {
-                return new BlobPersistentStorage(new LocalDiskProvider(dataDirectory, checkpointDirectory), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions()
+                {
+                    FileProvider = new LocalDiskProvider(dataDirectory, checkpointDirectory)
+                });
             });
             storageBuilder.ZstdPageCompression();
             return storageBuilder;
