@@ -24,11 +24,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public long FileId { get; }
         public int PageCount { get; }
         public int NonActivePageCount { get; private set; }
-        public FileInformation(long fileId, int pageCount, int nonActivePageCount)
+
+        public int FileSize { get; }
+
+        public int DeletedSize { get; private set;  }
+
+        public long AddedAtVersion { get; }
+
+        public FileInformation(long fileId, int pageCount, int nonActivePageCount, int fileSize, int deletedSize, long addedAtVersion)
         {
             FileId = fileId;
             PageCount = pageCount;
             NonActivePageCount = nonActivePageCount;
+            FileSize = fileSize;
+            DeletedSize = deletedSize;
+            AddedAtVersion = addedAtVersion;
         }
 
         public void AddNonActivePage()
@@ -36,6 +46,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             lock (_lock)
             {
                 NonActivePageCount++; 
+            }
+        }
+
+        public void AddDeletedSize(int size)
+        {
+            lock (_lock)
+            {
+                DeletedSize += size;
             }
         }
     }

@@ -49,6 +49,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long updatedFileIdsOffset;
         private long updatedFilePageCountOffset;
         private long updatedFileNonActivePageCountOffset;
+        private long updatedFileSizeOffset;
+        private long updatedFileDeletedSizeOffset;
+        private long updatedFileAddedAtVersionOffset;
         private long deletedFileIdsOffset;
         private long deletedFileAtVersionOffset;
 
@@ -63,6 +66,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequenceReader<byte> _updatedFileIdsReader;
         private SequenceReader<byte> _updatedFilePageCountReader;
         private SequenceReader<byte> _updatedFileNonActivePageCountReader;
+        private SequenceReader<byte> _updatedFileSizeReader;
+        private SequenceReader<byte> _updatedFileDeletedSizeReader;
+        private SequenceReader<byte> _updatedFileAddedAtVersionReader;
+
         private SequenceReader<byte> _deletedFileIdsReader;
         private SequenceReader<byte> _deletedFileAtVersionReader;
 
@@ -145,6 +152,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Could not read updated file page non active count offset");
             }
 
+            if (!reader.TryReadLittleEndian(out updatedFileSizeOffset))
+            {
+                throw new InvalidOperationException("Could not read updated file size offset");
+            }
+
+            if (!reader.TryReadLittleEndian(out updatedFileDeletedSizeOffset))
+            {
+                throw new InvalidOperationException("Could not read updated file deleted size offset");
+            }
+
+            if (!reader.TryReadLittleEndian(out updatedFileAddedAtVersionOffset))
+            {
+                throw new InvalidOperationException("Could not read updated file added at version offset");
+            }
+
             if (!reader.TryReadLittleEndian(out deletedFileIdsOffset))
             {
                 throw new InvalidOperationException("Could not read deleted file ids offset");
@@ -169,6 +191,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _updatedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileIdsOffset, changedFilesCount * sizeof(long)));
             _updatedFilePageCountReader = new SequenceReader<byte>(dataSequence.Slice(updatedFilePageCountOffset, changedFilesCount * sizeof(int)));
             _updatedFileNonActivePageCountReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileNonActivePageCountOffset, changedFilesCount * sizeof(int)));
+            _updatedFileSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileSizeOffset, changedFilesCount * sizeof(int)));
+            _updatedFileDeletedSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileDeletedSizeOffset, changedFilesCount * sizeof(int)));
+            _updatedFileAddedAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileAddedAtVersionOffset, changedFilesCount * sizeof(long)));
+
             _deletedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileIdsOffset, deletedFilesCount * sizeof(long)));
             _deletedFileAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileAtVersionOffset, deletedFilesCount * sizeof(long)));
         }
@@ -233,8 +259,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 return false;
             }
+            if (!_updatedFileSizeReader.TryReadLittleEndian(out int size))
+            {
+                return false;
+            }
+            if (!_updatedFileDeletedSizeReader.TryReadLittleEndian(out int deletedSize))
+            {
+                return false;
+            }
+            if (!_updatedFileAddedAtVersionReader.TryReadLittleEndian(out long addedAtVersion))
+            {
+                return false;
+            }
 
-            fileInformation = new FileInformation(fileId, pageCount, nonActivePageCount);
+            fileInformation = new FileInformation(fileId, pageCount, nonActivePageCount, size, deletedSize, addedAtVersion);
             return true;
         }
 

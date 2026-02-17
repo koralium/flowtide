@@ -110,6 +110,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override PrimitiveList<int> PageOffsets => _pageOffset;
 
+        public override int FileSize => (int)WrittenData.Length;
+
         public void Finish()
         {
             _pageOffset.Add(_globalOffset + HeaderSize);

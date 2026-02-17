@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public abstract PrimitiveList<int> PageOffsets { get; }
 
+        public abstract int FileSize { get; }
+
         public abstract void Dispose();
 
         public abstract void DoneWriting();

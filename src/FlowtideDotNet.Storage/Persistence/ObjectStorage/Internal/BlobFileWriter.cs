@@ -70,6 +70,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override PrimitiveList<int> PageOffsets => _pageOffset;
 
+        public override int FileSize => _writtenBytes + HeaderSize;
+
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
         {
             lock (_lock)

@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     /// </summary>
     internal class BlobNewCheckpoint : PipeReader
     {
-        private const int HeaderSize = 128;
+        private const int HeaderSize = 192;
 
         private readonly PrimitiveList<long> _upsertPageIds;
         private readonly PrimitiveList<long> _upsertPageFileIds;
@@ -43,6 +43,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<long> _changedFileIds;
         private readonly PrimitiveList<int> _changedFilePageCounts;
         private readonly PrimitiveList<int> _changedFileNonActivePageCounts;
+        private readonly PrimitiveList<long> _changedFileAddedAtVersion;
+        private readonly PrimitiveList<int> _changedFileSize;
+        private readonly PrimitiveList<int> _changedFileDeletedSize;
+
+
         private readonly PrimitiveList<long> _deletedFileIds;
         private readonly PrimitiveList<long> _deletedFileAtVersion;
 
@@ -64,9 +69,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageOffsets = new PrimitiveList<int>(memoryAllocator);
             _upsertPageSizes = new PrimitiveList<int>(memoryAllocator);
             _deletedPageIds = new PrimitiveList<long>(memoryAllocator);
+
             _changedFileIds = new PrimitiveList<long>(memoryAllocator);
             _changedFilePageCounts = new PrimitiveList<int>(memoryAllocator);
             _changedFileNonActivePageCounts = new PrimitiveList<int>(memoryAllocator);
+            _changedFileSize = new PrimitiveList<int>(memoryAllocator);
+            _changedFileDeletedSize = new PrimitiveList<int>(memoryAllocator);
+            _changedFileAddedAtVersion = new PrimitiveList<long>(memoryAllocator);
+
             _deletedFileIds = new PrimitiveList<long>(memoryAllocator);
             _deletedFileAtVersion = new PrimitiveList<long>(memoryAllocator);
 
@@ -137,6 +147,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = updatedFileNonActivePageCountSegment;
             endIndex = updatedFileNonActivePageCountSegment.Length;
 
+            var updatedFileSizeOffset = _end.RunningIndex + endIndex;
+            var updatedFileSizeSegment = new BufferSegment(_changedFileSize.SlicedMemory);
+            _end.SetNext(updatedFileSizeSegment);
+            _end = updatedFileSizeSegment;
+            endIndex = updatedFileSizeSegment.Length;
+
+            var updatedFileDeletedSizeOffset = _end.RunningIndex + endIndex;
+            var updatedFileDeletedSizeSegment = new BufferSegment(_changedFileDeletedSize.SlicedMemory);
+            _end.SetNext(updatedFileDeletedSizeSegment);
+            _end = updatedFileDeletedSizeSegment;
+            endIndex = updatedFileDeletedSizeSegment.Length;
+
+            var updatedFileAddedAtVersionOffset = _end.RunningIndex + endIndex;
+            var updatedFileAddedAtVersionSegment = new BufferSegment(_changedFileAddedAtVersion.SlicedMemory);
+            _end.SetNext(updatedFileAddedAtVersionSegment);
+            _end = updatedFileAddedAtVersionSegment;
+            endIndex = updatedFileAddedAtVersionSegment.Length;
+
             var deletedFileIdsOffset = _end.RunningIndex + endIndex;
             var deletedFileIdsSegment = new BufferSegment(_deletedFileIds.SlicedMemory);
             _end.SetNext(deletedFileIdsSegment);
@@ -185,6 +213,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedPageIdsOffset);
             headerData = headerData.Slice(8);
 
+            // Changes files
             BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileIdsOffset);
             headerData = headerData.Slice(8);
 
@@ -194,12 +223,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileNonActivePageCountOffset);
             headerData = headerData.Slice(8);
 
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileSizeOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileDeletedSizeOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileAddedAtVersionOffset);
+            headerData = headerData.Slice(8);
+
+            // Deleted files
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileIdsOffset);
             headerData = headerData.Slice(8);
 
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedFileAtVersionOffset);
             headerData = headerData.Slice(8);
 
+            // Next file id for data files
             BinaryPrimitives.WriteInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
         }
@@ -214,6 +254,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFileIds.Add(fileInformation.FileId);
             _changedFilePageCounts.Add(fileInformation.PageCount);
             _changedFileNonActivePageCounts.Add(fileInformation.NonActivePageCount);
+            _changedFileSize.Add(fileInformation.FileSize);
+            _changedFileDeletedSize.Add(fileInformation.DeletedSize);
+            _changedFileAddedAtVersion.Add(fileInformation.AddedAtVersion);
         }
 
         public void AddDeletedFileId(DeletedFileInfo deletedFileInfo)

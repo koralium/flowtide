@@ -365,6 +365,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                                 if (_fileInformations.TryGetValue(location.FileId, out var fileInfo))
                                 {
                                     fileInfo.AddNonActivePage();
+                                    fileInfo.AddDeletedSize(location.Size);
                                     _modifiedFileIds.Add(location.FileId);
 
                                     if (fileInfo.PageCount == fileInfo.NonActivePageCount)
@@ -568,6 +569,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                         if (_fileInformations.TryGetValue(existingLocation.FileId, out var existingFileInfo))
                         {
                             existingFileInfo.AddNonActivePage();
+                            existingFileInfo.AddDeletedSize(existingLocation.Size);
                             lock (_modifiedFileIdsLock)
                             {
                                 _modifiedFileIds.Add(existingLocation.FileId);
@@ -592,7 +594,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
                     _pageFileLocations[file.PageIds[i]] = pageInfo;
                 }
-                var fileInfo = new FileInformation(fileId, file.PageIds.Count, 0);
+                var fileInfo = new FileInformation(fileId, file.PageIds.Count, 0, file.FileSize, 0, CheckpointVersion);
                 _fileInformations.AddOrUpdate(fileId, fileInfo, static (key, old) => old);
                 lock (_modifiedFileIdsLock)
                 {
