@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal class CheckpointHandler
     {
-        private const int VersionBetweenSnapshot = 0;
+        private const int VersionBetweenSnapshot = 5;
 
         private readonly IFileStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
@@ -325,6 +325,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     _writeSnapshotCheckpoint = true;
                 }
+                else
+                {
+                    _writeSnapshotCheckpoint = false;
+                }
             }
         }
 
@@ -432,6 +436,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             lock (_checkpointFileLock)
             {
+                _countSinceLastSnapshot++;
                 if (_countSinceLastSnapshot >= VersionBetweenSnapshot)
                 {
                     _writeSnapshotCheckpoint = true;
