@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     /// <summary>
     /// Contains version information of a checkpoint and also if that version is a snapshot.
     /// </summary>
-    public class CheckpointVersion
+    public class CheckpointVersion : IEquatable<CheckpointVersion>
     {
         /// <summary>
         /// The version of a checkpoint
@@ -40,6 +40,26 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         {
             Version = version;
             IsSnapshot = isSnapshot;
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is CheckpointVersion other)
+            {
+                return Equals(other);
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Version, IsSnapshot);
+        }
+
+        public bool Equals(CheckpointVersion? other)
+        {
+            if (other == null) return false;
+            return Version == other.Version && IsSnapshot == other.IsSnapshot;
         }
     }
 }
