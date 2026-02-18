@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 pageInfo = default;
                 return false;
             }
-            pageInfo = new DataPageInfo(pageId, offset, offset - previousPageOffset);
+            pageInfo = new DataPageInfo(pageId, previousPageOffset, offset - previousPageOffset);
             previousPageOffset = offset;
             return true;
         }

@@ -31,10 +31,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             get => _end;
             set
             {
-                Debug.Assert(value <= AvailableMemory.Length);
+                Debug.Assert(value <= Memory.Length);
 
                 _end = value;
-                Memory = AvailableMemory.Slice(0, value);
+                Memory = Memory.Slice(0, value);
             }
         }
 

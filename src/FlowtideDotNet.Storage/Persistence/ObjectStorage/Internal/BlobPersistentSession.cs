@@ -30,11 +30,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly int _maxFileSize;
         private BlobFileWriter _fileWriter;
 
-        /// <summary>
-        /// A dictionary that holds the locations of pages before they are flushed to disk.
-        /// This allows a reader to still read the data before it is written to disk.
-        /// </summary>
-        private Dictionary<long, PageWriteLocation> _temporaryWrittenPageLocations;
         private readonly object _lock = new object();
         private readonly BlobPersistentStorage _persistentStorage;
         private readonly IMemoryAllocator _memoryAllocator;
@@ -48,7 +43,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _maxFileSize = maxFileSize;
             this._persistentStorage = persistentStorage;
             this._memoryAllocator = memoryAllocator;
-            _temporaryWrittenPageLocations = new Dictionary<long, PageWriteLocation>();
+            //_temporaryWrittenPageLocations = new Dictionary<long, PageWriteLocation>();
             _deletedPages = new HashSet<long>();
             SetupFileWriter();
         }
@@ -66,7 +61,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 for (int i = 0; i < pagesFile.PageIds.Count; i++)
                 {
                     long pageId = pagesFile.PageIds[i];
-                    _temporaryWrittenPageLocations.Remove(pageId);
+                    _persistentStorage.RemoveTemporaryLocation(pageId);
                 }
             }
         }
@@ -97,9 +92,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             lock (_lock)
             {
                 // Remove from temporary written since its no longer active
-                if (_temporaryWrittenPageLocations.ContainsKey(key))
+                if (_persistentStorage.TemporaryLocationExists(key))
                 {
-                    _temporaryWrittenPageLocations.Remove(key);
+                    _persistentStorage.RemoveTemporaryLocation(key);
                 }
                 
                 _deletedPages.Add(key);
@@ -120,7 +115,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
                 }
-                if (_temporaryWrittenPageLocations.TryGetValue(key, out var location))
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location))
                 {
                     return ValueTask.FromResult(stateSerializer.Deserialize(location.data, (int)location.data.Length));
                 }
@@ -137,7 +132,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
                 }
-                if (_temporaryWrittenPageLocations.TryGetValue(key, out var location))
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location))
                 {
                     //location.data.
                     if (location.data.FirstSpan.Length >= location.data.Length)
@@ -188,15 +183,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     _deletedPages.Remove(key);
                 }
-                if (_temporaryWrittenPageLocations.ContainsKey(key))
+                if (_persistentStorage.TemporaryLocationExists(key))
                 {
                     throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
                 }
                 // Add info to lookup so reads can find the written data before its flushed to storage
-                _temporaryWrittenPageLocations.Add(key, new PageWriteLocation()
-                {
-                    data = sequence
-                });   
+                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence });
             }
 
             if (_fileWriter.WrittenLength >= _maxFileSize)
@@ -226,7 +218,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             lock (_lock)
             {
-                _temporaryWrittenPageLocations.Clear();
                 _deletedPages.Clear();
                 _fileWriter.Dispose();
                 SetupFileWriter();

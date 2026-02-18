@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 
@@ -33,6 +34,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private List<BlobPersistentSession> _sessions = new List<BlobPersistentSession>();
         private object _sessionsLock = new object();
 
+        /// <summary>
+        /// Temporary location of written pages from sessions
+        /// This must be on this level and not on the individual sessions to allow compaction
+        /// to check if a page has already been written (in combination with actual physical location lookup).
+        /// </summary>
+        private ConcurrentDictionary<long, PageWriteLocation> _temporaryPageLocations = new ConcurrentDictionary<long, PageWriteLocation>();
+
         public BlobPersistentStorage(BlobStorageOptions blobStorageOptions)
         {
             if (blobStorageOptions.FileProvider == null)
@@ -50,6 +58,26 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         }
 
         public long CurrentVersion => _checkpointHandler.CheckpointVersion;
+
+        internal bool TryGetTemporaryLocation(long pageId, out PageWriteLocation location)
+        {
+            return _temporaryPageLocations.TryGetValue(pageId, out location);
+        }
+
+        internal void RemoveTemporaryLocation(long pageId)
+        {
+            _temporaryPageLocations.TryRemove(pageId, out _);
+        }
+
+        internal bool TemporaryLocationExists(long pageId)
+        {
+            return _temporaryPageLocations.ContainsKey(pageId);
+        }
+
+        internal void AddTemporaryLocation(long pageId, PageWriteLocation pageWriteLocation)
+        {
+            _temporaryPageLocations[pageId] = pageWriteLocation;
+        }
 
         internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
         {
@@ -75,8 +103,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         private async Task CompactFiles()
         {
-            var files = _checkpointHandler.GetAllFileInformation().ToList();
+            // Fetch all files that where added in previous versions
+            var files = _checkpointHandler.GetAllFileInformation()
+                .Where(x => x.AddedAtVersion < _checkpointHandler.CheckpointVersion)
+                .ToList();
 
+            var currentSize = _mergedBlobFileWriter.FileSize;
+            List<FileInformation> filesToCompact = new List<FileInformation>();
+            // This list contains possible files to compact
+            List<FileInformation> maybeFilesToCompact = new List<FileInformation>();
+
+            bool mergedAtleastOnce = false;
             foreach(var file in files)
             {
                 var actualSize = file.FileSize - file.DeletedSize;
@@ -86,7 +123,45 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 // This threshold can be tuned based on the workload and performance requirements.
                 if (sizeRatio < _blobStorageOptions.CompactionFileSizeRatioThreshold)
                 {
-                    await CompactFile(file.FileId);
+                    maybeFilesToCompact.Add(file);
+                    currentSize += actualSize;
+
+                    if (currentSize >= _maxFileSize)
+                    {
+                        filesToCompact.AddRange(maybeFilesToCompact);
+                        maybeFilesToCompact.Clear();
+                        currentSize = 0;
+                        mergedAtleastOnce = true;
+                    }
+                }
+            }
+
+            // Either atleast five files to merge, or the new size must be atleast half of the max size
+            // and either it should not have been merged before in this code (so we atleast remove one file)
+            // otherwise at least two files must be in the list to make sure we actually reduce number of files
+            // and dont copy the same file to a new file
+            if (maybeFilesToCompact.Count > 5 ||
+                (
+                    (currentSize >= _maxFileSize / 2) && 
+                    (
+                        mergedAtleastOnce == false || 
+                        (
+                            mergedAtleastOnce && 
+                            maybeFilesToCompact.Count > 1)
+                    )
+                )
+            )
+            {
+                filesToCompact.AddRange(maybeFilesToCompact);
+                maybeFilesToCompact.Clear();
+                currentSize = 0;
+            }
+
+            if (filesToCompact.Count > 0)
+            {
+                foreach(var fileToCompact in filesToCompact)
+                {
+                    await CompactFile(fileToCompact.FileId);
                 }
             }
         }
@@ -104,6 +179,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             } while (!readResult.IsCompleted);
             CopyDataFileContent(fileId, readResult);
             reader.Complete();
+
+            if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
+            {
+                _mergedBlobFileWriter.Finish();
+
+                // Send the file to checkpoint handler
+                await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
+                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+            }
         }
 
         private void CopyDataFileContent(long fileId, ReadResult readResult)
@@ -114,7 +198,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             while(reader.TryGetNextPageInfo(out var pageInfo))
             {
                 // Check that the current location of the page is in the same file, if not, it means the page has been updated and we should skip it
-                if (_checkpointHandler.TryGetPageFileLocation(pageInfo.PageId, out var location) &&
+                // Also check that it has not been written to temporary page locations, since then it has been updated
+                if ((!_temporaryPageLocations.ContainsKey(pageInfo.PageId)) &&
+                    _checkpointHandler.TryGetPageFileLocation(pageInfo.PageId, out var location) &&
                     location.FileId == fileId)
                 {
                     _mergedBlobFileWriter.AddSequence(pageInfo.PageId, readResult.Buffer.Slice(pageInfo.Offset, pageInfo.Length));
@@ -124,11 +210,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
-            await CompactFiles();
             await _adminSession.Write(1, new SerializableObject(metadata));
             await _adminSession.Commit();
             // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
             await _mergedBlobLock.WaitAsync();
+            // Add compaction data
+            await CompactFiles();
             if (_mergedBlobFileWriter.PageIds.Count > 0)
             {
                 _mergedBlobFileWriter.Finish();
@@ -188,6 +275,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
+            _temporaryPageLocations.Clear();
             await _checkpointHandler.RecoverToLatest();
         }
 
@@ -199,7 +287,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public ValueTask ResetAsync()
         {
             _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
-            
+            _temporaryPageLocations.Clear();
             lock (_sessionsLock)
             {
                 foreach(var session in _sessions)

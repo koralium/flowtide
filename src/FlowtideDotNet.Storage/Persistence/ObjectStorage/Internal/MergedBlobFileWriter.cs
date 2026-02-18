@@ -64,6 +64,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void AddSequence(long pageId, ReadOnlySequence<byte> data)
         {
+            if (pageId == 100)
+            {
+
+            }
             if (_finished)
             {
                 throw new InvalidOperationException("Cannot add a blob file after the merged file has been finished");
@@ -73,13 +77,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             while(data.TryGet(ref pointer, out var mem))
             {
-                var segment = new BufferSegment(mem);
+                // We need to take a copy of the memory since it can be re-used
+                var segment = new BufferSegment(mem.ToArray());
                 _end.SetNext(segment);
                 _end = segment;
                 endIndex = segment.Length;
             }
             _pageIds.Add(pageId);
-            _pageOffset.Add(_globalOffset);
+            _pageOffset.Add(_globalOffset + HeaderSize);
             _globalOffset += (int)data.Length;
         }
 
