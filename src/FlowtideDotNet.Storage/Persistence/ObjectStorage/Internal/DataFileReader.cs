@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public bool TryGetNextPageInfo(out DataPageInfo pageInfo)
         {
-            if (pageIdsReader.Remaining < sizeof(long) || pageOffsetsReader.Remaining < sizeof(int) * 2)
+            if (pageIdsReader.Remaining < sizeof(long) || pageOffsetsReader.Remaining < sizeof(int))
             {
                 pageInfo = default;
                 return false;

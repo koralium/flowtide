@@ -211,6 +211,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
+        /// <summary>
+        /// This method is used for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal async Task SendBlobFile_Testing()
+        {
+            _fileWriter.Finish();
+            await _persistentStorage.AddCompleteBlobFile(_fileWriter);
+            SetupFileWriter();
+        }
+
         public void Reset()
         {
             lock (_lock)

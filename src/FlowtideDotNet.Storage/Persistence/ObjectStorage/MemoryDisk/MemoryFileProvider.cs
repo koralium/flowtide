@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public async Task WriteDataFileAsync(long fileId, PipeReader data)
+        public virtual async Task WriteDataFileAsync(long fileId, PipeReader data)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);

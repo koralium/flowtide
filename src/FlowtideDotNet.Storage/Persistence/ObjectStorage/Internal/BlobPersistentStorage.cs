@@ -86,21 +86,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 // This threshold can be tuned based on the workload and performance requirements.
                 if (sizeRatio < _blobStorageOptions.CompactionFileSizeRatioThreshold)
                 {
-                    var reader = await _fileProvider.ReadDataFileAsync(file.FileId);
-
-                    // Read all content to sequence
-                    ReadResult readResult;
-                    do
-                    {
-                        readResult = await reader.ReadAsync();
-                        reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-                    } while (!readResult.IsCompleted);
-                    CopyDataFileContent(file.FileId, readResult);
-                    //ReadCheckpointFile(checkpointFile, readResult.Buffer);
-                    reader.Complete();
-
+                    await CompactFile(file.FileId);
                 }
             }
+        }
+
+        internal async Task CompactFile(long fileId)
+        {
+            var reader = await _fileProvider.ReadDataFileAsync(fileId);
+
+            // Read all content to sequence
+            ReadResult readResult;
+            do
+            {
+                readResult = await reader.ReadAsync();
+                reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+            } while (!readResult.IsCompleted);
+            CopyDataFileContent(fileId, readResult);
+            reader.Complete();
         }
 
         private void CopyDataFileContent(long fileId, ReadResult readResult)

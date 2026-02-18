@@ -120,5 +120,50 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 });
             }
         }
+
+        /// <summary>
+        /// Verifies that concurrent compaction and write operations do not result in data loss or corruption in the
+        /// persistent storage implementation.
+        /// </summary>
+        /// <remarks>This test simulates a race condition between file compaction and write operations to
+        /// ensure that the most recent data is preserved after compaction completes. It is intended to validate the
+        /// thread safety and correctness of the storage system under concurrent access scenarios.
+        /// 
+        /// If not true, the checkpoint will throw an exception that a page exists twice in the checkpoint.
+        /// </remarks>
+        /// <returns></returns>
+        [Fact]
+        public async Task TestCompactionRaceCondition()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() 
+            { 
+                FileProvider = provider ,
+                MaxFileSize = 10
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+
+            var session = (BlobPersistentSession)persistentStorage.CreateSession();
+
+            // Write data and checkpoint it so it gets stored
+            await session.Write(3, new SerializableObject(new byte[] { 1, 2, 3 }));
+            await session.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
+
+            provider.BlockWrites();
+
+            await session.Write(3, new SerializableObject(new byte[] { 4, 5, 6 }));
+            await session.SendBlobFile_Testing(); // Trigger a full file to storage
+            await session.Commit();
+
+            // Trigger compact on the previous file
+            // This tests that the previous value will not be written
+            await persistentStorage.CompactFile(0);
+
+            provider.UnblockWrites();
+            await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
+            var actual = await session.Read(3);
+            Assert.Equal(new byte[] { 4, 5, 6 }, actual.ToArray());
+        }
     }
 }
