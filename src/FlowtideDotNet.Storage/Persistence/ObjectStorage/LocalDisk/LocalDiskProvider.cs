@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Buffers;
@@ -29,11 +30,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
     {
         private readonly string dataDirectory;
         private readonly string checkpointDirectory;
+        private LocalDiskReadManager localDiskReadManager;
 
         public LocalDiskProvider(string dataDirectory, string checkpointDirectory)
         {
             this.dataDirectory = dataDirectory;
             this.checkpointDirectory = checkpointDirectory;
+            localDiskReadManager = new LocalDiskReadManager();
         }
 
         public Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync()
@@ -120,23 +123,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
+            localDiskReadManager.DropFile(filePath);
             File.Delete(filePath);
             return Task.CompletedTask;
         }
 
-        public async ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             try
             {
                 var fileName = GetDataFileName(fileId);
                 var path = Path.Combine(dataDirectory, fileName);
-                using var stream = File.OpenRead(path);
-                stream.Seek(offset, SeekOrigin.Begin);
-
-                var buffer = new byte[length];
-                await stream.ReadExactlyAsync(buffer, 0, length);
-
-                return stateSerializer.Deserialize(new ReadOnlySequence<byte>(buffer), length);
+                return localDiskReadManager.Read(path, offset, length, stateSerializer);
             }
             catch(Exception e)
             {
@@ -149,11 +147,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
-            using var stream = System.IO.File.OpenRead(path);
-            stream.Position = offset;
-            var buffer = new byte[length];
-            stream.ReadExactly(buffer, 0, length);
-            return ValueTask.FromResult<ReadOnlyMemory<byte>>(buffer);
+            return localDiskReadManager.Read(path, offset, length);
+            //using var stream = System.IO.File.OpenRead(path);
+            //stream.Position = offset;
+            //var buffer = new byte[length];
+            //stream.ReadExactly(buffer, 0, length);
+            //return ValueTask.FromResult<ReadOnlyMemory<byte>>(buffer);
         }
 
         public Task<PipeReader> ReadDataFileAsync(long fileId)
