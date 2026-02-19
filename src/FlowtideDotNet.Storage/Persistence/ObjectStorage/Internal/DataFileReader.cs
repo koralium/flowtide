@@ -15,39 +15,60 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
+using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal struct DataPageInfo
+    internal class DataFileReader
     {
-        public long PageId { get; }
-        public int Offset { get; }
-        public int Length { get; }
-        public DataPageInfo(long pageId, int offset, int length)
-        {
-            PageId = pageId;
-            Offset = offset;
-            Length = length;
-        }
-    }
+        private const int HeaderStep = 0;
+        private const int PageIdsStep = 1;
+        private const int PageOffsetsStep = 2;
+        private const int DataStep = 3;
 
-    internal ref struct DataFileReader
-    {
+        private readonly PipeReader _pipeReader;
         private int pageCount;
         private int pageIdsOffset;
         private int pageOffsetsOffset;
-        private int previousPageOffset;
+        private int dataStartOffset;
 
-        private SequenceReader<byte> pageIdsReader;
-        private SequenceReader<byte> pageOffsetsReader;
+        private int _globalOffset;
+        private int step = 0;
+        private SequencePosition _consumedEnd;
+        private int _dataOffset;
 
-        public DataFileReader(ReadOnlySequence<byte> sequence)
+        public DataFileReader(PipeReader pipeReader)
         {
-            var reader = new SequenceReader<byte>(sequence);
+            this._pipeReader = pipeReader;
+        }
 
-            if (!reader.TryReadLittleEndian(out short version))
+        public ValueTask Initialize()
+        {
+            if (step != HeaderStep)
+            {
+                throw new InvalidOperationException("Initialize must be the first called method");
+            }
+            step++;
+            var result = _pipeReader.ReadAtLeastAsync(64);
+            if (result.IsCompletedSuccessfully)
+            {
+                ReadHeaderResult(result.Result);
+            }
+            return Initialize_Slow(result);
+        }
+
+        private async ValueTask Initialize_Slow(ValueTask<ReadResult> task)
+        {
+            var result = await task;
+            ReadHeaderResult(result);
+        }
+
+        private void ReadHeaderResult(ReadResult readResult)
+        {
+            var sequenceReader = new SequenceReader<byte>(readResult.Buffer);
+            if (!sequenceReader.TryReadLittleEndian(out short version))
             {
                 throw new InvalidOperationException("Failed to read version from data file.");
             }
@@ -57,52 +78,104 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Unsupported data file version: " + version);
             }
 
-            reader.Advance(2); // Skip reserved bytes
+            sequenceReader.Advance(2); // Skip reserved bytes
 
-            if (!reader.TryReadLittleEndian(out pageCount))
+            if (!sequenceReader.TryReadLittleEndian(out pageCount))
             {
                 throw new InvalidOperationException("Failed to read page count from data file.");
             }
 
-            if (!reader.TryReadLittleEndian(out pageIdsOffset))
+            if (!sequenceReader.TryReadLittleEndian(out pageIdsOffset))
             {
                 throw new InvalidOperationException("Failed to read page ids offset from data file.");
             }
 
-            if (!reader.TryReadLittleEndian(out pageOffsetsOffset))
+            if (!sequenceReader.TryReadLittleEndian(out pageOffsetsOffset))
             {
                 throw new InvalidOperationException("Failed to read page offsets offset from data file.");
             }
 
-            pageIdsReader = new SequenceReader<byte>(sequence.Slice(pageIdsOffset, pageCount * sizeof(long)));
-            pageOffsetsReader = new SequenceReader<byte>(sequence.Slice(pageOffsetsOffset, (pageCount + 1) * sizeof(int)));
-
-            if (!pageOffsetsReader.TryReadLittleEndian(out previousPageOffset))
+            if (!sequenceReader.TryReadLittleEndian(out dataStartOffset))
             {
-                throw new InvalidOperationException("Failed to read initial page offset from data file.");
+                throw new InvalidOperationException("Failed to read data start offset from data file.");
             }
+
+            // Skip reserved bytes
+            sequenceReader.Advance(44);
+
+            // Advance the pipe reader
+            _pipeReader.AdvanceTo(sequenceReader.Position);
+            _globalOffset = 64;
         }
 
-        public bool TryGetNextPageInfo(out DataPageInfo pageInfo)
+        public async ValueTask<ReadOnlySequence<byte>> ReadPageIds()
         {
-            if (pageIdsReader.Remaining < sizeof(long) || pageOffsetsReader.Remaining < sizeof(int))
+            if (step != PageIdsStep)
             {
-                pageInfo = default;
-                return false;
+                throw new InvalidOperationException("Page ids must be fetched after initialize");
             }
-            if (!pageIdsReader.TryReadLittleEndian(out long pageId))
+            step++;
+            var lengthOfIds = pageOffsetsOffset - _globalOffset;
+            var pageIdsResult = await _pipeReader.ReadAtLeastAsync(lengthOfIds);
+            var slice = pageIdsResult.Buffer.Slice(0, lengthOfIds);
+            _consumedEnd = slice.End;
+            _globalOffset += (int)slice.Length;
+            return slice;
+        }
+
+        public async ValueTask<ReadOnlySequence<byte>> ReadPageOffsets()
+        {
+            if (step != PageOffsetsStep)
             {
-                pageInfo = default;
-                return false;
+                throw new InvalidOperationException("Page offsets must be fetched after page ids");
             }
-            if (!pageOffsetsReader.TryReadLittleEndian(out int offset))
+            step++;
+            _pipeReader.AdvanceTo(_consumedEnd);
+            var lengthOfOffsets = dataStartOffset - _globalOffset;
+            var pageOffsetsResult = await _pipeReader.ReadAtLeastAsync(lengthOfOffsets);
+            var slice = pageOffsetsResult.Buffer.Slice(0, lengthOfOffsets);
+            _consumedEnd = slice.End;
+            _globalOffset += (int)slice.Length;
+            return slice;
+        }
+
+        public async ValueTask<ReadOnlySequence<byte>> ReadDataPage(int offset, int length)
+        {
+            if (step != DataStep)
             {
-                pageInfo = default;
-                return false;
+                throw new InvalidOperationException("Read data page must be done after fetching page offsets");
             }
-            pageInfo = new DataPageInfo(pageId, previousPageOffset, offset - previousPageOffset);
-            previousPageOffset = offset;
-            return true;
+            if (offset < _dataOffset)
+            {
+                throw new InvalidOperationException("Read data page must be done in sequence");
+            }
+            var difference = offset - _dataOffset;
+            // Loop through the pipe to find the next full data page
+            do
+            {
+                var readResult = await _pipeReader.ReadAsync();
+                if (readResult.Buffer.Length < difference)
+                {
+                    // If the difference is greater than the buffer, skip the entire buffer
+                    _pipeReader.AdvanceTo(readResult.Buffer.End);
+                    difference = (int)(difference - readResult.Buffer.Length);
+                }
+                else
+                {
+                    difference = 0;
+                    var slice = readResult.Buffer.Slice(difference);
+                    if (slice.Length < length)
+                    {
+                        _pipeReader.AdvanceTo(slice.Start, slice.End);
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            } while (true);
+
+
         }
     }
 }

@@ -29,6 +29,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly MemoryPool<byte> _memoryPool;
         private const int InitialSegmentSize = 4 * 1024 * 1024;
         private BufferSegment _headerData;
+        private BufferSegment _pageIdsSegment;
+        private BufferSegment _pageOffsetsSegment;
         private BufferSegment _head;
         private BufferSegment _end;
         private int endIndex = 0;
@@ -48,12 +50,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
             _headerData.End = HeaderSize;
             _head = _headerData;
+            _end = _head;
             var firstDataSegment = new BufferSegment(memoryPool.Rent(InitialSegmentSize));
             _dataStart = firstDataSegment;
-            _head.SetNext(firstDataSegment);
-            _end = firstDataSegment;
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
+            _pageIdsSegment = new BufferSegment(_pageIds.SlicedMemory);
+            _pageOffsetsSegment = new BufferSegment(_pageOffset.SlicedMemory);
+            _end.SetNext(_pageIdsSegment);
+            _end = _pageIdsSegment;
+            _end.SetNext(_pageOffsetsSegment);
+            _end = _pageOffsetsSegment;
+            _end.SetNext(firstDataSegment);
+            _end = firstDataSegment;
+
             _advancedPosition = WrittenData.Start;
         }
 
@@ -83,7 +93,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 var endSegment = CurrentSegment;
                 var endSegmentPosition = CurrentIndex;
                 _pageIds.Add(key);
-                _pageOffset.Add(position + HeaderSize);
+                _pageOffset.Add(position);
                 return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
             }
         }
@@ -126,20 +136,35 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     throw new FlowtidePersistentStorageException("Tried to finish a file already finished");
                 }
                 // add the last offset
-                _pageOffset.Add(WrittenLength + HeaderSize);
+                _pageOffset.Add(WrittenLength);
                 _finished = true;
-                _end.End = endIndex;
-                var pageIdsOffset = _end.RunningIndex + endIndex;
-                var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
-                _end.SetNext(pageIdSegment);
-                _end = pageIdSegment;
-                endIndex = pageIdSegment.Length;
 
-                var pageOffsetOffset = _end.RunningIndex + endIndex;
-                var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
-                _end.SetNext(offsetSegment);
-                _end = offsetSegment;
-                endIndex = offsetSegment.Length;
+                _pageIdsSegment.UpdateMemory_Unsafe(_pageIds.SlicedMemory);
+                _pageOffsetsSegment.UpdateMemory_Unsafe(_pageOffset.SlicedMemory);
+
+                _head.UpdateRunningIndices();
+
+                var pageIdsOffset = _pageIdsSegment.RunningIndex;
+                var pageOffsetsOffset = _pageOffsetsSegment.RunningIndex;
+                var idsAndOffsetsOffset = (int)(_pageOffsetsSegment.RunningIndex + _pageOffsetsSegment.Length);
+                // Update page offsets
+                for (int i = 0; i < _pageOffset.Count; i++)
+                {
+                    _pageOffset[i] = _pageOffset[i] + idsAndOffsetsOffset;
+                }
+
+                //_end.End = endIndex;
+                //var pageIdsOffset = _end.RunningIndex + endIndex;
+                //var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
+                //_end.SetNext(pageIdSegment);
+                //_end = pageIdSegment;
+                //endIndex = pageIdSegment.Length;
+
+                //var pageOffsetOffset = _end.RunningIndex + endIndex;
+                //var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
+                //_end.SetNext(offsetSegment);
+                //_end = offsetSegment;
+                //endIndex = offsetSegment.Length;
 
                 var headerData = _headerData.AvailableMemory.Span;
 
@@ -156,11 +181,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 headerData = headerData.Slice(4);
 
                 // Write offset to page offsets
-                BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetOffset);
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetsOffset);
                 headerData = headerData.Slice(4);
 
                 // Write offset to page data start
-                BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
             }
         }
 

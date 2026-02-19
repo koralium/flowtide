@@ -16,37 +16,16 @@ using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using System.Buffers;
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk;
 
 namespace FlowtideDotNet.Storage.Tests.BlobStore
 {
-    public class BlobPersistentStorageTests : IDisposable
+    public class BlobPersistentStorageTests
     {
-        private readonly string _tempPath;
-        private readonly string _dataPath;
-        private readonly string _checkpointPath;
-
-        public BlobPersistentStorageTests()
-        {
-            _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            _dataPath = Path.Combine(_tempPath, "data");
-            _checkpointPath = Path.Combine(_tempPath, "checkpoints");
-            Directory.CreateDirectory(_tempPath);
-            Directory.CreateDirectory(_dataPath);
-            Directory.CreateDirectory(_checkpointPath);
-        }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(_tempPath))
-            {
-                Directory.Delete(_tempPath, true);
-            }
-        }
-
         [Fact]
         public async Task TestWriteAndRead()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new MemoryFileProvider();
             var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
@@ -66,8 +45,8 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task TestRecovery()
         {
+            var provider = new MemoryFileProvider();
             {
-                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
@@ -78,7 +57,6 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             }
 
             {
-                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage.RecoverAsync(1);
@@ -92,8 +70,8 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task TestDelete()
         {
+            var provider = new MemoryFileProvider();
             {
-                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
@@ -108,7 +86,6 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             }
 
             {
-                var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = provider });
                 await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage.RecoverAsync(2);

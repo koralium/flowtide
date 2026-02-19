@@ -59,6 +59,31 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = memory.Length;
         }
 
+        /// <summary>
+        /// Updates the memory of the segment
+        /// This is unsafe since it does not update running index of children
+        /// Call UpdateRunningIndices to update the running indices.
+        /// </summary>
+        /// <param name="memory"></param>
+        public void UpdateMemory_Unsafe(Memory<byte> memory)
+        {
+            this.Memory = memory;
+            AvailableMemory = memory;
+            _end = memory.Length;
+        }
+
+        public void UpdateRunningIndices()
+        {
+            var segment = this;
+
+            while (segment.Next != null)
+            {
+                Debug.Assert(segment._next != null);
+                segment._next.RunningIndex = segment.RunningIndex + segment.Length;
+                segment = segment._next;
+            }
+        }
+
         public BufferSegment CloneWithoutNext()
         {
             if (_owner != null)

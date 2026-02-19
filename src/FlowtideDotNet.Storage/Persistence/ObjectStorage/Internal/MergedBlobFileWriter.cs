@@ -45,6 +45,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private BufferSegment _headerData;
         private BufferSegment _head;
         private BufferSegment _end;
+        private BufferSegment _pageIdsSegment;
+        private BufferSegment _pageOffsetsSegment;
         
 
 
@@ -56,18 +58,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
-            _headerData = new BufferSegment(memoryPool.Rent(64));
-            _headerData.End = 64;
+            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
+            _headerData.End = HeaderSize;
             _head = _headerData;
             _end = _headerData;
+            _pageIdsSegment = new BufferSegment(_pageIds.SlicedMemory);
+            _pageOffsetsSegment = new BufferSegment(_pageOffset.SlicedMemory);
+            _end.SetNext(_pageIdsSegment);
+            _end = _pageIdsSegment;
+            _end.SetNext(_pageOffsetsSegment);
+            _end = _pageOffsetsSegment;
         }
 
         public void AddSequence(long pageId, ReadOnlySequence<byte> data)
         {
-            if (pageId == 100)
-            {
-
-            }
             if (_finished)
             {
                 throw new InvalidOperationException("Cannot add a blob file after the merged file has been finished");
@@ -84,7 +88,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 endIndex = segment.Length;
             }
             _pageIds.Add(pageId);
-            _pageOffset.Add(_globalOffset + HeaderSize);
+            _pageOffset.Add(_globalOffset);
             _globalOffset += (int)data.Length;
         }
 
@@ -140,18 +144,33 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void Finish()
         {
-            _pageOffset.Add(_globalOffset + HeaderSize);
-            var pageIdsOffset = _end.RunningIndex + endIndex;
-            var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
-            _end.SetNext(pageIdSegment);
-            _end = pageIdSegment;
-            endIndex = pageIdSegment.Length;
+            _pageOffset.Add(_globalOffset);
+            
+            _pageIdsSegment.UpdateMemory_Unsafe(_pageIds.SlicedMemory);
+            _pageOffsetsSegment.UpdateMemory_Unsafe(_pageOffset.SlicedMemory);
+            _head.UpdateRunningIndices();
 
-            var pageOffsetOffset = _end.RunningIndex + endIndex;
-            var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
-            _end.SetNext(offsetSegment);
-            _end = offsetSegment;
-            endIndex = offsetSegment.Length;
+            var pageIdsOffset = _pageIdsSegment.RunningIndex;
+            var pageOffsetsOffset = _pageOffsetsSegment.RunningIndex;
+            var idsAndOffsetsOffset = (int)(_pageOffsetsSegment.RunningIndex + _pageOffsetsSegment.Length);
+
+            // Update page offsets
+            for (int i = 0; i < _pageOffset.Count; i++)
+            {
+                _pageOffset[i] = _pageOffset[i] + idsAndOffsetsOffset;
+            }
+
+            //var pageIdsOffset = _end.RunningIndex + endIndex;
+            //var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
+            //_end.SetNext(pageIdSegment);
+            //_end = pageIdSegment;
+            //endIndex = pageIdSegment.Length;
+
+            //var pageOffsetOffset = _end.RunningIndex + endIndex;
+            //var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
+            //_end.SetNext(offsetSegment);
+            //_end = offsetSegment;
+            //endIndex = offsetSegment.Length;
 
             var headerData = _headerData.AvailableMemory.Span;
 
@@ -168,11 +187,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             headerData = headerData.Slice(4);
 
             // Write offset to page offsets
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetOffset);
+            BinaryPrimitives.WriteInt32LittleEndian(headerData, (int)pageOffsetsOffset);
             headerData = headerData.Slice(4);
 
             // Write offset to page data start
-            BinaryPrimitives.WriteInt32LittleEndian(headerData, 64);
+            BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
             _finished = true;
         }
 

@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private void CopyDataFileContent(long fileId, ReadResult readResult)
         {
             BlobFileWriter blobFileWriter = new BlobFileWriter((file) => { }, _memoryPool, _memoryAllocator);
-            var reader = new DataFileReader(readResult.Buffer);
+            var reader = new DataFileReader2(readResult.Buffer);
 
             while(reader.TryGetNextPageInfo(out var pageInfo))
             {
