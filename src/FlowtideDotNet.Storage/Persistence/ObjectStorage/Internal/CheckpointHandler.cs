@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
             }
 
-            _channel = Channel.CreateBounded<PagesFile>(1000);
+            _channel = Channel.CreateBounded<PagesFile>(4);
             this._fileProvider = blobStorageOptions.FileProvider;
             _memoryPool = blobStorageOptions.MemoryPool;
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, blobStorageOptions.MemoryAllocator);
