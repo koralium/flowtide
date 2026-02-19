@@ -170,15 +170,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             var reader = await _fileProvider.ReadDataFileAsync(fileId);
 
-            // Read all content to sequence
-            ReadResult readResult;
-            do
+            DataFileReader dataFileReader = new DataFileReader(reader);
+            await dataFileReader.Initialize();
+            var pageIdsData = await dataFileReader.ReadPageIds();
+            var pageLocations = new List<PageDataInfo>();
+            ReadDataFilePageIds(fileId, pageIdsData, pageLocations);
+            // Skip the offsets since they where taken from the lookup table
+            await dataFileReader.SkipPageOffsets();
+
+            for(int i = 0; i < pageLocations.Count; i++)
             {
-                readResult = await reader.ReadAsync();
-                reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-            } while (!readResult.IsCompleted);
-            CopyDataFileContent(fileId, readResult);
-            reader.Complete();
+                var location = pageLocations[i];
+                var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
+                _mergedBlobFileWriter.AddSequence(location.PageId, pageData);
+            }
+            await reader.CompleteAsync();
 
             if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
             {
@@ -190,20 +196,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
-        private void CopyDataFileContent(long fileId, ReadResult readResult)
+        private void ReadDataFilePageIds(long fileId, ReadOnlySequence<byte> data, List<PageDataInfo> pageFileLocations)
         {
-            BlobFileWriter blobFileWriter = new BlobFileWriter((file) => { }, _memoryPool, _memoryAllocator);
-            var reader = new DataFileReader2(readResult.Buffer);
+            var reader = new DataFilePageIdsReader(data);
 
-            while(reader.TryGetNextPageInfo(out var pageInfo))
+            while(reader.TryGetNextPageId(out var pageId))
             {
-                // Check that the current location of the page is in the same file, if not, it means the page has been updated and we should skip it
-                // Also check that it has not been written to temporary page locations, since then it has been updated
-                if ((!_temporaryPageLocations.ContainsKey(pageInfo.PageId)) &&
-                    _checkpointHandler.TryGetPageFileLocation(pageInfo.PageId, out var location) &&
+                if ((!_temporaryPageLocations.ContainsKey(pageId)) &&
+                    _checkpointHandler.TryGetPageFileLocation(pageId, out var location) &&
                     location.FileId == fileId)
                 {
-                    _mergedBlobFileWriter.AddSequence(pageInfo.PageId, readResult.Buffer.Slice(pageInfo.Offset, pageInfo.Length));
+                    pageFileLocations.Add(new PageDataInfo(pageId, location.Offset, location.Size));
                 }
             }
         }

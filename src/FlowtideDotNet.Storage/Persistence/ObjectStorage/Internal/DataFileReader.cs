@@ -13,6 +13,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Reflection.PortableExecutable;
@@ -21,6 +22,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
+    /// <summary>
+    /// Data file reader specialized to read page data in a streaming fashion.
+    /// Used when compacting a data file to quickly copy data into new files.
+    /// </summary>
     internal class DataFileReader
     {
         private const int HeaderStep = 0;
@@ -37,7 +42,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private int _globalOffset;
         private int step = 0;
         private SequencePosition _consumedEnd;
-        private int _dataOffset;
 
         public DataFileReader(PipeReader pipeReader)
         {
@@ -55,6 +59,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             if (result.IsCompletedSuccessfully)
             {
                 ReadHeaderResult(result.Result);
+                return ValueTask.CompletedTask;
             }
             return Initialize_Slow(result);
         }
@@ -139,21 +144,53 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return slice;
         }
 
+        public async ValueTask SkipPageOffsets()
+        {
+            if(step != PageOffsetsStep)
+            {
+                throw new InvalidOperationException("Page offsets must be fetched after page ids");
+            }
+            step++;
+            _pipeReader.AdvanceTo(_consumedEnd);
+            var lengthOfOffsets = dataStartOffset - _globalOffset;
+            var toConsume = lengthOfOffsets;
+
+            do
+            {
+                var result = await _pipeReader.ReadAsync();
+                if (result.Buffer.Length < toConsume)
+                {
+                    toConsume -= (int)result.Buffer.Length;
+                    _pipeReader.AdvanceTo(result.Buffer.End);
+                }
+                else
+                {
+                    var slice = result.Buffer.Slice(toConsume);
+                    _consumedEnd = slice.Start;
+                    break;
+                }
+            } while (true);
+            _globalOffset += lengthOfOffsets;
+        }
+
         public async ValueTask<ReadOnlySequence<byte>> ReadDataPage(int offset, int length)
         {
             if (step != DataStep)
             {
                 throw new InvalidOperationException("Read data page must be done after fetching page offsets");
             }
-            if (offset < _dataOffset)
+            if (offset < _globalOffset)
             {
                 throw new InvalidOperationException("Read data page must be done in sequence");
             }
-            var difference = offset - _dataOffset;
+            _pipeReader.AdvanceTo(_consumedEnd);
+
+            var difference = offset - _globalOffset;
             // Loop through the pipe to find the next full data page
+            ReadResult readResult;
             do
             {
-                var readResult = await _pipeReader.ReadAsync();
+                readResult = await _pipeReader.ReadAsync();
                 if (readResult.Buffer.Length < difference)
                 {
                     // If the difference is greater than the buffer, skip the entire buffer
@@ -162,10 +199,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
                 else
                 {
-                    difference = 0;
                     var slice = readResult.Buffer.Slice(difference);
                     if (slice.Length < length)
                     {
+                        difference = 0;
                         _pipeReader.AdvanceTo(slice.Start, slice.End);
                     }
                     else
@@ -175,7 +212,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             } while (true);
 
-
+            var dataSlice = readResult.Buffer.Slice(difference, length);
+            _consumedEnd = dataSlice.End;
+            _globalOffset = offset + length;
+            _consumedEnd = dataSlice.End;
+            return dataSlice;
         }
     }
 }

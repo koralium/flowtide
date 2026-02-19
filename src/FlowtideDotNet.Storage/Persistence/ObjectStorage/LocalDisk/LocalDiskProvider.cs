@@ -140,7 +140,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             {
                 throw;
             }
-            
         }
 
         public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)

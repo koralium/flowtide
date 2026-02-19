@@ -4,6 +4,7 @@ using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using System.Buffers;
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk;
 
 namespace FlowtideDotNet.Storage.Tests.BlobStore
 {
@@ -66,13 +67,17 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, data.ToArray());
+                persistentStorage2.Dispose();
             }
+            persistentStorage.Dispose();
+
         }
 
         [Fact]
         public async Task TestCompaction()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new MemoryFileProvider();
+            //var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
             var persistentStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions()
             {
                 FileProvider = provider,
@@ -86,9 +91,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
 
             // Create enough checkpoints to have a snapshot and some history
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 20; i += 2)
             {
-                await session.Write(100 + i + 1, new SerializableObject(new byte[] { 1 }));
+                await session.Write(100 + i + 1, new SerializableObject(new byte[] { (byte)i }));
+                await session.Write(100 + i + 2, new SerializableObject(new byte[] { (byte)(i + 1) }));
                 await session.Commit();
                 await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
             }
@@ -98,10 +104,9 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             // Verify recovery still works for latest version
             {
-                var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage2 = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions()
                 {
-                    FileProvider = provider2,
+                    FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
@@ -109,6 +114,12 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, data.ToArray());
+
+                for (int i = 0; i < 20; i++)
+                {
+                    var loopData = await session2.Read(101 + i);
+                    Assert.Equal(new byte[] { (byte)i }, loopData);
+                }
             }
         }
     }

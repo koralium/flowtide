@@ -158,6 +158,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             foreach (var checkpointFile in checkpointFiles)
             {
+                if (checkpointFile.IsSnapshot)
+                {
+                    _countSinceLastSnapshot = 0;
+                }
+                else
+                {
+                    // Increase the count since last snapshot to correctly take snapshots after X incremental even after a crash
+                    _countSinceLastSnapshot++;
+                }
                 var fileReader = await _fileProvider.ReadCheckpointFileAsync(checkpointFile);
 
                 // Read all content of the file

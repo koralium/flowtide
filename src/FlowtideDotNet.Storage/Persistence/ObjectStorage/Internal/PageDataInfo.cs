@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -19,18 +18,19 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal ref struct DataFilePageIdsReader
+    internal struct PageDataInfo
     {
-        private SequenceReader<byte> _reader;
-
-        public DataFilePageIdsReader(ReadOnlySequence<byte> sequence)
+        public PageDataInfo(long pageId, int offset, int size)
         {
-            _reader = new SequenceReader<byte>(sequence);
+            PageId = pageId;
+            Offset = offset;
+            Size = size;
         }
 
-        public bool TryGetNextPageId(out long pageId)
-        {
-            return _reader.TryReadLittleEndian(out pageId);
-        }
+        public long PageId { get; }
+
+        public int Offset { get; }
+
+        public int Size { get; }
     }
 }
