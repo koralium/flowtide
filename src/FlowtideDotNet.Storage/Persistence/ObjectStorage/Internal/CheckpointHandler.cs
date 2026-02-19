@@ -12,18 +12,11 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
-using static System.Net.WebRequestMethods;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
@@ -195,7 +188,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     FileId = upsertPageInfo.fileId,
                     Offset = upsertPageInfo.offset,
-                    Size = upsertPageInfo.size
+                    Size = upsertPageInfo.size,
+                    Crc32 = upsertPageInfo.crc32
                 };
             }
 
@@ -576,11 +570,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     // from the page file locations
                     if (!_writeSnapshotCheckpoint)
                     {
-                        _newCheckpoint.AddUpsertPages(file.PageIds, fileIds, file.PageOffsets, pageSizes);
+                        _newCheckpoint.AddUpsertPages(file.PageIds, fileIds, file.PageOffsets, pageSizes, file.Crc32s);
                     }
                 }
 
-                await _fileProvider.WriteDataFileAsync(fileId, file);
+                await _fileProvider.WriteDataFileAsync(fileId, file.Crc64, file);
 
                 for (int i = 0; i < file.PageIds.Count; i++)
                 {
@@ -605,7 +599,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     {
                         FileId = fileId,
                         Offset = file.PageOffsets[i],
-                        Size = file.PageOffsets[i + 1] - file.PageOffsets[i]
+                        Size = file.PageOffsets[i + 1] - file.PageOffsets[i],
+                        Crc32 = file.Crc32s[i],
                     };
 
                     if (pageInfo.Size < 0)
@@ -615,7 +610,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
                     _pageFileLocations[file.PageIds[i]] = pageInfo;
                 }
-                var fileInfo = new FileInformation(fileId, file.PageIds.Count, 0, file.FileSize, 0, CheckpointVersion);
+                var fileInfo = new FileInformation(fileId, file.PageIds.Count, 0, file.FileSize, 0, CheckpointVersion, file.Crc64);
                 _fileInformations.AddOrUpdate(fileId, fileInfo, static (key, old) => old);
                 lock (_modifiedFileIdsLock)
                 {

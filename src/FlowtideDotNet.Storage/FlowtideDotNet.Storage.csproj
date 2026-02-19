@@ -13,6 +13,7 @@
     <PackageReference Include="Polly.Core" />
     <PackageReference Include="ZstdSharp.Port" />
 	<PackageReference Include="System.IO.Pipelines" />
+	<PackageReference Include="System.IO.Hashing" />
   </ItemGroup>
 
 </Project>

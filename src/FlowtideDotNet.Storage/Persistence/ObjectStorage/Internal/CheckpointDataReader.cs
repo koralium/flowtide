@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public long fileId;
         public int offset;
         public int size;
+        public uint crc32;
     }
 
     /// <summary>
@@ -45,6 +46,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long upsertPageFileIdsOffset;
         private long upsertPageFileOffsetsOffset;
         private long upsertPageSizesOffset;
+        private long upsertPageCrc32Offset;
         private long deletedPageIdsOffset;
         private long updatedFileIdsOffset;
         private long updatedFilePageCountOffset;
@@ -52,6 +54,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long updatedFileSizeOffset;
         private long updatedFileDeletedSizeOffset;
         private long updatedFileAddedAtVersionOffset;
+        private long updatedFileCrc64Offset;
         private long deletedFileIdsOffset;
         private long deletedFileAtVersionOffset;
 
@@ -61,6 +64,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequenceReader<byte> _upsertPageFileIdsReader;
         private SequenceReader<byte> _upsertPageOffetsReader;
         private SequenceReader<byte> _upsertPageSizesReader;
+        private SequenceReader<byte> _upsertPageCrc32Reader;
         private SequenceReader<byte> _deletedPageIdsReader;
 
         private SequenceReader<byte> _updatedFileIdsReader;
@@ -69,6 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequenceReader<byte> _updatedFileSizeReader;
         private SequenceReader<byte> _updatedFileDeletedSizeReader;
         private SequenceReader<byte> _updatedFileAddedAtVersionReader;
+        private SequenceReader<byte> _updatedFileCrc64Reader;
 
         private SequenceReader<byte> _deletedFileIdsReader;
         private SequenceReader<byte> _deletedFileAtVersionReader;
@@ -132,6 +137,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Could not read upsert page sizes offset");
             }
 
+            if (!reader.TryReadLittleEndian(out upsertPageCrc32Offset))
+            {
+                throw new InvalidOperationException("Could not read upsert page crc32 offset");
+            }
+
             if (!reader.TryReadLittleEndian(out deletedPageIdsOffset))
             {
                 throw new InvalidOperationException("Could not read deleted page ids offset");
@@ -167,6 +177,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Could not read updated file added at version offset");
             }
 
+            if (!reader.TryReadLittleEndian(out updatedFileCrc64Offset))
+            {
+                throw new InvalidOperationException("Could not read updated file crc64 offset");
+            }
+
             if (!reader.TryReadLittleEndian(out deletedFileIdsOffset))
             {
                 throw new InvalidOperationException("Could not read deleted file ids offset");
@@ -186,6 +201,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(upsertPageFileIdsOffset, upsertPages * sizeof(long)));
             _upsertPageOffetsReader = new SequenceReader<byte>(dataSequence.Slice(upsertPageFileOffsetsOffset, upsertPages * sizeof(int)));
             _upsertPageSizesReader = new SequenceReader<byte>(dataSequence.Slice(upsertPageSizesOffset, upsertPages * sizeof(int)));
+            _upsertPageCrc32Reader = new SequenceReader<byte>(dataSequence.Slice(upsertPageCrc32Offset, upsertPages * sizeof(uint)));
             _deletedPageIdsReader = new SequenceReader<byte>(dataSequence.Slice(deletedPageIdsOffset, deletedPagesCount * sizeof(long)));
 
             _updatedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileIdsOffset, changedFilesCount * sizeof(long)));
@@ -194,6 +210,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _updatedFileSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileSizeOffset, changedFilesCount * sizeof(int)));
             _updatedFileDeletedSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileDeletedSizeOffset, changedFilesCount * sizeof(int)));
             _updatedFileAddedAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileAddedAtVersionOffset, changedFilesCount * sizeof(long)));
+            _updatedFileCrc64Reader = new SequenceReader<byte>(dataSequence.Slice(updatedFileAddedAtVersionOffset, changedFilesCount * sizeof(ulong)));
 
             _deletedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileIdsOffset, deletedFilesCount * sizeof(long)));
             _deletedFileAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileAtVersionOffset, deletedFilesCount * sizeof(long)));
@@ -218,11 +235,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 return false;
             }
+            if (!_upsertPageCrc32Reader.TryReadLittleEndian(out int crc32))
+            {
+                return false;
+            }
 
             upsertPageInfo.pageId = pageId;
             upsertPageInfo.fileId = fileId;
             upsertPageInfo.offset = offset;
             upsertPageInfo.size = size;
+            upsertPageInfo.crc32 = (uint)crc32;
 
             return true;
         }
@@ -271,8 +293,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 return false;
             }
+            if (!_updatedFileCrc64Reader.TryReadLittleEndian(out long crc64))
+            {
+                return false;
+            }
 
-            fileInformation = new FileInformation(fileId, pageCount, nonActivePageCount, size, deletedSize, addedAtVersion);
+            fileInformation = new FileInformation(fileId, pageCount, nonActivePageCount, size, deletedSize, addedAtVersion, (ulong)crc64);
             return true;
         }
 

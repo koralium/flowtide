@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
         {
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> Read(string fileName, long position, int length)
+        public ValueTask<ReadOnlyMemory<byte>> Read(string fileName, long position, int length, uint crc32)
         {
             ILocalDiskReader? reader;
             lock (_lock)
@@ -39,10 +39,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
                     _fileReaders.Add(fileName, reader);
                 }
             }
-            return reader.Read(position, length);
+            return reader.Read(position, length, crc32);
         }
 
-        public ValueTask<T> Read<T>(string fileName, long position, int length, IStateSerializer<T> serializer) where T : ICacheObject
+        public ValueTask<T> Read<T>(string fileName, long position, int length, uint crc32, IStateSerializer<T> serializer) where T : ICacheObject
         {
             ILocalDiskReader? reader;
             lock (_lock)
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
                     _fileReaders.Add(fileName, reader);
                 }
             }
-            return reader.Read(position, length, serializer);
+            return reader.Read(position, length, crc32, serializer);
         }
 
         public void DropFile(string fileName)

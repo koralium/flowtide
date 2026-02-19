@@ -20,11 +20,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal struct PageDataInfo
     {
-        public PageDataInfo(long pageId, int offset, int size)
+        public PageDataInfo(long pageId, int offset, int size, uint crc32)
         {
             PageId = pageId;
             Offset = offset;
             Size = size;
+            Crc32 = crc32;
         }
 
         public long PageId { get; }
@@ -32,5 +33,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public int Offset { get; }
 
         public int Size { get; }
+
+        public uint Crc32 { get; }
     }
 }

@@ -21,9 +21,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
 {
     internal interface ILocalDiskReader : IDisposable
     {
-        ValueTask<ReadOnlyMemory<byte>> Read(long position, int length);
+        ValueTask<ReadOnlyMemory<byte>> Read(long position, int length, uint crc32);
 
-        ValueTask<T> Read<T>(long position, int length, IStateSerializer<T> serializer)
+        ValueTask<T> Read<T>(long position, int length, uint crc32, IStateSerializer<T> serializer)
             where T : ICacheObject;
     }
 }

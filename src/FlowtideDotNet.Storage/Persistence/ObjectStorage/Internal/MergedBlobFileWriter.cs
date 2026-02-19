@@ -34,9 +34,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private const int HeaderSize = 64;
         private PrimitiveList<long> _pageIds;
         private PrimitiveList<int> _pageOffset;
+        private PrimitiveList<uint> _crc32s;
         private int _globalOffset;
         private int endIndex;
         private bool _finished;
+        private ulong _crc64;
 
         public List<BlobFileWriter> _files = new List<BlobFileWriter>();
 
@@ -58,6 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
+            _crc32s = new PrimitiveList<uint>(memoryAllocator);
             _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
             _headerData.End = HeaderSize;
             _head = _headerData;
@@ -70,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = _pageOffsetsSegment;
         }
 
-        public void AddSequence(long pageId, ReadOnlySequence<byte> data)
+        public void AddSequence(long pageId, uint crc32, ReadOnlySequence<byte> data)
         {
             if (_finished)
             {
@@ -89,6 +92,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
             _pageIds.Add(pageId);
             _pageOffset.Add(_globalOffset);
+            _crc32s.Add(crc32);
             _globalOffset += (int)data.Length;
         }
 
@@ -131,6 +135,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 _pageIds.Add(blobFileWriter.PageIds[i]);
                 _pageOffset.Add(blobFileWriter.PageOffsets[i] + _globalOffset);
+                _crc32s.Add(blobFileWriter.Crc32s[i]);
             }
 
             _globalOffset += blobFileWriter.WrittenLength;
@@ -140,7 +145,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override PrimitiveList<int> PageOffsets => _pageOffset;
 
+        public override PrimitiveList<uint> Crc32s => _crc32s;
+
         public override int FileSize => (int)WrittenData.Length;
+
+        public override ulong Crc64 => _crc64;
 
         public void Finish()
         {
@@ -159,18 +168,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 _pageOffset[i] = _pageOffset[i] + idsAndOffsetsOffset;
             }
-
-            //var pageIdsOffset = _end.RunningIndex + endIndex;
-            //var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
-            //_end.SetNext(pageIdSegment);
-            //_end = pageIdSegment;
-            //endIndex = pageIdSegment.Length;
-
-            //var pageOffsetOffset = _end.RunningIndex + endIndex;
-            //var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
-            //_end.SetNext(offsetSegment);
-            //_end = offsetSegment;
-            //endIndex = offsetSegment.Length;
 
             var headerData = _headerData.AvailableMemory.Span;
 
@@ -193,6 +190,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             // Write offset to page data start
             BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
             _finished = true;
+
+            // Calculate crc64 of the entire file
+            System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
+            foreach (var segment in WrittenData)
+            {
+                crc64.Append(segment.Span);
+            }
+            _crc64 = crc64.GetCurrentHashAsUInt64();
         }
 
         public override bool TryRead(out ReadResult result)

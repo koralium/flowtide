@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.IO.Hashing;
 using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
@@ -170,6 +171,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             var reader = await _fileProvider.ReadDataFileAsync(fileId);
 
+            Crc32 crc32 = new Crc32();
             DataFileReader dataFileReader = new DataFileReader(reader);
             await dataFileReader.Initialize();
             var pageIdsData = await dataFileReader.ReadPageIds();
@@ -182,7 +184,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 var location = pageLocations[i];
                 var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
-                _mergedBlobFileWriter.AddSequence(location.PageId, pageData);
+                // Check the checksum so there is no corruption before we add the data
+                CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
+                _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
             }
             await reader.CompleteAsync();
 
@@ -206,7 +210,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     _checkpointHandler.TryGetPageFileLocation(pageId, out var location) &&
                     location.FileId == fileId)
                 {
-                    pageFileLocations.Add(new PageDataInfo(pageId, location.Offset, location.Size));
+                    pageFileLocations.Add(new PageDataInfo(pageId, location.Offset, location.Size, location.Crc32));
                 }
             }
         }
@@ -234,7 +238,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size);
+                var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32);
                 return new ReadOnlySequence<byte>(memory);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
@@ -244,7 +248,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, stateSerializer);
+                return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
         }
@@ -306,7 +310,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
-                value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size).GetAwaiter().GetResult();
+                value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32).GetAwaiter().GetResult();
                 return true;
             }
             value = null;

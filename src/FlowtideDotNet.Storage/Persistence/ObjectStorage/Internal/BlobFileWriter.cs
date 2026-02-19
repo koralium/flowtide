@@ -37,11 +37,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private int _writtenBytes = 0;
         private PrimitiveList<long> _pageIds;
         private PrimitiveList<int> _pageOffset;
+        private PrimitiveList<uint> _crc32s;
         private SequencePosition _advancedPosition;
         private bool disposedValue;
         private BufferSegment _dataStart;
         private bool _finished = false;
         private readonly object _lock = new object();
+        private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();
+        private ulong _crc64;
 
         public BlobFileWriter(Action<PagesFile> doneFunc, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
@@ -55,6 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _dataStart = firstDataSegment;
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
+            _crc32s = new PrimitiveList<uint>(memoryAllocator);
             _pageIdsSegment = new BufferSegment(_pageIds.SlicedMemory);
             _pageOffsetsSegment = new BufferSegment(_pageOffset.SlicedMemory);
             _end.SetNext(_pageIdsSegment);
@@ -80,7 +84,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override PrimitiveList<int> PageOffsets => _pageOffset;
 
+        public override PrimitiveList<uint> Crc32s => _crc32s;
+
         public override int FileSize => _writtenBytes + HeaderSize;
+
+        public override ulong Crc64 => _crc64;
 
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
         {
@@ -89,17 +97,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 var position = WrittenLength;
                 var startSegment = CurrentSegment;
                 var segmentPosition = CurrentIndex;
+                crc.Reset();
                 value.Serialize(this);
                 var endSegment = CurrentSegment;
                 var endSegmentPosition = CurrentIndex;
+                var crcNumber = crc.GetCurrentHashAsUInt32();
                 _pageIds.Add(key);
                 _pageOffset.Add(position);
+                _crc32s.Add(crcNumber);
                 return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
             }
         }
         
         public void Advance(int count)
         {
+            crc.Append(_end.AvailableMemory.Slice(endIndex, count).Span);
             endIndex += count;
             _writtenBytes += count;
         }
@@ -186,6 +198,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
                 // Write offset to page data start
                 BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
+
+                System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
+                foreach(var segment in WrittenData)
+                {
+                    crc64.Append(segment.Span);
+                }
+                _crc64 = crc64.GetCurrentHashAsUInt64();
             }
         }
 

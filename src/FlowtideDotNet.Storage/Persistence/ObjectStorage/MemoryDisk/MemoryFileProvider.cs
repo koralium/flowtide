@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
             lock (_lock)
             {
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             lock (_lock)
             {
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual async Task WriteDataFileAsync(long fileId, PipeReader data)
+        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);

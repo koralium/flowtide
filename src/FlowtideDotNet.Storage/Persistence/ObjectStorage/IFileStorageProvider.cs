@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="fileId"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        Task WriteDataFileAsync(long fileId, PipeReader data);
+        Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data);
 
         /// <summary>
         /// Asynchronously deletes the file corresponding to the given file ID from the storage. 
@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="stateSerializer">The serializer used to deserialize the object from the file segment. Cannot be null.</param>
         /// <returns>A ValueTask that represents the asynchronous read operation. The result contains the deserialized object of
         /// type T.</returns>
-        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject;
+        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject;
 
         /// <summary>
         /// Asynchronously retrieves a read-only block of memory containing a specified range of bytes from the file
@@ -95,6 +95,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="length">The number of bytes to read from the file. Must be greater than or equal to 0.</param>
         /// <returns>A value task that represents the asynchronous operation. The result contains a read-only memory region with
         /// the requested bytes.</returns>
-        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length);
+        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32);
     }
 }

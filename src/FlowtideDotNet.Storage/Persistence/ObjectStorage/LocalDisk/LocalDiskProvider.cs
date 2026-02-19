@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public async Task WriteDataFileAsync(long fileId, PipeReader data)
+        public async Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
@@ -128,13 +128,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             try
             {
                 var fileName = GetDataFileName(fileId);
                 var path = Path.Combine(dataDirectory, fileName);
-                return localDiskReadManager.Read(path, offset, length, stateSerializer);
+                return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
             }
             catch(Exception e)
             {
@@ -142,11 +142,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             }
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
-            return localDiskReadManager.Read(path, offset, length);
+            return localDiskReadManager.Read(path, offset, length, crc32);
             //using var stream = System.IO.File.OpenRead(path);
             //stream.Position = offset;
             //var buffer = new byte[length];

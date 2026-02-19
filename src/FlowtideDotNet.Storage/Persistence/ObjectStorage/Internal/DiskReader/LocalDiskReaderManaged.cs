@@ -15,6 +15,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
             semaphoreSlim = new SemaphoreSlim(1, 1);
         }
 
-        public async ValueTask<ReadOnlyMemory<byte>> Read(long position, int length)
+        public async ValueTask<ReadOnlyMemory<byte>> Read(long position, int length, uint crc32)
         {
             await semaphoreSlim.WaitAsync();
             try
@@ -47,6 +48,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
                 var bytes = new byte[length];
                 fileStream.Position = position;
                 await fileStream.ReadExactlyAsync(bytes);
+                CrcUtils.CheckCrc32(bytes, crc32);
                 return bytes;
             }
             finally
@@ -55,7 +57,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
             }
         }
 
-        public async ValueTask<T> Read<T>(long position, int length, IStateSerializer<T> serializer) where T : ICacheObject
+        public async ValueTask<T> Read<T>(long position, int length, uint crc32, IStateSerializer<T> serializer) where T : ICacheObject
         {
             await semaphoreSlim.WaitAsync();
             try
@@ -63,6 +65,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
                 var bytes = new byte[length];
                 fileStream.Position = position;
                 await fileStream.ReadExactlyAsync(bytes);
+                CrcUtils.CheckCrc32(bytes, crc32);
                 return serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
             }
             finally

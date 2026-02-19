@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<long> _upsertPageFileIds;
         private readonly PrimitiveList<int> _upsertPageOffsets;
         private readonly PrimitiveList<int> _upsertPageSizes;
+        private readonly PrimitiveList<uint> _upsertPageCrc32;
 
         private readonly PrimitiveList<long> _deletedPageIds;
 
@@ -46,6 +47,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<long> _changedFileAddedAtVersion;
         private readonly PrimitiveList<int> _changedFileSize;
         private readonly PrimitiveList<int> _changedFileDeletedSize;
+        private readonly PrimitiveList<ulong> _changedFileCrc64;
 
 
         private readonly PrimitiveList<long> _deletedFileIds;
@@ -68,6 +70,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageFileIds = new PrimitiveList<long>(memoryAllocator);
             _upsertPageOffsets = new PrimitiveList<int>(memoryAllocator);
             _upsertPageSizes = new PrimitiveList<int>(memoryAllocator);
+            _upsertPageCrc32 = new PrimitiveList<uint>(memoryAllocator);
             _deletedPageIds = new PrimitiveList<long>(memoryAllocator);
 
             _changedFileIds = new PrimitiveList<long>(memoryAllocator);
@@ -76,6 +79,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFileSize = new PrimitiveList<int>(memoryAllocator);
             _changedFileDeletedSize = new PrimitiveList<int>(memoryAllocator);
             _changedFileAddedAtVersion = new PrimitiveList<long>(memoryAllocator);
+            _changedFileCrc64 = new PrimitiveList<ulong>(memoryAllocator);
 
             _deletedFileIds = new PrimitiveList<long>(memoryAllocator);
             _deletedFileAtVersion = new PrimitiveList<long>(memoryAllocator);
@@ -123,6 +127,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = upsertPageSizesOffsetSegment;
             endIndex = upsertPageSizesOffsetSegment.Length;
 
+            var upsertPageCrc32sOffset = _end.RunningIndex + endIndex;
+            var upsertPageCrc32sSegment = new BufferSegment(_upsertPageCrc32.SlicedMemory);
+            _end.SetNext(upsertPageCrc32sSegment);
+            _end = upsertPageCrc32sSegment;
+            endIndex = upsertPageCrc32sSegment.Length;
+
             var deletedPageIdsOffset = _end.RunningIndex + endIndex;
             var deletedPageIdsSegment = new BufferSegment(_deletedPageIds.SlicedMemory);
             _end.SetNext(deletedPageIdsSegment);
@@ -164,6 +174,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end.SetNext(updatedFileAddedAtVersionSegment);
             _end = updatedFileAddedAtVersionSegment;
             endIndex = updatedFileAddedAtVersionSegment.Length;
+
+            var updatedFileCrc64Offset = _end.RunningIndex + endIndex;
+            var updatedFileCrc64Segment = new BufferSegment(_changedFileCrc64.SlicedMemory);
+            _end.SetNext(updatedFileCrc64Segment);
+            _end = updatedFileCrc64Segment;
+            endIndex = updatedFileCrc64Segment.Length;
 
             var deletedFileIdsOffset = _end.RunningIndex + endIndex;
             var deletedFileIdsSegment = new BufferSegment(_deletedFileIds.SlicedMemory);
@@ -210,6 +226,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageSizesOffset);
             headerData = headerData.Slice(8);
 
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, upsertPageCrc32sOffset);
+            headerData = headerData.Slice(8);
+
             BinaryPrimitives.WriteInt64LittleEndian(headerData, deletedPageIdsOffset);
             headerData = headerData.Slice(8);
 
@@ -230,6 +249,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             headerData = headerData.Slice(8);
 
             BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileAddedAtVersionOffset);
+            headerData = headerData.Slice(8);
+
+            BinaryPrimitives.WriteInt64LittleEndian(headerData, updatedFileCrc64Offset);
             headerData = headerData.Slice(8);
 
             // Deleted files
@@ -257,6 +279,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFileSize.Add(fileInformation.FileSize);
             _changedFileDeletedSize.Add(fileInformation.DeletedSize);
             _changedFileAddedAtVersion.Add(fileInformation.AddedAtVersion);
+            _changedFileCrc64.Add(fileInformation.Crc64);
         }
 
         public void AddDeletedFileId(DeletedFileInfo deletedFileInfo)
@@ -279,6 +302,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageIds.EnsureCapacity(sortedKeys.Length);
             _upsertPageOffsets.EnsureCapacity(sortedKeys.Length);
             _upsertPageSizes.EnsureCapacity(sortedKeys.Length);
+            _upsertPageCrc32.EnsureCapacity(sortedKeys.Length);
 
             foreach (var pageId in sortedKeys)
             {
@@ -293,6 +317,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _upsertPageFileIds.Add(location.FileId);
                 _upsertPageOffsets.Add(location.Offset);
                 _upsertPageSizes.Add(location.Size);
+                _upsertPageCrc32.Add(location.Crc32);
             }
         }
 
@@ -301,17 +326,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             PrimitiveList<long> pageIds, 
             PrimitiveList<long> fileIds,
             PrimitiveList<int> pageOffsets,
-            PrimitiveList<int> pageSizes)
+            PrimitiveList<int> pageSizes,
+            PrimitiveList<uint> crc32s)
         {
             if (pageIds.Count < 128)
             {
                 Span<int> indices = stackalloc int[pageIds.Count];
-                AddUpsertPages_Internal(indices, pageIds, fileIds, pageOffsets, pageSizes);
+                AddUpsertPages_Internal(indices, pageIds, fileIds, pageOffsets, pageSizes, crc32s);
             }
             else
             {
                 int[] indices = new int[pageIds.Count];
-                AddUpsertPages_Internal(indices, pageIds, fileIds, pageOffsets, pageSizes);
+                AddUpsertPages_Internal(indices, pageIds, fileIds, pageOffsets, pageSizes, crc32s);
             }
         }
 
@@ -334,7 +360,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             PrimitiveList<long> pageIds,
             PrimitiveList<long> fileIds,
             PrimitiveList<int> pageOffsets,
-            PrimitiveList<int> pageSizes)
+            PrimitiveList<int> pageSizes,
+            PrimitiveList<uint> pageCrc32s)
         {
             // Sort the page ids
             int count = pageIds.Count;
@@ -349,6 +376,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageIds.EnsureCapacity(_upsertPageIds.Count + indices.Length);
             _upsertPageOffsets.EnsureCapacity(_upsertPageOffsets.Count + indices.Length);
             _upsertPageSizes.EnsureCapacity(_upsertPageSizes.Count + indices.Length);
+            _upsertPageCrc32.EnsureCapacity(_upsertPageCrc32.Count + indices.Length);
 
             int top = _upsertPageFileIds.Count;
 
@@ -356,12 +384,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _upsertPageIds.SetLength(_upsertPageIds.Count + indices.Length);
             _upsertPageOffsets.SetLength(_upsertPageOffsets.Count + indices.Length);
             _upsertPageSizes.SetLength(_upsertPageSizes.Count + indices.Length);
+            _upsertPageCrc32.SetLength(_upsertPageCrc32.Count + indices.Length);
 
 
             var ids = _upsertPageIds.Span;
             var files = _upsertPageFileIds.Span;
             var offsets = _upsertPageOffsets.Span;
             var sizes = _upsertPageSizes.Span;
+            var crc32s = _upsertPageCrc32.Span;
 
             // Start at the end to minimize the amount of memory copies
             for (int i = indices.Length - 1; i >= 0; i--)
@@ -384,6 +414,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     files.Slice(position, top - position).CopyTo(files.Slice(elementIndex + 1));
                     offsets.Slice(position, top - position).CopyTo(offsets.Slice(elementIndex + 1));
                     sizes.Slice(position, top - position).CopyTo(sizes.Slice(elementIndex + 1));
+                    crc32s.Slice(position, top - position).CopyTo(crc32s.Slice(elementIndex + 1));
                 }
 
                 if (pageSizes[index] < 0)
@@ -396,6 +427,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _upsertPageFileIds[elementIndex] = fileIds[index];
                 _upsertPageOffsets[elementIndex] = pageOffsets[index];
                 _upsertPageSizes[elementIndex] = pageSizes[index];
+                _upsertPageCrc32[elementIndex] = pageCrc32s[index];
 
                 // Set the new top value top limit how much is copied
                 top = position;

@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.S3
             throw new NotImplementedException();
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
             throw new NotImplementedException();
         }
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.S3
             throw new NotImplementedException();
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             throw new NotImplementedException();
         }
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.S3
             throw new NotImplementedException();
         }
 
-        public Task WriteDataFileAsync(long fileId, PipeReader data)
+        public Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
         {
             throw new NotImplementedException();
         }

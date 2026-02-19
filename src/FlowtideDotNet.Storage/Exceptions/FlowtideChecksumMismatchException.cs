@@ -10,39 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk;
 using System;
 using System.Collections.Generic;
-using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Tests.BlobStore
+namespace FlowtideDotNet.Storage.Exceptions
 {
-    internal class TestDataProvider : MemoryFileProvider
+    internal class FlowtideChecksumMismatchException : Exception
     {
-        private TaskCompletionSource? _writeBlock;
-
-        public void BlockWrites()
+        public FlowtideChecksumMismatchException(string message) : base(message)
         {
-            _writeBlock = new TaskCompletionSource();
         }
 
-        public void UnblockWrites()
+        public FlowtideChecksumMismatchException(string message, Exception innerException) : base(message, innerException)
         {
-            _writeBlock?.SetResult();
-            _writeBlock = null;
-        }
-
-        public override async Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
-        {
-            if (_writeBlock != null)
-            {
-                await _writeBlock.Task;
-            }
-
-            await base.WriteDataFileAsync(fileId, crc64, data);
         }
     }
 }
