@@ -21,13 +21,11 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {

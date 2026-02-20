@@ -14,36 +14,25 @@ using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.ObjectPool;
 using System.Buffers;
 
-namespace FlowtideDotNet.Core.ColumnStore.Utils
+namespace FlowtideDotNet.Storage.DataStructures
 {
+    /// <summary>
+    /// Implemention only here if it wants to change behaviour later
+    /// </summary>
     internal static class BitmapListFactory
     {
-        private class ObjectPoolProvider : DefaultPooledObjectPolicy<BitmapList>
-        {
-            public override BitmapList Create()
-            {
-                return new BitmapList();
-            }
-        }
-        private static ObjectPool<BitmapList> _pool = new DefaultObjectPool<BitmapList>(new ObjectPoolProvider(), 10000);
-
         public static BitmapList Get(IMemoryAllocator memoryAllocator)
         {
-            //var list = _pool.Get();
-            //list.Assign(memoryAllocator);
-            return new BitmapList(memoryAllocator); //list;
+            return new BitmapList(memoryAllocator);
         }
 
         public static BitmapList Get(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
-            //var list = _pool.Get();
-            //list.Assign(memory, length, memoryAllocator);
-            return new BitmapList(memory, length, memoryAllocator); //list;
+            return new BitmapList(memory, length, memoryAllocator);
         }
 
         public static void Return(BitmapList list)
         {
-            //_pool.Return(list);
         }
     }
 }
