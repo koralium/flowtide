@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 
-namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
+namespace FlowtideDotNet.Storage.Tests.DataStructures
 {
     public class BitmapListTests
     {
