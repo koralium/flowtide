@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         internal ulong[] bitmap;
         internal int cardinality;
 
-        public override bool IsEmpty => throw new NotImplementedException();
+        public override bool IsEmpty => cardinality == 0;
 
         public override int ArraySizeInBytes => MAX_CAPACITY / 8;
 

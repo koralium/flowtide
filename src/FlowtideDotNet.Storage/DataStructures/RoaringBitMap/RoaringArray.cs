@@ -13,6 +13,7 @@
 using FASTER.core;
 using System.Buffers;
 using System.IO;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.DataStructures
@@ -150,6 +151,10 @@ namespace FlowtideDotNet.Storage.DataStructures
                 Utils.WriteInt(in bufferWriter, SerialCookie | size - 1 << 16);
 
                 var bitmapOfRunContainers = bufferWriter.GetSpan((size + 7) / 8);
+                for (int i = 0; i < bitmapOfRunContainers.Length; i++)
+                {
+                    bitmapOfRunContainers[i] = 0;
+                }
                 for (var i = 0; i < size; ++i)
                 {
                     var val = values[i];
