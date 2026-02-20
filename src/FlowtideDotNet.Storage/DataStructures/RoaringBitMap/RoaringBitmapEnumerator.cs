@@ -13,6 +13,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace FlowtideDotNet.Storage.DataStructures.RoaringBitMap
         private readonly RoaringBitmap roaringBitmap;
         private ushort startingContainerIndex;
         private int pos = 0;
-        private IContainerEnumerator iter;
+        private IContainerEnumerator? iter;
         private int hs = 0;
 
         public RoaringBitmapEnumerator(RoaringBitmap roaringBitmap)
@@ -47,8 +48,7 @@ namespace FlowtideDotNet.Storage.DataStructures.RoaringBitMap
         {
             return pos < roaringBitmap.highLowContainer.Size;
         }
-
-        [MemberNotNull(nameof(iter))]
+        
         private void NextContainer()
         {
             int containerSize = roaringBitmap.highLowContainer.Size;
@@ -62,6 +62,7 @@ namespace FlowtideDotNet.Storage.DataStructures.RoaringBitMap
 
         private int Next()
         {
+            Debug.Assert(iter != null);
             int x = iter.Next() | hs;
             if (!iter.HasNext())
             {

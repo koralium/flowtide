@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures.RoaringBitMap;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.Metadata;
@@ -211,6 +212,24 @@ namespace FlowtideDotNet.Storage.DataStructures
                 }
             }
             return true;
+        }
+
+        public static void Serialize(in ArrayContainer ac, in IBufferWriter<byte> bufferWriter)
+        {
+            for (var i = 0; i < ac.cardinality; i++)
+            {
+                Utils.WriteUshort(in bufferWriter, ac.content[i]);
+            }
+        }
+
+        public static ArrayContainer Deserialize(ref SequenceReader<byte> reader, int cardinality)
+        {
+            var data = new ushort[cardinality];
+            for (var i = 0; i < cardinality; i++)
+            {
+                data[i] = Utils.ReadUshort(ref reader);
+            }
+            return new ArrayContainer(data, cardinality);
         }
     }
 }

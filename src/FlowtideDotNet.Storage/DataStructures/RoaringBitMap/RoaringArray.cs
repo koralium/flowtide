@@ -10,8 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FASTER.core;
 using System.Buffers;
 using System.IO;
+using System.Text;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -204,23 +206,126 @@ namespace FlowtideDotNet.Storage.DataStructures
                     }
                     else
                     {
-                        ArrayContainer.Serialize(ac, binaryWriter);
+                        ArrayContainer.Serialize(in ac, in bufferWriter);
                     }
                 }
                 else if ((bc = (container as BitmapContainer)!) != null)
                 {
                     if (bc.Equals(BitmapContainer.One))
                     {
-                        binaryWriter.Write((ushort)1);
-                        binaryWriter.Write((ushort)0);
-                        binaryWriter.Write((ushort)(Container.MaxCapacity - 1));
+                        Utils.WriteUshort(in bufferWriter, 1);
+                        Utils.WriteUshort(in bufferWriter, 0);
+                        Utils.WriteUshort(in bufferWriter, (ushort)(Container.MaxCapacity - 1));
                     }
                     else
                     {
-                        BitmapContainer.Serialize(bc, binaryWriter);
+                        BitmapContainer.Serialize(in bc, in bufferWriter);
                     }
                 }
             }
+        }
+
+        public static RoaringArray Deserialize(ref SequenceReader<byte> reader)
+        {
+            var cookie = Utils.ReadUint32(ref reader);
+            var lbcookie = cookie & 0xFFFF;
+            if (lbcookie != SerialCookie && cookie != SerialCookieNoRuncontainer)
+            {
+                throw new InvalidDataException("No RoaringBitmap file.");
+            }
+            var hasRun = lbcookie == SerialCookie;
+            var size = (int)(hasRun ? (cookie >> 16) + 1 : Utils.ReadUint32(ref reader));
+            var keys = new ushort[size];
+            var containers = new Container[size];
+            var cardinalities = new int[size];
+            var isBitmap = new bool[size];
+
+            byte[]? bitmapOfRunContainers = null;
+            if (hasRun)
+            {
+                bitmapOfRunContainers = Utils.ReadBytes(ref reader, (size + 7) / 8);
+            }
+            for (var k = 0; k < size; ++k)
+            {
+                keys[k] = Utils.ReadUshort(ref reader);
+                cardinalities[k] = 1 + (0xFFFF & Utils.ReadUshort(ref reader));
+                isBitmap[k] = cardinalities[k] > Container.MaxSize;
+                if (bitmapOfRunContainers != null && (bitmapOfRunContainers[k / 8] & 1 << k % 8) != 0)
+                {
+                    isBitmap[k] = false;
+                }
+            }
+            if (!hasRun || size >= NoOffsetThreshold)
+            {
+                // skipping the offsets
+                reader.Advance(size * 4);
+            }
+
+            for (var k = 0; k < size; ++k)
+            {
+                if (isBitmap[k])
+                {
+                    containers[k] = BitmapContainer.Deserialize(ref reader, cardinalities[k]);
+                }
+                else if (bitmapOfRunContainers != null && (bitmapOfRunContainers[k / 8] & 1 << k % 8) != 0)
+                {
+                    var nbrruns = Utils.ReadUshort(ref reader);
+                    var values = new List<ushort>(nbrruns * 2); // probably more
+                    var count = 0;
+                    var specialCase = false;
+                    for (var j = 0; j < nbrruns; ++j)
+                    {
+                        var value = Utils.ReadUshort(ref reader);
+                        var length = Utils.ReadUshort(ref reader);
+
+                        if (nbrruns == 1 && value == 0 && length == Container.MaxCapacity - 1) // special one scenario
+                        {
+                            containers[k] = BitmapContainer.One;
+                            specialCase = true;
+                            break;
+                        }
+                        if (nbrruns == 1 && value == 0 && length == Container.MaxSize - 1) // special one scenario
+                        {
+                            containers[k] = ArrayContainer.One;
+                            specialCase = true;
+                            break;
+                        }
+                        for (int i = value; i < value + length + 1; i++)
+                        {
+                            values.Add((ushort)i);
+                        }
+                        count += length;
+                    }
+                    if (!specialCase)
+                    {
+                        if (count > Container.MaxSize)
+                        {
+                            containers[k] = new BitmapContainer(values.Count, values.ToArray(), false);
+                        }
+                        else
+                        {
+                            containers[k] = new ArrayContainer(values.ToArray(), values.Count);
+                        }
+                    }
+                }
+                else
+                {
+                    containers[k] = ArrayContainer.Deserialize(ref reader, cardinalities[k]);
+                }
+            }
+
+            for (var i = 0; i < size; i++)
+            {
+                if (containers[i].Equals(ArrayContainer.One))
+                {
+                    containers[i] = ArrayContainer.One;
+                }
+                else if (containers[i].Equals(BitmapContainer.One))
+                {
+                    containers[i] = BitmapContainer.One;
+                }
+            }
+            return new RoaringArray(keys, containers, size);
         }
     }
 }

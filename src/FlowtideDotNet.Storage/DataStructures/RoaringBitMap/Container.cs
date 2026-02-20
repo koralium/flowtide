@@ -22,6 +22,9 @@ namespace FlowtideDotNet.Storage.DataStructures
 {
     internal abstract class Container : IEnumerable<ushort>
     {
+        public const int MaxSize = 4096;
+        public const int MaxCapacity = 1 << 16;
+
         public abstract Container Add(ushort x);
 
         public abstract bool Contains(ushort x);

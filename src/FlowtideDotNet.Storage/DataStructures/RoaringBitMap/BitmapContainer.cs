@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures.RoaringBitMap;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
@@ -26,10 +27,10 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         static BitmapContainer()
         {
-            var data = new long[MAX_CAPACITY_LONG];
+            var data = new ulong[MAX_CAPACITY_LONG];
             for (var i = 0; i < MAX_CAPACITY_LONG; i++)
             {
-                data[i] = -1;
+                data[i] = ulong.MaxValue;
             }
             One = new BitmapContainer(data, MAX_CAPACITY);
         }
@@ -37,8 +38,9 @@ namespace FlowtideDotNet.Storage.DataStructures
         public const int MAX_CAPACITY = 1 << 16;
         private const int MAX_CAPACITY_BYTE = MAX_CAPACITY / 1;
         private const int MAX_CAPACITY_LONG = MAX_CAPACITY / 8;
+        private const int BitmapLength = 1024;
 
-        internal long[] bitmap;
+        internal ulong[] bitmap;
         internal int cardinality;
 
         public override bool IsEmpty => throw new NotImplementedException();
@@ -48,13 +50,43 @@ namespace FlowtideDotNet.Storage.DataStructures
         public BitmapContainer()
         {
             this.cardinality = 0;
-            this.bitmap = new long[MAX_CAPACITY_LONG];
+            this.bitmap = new ulong[MAX_CAPACITY_LONG];
         }
 
-        public BitmapContainer(long[] bitmap, int cardinality)
+        private BitmapContainer(int cardinality)
+        {
+            bitmap = new ulong[BitmapLength];
+            this.cardinality = cardinality;
+        }
+
+        public BitmapContainer(ulong[] bitmap, int cardinality)
         {
             this.bitmap = bitmap;
             this.cardinality = cardinality;
+        }
+
+        public BitmapContainer(int cardinality, ushort[] values, bool negated) : this(negated ? MaxCapacity - cardinality : cardinality)
+        {
+            if (negated)
+            {
+                for (var i = 0; i < BitmapLength; i++)
+                {
+                    bitmap[i] = ulong.MaxValue;
+                }
+                for (var i = 0; i < cardinality; i++)
+                {
+                    var v = values[i];
+                    bitmap[v >> 6] &= ~(1UL << v);
+                }
+            }
+            else
+            {
+                for (var i = 0; i < cardinality; i++)
+                {
+                    var v = values[i];
+                    bitmap[v >> 6] |= 1UL << v;
+                }
+            }
         }
 
         internal void LoadData(ArrayContainer arrayContainer)
@@ -63,14 +95,14 @@ namespace FlowtideDotNet.Storage.DataStructures
             for (int k = 0; k < arrayContainer.cardinality; ++k)
             {
                 ushort x = arrayContainer.content[k];
-                bitmap[(x) / 64] |= (1L << x);
+                bitmap[(x) / 64] |= (1UL << x);
             }
         }
 
         public override Container Add(ushort x)
         {
-            long previous = bitmap[x >>> 6];
-            long newval = previous | (1L << x);
+            ulong previous = bitmap[x >>> 6];
+            ulong newval = previous | (1UL << x);
             bitmap[x >>> 6] = newval;
             if (previous != newval)
             {
@@ -81,14 +113,14 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public override bool Contains(ushort x)
         {
-            return (bitmap[x >>> 6] & (1L << x)) != 0;
+            return (bitmap[x >>> 6] & (1UL << x)) != 0;
         }
 
         public override Container Remove(ushort x)
         {
             int index = x >>> 6;
-            long bef = bitmap[index];
-            long mask = 1L << x;
+            ulong bef = bitmap[index];
+            ulong mask = 1UL << x;
             if (cardinality == ArrayContainer.DEFAULT_MAX_SIZE + 1)
             {
                 if ((bef & mask) != 0)
@@ -98,7 +130,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                     return this.ToArrayContainer();
                 }
             }
-            long aft = bef & ~mask;
+            ulong aft = bef & ~mask;
             cardinality -= (int)(aft - bef) >>> 63;
             bitmap[index] = aft;
             return this;
@@ -155,6 +187,24 @@ namespace FlowtideDotNet.Storage.DataStructures
                 }
             }
             return true;
+        }
+
+        public static void Serialize(in BitmapContainer bc, in IBufferWriter<byte> bufferWriter)
+        {
+            for (var i = 0; i < BitmapLength; i++)
+            {
+                Utils.WriteULong(in bufferWriter, in bc.bitmap[i]);
+            }
+        }
+
+        public static BitmapContainer Deserialize(ref SequenceReader<byte> reader, int cardinality)
+        {
+            var data = new ulong[BitmapLength];
+            for (var i = 0; i < BitmapLength; i++)
+            {
+                data[i] = Utils.ReadUint64(ref reader);
+            }
+            return new BitmapContainer(data, cardinality);
         }
     }
 }

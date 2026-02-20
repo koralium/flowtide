@@ -23,18 +23,18 @@ namespace FlowtideDotNet.Storage.DataStructures.RoaringBitMap
 {
     internal class BitmapContainerEnumerator : IEnumerator<ushort>, IContainerEnumerator
     {
-        long w;
+        ulong w;
         int x;
 
-        long[] bitmap;
+        ulong[] bitmap;
 
-        public BitmapContainerEnumerator(long[] bitmap)
+        public BitmapContainerEnumerator(ulong[] bitmap)
         {
             Wrap(bitmap);
         }
 
         [MemberNotNull(nameof(bitmap))]
-        public void Wrap(long[] b)
+        public void Wrap(ulong[] b)
         {
             bitmap = b;
             for (x = 0; x < bitmap.Length; ++x)

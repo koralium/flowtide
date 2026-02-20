@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -24,9 +25,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestSimpleInsertInOrder()
         {
-            RoaringBitmap bitmap = new RoaringBitmap();
-            bitmap.Add(0);
-            bitmap.Add(1);
+            RoaringBitmap bitmap = [0, 1];
 
             Assert.True(bitmap.Contains(0));
             Assert.True(bitmap.Contains(1));
@@ -36,9 +35,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertInDifferentContainers()
         {
-            RoaringBitmap bitmap = new RoaringBitmap();
-            bitmap.Add(1_000_000);
-            bitmap.Add(3);
+            RoaringBitmap bitmap = [1_000_000, 3];
 
             Assert.True(bitmap.Contains(1_000_000));
             Assert.True(bitmap.Contains(3));
@@ -48,13 +45,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void InsertInSameContainerOutOfOrder()
         {
-            RoaringBitmap bitmap = new RoaringBitmap();
-            bitmap.Add(4);
-            bitmap.Add(1);
-            bitmap.Add(9);
-            bitmap.Add(7);
-            bitmap.Add(72);
-            bitmap.Add(63);
+            RoaringBitmap bitmap = [4, 1, 9, 7, 72, 63];
 
             Assert.True(bitmap.Contains(4));
             Assert.True(bitmap.Contains(1));
@@ -62,8 +53,57 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             Assert.True(bitmap.Contains(7));
             Assert.True(bitmap.Contains(72));
             Assert.True(bitmap.Contains(63));
+        }
 
-            HashSet<int> asd;
+        [Fact]
+        public void TestSerializeDeserializeArrays()
+        {
+            RoaringBitmap bitmap = [1, 3, 1_000_000];
+            ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
+            bitmap.Serialize(bufferWriter);
+            var mem = bufferWriter.WrittenMemory;
+            var sequence = new ReadOnlySequence<byte>(mem);
+            var reader = new SequenceReader<byte>(sequence);
+            RoaringBitmap deserialized = RoaringBitmap.Deserialize(ref reader);
+            Assert.True(deserialized.Contains(1));
+            Assert.True(deserialized.Contains(3));
+            Assert.True(deserialized.Contains(1_000_000));
+            Assert.False(deserialized.Contains(2));
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeBitmaps()
+        {
+            RoaringBitmap bitmap = new RoaringBitmap();
+
+            for (int i = 0; i < 5000; i++)
+            {
+                bitmap.Add(i);
+            }
+
+            ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
+            bitmap.Serialize(bufferWriter);
+            var mem = bufferWriter.WrittenMemory;
+            var sequence = new ReadOnlySequence<byte>(mem);
+            var reader = new SequenceReader<byte>(sequence);
+            RoaringBitmap deserialized = RoaringBitmap.Deserialize(ref reader);
+            
+            for (int i  = 0; i < 5000; i++)
+            {
+                Assert.True(deserialized.Contains(i));
+            }
+        }
+
+        [Fact]
+        public void IterateEmptyBitmap()
+        {
+            RoaringBitmap bitmap = new RoaringBitmap();
+
+            foreach(var val in bitmap)
+            {
+                Assert.Fail("Should not iterate over any values");
+            }
+
         }
     }
 }

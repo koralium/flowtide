@@ -15,6 +15,7 @@ using System;
 using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -28,6 +29,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         public RoaringBitmap()
         {
             highLowContainer = new RoaringArray();
+        }
+
+        private RoaringBitmap(RoaringArray array)
+        {
+            highLowContainer = array;
         }
 
         public bool this[int index]
@@ -123,7 +129,13 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         public void Serialize(IBufferWriter<byte> writer)
         {
+            highLowContainer.Serialize(writer);
+        }
 
+        public static RoaringBitmap Deserialize(ref SequenceReader<byte> reader)
+        {
+            var highLow = RoaringArray.Deserialize(ref reader);
+            return new RoaringBitmap(highLow);
         }
     }
 }
