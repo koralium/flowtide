@@ -102,6 +102,22 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
         }
 
+        /// <summary>
+        /// Used for testing
+        /// </summary>
+        /// <param name="fileId"></param>
+        /// <param name="fileInformation"></param>
+        /// <returns></returns>
+        internal bool TryGetFileInformation(long fileId, [NotNullWhen(true)] out FileInformation? fileInformation)
+        {
+            fileInformation = _checkpointHandler.GetAllFileInformation().FirstOrDefault(x => x.FileId == fileId);
+            if (fileInformation != null)
+            {
+                return true;
+            }
+            return false;
+        }
+
         private async Task CompactFiles()
         {
             // Fetch all files that where added in previous versions
@@ -162,12 +178,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 foreach(var fileToCompact in filesToCompact)
                 {
-                    await CompactFile(fileToCompact.FileId);
+                    await CompactFile(fileToCompact.FileId, fileToCompact.Crc64);
                 }
             }
         }
 
-        internal async Task CompactFile(long fileId)
+        internal async Task CompactFile(long fileId, ulong crc64)
         {
             var reader = await _fileProvider.ReadDataFileAsync(fileId);
 
@@ -188,7 +204,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
                 _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
             }
+
+            // Read to the end of the file, this must be done to get correct crc64
+            await dataFileReader.ReadToEnd();
             await reader.CompleteAsync();
+
+            // Check crc64 for the entire file, this helps if there was any bit errors in pageId list
+            // Which could cause the wrong data to be loaded or data to be missed.
+            var actualCrc64 = dataFileReader.GetCrc64(); 
+            if (actualCrc64 != crc64)
+            {
+                throw new FlowtideChecksumMismatchException($"Missmatching file crc64 for fileId: '{fileId}'.");
+            }
 
             if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
             {

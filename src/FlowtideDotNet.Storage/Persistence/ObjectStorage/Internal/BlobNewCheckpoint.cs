@@ -195,10 +195,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             var headerData = _headerData.AvailableMemory.Span;
 
+            // Write magic number
+            BinaryPrimitives.WriteInt32LittleEndian(headerData, MagicNumbers.CheckpointFileMagicNumber);
+            headerData = headerData.Slice(4);
+
             // Write version
             BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
-            // Next 6 bytes are reserved, so we skip 8
-            headerData = headerData.Slice(8);
+            // Next 2 bytes are reserved, so we skip 2
+            headerData = headerData.Slice(4);
 
             // Write counts
             BinaryPrimitives.WriteInt64LittleEndian(headerData, _upsertPageIds.Count);

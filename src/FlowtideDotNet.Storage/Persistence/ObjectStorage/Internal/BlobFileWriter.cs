@@ -180,6 +180,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
                 var headerData = _headerData.AvailableMemory.Span;
 
+                // Write magic number
+                BinaryPrimitives.WriteInt32LittleEndian(headerData, MagicNumbers.DataFileMagicNumber);
+                headerData = headerData.Slice(4);
+
                 // Write version
                 BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
                 headerData = headerData.Slice(4);

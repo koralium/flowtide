@@ -14,6 +14,7 @@ using System;
 using System.Buffers;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO.Hashing;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Reflection.PortableExecutable;
@@ -33,7 +34,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private const int PageOffsetsStep = 2;
         private const int DataStep = 3;
 
-        private readonly PipeReader _pipeReader;
+        private readonly Crc64PipeReader _pipeReader;
         private int pageCount;
         private int pageIdsOffset;
         private int pageOffsetsOffset;
@@ -45,7 +46,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public DataFileReader(PipeReader pipeReader)
         {
-            this._pipeReader = pipeReader;
+            this._pipeReader = new Crc64PipeReader(pipeReader);
+        }
+
+        public ulong GetCrc64()
+        {
+            return _pipeReader.GetCrc64();
         }
 
         public ValueTask Initialize()
@@ -73,6 +79,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private void ReadHeaderResult(ReadResult readResult)
         {
             var sequenceReader = new SequenceReader<byte>(readResult.Buffer);
+
+            if (!sequenceReader.TryReadLittleEndian(out int magicNumber))
+            {
+                throw new InvalidOperationException("Failed to read magic number from data file");
+            }
+
+            if (magicNumber != MagicNumbers.DataFileMagicNumber)
+            {
+                throw new InvalidOperationException("Magic number missmatch for data file");
+            }
+
             if (!sequenceReader.TryReadLittleEndian(out short version))
             {
                 throw new InvalidOperationException("Failed to read version from data file.");
@@ -106,9 +123,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
 
             // Skip reserved bytes
-            sequenceReader.Advance(44);
+            sequenceReader.Advance(40);
 
             // Advance the pipe reader
+            
             _pipeReader.AdvanceTo(sequenceReader.Position);
             _globalOffset = 64;
         }
@@ -217,6 +235,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _globalOffset = offset + length;
             _consumedEnd = dataSlice.End;
             return dataSlice;
+        }
+
+        public async ValueTask ReadToEnd(CancellationToken cancellationToken = default)
+        {
+            _pipeReader.AdvanceTo(_consumedEnd);
+
+
+            ReadResult readResult;
+            do
+            {
+                readResult = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                _pipeReader.AdvanceTo(readResult.Buffer.End);
+            } while (!readResult.IsCompleted);
         }
     }
 }

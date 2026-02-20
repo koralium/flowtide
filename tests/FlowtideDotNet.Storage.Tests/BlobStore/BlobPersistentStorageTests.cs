@@ -133,9 +133,12 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             await session.SendBlobFile_Testing(); // Trigger a full file to storage
             await session.Commit();
 
+
+            Assert.True(persistentStorage.TryGetFileInformation(0, out var fileInfo));
+
             // Trigger compact on the previous file
             // This tests that the previous value will not be written
-            await persistentStorage.CompactFile(0);
+            await persistentStorage.CompactFile(0, fileInfo.Crc64);
 
             provider.UnblockWrites();
             await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);

@@ -84,6 +84,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             var reader = new SequenceReader<byte>(dataSequence);
 
+            if (!reader.TryReadLittleEndian(out int magicNumber))
+            {
+                throw new InvalidOperationException("Could not read magic number in checkpoint file");
+            }
+
+            if (magicNumber != MagicNumbers.CheckpointFileMagicNumber)
+            {
+                throw new InvalidOperationException("Incorrect magic number on checkpoint file.");
+            }
+
             if (!reader.TryReadLittleEndian(out short version))
             {
                 throw new InvalidOperationException("Could not read version");
@@ -95,7 +105,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
 
             // Skip reserved
-            reader.Advance(6);
+            reader.Advance(2);
 
             if (!reader.TryReadLittleEndian(out upsertPages))
             {
