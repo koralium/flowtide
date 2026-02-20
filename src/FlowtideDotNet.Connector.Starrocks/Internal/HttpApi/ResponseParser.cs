@@ -140,17 +140,26 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             }
 
             //Skip the object
-            var skipResult = reader.TrySkip();
+            try
+            {
+                var skipResult = reader.TrySkip();
 
-            if (!skipResult)
+                if (!skipResult)
+                {
+                    pos = readResult.Buffer.End;
+                }
+                else
+                {
+                    pos = reader.Position;
+                }
+                return skipResult;
+            }
+            catch
             {
                 pos = readResult.Buffer.End;
+                return false;
             }
-            else
-            {
-                pos = reader.Position;
-            }
-            return skipResult;
+            
         }
     }
 }

@@ -21,6 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
     {
         private readonly StructType schema;
         private Dictionary<string, IStatisticsParser> parsers;
+        private readonly Dictionary<string, IStatisticsParser> physicalParsers = new Dictionary<string, IStatisticsParser>(StringComparer.OrdinalIgnoreCase);
 
         public DeltaStatisticsConverter(StructType schema)
         {
@@ -36,6 +37,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                     continue;
                 }
                 parsers.Add(field.Name, parser);
+                if (field.PhysicalName != null)
+                {
+                    physicalParsers.Add(field.PhysicalName, parser);
+                }
             }
         }
 
@@ -126,8 +131,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 if (!parsers.TryGetValue(propertyName, out var parser))
                 {
-                    reader.Skip();
-                    continue;
+                    if (!physicalParsers.TryGetValue(propertyName, out parser))
+                    {
+                        reader.Skip();
+                        continue;
+                    }
                 }
 
                 parser.ReadMinValue(ref reader);
@@ -161,8 +169,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 if (!parsers.TryGetValue(propertyName, out var parser))
                 {
-                    reader.Skip();
-                    continue;
+                    if (!physicalParsers.TryGetValue(propertyName, out parser))
+                    {
+                        reader.Skip();
+                        continue;
+                    }
                 }
 
                 parser.ReadMaxValue(ref reader);
@@ -196,8 +207,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 if (!parsers.TryGetValue(propertyName, out var parser))
                 {
-                    reader.Skip();
-                    continue;
+                    if (!physicalParsers.TryGetValue(propertyName, out parser))
+                    {
+                        reader.Skip();
+                        continue;
+                    }
                 }
 
                 parser.ReadNullValue(ref reader);

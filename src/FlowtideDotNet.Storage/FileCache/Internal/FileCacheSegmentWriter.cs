@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 var bytes = new byte[length];
                 fileStream.Position = position;
-                fileStream.Read(bytes);
+                fileStream.ReadExactly(bytes);
                 return serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
             }
             finally
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.FileCache
             {
                 var bytes = new byte[length];
                 fileStream.Position = position;
-                fileStream.Read(bytes);
+                fileStream.ReadExactly(bytes);
                 return bytes;
             }
             finally

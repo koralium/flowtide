@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Sharepoint sink does not support overwrite.");
+            }
             return new SharepointSink(sharepointSinkOptions, writeRelation, executionMode, dataflowBlockOptions);
         }
     }

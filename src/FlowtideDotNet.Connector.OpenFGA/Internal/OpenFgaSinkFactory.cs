@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("OpenFGA sink does not support overwrite.");
+            }
             return new FlowtideOpenFgaSink(options, writeRelation, options.ExecutionMode, dataflowBlockOptions);
         }
     }

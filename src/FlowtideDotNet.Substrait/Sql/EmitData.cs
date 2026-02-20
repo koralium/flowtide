@@ -164,6 +164,11 @@ namespace FlowtideDotNet.Substrait.Sql
             }
         }
 
+        public void UpdateType(int index, SubstraitBaseType type)
+        {
+            _types[index] = type;
+        }
+
         public void Add(Expression expr, int index, string name, SubstraitBaseType type)
         {
             if (expr is Expression.CompoundIdentifier compound)

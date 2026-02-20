@@ -37,6 +37,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Starrocks sink does not support overwrite.");
+            }
+
             if (!TryGetTableInformation(writeRelation.NamedObject.Names, out var metadata))
             {
                 throw new InvalidOperationException($"Table '{string.Join(".", writeRelation.NamedObject.Names)}' not found in Starrocks.");

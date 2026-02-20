@@ -20,6 +20,7 @@ using FlowtideDotNet.Substrait.Type;
 using SqlParser;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Globalization;
 using static SqlParser.Ast.Expression;
 
 namespace FlowtideDotNet.Substrait.Sql
@@ -447,7 +448,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 }
                 return new ExpressionData(new NumericLiteral()
                 {
-                    Value = decimal.Parse(number.Value)
+                    Value = decimal.Parse(number.Value, CultureInfo.InvariantCulture)
                 }, "$number", substraitBaseType);
             }
             if (literalValue.Value is Value.Null)
@@ -524,6 +525,17 @@ namespace FlowtideDotNet.Substrait.Sql
                 var expr = mapper(function, this, state);
                 return new ExpressionData(
                     expr.Expression,
+                    $"${functionName}",
+                    expr.Type
+                    );
+            }
+
+            // This part is only to get out the return type of window functions
+            if (sqlFunctionRegister.TryGetWindowMapper(functionName, out var windowMapper))
+            {
+                var expr = windowMapper(function, this, state);
+                return new ExpressionData(
+                    default!,
                     $"${functionName}",
                     expr.Type
                     );

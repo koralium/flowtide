@@ -11,13 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
-
 namespace FlowtideDotNet.Core.Sources.Generic.Internal
 {
     class GenericWriteOperator<T> : ColumnGroupedWriteOperator
@@ -25,6 +25,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         private readonly GenericDataSink<T> _genericDataSink;
         private readonly WriteRelation _writeRelation;
         private readonly BatchConverter _batchConverter;
+
+        protected override bool FetchExistingData => _genericDataSink.FetchExistingData;
 
         public GenericWriteOperator(
             GenericDataSink<T> genericDataSink,
@@ -93,6 +95,50 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         protected override Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             return _genericDataSink.OnChanges(ChangesToGeneric(rows), watermark, isInitialData, cancellationToken);
+        }
+
+        protected override async IAsyncEnumerable<EventBatchData> GetExistingData()
+        {
+            Column[] columns = new Column[_writeRelation.TableSchema.Names.Count];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = Column.Create(MemoryAllocator);
+            }
+            int count = 0;
+            var batchConverter = BatchConverter.GetBatchConverter(typeof(T), _writeRelation.TableSchema.Names);
+            await foreach (var row in _genericDataSink.GetExistingData())
+            {
+                if (row == null)
+                {
+                    continue;
+                }
+                batchConverter.AppendToColumns(row, columns);
+                count++;
+
+                if (count == 100)
+                {
+                    yield return new EventBatchData(columns);
+                    columns = new Column[_writeRelation.TableSchema.Names.Count];
+                    for (int i = 0; i < columns.Length; i++)
+                    {
+                        columns[i] = Column.Create(MemoryAllocator);
+                    }
+                    count = 0;
+                }
+            }
+
+            if (count > 0)
+            {
+                yield return new EventBatchData(columns);
+            }
+            else
+            {
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    // Dispose unused columns
+                    columns[i].Dispose();
+                }
+            }
         }
     }
 }

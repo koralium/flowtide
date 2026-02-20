@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private double? _minValue;
         private double? _maxValue;
         private readonly int? _nullCount;
+        private const double Epsilon = 1e-8;
 
         public FloatStatisticsComparer(double? minValue, double? maxValue, int? nullCount)
         {
@@ -39,14 +40,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
 
-            var floatValue = value.AsDouble;
+            double floatValue;
+            if (value.Type == ArrowTypeId.Double)
+            {
+                floatValue = value.AsDouble;
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                floatValue = value.AsLong;
+            }
+            else
+            {
+                throw new InvalidOperationException($"Unsupported data type {value.Type} for FloatStatisticsComparer.");
+            }
 
-            if (_minValue != null && _minValue > floatValue)
+            if (_minValue != null && (_minValue - Epsilon) > floatValue)
             {
                 return false;
             }
 
-            if (_maxValue != null && _maxValue < floatValue)
+            if (_maxValue != null && (_maxValue + Epsilon) < floatValue)
             {
                 return false;
             }

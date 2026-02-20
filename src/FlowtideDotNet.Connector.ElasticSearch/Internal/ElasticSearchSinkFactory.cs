@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Elasticsearch sink does not support overwrite.");
+            }
             var sink = new ColumnElasticSearchSink(options, options.ExecutionMode, writeRelation, dataflowBlockOptions);
             sink.CreateIndexAndMappings().ConfigureAwait(false).GetAwaiter().GetResult();
             return sink;

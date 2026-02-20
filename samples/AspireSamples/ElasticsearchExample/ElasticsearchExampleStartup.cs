@@ -40,14 +40,7 @@ namespace AspireSamples.ElasticsearchExample
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
                 async (logger, statusUpdate, resource, token) =>
                 {
-                    var envVariables = await resource.GetEnvironmentVariableValuesAsync();
-
                     int initialCount = 100_000;
-
-                    if (envVariables.TryGetValue("initialCount", out var initialCountStr))
-                    {
-                        initialCount = int.Parse(initialCountStr);
-                    }
 
                     // Initial data insert and table creation
                     var connectionString = await sqldb1.Resource.GetConnectionStringAsync();

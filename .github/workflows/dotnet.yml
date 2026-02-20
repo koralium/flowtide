@@ -9,6 +9,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
 
@@ -19,7 +22,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.x
+        dotnet-version: 10.0.x
     - uses: actions/cache@v3
       with:
         path: ~/.nuget/packages
@@ -32,11 +35,11 @@ jobs:
     - name: Build
       run: dotnet build --no-restore -p:FeatureFlags=#DEBUG_WRITE
     - name: Test
-      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false
+      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false --framework net10.0
     - name: Upload logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: debugwrites
-        path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net8.0/debugwrite
+        path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net10.0/debugwrite
 

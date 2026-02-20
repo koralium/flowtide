@@ -35,6 +35,8 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<Company> Companies => flowtideTestStream.Companies;
         public IReadOnlyList<Project> Projects => flowtideTestStream.Projects;
         public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
+
+        public IReadOnlyList<GraphNode> GraphNodes => flowtideTestStream.GraphNodes;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
@@ -91,6 +93,11 @@ namespace FlowtideDotNet.AcceptanceTests
         protected void GenerateProjectMembers(int count = 1000)
         {
             flowtideTestStream.GenerateProjectMembers(count);
+        }
+
+        protected void GenerateGraphNodes(int count = 1000)
+        {
+            flowtideTestStream.GenerateGraphNodes(count);
         }
 
         protected void AddOrUpdateCompany(Company company)
@@ -156,6 +163,16 @@ namespace FlowtideDotNet.AcceptanceTests
         public void DeleteOrder(Order order)
         {
             flowtideTestStream.DeleteOrder(order);
+        }
+
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.DeleteGraphNode(graphNode);
         }
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)

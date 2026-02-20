@@ -60,8 +60,8 @@ namespace FlowtideDotNet.DependencyInjection
         {
             storageBuilder.SetPersistentStorage(new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>(baseDirFunc(meta))
             {
-                MemorySize = 1024 * 1024 * 32,
-                PageSize = 1024 * 1024 * 16
+                MemorySize = 1024 * 1024 * 64,
+                PageSize = 1024 * 1024 * 32
             }));
             storageBuilder.ZstdPageCompression();
             return storageBuilder;
@@ -114,8 +114,8 @@ namespace FlowtideDotNet.DependencyInjection
                         new DefaultCheckpointNamingScheme($"{containerName}/{directory}/checkpoints/"), logger: checkpointManagerLogger);
                     return new FasterKVSettings<long, SpanByte>(null, logger: fasterKvLogger)
                     {
-                        MemorySize = 1024 * 1024 * 32,
-                        PageSize = 1024 * 1024 * 16,
+                        MemorySize = 1024 * 1024 * 64,
+                        PageSize = 1024 * 1024 * 32,
                         CheckpointManager = checkpointManager,
                         LogDevice = log
                     };

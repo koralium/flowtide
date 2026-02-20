@@ -27,6 +27,10 @@ namespace FlowtideDotNet.Core.Sinks
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Console sink does not support overwrite.");
+            }
             return new ConsoleSink(writeRelation, dataflowBlockOptions);
         }
     }

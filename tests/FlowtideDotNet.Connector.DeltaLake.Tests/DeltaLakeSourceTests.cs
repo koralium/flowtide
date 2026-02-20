@@ -473,5 +473,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new { v = new Dictionary<string, object>(){ { "0", 0 }, { "1", 1 }, { "2", 2 }, { "3", 3 } } },
             });
         }
+
+        [Fact]
+        public async Task ReadDataWithCheckpointFirst()
+        {
+            var storageLoc = Files.Of.LocalDisk("../../../testdata");
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadDataWithCheckpointFirst), storageLoc);
+
+            await stream.StartStream(@"
+            INSERT INTO output
+            SELECT version FROM simple_table_with_checkpoint
+            ");
+
+            await stream.WaitForUpdate();
+
+            // Check against the data in the parquet files, there are two zeros and then numbers 1 to 9.
+            stream.AssertCurrentDataEqual(new[]
+            {
+                new { version = 0 },
+                new { version = 0 },
+                new { version = 1 },
+                new { version = 2 },
+                new { version = 3 },
+                new { version = 4 },
+                new { version = 5 },
+                new { version = 6 },
+                new { version = 7 },
+                new { version = 8 },
+                new { version = 9 },
+            });
+        }
     }
 }

@@ -265,5 +265,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
             );
         }
+
+        [Fact]
+        public async Task RoundCalendarToMinute()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT
+                round_calendar(Orderdate, 'FLOOR', 'MINUTE', 'MINUTE', 1) as Orderdate
+            FROM Orders
+            ");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(
+                Orders.Select(o => new
+                {
+                    Orderdate = new DateTimeOffset(o.Orderdate.Year, o.Orderdate.Month, o.Orderdate.Day, o.Orderdate.Hour, o.Orderdate.Minute, 0, TimeSpan.Zero)
+                })
+                );
+        }
     }
 }

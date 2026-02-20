@@ -51,6 +51,10 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("SQL Server sink does not support overwrite.");
+            }
             return new ColumnSqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
         }
     }

@@ -1,0 +1,9 @@
+### SUBSTRAIT_AGGREGATE_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_aggregate_generic.yaml'
+
+# basic: Basic examples without any special cases
+count_distinct((100, 100, 300, -400, 100, 6)::i16) = 4::i64
+count_distinct((1000)::i16) = 1::i64
+count_distinct(()::i16) = 0::i64
+count_distinct((Null, Null, Null)::i16) = 0::i64
+count_distinct((Null, Null, Null, 1000)::i16) = 1::i64

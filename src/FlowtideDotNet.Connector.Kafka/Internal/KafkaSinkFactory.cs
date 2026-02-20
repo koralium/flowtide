@@ -32,6 +32,10 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Kafka sink does not support overwrite.");
+            }
             return new KafkaSink(options, executionMode, writeRelation, dataflowBlockOptions);
         }
     }

@@ -35,6 +35,19 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task AggregateCountDistinct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    count(DISTINCT UserKey)
+                FROM orders o");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Count = Orders.Select(x => x.UserKey).Distinct().Count() } });
+        }
+
+        [Fact]
         public async Task AggregateCountWithGroup()
         {
             GenerateData();

@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public required NamedTable NamedObject { get; set; }
 
+        public bool Overwrite { get; set; } = false;
+
         public override TReturn Accept<TReturn, TState>(RelationVisitor<TReturn, TState> visitor, TState state)
         {
             return visitor.VisitWriteRelation(this, state);
@@ -41,7 +43,8 @@ namespace FlowtideDotNet.Substrait.Relations
                 base.Equals(other) &&
                 Equals(Input, other.Input) &&
                 Equals(TableSchema, other.TableSchema) &&
-                Equals(NamedObject, other.NamedObject);
+                Equals(NamedObject, other.NamedObject) &&
+                Equals(Overwrite, other.Overwrite);
         }
 
         public override int GetHashCode()
@@ -51,6 +54,7 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(Input);
             code.Add(TableSchema);
             code.Add(NamedObject);
+            code.Add(Overwrite);
             return code.ToHashCode();
         }
 
@@ -80,7 +84,8 @@ namespace FlowtideDotNet.Substrait.Relations
                 TableSchema = new NamedStruct()
                 {
                     Names = new List<string>(TableSchema.Names)
-                }
+                },
+                Overwrite = Overwrite
             };
             if (TableSchema.Struct != null)
             {

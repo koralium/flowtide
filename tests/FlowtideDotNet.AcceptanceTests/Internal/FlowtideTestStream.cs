@@ -65,6 +65,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public IReadOnlyList<ProjectMember> ProjectMembers => generator.ProjectMembers;
 
+        public IReadOnlyList<Entities.GraphNode> GraphNodes => generator.GraphNodes;
+
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
         public ISqlFunctionRegister SqlFunctionRegister => sqlPlanBuilder.FunctionRegister;
@@ -123,6 +125,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.GenerateProjectMembers(count);
         }
 
+        public void GenerateGraphNodes(int count = 1000)
+        {
+            generator.GenerateGraphNodes(count);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
@@ -156,6 +163,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateProjectMember(ProjectMember projectMember)
         {
             generator.AddOrUpdateProjectMember(projectMember);
+        }
+
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.DeleteGraphNode(graphNode);
         }
 
 

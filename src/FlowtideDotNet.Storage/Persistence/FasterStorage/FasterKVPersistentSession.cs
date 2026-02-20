@@ -18,11 +18,13 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
 {
     internal class FasterKVPersistentSession : IPersistentStorageSession
     {
-        private readonly ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session;
+        private readonly long _maxPageSize;
+        private readonly ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> _session;
 
-        public FasterKVPersistentSession(ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session)
+        public FasterKVPersistentSession(long maxPageSize, ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> session)
         {
-            this.session = session;
+            _maxPageSize = maxPageSize;
+            _session = session;
         }
 
         public Task Commit()
@@ -33,19 +35,19 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
         public async Task Delete(long key)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var result = await session.DeleteAsync(key, token: tokenSource.Token);
+            var result = await _session.DeleteAsync(key, token: tokenSource.Token);
             _ = result.Complete();
         }
 
         public void Dispose()
         {
-            session.Dispose();
+            _session.Dispose();
         }
 
         public async ValueTask<ReadOnlyMemory<byte>> Read(long key)
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var result = await session.ReadAsync(ref key, token: tokenSource.Token);
+            var result = await _session.ReadAsync(ref key, token: tokenSource.Token);
             var (status, bytes) = result.Complete();
             if (bytes == null)
             {
@@ -72,9 +74,13 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             if (value.PreSerializedData.HasValue)
             {
+                if (value.PreSerializedData.Value.Length > _maxPageSize)
+                {
+                    throw new InvalidOperationException($"Serialized data size {value.PreSerializedData.Value.Length} exceeds maximum page size {_maxPageSize}");
+                }
                 var handle = value.PreSerializedData.Value.Pin();
                 var spanByte = CreateSpanByteFromHandle(handle, value.PreSerializedData.Value.Length);
-                var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+                var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
                 var status = result.Complete();
                 handle.Dispose();
             }
@@ -82,9 +88,13 @@ namespace FlowtideDotNet.Storage.Persistence.FasterStorage
             {
                 var writer = new ArrayBufferWriter<byte>();
                 value.Serialize(writer);
+                if (writer.WrittenMemory.Length > _maxPageSize)
+                {
+                    throw new InvalidOperationException($"Serialized data size {writer.WrittenMemory.Length} exceeds maximum page size {_maxPageSize}");
+                }
                 var handle = writer.WrittenMemory.Pin();
                 var spanByte = CreateSpanByteFromHandle(handle, writer.WrittenMemory.Length);
-                var result = await session.UpsertAsync(key, spanByte, token: tokenSource.Token);
+                var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
                 var status = result.Complete();
                 handle.Dispose();
             }

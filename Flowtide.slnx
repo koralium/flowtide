@@ -1,0 +1,64 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/AspireSamples/AspireSamples.csproj" />
+    <Project Path="samples/AspireTestSample/AspireTestSample.csproj" />
+    <Project Path="samples/DeltaLakeSourceUsage/DeltaLakeSourceUsage.csproj" />
+    <Project Path="samples/MongoDbToConsoleSample/MongoDbToConsoleSample.csproj" />
+    <Project Path="samples/MonitoringAzureMonitor/MonitoringAzureMonitor.csproj" />
+    <Project Path="samples/MonitoringPrometheus/MonitoringPrometheus.csproj" />
+    <Project Path="samples/OpenFgaSqlServerToMongoDb/OpenFgaSqlServerToMongoDb.csproj" />
+    <Project Path="samples/SqlSampleWithUI/SqlSampleWithUI.csproj" />
+    <Project Path="samples/SqlServerToElasticProductionSample/SqlServerToElasticProductionSample.csproj" />
+    <Project Path="samples/SqlServerToOpenFga/SqlServerToOpenFga.csproj" />
+    <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
+    <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.DeltaLake/FlowtideDotNet.Connector.DeltaLake.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.ElasticSearch/FlowtideDotNet.Connector.ElasticSearch.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Files/FlowtideDotNet.Connector.Files.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Kafka/FlowtideDotNet.Connector.Kafka.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Permify/FlowtideDotNet.Connector.Permify.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.SqlServer/FlowtideDotNet.Connector.SqlServer.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj" />
+    <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
+    <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
+    <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />
+    <Project Path="src/FlowtideDotNet.TestFramework/FlowtideDotNet.TestFramework.csproj" />
+    <Project Path="src/FlowtideDotNet.Zanzibar/FlowtideDotNet.Zanzibar.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj" />
+    <Project Path="tests/FlowtideDotNet.AspNetCore.WebTest/FlowtideDotNet.AspNetCore.WebTest.csproj" />
+    <Project Path="tests/FlowtideDotNet.Base.Tests/FlowtideDotNet.Base.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Benchmarks/FlowtideDotNet.Benchmarks.csproj" />
+    <Project Path="tests/FlowtideDotNet.ComputeTests/FlowtideDotNet.ComputeTests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.CosmosDB.Tests/FlowtideDotNet.Connector.CosmosDB.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.DeltaLake.Tests/FlowtideDotNet.Connector.DeltaLake.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.ElasticSearch.Tests/FlowtideDotNet.Connector.ElasticSearch.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.Files.Tests/FlowtideDotNet.Connector.Files.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.Kafka.Tests/FlowtideDotNet.Connector.Kafka.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.MongoDB.Tests/FlowtideDotNet.Connector.MongoDB.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.OpenFGA.Tests/FlowtideDotNet.Connector.OpenFGA.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.Permify.Tests/FlowtideDotNet.Connector.Permify.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.Qdrant.Tests/FlowtideDotNet.Connector.Qdrant.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.SpiceDB.Tests/FlowtideDotNet.Connector.SpiceDB.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.Starrocks.Tests/FlowtideDotNet.Connector.StarRocks.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Core.Tests/FlowtideDotNet.Core.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.SqlServer.Tests/FlowtideDotNet.SqlServer.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Storage.SqlServer.Tests/FlowtideDotNet.Storage.SqlServer.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Storage.Tests/FlowtideDotNet.Storage.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Substrait.Tests/FlowtideDotNet.Substrait.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.TestFramework.Tests/FlowtideDotNet.TestFramework.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.TestFramework.WebTesting/FlowtideDotNet.TestFramework.WebTesting.csproj" />
+  </Folder>
+</Solution>

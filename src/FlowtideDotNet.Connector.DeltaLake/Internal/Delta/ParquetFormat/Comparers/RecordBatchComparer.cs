@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
 
             while (true)
             {
-                startIndex = _comparers[0].FindOccurance(toFindIndex, toFindFrom.Column(0), startIndex, searchIn.Length - startIndex, searchIn.Column(0), globalOffset, deleteVector);
+                startIndex = _comparers[0].FindOccurance(toFindIndex, toFindFrom.Column(0), startIndex, searchIn.Length, searchIn.Column(0), globalOffset, deleteVector);
 
                 if (startIndex == -1)
                 {
@@ -49,6 +49,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
                     if (!_comparers[i].IsEqual(toFindIndex, toFindFrom.Column(i), startIndex, searchIn.Column(i)))
                     {
                         found = false;
+                        startIndex += 1;
                         break;
                     }
                 }

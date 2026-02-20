@@ -2360,5 +2360,73 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expected, plan);
         }
 
+        [Fact]
+        public void InsertOverwriteTable()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT OVERWRITE output
+                SELECT c1 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new WriteRelation()
+                    {
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = [ "c1"],
+                            Struct = new Struct()
+                            {
+                                Types = new List<SubstraitBaseType>()
+                                {
+                                    new AnyType()
+                                }
+                            }
+                        },
+                        NamedObject = new NamedTable()
+                        {
+                            Names = ["output"]
+                        },
+                        Overwrite = true,
+                        Input = new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
     }
 }

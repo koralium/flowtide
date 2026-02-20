@@ -16,10 +16,11 @@ using FlowtideDotNet.Core.Compute.Internal.StrftimeImpl;
 using FlowtideDotNet.Core.Flexbuffer;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using System.Diagnostics.Contracts;
 using System.Globalization;
 using System.Reflection;
 
-namespace FlowtideDotNet.Core.Compute.Columnar.Functions
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
 {
     internal static class BuiltInDatetimeFunctions
     {
@@ -28,6 +29,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.RoundCalendar, typeof(BuiltInDatetimeFunctions), nameof(TimestampRoundCalendar));
 
             functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Extract,
                 (function, parameterInfo, visitor, functionServices) =>
@@ -362,7 +364,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             {
                 var dt = value.AsTimestamp.ToDateTimeOffset();
                 result._type = ArrowTypeId.String;
-                result._stringValue = new StringValue(Strftime.ToStrFTime(dt, format.AsString.ToString(), CultureInfo.InvariantCulture));
+                result._stringValue = new StringValue(dt.ToStrFTime(format.AsString.ToString(), CultureInfo.InvariantCulture));
                 return result;
             }
             long timestamp = 0;
@@ -383,7 +385,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             var dateTime = DateTimeOffset.UnixEpoch.AddTicks(timestamp).DateTime;
 
             result._type = ArrowTypeId.String;
-            result._stringValue = new StringValue(Strftime.ToStrFTime(dateTime, format.AsString.ToString(), CultureInfo.InvariantCulture));
+            result._stringValue = new StringValue(dateTime.ToStrFTime(format.AsString.ToString(), CultureInfo.InvariantCulture));
             return result;
         }
 
@@ -894,7 +896,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 firstSunday = firstSunday.AddDays(7);
             }
 
-            int weekNumber = ((weekStart - firstSunday).Days / 7) + 1;
+            int weekNumber = (weekStart - firstSunday).Days / 7 + 1;
 
             result._type = ArrowTypeId.Int64;
             result._int64Value = new Int64Value(weekNumber);
@@ -1389,7 +1391,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             static long WeekIndex(DateTimeOffset d)
             {
                 DateTimeOffset sundayStart = d.AddDays(-(int)d.DayOfWeek);
-                return (long)(sundayStart.Date.Subtract(DateTime.MinValue)).TotalDays / 7;
+                return (long)sundayStart.Date.Subtract(DateTime.MinValue).TotalDays / 7;
             }
             long weekDiff = WeekIndex(endDate) - WeekIndex(startDate);
 
@@ -1408,7 +1410,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            var hourDiff = (endDate.Ticks / TimeSpan.TicksPerHour) - (startDate.Ticks / TimeSpan.TicksPerHour);
+            var hourDiff = endDate.Ticks / TimeSpan.TicksPerHour - startDate.Ticks / TimeSpan.TicksPerHour;
 
             result._int64Value = new Int64Value(hourDiff);
             result._type = ArrowTypeId.Int64;
@@ -1425,7 +1427,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            var diff = ((endDate.Ticks / TimeSpan.TicksPerMinute) - (startDate.Ticks / TimeSpan.TicksPerMinute));
+            var diff = endDate.Ticks / TimeSpan.TicksPerMinute - startDate.Ticks / TimeSpan.TicksPerMinute;
 
             result._int64Value = new Int64Value(diff);
             result._type = ArrowTypeId.Int64;
@@ -1442,7 +1444,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            var diff = ((endDate.Ticks / TimeSpan.TicksPerSecond) - (startDate.Ticks / TimeSpan.TicksPerSecond));
+            var diff = endDate.Ticks / TimeSpan.TicksPerSecond - startDate.Ticks / TimeSpan.TicksPerSecond;
 
             result._int64Value = new Int64Value(diff);
             result._type = ArrowTypeId.Int64;
@@ -1459,7 +1461,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            var diff = ((endDate.Ticks / TimeSpan.TicksPerMillisecond) - (startDate.Ticks / TimeSpan.TicksPerMillisecond));
+            var diff = endDate.Ticks / TimeSpan.TicksPerMillisecond - startDate.Ticks / TimeSpan.TicksPerMillisecond;
 
             result._int64Value = new Int64Value(diff);
             result._type = ArrowTypeId.Int64;
@@ -1476,10 +1478,154 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            var diff = ((endDate.Ticks / TimeSpan.TicksPerMicrosecond) - (startDate.Ticks / TimeSpan.TicksPerMicrosecond));
+            var diff = endDate.Ticks / TimeSpan.TicksPerMicrosecond - startDate.Ticks / TimeSpan.TicksPerMicrosecond;
 
             result._int64Value = new Int64Value(diff);
             result._type = ArrowTypeId.Int64;
+            return result;
+        }
+
+        internal static IDataValue TimestampRoundCalendar<T1, T2, T3, T4, T5>(T1 input, T2 rounding, T3 unit, T4 origin, T5 multiple, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+            where T3 : IDataValue
+            where T4 : IDataValue
+            where T5 : IDataValue
+        {
+            if (input.Type != ArrowTypeId.Timestamp)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (rounding.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (unit.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (origin.Type != ArrowTypeId.String)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            if (multiple.Type != ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+
+            var roundingStr = rounding.AsString.ToString().ToUpper();
+
+            FlowtideRoundCalendar.RoundingMode roundingMode;
+            switch (roundingStr)
+            {
+                case "FLOOR":
+                    roundingMode = FlowtideRoundCalendar.RoundingMode.Floor;
+                    break;
+                case "CEIL":
+                    roundingMode = FlowtideRoundCalendar.RoundingMode.Ceil;
+                    break;
+                case "ROUND_TIE_DOWN":
+                    roundingMode = FlowtideRoundCalendar.RoundingMode.RoundTieDown;
+                    break;
+                case "ROUND_TIE_UP":
+                    roundingMode = FlowtideRoundCalendar.RoundingMode.RoundTieUp;
+                    break;
+                default:
+                    result._type = ArrowTypeId.Null;
+                    return result;
+            }
+
+            FlowtideRoundCalendar.CalendarUnit calendarUnit;
+
+            var unitStr = unit.AsString.ToString().ToUpper();
+
+            switch (unitStr)
+            {
+                case "YEAR":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Year;
+                    break;
+                case "MONTH":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Month;
+                    break;
+                case "WEEK":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Week;
+                    break;
+                case "DAY":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Day;
+                    break;
+                case "HOUR":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Hour;
+                    break;
+                case "MINUTE":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Minute;
+                    break;
+                case "SECOND":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Second;
+                    break;
+                case "MILLISECOND":
+                    calendarUnit = FlowtideRoundCalendar.CalendarUnit.Millisecond;
+                    break;
+                default:
+                    result._type = ArrowTypeId.Null;
+                    return result;
+            }
+
+            FlowtideRoundCalendar.CalendarOrigin calendarOrigin;
+
+            var originStr = origin.AsString.ToString().ToUpper();
+
+            switch (originStr)
+            {
+                case "YEAR":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Year;
+                    break;
+                case "MONTH":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Month;
+                    break;
+                case "MONDAY_WEEK":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.MondayWeek;
+                    break;
+                case "SUNDAY_WEEK":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.SundayWeek;
+                    break;
+                case "ISO_WEEK":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.IsoWeek;
+                    break;
+                case "US_WEEK":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.UsWeek;
+                    break;
+                case "DAY":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Day;
+                    break;
+                case "HOUR":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Hour;
+                    break;
+                case "MINUTE":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Minute;
+                    break;
+                case "SECOND":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Second;
+                    break;
+                case "MILLISECOND":
+                    calendarOrigin = FlowtideRoundCalendar.CalendarOrigin.Millisecond;
+                    break;
+                default:
+                    result._type = ArrowTypeId.Null;
+                    return result;
+            }
+
+            var dto = input.AsTimestamp.ToDateTimeOffset();
+            var multipleInt = multiple.AsLong;
+
+            var converted = FlowtideRoundCalendar.RoundCalendarScalar(dto.DateTime, roundingMode, calendarUnit, calendarOrigin, (int)multipleInt, default);
+
+            result._type = ArrowTypeId.Timestamp;
+            result._timestampValue = new TimestampTzValue(converted);
             return result;
         }
     }

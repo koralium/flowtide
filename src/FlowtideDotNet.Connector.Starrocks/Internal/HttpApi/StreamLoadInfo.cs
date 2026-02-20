@@ -61,6 +61,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
         [JsonPropertyName("CommitAndPublishTimeMs")]
         public long? CommitAndPublishTimeMs { get; set; }
+
+        [JsonPropertyName("ErrorURL")]
+        public string? ErrorUrl { get; set; }
     }
 
 }

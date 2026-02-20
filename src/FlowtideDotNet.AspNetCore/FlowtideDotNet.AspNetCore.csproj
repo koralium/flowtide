@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <TargetFramework>$(DefaultNetTargetFramework)</TargetFramework>
+    <TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SpaRoot>ClientApp\</SpaRoot>
@@ -41,7 +41,7 @@
   </Target>
 
 	<ItemGroup>
-		<PackageReference Include="PromQL.Parser" Version="3.2.0" />
+		<PackageReference Include="PromQL.Parser" />
 	</ItemGroup>
 
   <ItemGroup>

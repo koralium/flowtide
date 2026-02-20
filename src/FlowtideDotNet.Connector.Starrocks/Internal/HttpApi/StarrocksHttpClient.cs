@@ -158,6 +158,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             httpRequest.Headers.Add("table", request.table);
             httpRequest.Headers.Add("format", "json");
             httpRequest.Headers.Add("strip_outer_array", "true");
+            httpRequest.Headers.Add("ignore_json_size", "true");
             httpRequest.Headers.Authorization = GetAuthorizationHeaderValue();
             var content = new ReadOnlyMemoryContent(request.data);
             content.Headers.ContentType = new MediaTypeHeaderValue("application/json");

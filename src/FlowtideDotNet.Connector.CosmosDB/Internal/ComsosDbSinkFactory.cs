@@ -29,6 +29,10 @@ namespace FlowtideDotNet.Connector.CosmosDB.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("CosmosDB sink does not support overwrite.");
+            }
             return new CosmosDbSink(flowtideCosmosOptions, writeRelation, dataflowBlockOptions);
         }
     }

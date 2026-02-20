@@ -49,7 +49,17 @@ builder.Services.AddFlowtideStream("sqlservertoelastic")
 
                 var putAliasResponse = await client.Indices.PutAliasAsync(indexName, writeRel.NamedObject.DotSeperated);
 
-                var oldIndices = getAliasResponse.Aliases.Keys.ToList();
+                List<string>? oldIndices;
+
+                if (getAliasResponse.Aliases != null)
+                {
+                    oldIndices = getAliasResponse.Aliases.Keys.ToList();
+                }
+                else
+                {
+                    oldIndices = new List<string>();
+                }
+                
                 if (putAliasResponse.IsSuccess())
                 {
                     foreach (var oldIndex in oldIndices)

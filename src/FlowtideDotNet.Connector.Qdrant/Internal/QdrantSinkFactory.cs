@@ -57,6 +57,10 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
+            if (writeRelation.Overwrite)
+            {
+                throw new NotSupportedException("Qdrant sink does not support overwrite.");
+            }
             return new QdrantSink(_options, writeRelation, dataflowBlockOptions, _embeddingsGenerator, _chunker);
         }
     }

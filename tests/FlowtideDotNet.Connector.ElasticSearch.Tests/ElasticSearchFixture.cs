@@ -42,8 +42,7 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
 
         public async Task InitializeAsync()
         {
-            container = new ContainerBuilder()
-                .WithImage("elasticsearch:8.6.1")
+            container = new ContainerBuilder("elasticsearch:8.6.1")
                 .WithPortBinding(9200, true)
                 .WithPortBinding(9300, true)
                 .WithEnvironment("discovery.type", "single-node")

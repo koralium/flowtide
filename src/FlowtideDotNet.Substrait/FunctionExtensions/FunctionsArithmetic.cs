@@ -55,5 +55,6 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Lead = "lead";
         public const string Lag = "lag";
         public const string LastValue = "last_value";
+        public const string Average = "avg";
     }
 }
