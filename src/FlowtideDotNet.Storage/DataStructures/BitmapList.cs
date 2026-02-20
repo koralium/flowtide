@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
-namespace FlowtideDotNet.Core.ColumnStore.Utils
+namespace FlowtideDotNet.Storage.DataStructures
 {
     public unsafe class BitmapList : IReadOnlyList<bool>, IEnumerable<bool>, IDisposable
     {

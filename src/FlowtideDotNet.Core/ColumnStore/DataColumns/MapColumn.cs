@@ -24,6 +24,7 @@ using System.Buffers;
 using System.Collections;
 using System.Text.Json;
 using System.IO.Hashing;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
