@@ -103,6 +103,25 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             {
                 Assert.Fail("Should not iterate over any values");
             }
+        }
+
+        [Fact]
+        public void TestSerializeInSequenceNotStartAtZero()
+        {
+            RoaringBitmap bitmap = [100003, 100004, 100005, 100006, 100007, 100008, 100009];
+            ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
+            bitmap.Serialize(bufferWriter);
+            var mem = bufferWriter.WrittenMemory;
+            var sequence = new ReadOnlySequence<byte>(mem);
+            var reader = new SequenceReader<byte>(sequence);
+            RoaringBitmap deserialized = RoaringBitmap.Deserialize(ref reader);
+
+            int start = 100003;
+
+            for (int i = 0; i < 7; i++)
+            {
+                Assert.True(deserialized.Contains(start + i));
+            }
 
         }
     }
