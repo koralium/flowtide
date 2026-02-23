@@ -62,7 +62,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private BufferSegment _end;
         private int endIndex;
 
+        private ulong _crc64;
+
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
+
+        public ulong Crc64 => _crc64;
 
         public BlobNewCheckpoint(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
@@ -268,6 +272,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             // Next file id for data files
             BinaryPrimitives.WriteInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
+
+            System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
+            foreach (var segment in WrittenData)
+            {
+                crc64.Append(segment.Span);
+            }
+            _crc64 = crc64.GetCurrentHashAsUInt64();
         }
 
         public void AddDeletedPageId(long pageId)

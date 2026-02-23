@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
         private object _lock = new object();
         private Dictionary<long, byte[]> _dataFiles = new Dictionary<long, byte[]>();
         private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
+        private byte[]? _registryBytes;
 
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
         {
@@ -63,14 +64,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync()
-        {
-            lock (_lock) 
-            {
-                return Task.FromResult(_checkpointFiles.Keys.AsEnumerable());
-            }
-        }
-
         public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             lock (_lock)
@@ -99,6 +92,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("Checkpoint file not found");
         }
 
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        {
+            lock (_lock)
+            {
+                if (_registryBytes != null)
+                {
+                    var pipe = new Pipe();
+                    pipe.Writer.Write(_registryBytes);
+                    pipe.Writer.Complete();
+                    return Task.FromResult<PipeReader?>(pipe.Reader);
+                }
+                return Task.FromResult<PipeReader?>(null);
+            }
+        }
+
         public Task<PipeReader> ReadDataFileAsync(long fileId)
         {
             lock (_lock)
@@ -122,6 +130,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             lock (_lock)
             {
                 _checkpointFiles[checkpointVersion] = bytes;
+            }
+        }
+
+        public Task WriteCheckpointRegistryFile(PipeReader data)
+        {
+            lock (_lock)
+            {
+                using MemoryStream stream = new MemoryStream();
+                data.CopyToAsync(stream).GetAwaiter().GetResult();
+                _registryBytes = stream.ToArray();
+                return Task.CompletedTask;
             }
         }
 

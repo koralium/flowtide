@@ -24,10 +24,25 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     public interface IFileStorageProvider
     {
         /// <summary>
+        /// Asynchronously reads the checkpoint registry file and returns a PipeReader for its contents.
+        /// </summary>
+        /// <returns>A PipeReader representing the contents of the checkpoint registry file, or null if the file does not exist
+        /// </returns>
+        Task<PipeReader?> ReadCheckpointRegistryFileAsync();
+
+        /// <summary>
+        /// Writes a checkpoint registry file using the provided data stream.
+        /// </summary>
+        /// <param name="data">A <see cref="PipeReader"/> containing the data to be written to the checkpoint registry file. The reader
+        /// must be positioned at the start of the data to be written.</param>
+        /// <returns>A task that represents the asynchronous write operation.</returns>
+        Task WriteCheckpointRegistryFile(PipeReader data);
+
+        /// <summary>
         /// Asynchronously retrieves a list of checkpoint versions available in the storage.
         /// </summary>
         /// <returns></returns>
-        Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync();
+        //Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync();
 
         /// <summary>
         /// Asynchronously reads the checkpoint file corresponding to the specified checkpoint version and returns a PipeReader 
