@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.ColumnStore.TreeStorage

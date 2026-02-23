@@ -114,6 +114,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
+        public void ClearNext()
+        {
+            _next = null;
+            Next = null;
+        }
+
         public bool TryRent()
         {
             var localRentCount = Volatile.Read(ref _rentCounter);

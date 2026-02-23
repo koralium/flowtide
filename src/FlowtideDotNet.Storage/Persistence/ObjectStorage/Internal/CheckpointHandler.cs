@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Threading.Channels;
 
@@ -56,6 +57,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long _checkpointVersion;
         private bool _modifiedSinceLastCheckpoint = false;
 
+        private CheckpointRegistryFile _checkpointRegistryFile;
+
         public long CheckpointVersion => _checkpointVersion;
 
 
@@ -75,11 +78,26 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             this._memoryAllocator = blobStorageOptions.MemoryAllocator;
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
+            _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+        }
+
+        private async Task ReadCheckpointRegistryFile()
+        {
+            
+            var checkpointRegistryFileReader = await _fileProvider.ReadCheckpointRegistryFileAsync().ConfigureAwait(false);
+            if (checkpointRegistryFileReader == null)
+            {
+                _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+                return;
+            }
+            _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator).ConfigureAwait(false);
         }
 
         public async Task RecoverToLatest()
         {
-            var checkpointVersions = (await _fileProvider.ListCheckpointVersionsAsync())
+            await ReadCheckpointRegistryFile();
+            Debug.Assert(_checkpointRegistryFile != null);
+            var checkpointVersions = _checkpointRegistryFile
                 .OrderBy(x => x.Version)
                 .ToList();
 
@@ -90,6 +108,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             _activeVersions.Clear();
             _activeVersions.AddRange(checkpointVersions);
+            _checkpointRegistryFile.Clear();
+            _checkpointRegistryFile.AddCheckpointVersions(checkpointVersions);
 
             await ReadCheckpointFiles(checkpointVersions);
             var lastVersion = checkpointVersions[checkpointVersions.Count - 1];
@@ -106,14 +126,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 return;
             }
 
+            await ReadCheckpointRegistryFile();
+            Debug.Assert(_checkpointRegistryFile != null);
+
             // List all checkpoint files and order them by version
-            var checkpointVersions = (await _fileProvider.ListCheckpointVersionsAsync())
+            var checkpointVersions = _checkpointRegistryFile
                 .Where(x => x.Version <= version)
                 .OrderBy(x => x.Version)
                 .ToList();
 
             _activeVersions.Clear();
             _activeVersions.AddRange(checkpointVersions);
+            _checkpointRegistryFile.Clear();
+            _checkpointRegistryFile.AddCheckpointVersions(checkpointVersions);
 
             if (checkpointVersions.Count == 0)
             {
@@ -176,6 +201,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         private void ReadCheckpointFile(CheckpointVersion checkpointFileInfo, ReadOnlySequence<byte> buffer)
         {
+            CrcUtils.CheckCrc64(checkpointFileInfo.Crc64, buffer);
+
             var reader = new CheckpointDataReader(buffer);
             
             while (reader.TryGetNextUpsertPageInfo(out var upsertPageInfo))
@@ -311,8 +338,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _newCheckpoint.FinishForWriting();
             }
 
+            var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64);
             // Write the checkpoint as a snapshot
-            await _fileProvider.WriteCheckpointFileAsync(new CheckpointVersion(_checkpointVersion, true), _newCheckpoint);
+            await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
@@ -322,7 +350,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _writeTasks = null;
             }
 
-            _activeVersions.Add(new CheckpointVersion(_checkpointVersion, true));
+            _activeVersions.Add(checkpointVersion);
+            _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
+
+            _checkpointRegistryFile.FinishForWriting();
+            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
 
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
@@ -435,8 +467,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             // All data has now been written to the checkpoint file
             _newCheckpoint.FinishForWriting();
 
-
-            await _fileProvider.WriteCheckpointFileAsync(new CheckpointVersion(_checkpointVersion, false), _newCheckpoint);
+            var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64);
+            await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
@@ -445,7 +477,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 _writeTasks = null;
             }
-            _activeVersions.Add(new CheckpointVersion(_checkpointVersion, false));
+            _activeVersions.Add(checkpointVersion);
+            _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
+
+            _checkpointRegistryFile.FinishForWriting();
+            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
 
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
@@ -508,6 +544,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                                 checkpointsToRemove = new List<CheckpointVersion>();
                             }
                             checkpointsToRemove.Add(_activeVersions[k]);
+                            _checkpointRegistryFile.RemoveCheckpointVersion(_activeVersions[k]);
                             _activeVersions.RemoveAt(k);
                             k--;
                             i--;
@@ -524,16 +561,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
 
-            if (checkpointsToRemove != null)
-            {
-                foreach (var checkpointToRemove in checkpointsToRemove)
-                {
-                    await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
-                }
-            }
-            
+            //if (checkpointsToRemove != null)
+            //{
+            //    foreach (var checkpointToRemove in checkpointsToRemove)
+            //    {
+            //        await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
+            //    }
+            //}
 
-            
+            // Write the registry since we removed checkpoint versions
+            _checkpointRegistryFile.FinishForWriting();
+            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
         }
 
         private async Task WriteLoop()

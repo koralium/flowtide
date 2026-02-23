@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System.Runtime.InteropServices;
 

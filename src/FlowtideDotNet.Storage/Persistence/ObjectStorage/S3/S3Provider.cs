@@ -58,12 +58,22 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.S3
             throw new NotImplementedException();
         }
 
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<PipeReader> ReadDataFileAsync(long fileId)
         {
             throw new NotImplementedException();
         }
 
         public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WriteCheckpointRegistryFile(PipeReader data)
         {
             throw new NotImplementedException();
         }

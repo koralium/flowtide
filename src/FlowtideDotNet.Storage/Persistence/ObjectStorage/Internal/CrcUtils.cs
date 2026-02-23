@@ -46,5 +46,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new FlowtideChecksumMismatchException($"Invalid CRC32 for page.");
             }
         }
+
+        public static void CheckCrc64(ulong expected, ReadOnlySequence<byte> data)
+        {
+            var crcCalculator = new Crc64();
+            foreach (var segment in data)
+            {
+                crcCalculator.Append(segment.Span);
+            }
+
+            var actualcrc = crcCalculator.GetCurrentHashAsUInt64();
+            if (actualcrc != expected)
+            {
+                throw new FlowtideChecksumMismatchException($"Invalid CRC64. Expected: {expected}, Actual: {actualcrc}");
+            }
+        }
     }
 }

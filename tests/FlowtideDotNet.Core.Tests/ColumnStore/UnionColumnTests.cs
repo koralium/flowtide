@@ -22,6 +22,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {

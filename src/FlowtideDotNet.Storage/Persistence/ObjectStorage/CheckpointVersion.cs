@@ -36,10 +36,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// </summary>
         public bool IsSnapshot { get; }
 
-        public CheckpointVersion(long version, bool isSnapshot)
+        /// <summary>
+        /// Gets the CRC64 checksum value computed for the checkpoint file.
+        /// </summary>
+        public ulong Crc64 { get; }
+
+        public CheckpointVersion(long version, bool isSnapshot, ulong crc64)
         {
             Version = version;
             IsSnapshot = isSnapshot;
+            Crc64 = crc64;
         }
 
         public override bool Equals(object? obj)
@@ -53,13 +59,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(Version, IsSnapshot);
+            return HashCode.Combine(Version, IsSnapshot, Crc64);
         }
 
         public bool Equals(CheckpointVersion? other)
         {
             if (other == null) return false;
-            return Version == other.Version && IsSnapshot == other.IsSnapshot;
+            return Version == other.Version && IsSnapshot == other.IsSnapshot && Crc64 == other.Crc64;
         }
     }
 }

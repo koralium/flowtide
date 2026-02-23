@@ -220,7 +220,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _updatedFileSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileSizeOffset, changedFilesCount * sizeof(int)));
             _updatedFileDeletedSizeReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileDeletedSizeOffset, changedFilesCount * sizeof(int)));
             _updatedFileAddedAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(updatedFileAddedAtVersionOffset, changedFilesCount * sizeof(long)));
-            _updatedFileCrc64Reader = new SequenceReader<byte>(dataSequence.Slice(updatedFileAddedAtVersionOffset, changedFilesCount * sizeof(ulong)));
+            _updatedFileCrc64Reader = new SequenceReader<byte>(dataSequence.Slice(updatedFileCrc64Offset, changedFilesCount * sizeof(ulong)));
 
             _deletedFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileIdsOffset, deletedFilesCount * sizeof(long)));
             _deletedFileAtVersionReader = new SequenceReader<byte>(dataSequence.Slice(deletedFileAtVersionOffset, deletedFilesCount * sizeof(long)));

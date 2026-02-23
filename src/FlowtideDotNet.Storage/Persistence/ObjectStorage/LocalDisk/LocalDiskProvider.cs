@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 {
     public class LocalDiskProvider : IFileStorageProvider
     {
+        private const string CheckpointRegistryFileName = "checkpoints.registry";
         private readonly string dataDirectory;
         private readonly string checkpointDirectory;
         private LocalDiskReadManager localDiskReadManager;
@@ -37,21 +38,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             this.dataDirectory = dataDirectory;
             this.checkpointDirectory = checkpointDirectory;
             localDiskReadManager = new LocalDiskReadManager();
-        }
-
-        public Task<IEnumerable<CheckpointVersion>> ListCheckpointVersionsAsync()
-        {
-            if (Directory.Exists(checkpointDirectory))
-            {
-                var checkpointVersions = Directory.EnumerateFiles(checkpointDirectory)
-                    .Select(x => new CheckpointFileInfo(x))
-                    .Where(x => x.IsCheckpoint)
-                    .Select(x => new CheckpointVersion(x.Version, x.IsSnapshot))
-                    .ToList();
-                return Task.FromResult<IEnumerable<CheckpointVersion>>(checkpointVersions);
-            }
-
-            return Task.FromResult(Enumerable.Empty<CheckpointVersion>());
         }
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
@@ -147,11 +133,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return localDiskReadManager.Read(path, offset, length, crc32);
-            //using var stream = System.IO.File.OpenRead(path);
-            //stream.Position = offset;
-            //var buffer = new byte[length];
-            //stream.ReadExactly(buffer, 0, length);
-            //return ValueTask.FromResult<ReadOnlyMemory<byte>>(buffer);
         }
 
         public Task<PipeReader> ReadDataFileAsync(long fileId)
@@ -159,6 +140,31 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return Task.FromResult(PipeReader.Create(File.OpenRead(path)));
+        }
+
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        {
+            var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
+            if (!File.Exists(filePath))
+            {
+                return Task.FromResult<PipeReader?>(null);
+            }
+            return Task.FromResult<PipeReader?>(PipeReader.Create(File.OpenRead(filePath)));
+        }
+
+        public async Task WriteCheckpointRegistryFile(PipeReader data)
+        {
+            var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
+            if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
+            {
+                Directory.CreateDirectory(checkpointDirectory);
+            }
+
+            var filewrite = File.OpenWrite(filePath);
+            await data.CopyToAsync(filewrite);
+            await filewrite.FlushAsync();
+            await filewrite.DisposeAsync();
+            data.Complete();
         }
     }
 }

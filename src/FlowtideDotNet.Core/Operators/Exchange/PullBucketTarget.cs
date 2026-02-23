@@ -10,21 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Apache.Arrow.Memory;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
@@ -33,7 +26,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly DataValueContainer _dataValueContainer;
         private int _targetId;
         private long _eventCounter;
-        private IBPlusTree<long, IStreamEvent, PrimitiveListKeyContainer<long>, StreamEventValueContainer>? _events;
+        private IBPlusTree<long, IStreamEvent, FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<long>, StreamEventValueContainer>? _events;
         private IMemoryAllocator? _memoryAllocator;
         private int _columnCount;
         private readonly SemaphoreSlim _lockSemaphore;
@@ -119,10 +112,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _eventCounter = eventCounter;
             }
-            _events = await stateManagerClient.GetOrCreateTree($"events_target_{targetId}", new BPlusTreeOptions<long, IStreamEvent, PrimitiveListKeyContainer<long>, StreamEventValueContainer>()
+            _events = await stateManagerClient.GetOrCreateTree($"events_target_{targetId}", new BPlusTreeOptions<long, IStreamEvent, FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<long>, StreamEventValueContainer>()
             {
                 Comparer = new PrimitiveListComparer<long>(),
-                KeySerializer = new PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
+                KeySerializer = new FlowtideDotNet.Storage.Serializers.PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
                 ValueSerializer = new StreamEventValueSerializer(memoryAllocator),
                 MemoryAllocator = memoryAllocator,
                 UseByteBasedPageSizes = true
