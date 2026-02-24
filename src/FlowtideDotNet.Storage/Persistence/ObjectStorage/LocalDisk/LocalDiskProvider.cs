@@ -84,7 +84,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public async Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
+        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);

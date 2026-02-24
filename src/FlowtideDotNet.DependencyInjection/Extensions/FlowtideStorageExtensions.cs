@@ -157,5 +157,23 @@ namespace FlowtideDotNet.DependencyInjection
             storageBuilder.ZstdPageCompression();
             return storageBuilder;
         }
+
+        public static IFlowtideStorageBuilder AddFileStorageWithCache(
+            this IFlowtideStorageBuilder storageBuilder, 
+            string dataDirectory, 
+            string checkpointDirectory,
+            string cacheDir)
+        {
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions()
+                {
+                    FileProvider = new LocalDiskProvider(dataDirectory, checkpointDirectory),
+                    CacheProvider = new LocalDiskProvider(cacheDir, default!)
+                });
+            });
+            storageBuilder.ZstdPageCompression();
+            return storageBuilder;
+        }
     }
 }

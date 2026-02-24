@@ -47,6 +47,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
+        public static void CheckCrc32(ReadOnlySequence<byte> data, uint crc)
+        {
+            var calc = new Crc32();
+            foreach(var segment in data)
+            {
+                calc.Append(segment.Span);
+            }
+            var actualcrc = calc.GetCurrentHashAsUInt32();
+            if (actualcrc != crc)
+            {
+                throw new FlowtideChecksumMismatchException($"Invalid CRC32 for page.");
+            }
+        }
+
         public static void CheckCrc64(ulong expected, ReadOnlySequence<byte> data)
         {
             var crcCalculator = new Crc64();

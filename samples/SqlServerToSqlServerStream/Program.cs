@@ -69,10 +69,10 @@ builder.Services.AddFlowtideStream("my_stream")
 
         // Set max process memory to reduce ram usage, or increase it for lower latency
         // This is set to 2GB
-        storage.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
+        storage.MaxProcessMemory = 512 * 1024 * 1024;
 
         //storage.AddFasterKVFileSystemStorage("./fasterkvstate");
-        storage.AddFileStorage("./stateData", "./stateData/checkpoints");
+        storage.AddFileStorageWithCache("./stateData", "./stateData/checkpoints", "./cache");
         // Use azure storage for persistence
         //storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
         //{

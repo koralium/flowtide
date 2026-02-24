@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     {
         public IFileStorageProvider? FileProvider { get; set; }
 
+        public IFileStorageProvider? CacheProvider { get; set; }
+
         public MemoryPool<byte> MemoryPool { get; set; } = MemoryPool<byte>.Shared;
 
         public IMemoryAllocator MemoryAllocator { get; set; } = GlobalMemoryManager.Instance;

@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache;
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -42,6 +44,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         /// </summary>
         private ConcurrentDictionary<long, PageWriteLocation> _temporaryPageLocations = new ConcurrentDictionary<long, PageWriteLocation>();
 
+        /// <summary>
+        /// Used for testing
+        /// </summary>
+        internal LocalCacheProvider? CacheProvider { get; }
+
         public BlobPersistentStorage(BlobStorageOptions blobStorageOptions)
         {
             if (blobStorageOptions.FileProvider == null)
@@ -49,11 +56,20 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
             }
             this._fileProvider = blobStorageOptions.FileProvider;
+
+            // If the user provided a cache provider, we add the local cache provider
+            if (blobStorageOptions.CacheProvider != null)
+            {
+                var cacheProvider = new LocalCacheProvider(this, blobStorageOptions.CacheProvider, blobStorageOptions.FileProvider);
+                _fileProvider = cacheProvider;
+                CacheProvider = cacheProvider;
+            }
+            
             this._memoryPool = blobStorageOptions.MemoryPool;
             this._memoryAllocator = blobStorageOptions.MemoryAllocator;
             this._maxFileSize = blobStorageOptions.MaxFileSize;
             _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-            _checkpointHandler = new CheckpointHandler(blobStorageOptions);
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, blobStorageOptions.SnapshotCheckpointInterval);
             _adminSession = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             this._blobStorageOptions = blobStorageOptions;
         }
@@ -102,20 +118,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
         }
 
-        /// <summary>
-        /// Used for testing
-        /// </summary>
-        /// <param name="fileId"></param>
-        /// <param name="fileInformation"></param>
-        /// <returns></returns>
         internal bool TryGetFileInformation(long fileId, [NotNullWhen(true)] out FileInformation? fileInformation)
         {
-            fileInformation = _checkpointHandler.GetAllFileInformation().FirstOrDefault(x => x.FileId == fileId);
-            if (fileInformation != null)
-            {
-                return true;
-            }
-            return false;
+            return _checkpointHandler.TryGetFileInformation(fileId, out fileInformation);
         }
 
         private async Task CompactFiles()
@@ -308,7 +313,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
-            _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
             _temporaryPageLocations.Clear();
             await _checkpointHandler.RecoverToLatest();
         }
@@ -320,7 +325,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public ValueTask ResetAsync()
         {
-            _checkpointHandler = new CheckpointHandler(_blobStorageOptions);
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
             _temporaryPageLocations.Clear();
             lock (_sessionsLock)
             {

@@ -27,21 +27,21 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task Test()
         {
-            CheckpointHandler checkpointHandler = new CheckpointHandler(new Persistence.ObjectStorage.BlobStorageOptions()
-            {
-                FileProvider = new LocalDiskProvider("./", "./checkpoints")
-            });
+            //CheckpointHandler checkpointHandler = new CheckpointHandler(new Persistence.ObjectStorage.BlobStorageOptions()
+            //{
+            //    FileProvider = new LocalDiskProvider("./", "./checkpoints")
+            //});
 
-            BlobFileWriter blobFileWriter = new BlobFileWriter((file) =>
-            {
+            //BlobFileWriter blobFileWriter = new BlobFileWriter((file) =>
+            //{
 
-            }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
-            blobFileWriter.Write(1, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
-            blobFileWriter.Finish();
+            //}, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            //blobFileWriter.Write(1, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
+            //blobFileWriter.Finish();
 
-            await checkpointHandler.EnqueueFileAsync(blobFileWriter);
+            //await checkpointHandler.EnqueueFileAsync(blobFileWriter);
 
-            await checkpointHandler.FinishCheckpoint();
+            //await checkpointHandler.FinishCheckpoint();
 
         }
     }

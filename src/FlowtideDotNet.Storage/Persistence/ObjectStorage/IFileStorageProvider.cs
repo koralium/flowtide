@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="fileId"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data);
+        Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data);
 
         /// <summary>
         /// Asynchronously deletes the file corresponding to the given file ID from the storage. 

@@ -10,10 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -29,9 +31,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
     internal class MemoryFileProvider : IFileStorageProvider
     {
         private object _lock = new object();
-        private Dictionary<long, byte[]> _dataFiles = new Dictionary<long, byte[]>();
+        private  Dictionary<long, byte[]> _dataFiles = new Dictionary<long, byte[]>();
         private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
         private byte[]? _registryBytes;
+
+
+        internal bool TryGetFileData(long fileId, [NotNullWhen(true)] out byte[]? bytes)
+        {
+            return _dataFiles.TryGetValue(fileId, out bytes);
+        }
 
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
         {
@@ -51,26 +59,37 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public bool DataFileExists(long fileId)
+        {
+            lock (_lock)
+            {
+                return _dataFiles.ContainsKey(fileId);
+            }
+        }
+
+        public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
             lock (_lock)
             {
                 if (_dataFiles.TryGetValue(fileId, out var data))
                 {
-                    return new ValueTask<ReadOnlyMemory<byte>>(data.AsMemory(offset, length));
+                    var memory = data.AsMemory(offset, length);
+                    CrcUtils.CheckCrc32(memory.Span, crc32);
+                    return new ValueTask<ReadOnlyMemory<byte>>(memory);
                 }
             }
 
             throw new InvalidOperationException("File not found");
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public virtual ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             lock (_lock)
             {
                 if (_dataFiles.TryGetValue(fileId, out var data))
                 {
                     var bytes = new ReadOnlySequence<byte>(data, offset, length);
+                    CrcUtils.CheckCrc32(bytes, crc32);
                     return new ValueTask<T>(stateSerializer.Deserialize(bytes, length));
                 }
             }
@@ -107,7 +126,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId)
+        public virtual Task<PipeReader> ReadDataFileAsync(long fileId)
         {
             lock (_lock)
             {
@@ -144,7 +163,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, PipeReader data)
+        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);

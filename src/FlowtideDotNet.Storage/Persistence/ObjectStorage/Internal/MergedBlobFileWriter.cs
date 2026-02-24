@@ -234,6 +234,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void CancelPendingRead()
         {
+            _advancedPosition = default;
         }
 
         public override void Complete(Exception? exception = null)

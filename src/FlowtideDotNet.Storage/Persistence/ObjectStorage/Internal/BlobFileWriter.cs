@@ -165,19 +165,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     _pageOffset[i] = _pageOffset[i] + idsAndOffsetsOffset;
                 }
 
-                //_end.End = endIndex;
-                //var pageIdsOffset = _end.RunningIndex + endIndex;
-                //var pageIdSegment = new BufferSegment(_pageIds.SlicedMemory);
-                //_end.SetNext(pageIdSegment);
-                //_end = pageIdSegment;
-                //endIndex = pageIdSegment.Length;
-
-                //var pageOffsetOffset = _end.RunningIndex + endIndex;
-                //var offsetSegment = new BufferSegment(_pageOffset.SlicedMemory);
-                //_end.SetNext(offsetSegment);
-                //_end = offsetSegment;
-                //endIndex = offsetSegment.Length;
-
                 var headerData = _headerData.AvailableMemory.Span;
 
                 // Write magic number
@@ -254,6 +241,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void CancelPendingRead()
         {
+            _advancedPosition = default;
         }
 
         public override void Complete(Exception? exception = null)

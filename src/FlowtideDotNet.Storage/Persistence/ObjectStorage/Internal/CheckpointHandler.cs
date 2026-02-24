@@ -62,20 +62,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public long CheckpointVersion => _checkpointVersion;
 
 
-        public CheckpointHandler(BlobStorageOptions blobStorageOptions)
+        public CheckpointHandler(
+            IFileStorageProvider fileProvider, 
+            MemoryPool<byte> pool,
+            IMemoryAllocator memoryAllocator,
+            int snapshotCheckpointInterval)
         {
-            if (blobStorageOptions.FileProvider == null)
+            _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
             {
-                throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
-            }
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false
+            });
+            this._fileProvider = fileProvider;
+            _memoryPool = pool;
+            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, memoryAllocator);
+            VersionBetweenSnapshot = snapshotCheckpointInterval;
 
-            _channel = Channel.CreateBounded<PagesFile>(4);
-            this._fileProvider = blobStorageOptions.FileProvider;
-            _memoryPool = blobStorageOptions.MemoryPool;
-            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, blobStorageOptions.MemoryAllocator);
-            VersionBetweenSnapshot = blobStorageOptions.SnapshotCheckpointInterval;
-
-            this._memoryAllocator = blobStorageOptions.MemoryAllocator;
+            this._memoryAllocator = memoryAllocator;
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
             _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
@@ -344,7 +347,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
-            _channel = Channel.CreateBounded<PagesFile>(1000);
+            _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false
+            });
             lock (_writeTasks)
             {
                 _writeTasks = null;
@@ -377,6 +384,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public IEnumerable<FileInformation> GetAllFileInformation()
         {
             return _fileInformations.Values;
+        }
+
+        public bool TryGetFileInformation(long fileId, [NotNullWhen(true)] out FileInformation? fileInfo)
+        {
+            return _fileInformations.TryGetValue(fileId, out fileInfo);
         }
         
         public async Task FinishCheckpoint()
@@ -472,7 +484,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
-            _channel = Channel.CreateBounded<PagesFile>(1000);
+            _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false
+            });
             lock (_writeTasks)
             {
                 _writeTasks = null;
@@ -612,7 +628,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     }
                 }
 
-                await _fileProvider.WriteDataFileAsync(fileId, file.Crc64, file);
+                await _fileProvider.WriteDataFileAsync(fileId, file.Crc64, file.FileSize, file);
 
                 for (int i = 0; i < file.PageIds.Count; i++)
                 {
