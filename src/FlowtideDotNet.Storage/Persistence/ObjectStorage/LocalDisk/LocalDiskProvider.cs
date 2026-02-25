@@ -22,6 +22,7 @@ using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
@@ -40,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             localDiskReadManager = new LocalDiskReadManager();
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(checkpointDirectory, fileName);
@@ -48,7 +49,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.FromResult(PipeReader.Create(File.OpenRead(filePath)));
         }
 
-        private string GetCheckpointFileName(CheckpointVersion checkpointVersion)
+        private string GetCheckpointFileName(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             if (checkpointVersion.IsSnapshot)
             {
@@ -60,7 +61,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             }
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
+        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             string fileName = GetCheckpointFileName(checkpointVersion);
 
@@ -76,7 +77,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             await filewrite.DisposeAsync();
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(checkpointDirectory, fileName);
@@ -84,7 +85,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
+        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
@@ -105,7 +106,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return $"dataFile_{fileId}.data";
         }
 
-        public Task DeleteDataFileAsync(long fileId)
+        public Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
@@ -114,35 +115,28 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
-            try
-            {
-                var fileName = GetDataFileName(fileId);
-                var path = Path.Combine(dataDirectory, fileName);
-                return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
-            }
-            catch(Exception e)
-            {
-                throw;
-            }
+            var fileName = GetDataFileName(fileId);
+            var path = Path.Combine(dataDirectory, fileName);
+            return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return localDiskReadManager.Read(path, offset, length, crc32);
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId)
+        public Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return Task.FromResult(PipeReader.Create(File.OpenRead(path)));
         }
 
-        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
             var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
             if (!File.Exists(filePath))
@@ -152,7 +146,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.FromResult<PipeReader?>(PipeReader.Create(File.OpenRead(filePath)));
         }
 
-        public async Task WriteCheckpointRegistryFile(PipeReader data)
+        public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
             var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
             if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
@@ -165,6 +159,30 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             await filewrite.FlushAsync();
             await filewrite.DisposeAsync();
             data.Complete();
+        }
+
+        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        {
+            List<long> storedFileIds = new List<long>();
+            if (Directory.Exists(dataDirectory))
+            {
+                string pattern = @"^dataFile_(?<fileId>.+)\.data$";
+                foreach (var file in Directory.EnumerateFiles(dataDirectory))
+                {
+                    var fileName = Path.GetFileName(file);
+                    Match match = Regex.Match(fileName, pattern);
+                    if (match.Success)
+                    {
+                        // Hämta fileId från den namngivna gruppen
+                        string fileIdString = match.Groups["fileId"].Value;
+                        if (long.TryParse(fileIdString, out var fileId))
+                        {
+                            storedFileIds.Add(fileId);
+                        }
+                    }
+                }
+            }
+            return Task.FromResult<IEnumerable<long>>(storedFileIds);
         }
     }
 }

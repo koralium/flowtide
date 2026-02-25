@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// </summary>
         /// <returns>A PipeReader representing the contents of the checkpoint registry file, or null if the file does not exist
         /// </returns>
-        Task<PipeReader?> ReadCheckpointRegistryFileAsync();
+        Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Writes a checkpoint registry file using the provided data stream.
@@ -36,7 +36,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="data">A <see cref="PipeReader"/> containing the data to be written to the checkpoint registry file. The reader
         /// must be positioned at the start of the data to be written.</param>
         /// <returns>A task that represents the asynchronous write operation.</returns>
-        Task WriteCheckpointRegistryFile(PipeReader data);
+        Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Used in local cache, returns the data file ids currently on disk.
+        /// It is used to populate the cache list after a restart so the files do not need to be redownloaded if they already exist.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously retrieves a list of checkpoint versions available in the storage.
@@ -50,7 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// </summary>
         /// <param name="checkpointVersion">The checkpoint version to read</param>
         /// <returns>A PipeReader that can be used to read the contents of the checkpoint file.</returns>
-        Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion);
+        Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously writes the contents of the specified PipeReader to a checkpoint file corresponding to the given checkpoint version.
@@ -58,14 +66,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="checkpointVersion">Checkpoint version</param>
         /// <param name="data">The PipeReader that provides the data to write to the checkpoint file.</param>
         /// <returns>A task that represents the asynchronous write operation.</returns>
-        Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data);
+        Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously deletes the checkpoint file corresponding to the specified checkpoint version from the storage.
         /// </summary>
         /// <param name="checkpointVersion">The checkpoint version to delete.</param>
         /// <returns></returns>
-        Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion);
+        Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously writes the contents of the specified PipeReader to a file corresponding to the given file ID.
@@ -73,21 +81,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="fileId"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data);
+        Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously deletes the file corresponding to the given file ID from the storage. 
         /// </summary>
         /// <param name="fileId">The fileId to delete</param>
         /// <returns>A task that completes whwen the file has been deleted.</returns>
-        Task DeleteDataFileAsync(long fileId);
+        Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously reads the file corresponding to the given file ID and returns a PipeReader that can be used to read the contents of the file.
         /// </summary>
         /// <param name="fileId"></param>
         /// <returns></returns>
-        Task<PipeReader> ReadDataFileAsync(long fileId);
+        Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Reads a serialized object of type T from the specified file segment using the provided state serializer.
@@ -99,7 +107,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="stateSerializer">The serializer used to deserialize the object from the file segment. Cannot be null.</param>
         /// <returns>A ValueTask that represents the asynchronous read operation. The result contains the deserialized object of
         /// type T.</returns>
-        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject;
+        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject;
 
         /// <summary>
         /// Asynchronously retrieves a read-only block of memory containing a specified range of bytes from the file
@@ -110,6 +118,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="length">The number of bytes to read from the file. Must be greater than or equal to 0.</param>
         /// <returns>A value task that represents the asynchronous operation. The result contains a read-only memory region with
         /// the requested bytes.</returns>
-        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32);
+        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default);
     }
 }

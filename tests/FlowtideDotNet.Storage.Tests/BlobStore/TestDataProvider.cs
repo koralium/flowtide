@@ -45,25 +45,25 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             _writeBlock = null;
         }
 
-        public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadMemory);
             return base.GetMemoryAsync(fileId, offset, length, crc32);
         }
 
-        public override ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer)
+        public override ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadAsync);
             return base.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public override Task<PipeReader> ReadDataFileAsync(long fileId)
+        public override Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadDataFile);
             return base.ReadDataFileAsync(fileId);
         }
 
-        public override async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
+        public override async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
         {
             if (_writeBlock != null)
             {

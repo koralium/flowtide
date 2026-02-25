@@ -309,18 +309,25 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             // TODO: Implement
             //throw new NotImplementedException();
+
         }
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
             _temporaryPageLocations.Clear();
-            await _checkpointHandler.RecoverToLatest();
+            // CancellationToken needs to be added upstream
+            await _checkpointHandler.RecoverToLatest(default);
+            if (CacheProvider != null)
+            {
+                await CacheProvider.InitializeAsync(default);
+            }
         }
 
         public async ValueTask RecoverAsync(long checkpointVersion)
         {
-            await _checkpointHandler.RecoverTo(checkpointVersion);
+            // CancellationToken needs to be added upstream
+            await _checkpointHandler.RecoverTo(checkpointVersion, default);
         }
 
         public ValueTask ResetAsync()

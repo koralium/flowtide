@@ -71,6 +71,42 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             _evictionTask = Task.Run(ProactiveEvictionLoopAsync);
         }
 
+        public async Task InitializeAsync(CancellationToken cancellationToken)
+        {
+            lock (_syncRoot)
+            {
+                // We always clear local cache and refetch info to make sure it is updated with relevant info
+                _index.Clear();
+                _lruList.Clear();
+            }
+
+            // Fetch already existing data file ids
+            var dataFileIds = await _localCache.GetStoredDataFileIdsAsync();
+            
+            // Go through them and seee if they should exist, if they should register them to the cache
+            foreach(var dataFileId in dataFileIds)
+            {
+                if (storage.TryGetFileInformation(dataFileId, out var fileInfo))
+                {
+                    lock (_syncRoot)
+                    {
+                        var entry = new LocalCacheEntry(fileInfo.FileId, fileInfo.FileSize, fileInfo.Crc64, 0);
+
+                        var node = new LinkedListNode<LocalCacheEntry>(entry);
+                        _index[fileInfo.FileId] = node;
+                        _lruList.AddLast(node);
+
+                        Interlocked.Add(ref _currentSize, fileInfo.FileSize);
+                    }
+                }
+                else
+                {
+                    // If the data file is not in the file information, remove it to clear up the cache
+                    await _localCache.DeleteDataFileAsync(dataFileId);
+                }
+            }
+        }
+
         public async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
             if (TryGetCacheEntry(fileId, out var entry))

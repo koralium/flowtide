@@ -219,13 +219,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return true;
         }
 
-        public static async Task<CheckpointRegistryFile> Deserialize(PipeReader reader, IMemoryAllocator memoryAllocator)
+        public static async Task<CheckpointRegistryFile> Deserialize(PipeReader reader, IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
         {
             // Read all content of the file
             ReadResult readResult;
             do
             {
-                readResult = await reader.ReadAsync();
+                readResult = await reader.ReadAsync(cancellationToken);
                 reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
             } while (!readResult.IsCompleted);
             var registry = Deserialize(readResult.Buffer, memoryAllocator);

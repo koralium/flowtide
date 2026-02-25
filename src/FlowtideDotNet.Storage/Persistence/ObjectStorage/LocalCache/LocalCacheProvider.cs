@@ -39,12 +39,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         /// This allows the local cache to be reused even after a crash
         /// </summary>
         /// <returns></returns>
-        public async Task InitializeAsync()
+        public Task InitializeAsync(CancellationToken cancellationToken)
         {
-
+            return _localCacheManager.InitializeAsync(cancellationToken);
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             return _remoteStorage.DeleteCheckpointFileAsync(checkpointVersion);
         }
@@ -54,38 +54,38 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         /// </summary>
         /// <param name="fileId"></param>
         /// <returns></returns>
-        internal Task EvictDataFileAsync(long fileId)
+        internal Task EvictDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             return _localCacheManager.EvictDataFileAsync(fileId);
         }
 
-        public async Task DeleteDataFileAsync(long fileId)
+        public async Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             await _localCacheManager.EvictDataFileAsync(fileId);
             await _remoteStorage.DeleteDataFileAsync(fileId);
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             return _localCacheManager.ReadMemoryAsync(fileId, offset, length, crc32);
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             return _localCacheManager.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             return _remoteStorage.ReadCheckpointFileAsync(checkpointVersion);
         }
 
-        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
             return _remoteStorage.ReadCheckpointRegistryFileAsync();
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId)
+        public Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             // Fix later to read from cache also
             // Should probably have a try read from cache, if its not in cache, just skip it and read directly from remote
@@ -93,21 +93,26 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             return _remoteStorage.ReadDataFileAsync(fileId);
         }
 
-        public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
+        public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             return _remoteStorage.WriteCheckpointFileAsync(checkpointVersion, data);
         }
 
-        public Task WriteCheckpointRegistryFile(PipeReader data)
+        public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
             return _remoteStorage.WriteCheckpointRegistryFile(data);
         }
 
-        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
+        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
         {
             await _localCacheManager.RegisterNewFileAsync(fileId, crc64, size, data);
             data.CancelPendingRead(); // Cancel pending read is implemented in the file readers to reset to start, this is a special case for cache
             await _remoteStorage.WriteDataFileAsync(fileId, crc64, size, data);
+        }
+
+        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 }

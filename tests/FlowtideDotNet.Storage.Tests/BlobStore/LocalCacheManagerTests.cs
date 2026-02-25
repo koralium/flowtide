@@ -269,6 +269,53 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             Assert.Equal(2, cacheData.NumberOfReadMemory);
         }
 
+        [Fact]
+        public async Task EnsureDataInCacheIsReinitializedAfterCrash()
+        {
+            var blobFile = new BlobFileWriter((file) => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            blobFile.Write(2, new SerializableObject(new byte[] { 1, 2, 3 }));
+            blobFile.Finish();
+            var crc32 = blobFile.Crc32s[0];
+            var offset = blobFile.PageOffsets[0];
+            await blobPersistentStorage.AddCompleteBlobFile(blobFile);
+            await blobPersistentStorage.CheckpointAsync([1], false);
+
+            // Read once to make sure data is in the cache
+            var memory = await cacheProvider.ReadAsync(0, offset, 3, crc32, new LocalCacheTestSerializer());
+            Assert.Equal(new byte[] { 1, 2, 3 }, memory.Data);
+
+            Assert.Equal(0, persistentData.NumberOfReadDataFile);
+            Assert.Equal(1, cacheData.NumberOfReadAsync);
+
+            {
+                var newStorage = new BlobPersistentStorage(new Persistence.ObjectStorage.BlobStorageOptions()
+                {
+                    FileProvider = persistentData,
+                    CacheProvider = cacheData
+                });
+                var newProvider = blobPersistentStorage.CacheProvider;
+                Assert.NotNull(newProvider);
+                await newStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test"));
+
+                var newMemory = await newProvider.ReadAsync(0, offset, 3, crc32, new LocalCacheTestSerializer());
+                Assert.Equal(new byte[] { 1, 2, 3 }, newMemory.Data);
+
+                // Check that persistent storage was not read and only the cache data
+                Assert.Equal(0, persistentData.NumberOfReadDataFile);
+                Assert.Equal(2, cacheData.NumberOfReadAsync);
+            }
+        }
+
+        [Fact]
+        public async Task EnsureZombieFileAreClearedFromCache()
+        {
+            await cacheData.WriteDataFileAsync(15, 0, 1, PipeReader.Create(new ReadOnlySequence<byte>([1])));
+            await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test"));
+
+            var fileExists = cacheData.TryGetFileData(15, out _);
+            Assert.False(fileExists);
+        }
+
         /// <summary>
         /// Check that the current size updates correctly after a delete
         /// </summary>

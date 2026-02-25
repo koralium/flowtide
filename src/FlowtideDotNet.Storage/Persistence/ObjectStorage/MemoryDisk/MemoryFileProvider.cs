@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             return _dataFiles.TryGetValue(fileId, out bytes);
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public Task DeleteDataFileAsync(long fileId)
+        public Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public bool DataFileExists(long fileId)
+        public bool DataFileExists(long fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public virtual ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public virtual ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             lock (_lock)
             {
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("Checkpoint file not found");
         }
 
-        public Task<PipeReader?> ReadCheckpointRegistryFileAsync()
+        public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual Task<PipeReader> ReadDataFileAsync(long fileId)
+        public virtual Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("Data file not found");
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data)
+        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public Task WriteCheckpointRegistryFile(PipeReader data)
+        public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data)
+        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);
@@ -173,6 +173,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             {
                 _dataFiles[fileId] = bytes;
             }
+        }
+
+        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IEnumerable<long>>(_dataFiles.Keys.ToList());
         }
     }
 }
