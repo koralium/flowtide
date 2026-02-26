@@ -138,7 +138,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             // Trigger compact on the previous file
             // This tests that the previous value will not be written
-            await persistentStorage.CompactFile(0, fileInfo.Crc64);
+            await persistentStorage.CompactFile(0, fileInfo.FileSize, fileInfo.Crc64);
 
             provider.UnblockWrites();
             await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);

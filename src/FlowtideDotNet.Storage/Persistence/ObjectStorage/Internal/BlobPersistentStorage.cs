@@ -17,7 +17,9 @@ using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
 using System.IO.Hashing;
 using System.IO.Pipelines;
 
@@ -26,16 +28,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     public class BlobPersistentStorage : IPersistentStorage
     {
         private readonly int _maxFileSize;
-        private readonly IFileStorageProvider _fileProvider;
+        private IFileStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly BlobStorageOptions _blobStorageOptions;
         private MergedBlobFileWriter _mergedBlobFileWriter;
-        private CheckpointHandler _checkpointHandler;
-        private BlobPersistentSession _adminSession;
+        private CheckpointHandler? _checkpointHandler;
+        private BlobPersistentSession? _adminSession;
         private SemaphoreSlim _mergedBlobLock = new SemaphoreSlim(1);
         private List<BlobPersistentSession> _sessions = new List<BlobPersistentSession>();
         private object _sessionsLock = new object();
+        private Meter? _meter;
 
         /// <summary>
         /// Temporary location of written pages from sessions
@@ -64,17 +67,22 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _fileProvider = cacheProvider;
                 CacheProvider = cacheProvider;
             }
-            
+
             this._memoryPool = blobStorageOptions.MemoryPool;
             this._memoryAllocator = blobStorageOptions.MemoryAllocator;
             this._maxFileSize = blobStorageOptions.MaxFileSize;
             _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, blobStorageOptions.SnapshotCheckpointInterval);
-            _adminSession = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             this._blobStorageOptions = blobStorageOptions;
         }
 
-        public long CurrentVersion => _checkpointHandler.CheckpointVersion;
+        public long CurrentVersion
+        {
+            get
+            {
+                Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before fetching current version");
+                return _checkpointHandler.CheckpointVersion;
+            }
+        }
 
         internal bool TryGetTemporaryLocation(long pageId, out PageWriteLocation location)
         {
@@ -98,6 +106,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding blob files");
             await _mergedBlobLock.WaitAsync();
             _mergedBlobFileWriter.AddBlobFile(blobFileWriter);
 
@@ -115,16 +124,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         internal async Task AddCompleteBlobFile(BlobFileWriter blobFileWriter)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding blob files");
             await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
         }
 
         internal bool TryGetFileInformation(long fileId, [NotNullWhen(true)] out FileInformation? fileInformation)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before fetching file information");
             return _checkpointHandler.TryGetFileInformation(fileId, out fileInformation);
         }
 
         private async Task CompactFiles()
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before compacting files");
             // Fetch all files that where added in previous versions
             var files = _checkpointHandler.GetAllFileInformation()
                 .Where(x => x.AddedAtVersion < _checkpointHandler.CheckpointVersion)
@@ -183,14 +195,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 foreach(var fileToCompact in filesToCompact)
                 {
-                    await CompactFile(fileToCompact.FileId, fileToCompact.Crc64);
+                    await CompactFile(fileToCompact.FileId, fileToCompact.FileSize, fileToCompact.Crc64);
                 }
             }
         }
 
-        internal async Task CompactFile(long fileId, ulong crc64)
+        internal async Task CompactFile(long fileId, int fileSize, ulong crc64)
         {
-            var reader = await _fileProvider.ReadDataFileAsync(fileId);
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before compacting files");
+
+            var reader = await _fileProvider.ReadDataFileAsync(fileId, fileSize);
 
             Crc32 crc32 = new Crc32();
             DataFileReader dataFileReader = new DataFileReader(reader);
@@ -234,6 +248,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         private void ReadDataFilePageIds(long fileId, ReadOnlySequence<byte> data, List<PageDataInfo> pageFileLocations)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data file page ids");
+
             var reader = new DataFilePageIdsReader(data);
 
             while(reader.TryGetNextPageId(out var pageId))
@@ -249,6 +265,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async ValueTask CheckpointAsync(byte[] metadata, bool includeIndex)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before checkpointing");
+            Debug.Assert(_adminSession != null, "Persistent storage must be initialized before checkpointing");
+
             await _adminSession.Write(1, new SerializableObject(metadata));
             await _adminSession.Commit();
             // If there is any data in the merged blob file writer, we need to finish it and send it to the checkpoint handler
@@ -268,6 +287,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         internal async ValueTask<ReadOnlySequence<byte>> ReadAsync(long key)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
+
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
                 var memory = await _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32);
@@ -278,6 +299,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         internal ValueTask<T> ReadAsync<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
+
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
                 return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
@@ -287,16 +310,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         internal void DeletePages(IReadOnlySet<long> keys)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before deleting pages");
+
             _checkpointHandler.AddDeletedPages(keys);
         }
 
         public async ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before compacting");
+
             await _checkpointHandler.Compact();
         }
 
         public IPersistentStorageSession CreateSession()
         {
+            if (_checkpointHandler == null)
+            {
+                throw new InvalidOperationException("Persistent storage must be initialized before creating sessions");
+            }
             var session = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             lock (_sessionsLock)
             {
@@ -314,18 +345,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
+            _meter = new Meter($"flowtide.{metadata.StreamName}.storage");
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
+            _adminSession = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             _temporaryPageLocations.Clear();
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverToLatest(default);
             if (CacheProvider != null)
             {
-                await CacheProvider.InitializeAsync(default);
+                await CacheProvider.InitializeAsync(metadata, _meter, default);
+            }
+            else if (!(_fileProvider is MetricsFileStorageProvider))
+            {
+                // Add the metrics proxy here so we get metrics
+                _fileProvider = new MetricsFileStorageProvider(_meter, _fileProvider);
             }
         }
 
         public async ValueTask RecoverAsync(long checkpointVersion)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before recovering");
+
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverTo(checkpointVersion, default);
         }
@@ -347,6 +387,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             
         public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)
         {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before fetching values");
+
             if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
             {
                 value = _fileProvider.GetMemoryAsync(location.FileId, location.Offset, location.Size, location.Crc32).GetAwaiter().GetResult();
@@ -358,6 +400,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public async ValueTask Write(long key, byte[] value)
         {
+            Debug.Assert(_adminSession != null, "Persistent storage must be initialized before writing values");
+
             await _adminSession.Write(key, new SerializableObject(value));
         }
 

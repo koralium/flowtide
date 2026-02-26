@@ -57,10 +57,10 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             return base.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public override Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public override Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadDataFile);
-            return base.ReadDataFileAsync(fileId);
+            return base.ReadDataFileAsync(fileId, fileSize, cancellationToken);
         }
 
         public override async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)

@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// </summary>
         /// <param name="fileId"></param>
         /// <returns></returns>
-        Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default);
+        Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Reads a serialized object of type T from the specified file segment using the provided state serializer.

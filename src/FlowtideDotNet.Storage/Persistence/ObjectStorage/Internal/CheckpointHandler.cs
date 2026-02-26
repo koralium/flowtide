@@ -478,7 +478,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             // All data has now been written to the checkpoint file
             _newCheckpoint.FinishForWriting();
-
+            
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64);
             await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
 
@@ -577,17 +577,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
 
-            if (checkpointsToRemove != null)
+            if (checkpointsToRemove != null && checkpointsToRemove.Count > 0)
             {
                 foreach (var checkpointToRemove in checkpointsToRemove)
                 {
                     await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
                 }
-            }
 
-            // Write the registry since we removed checkpoint versions
-            _checkpointRegistryFile.FinishForWriting();
-            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+                // Write the registry since we removed checkpoint versions
+                _checkpointRegistryFile.FinishForWriting();
+                await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+            }
         }
 
         private async Task WriteLoop()

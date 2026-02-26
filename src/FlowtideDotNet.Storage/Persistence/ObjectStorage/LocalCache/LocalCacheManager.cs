@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics.Metrics;
 using System.IO.Hashing;
 using System.IO.Pipelines;
 using System.Threading.Channels;
@@ -27,6 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         private readonly BlobPersistentStorage storage;
         private readonly IFileStorageProvider _localCache;
         private readonly IFileStorageProvider _remoteStorage;
+        private Meter? _meter;
 
         private readonly Dictionary<long, LinkedListNode<LocalCacheEntry>> _index = new();
         private readonly LinkedList<LocalCacheEntry> _lruList = new();
@@ -36,7 +38,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         private readonly Channel<DownloadJob> _downloadChannel;
 
         private readonly long _maxSizeBytes;
+        private readonly LocalCacheMetricValues _metricValues;
         private long _currentSize;
+
+        private long _cacheHits;
+        private long _totalCacheTries;
 
         private readonly Queue<TaskCompletionSource> _spaceWaiters = new();
         private readonly CancellationTokenSource _cts = new();
@@ -52,13 +58,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             IFileStorageProvider localCache,
             IFileStorageProvider remoteStorage,
             long maxSizeBytes,
+            LocalCacheMetricValues metricValues,
             int workerCount = 2)
         {
             this.storage = storage;
             _localCache = localCache;
             _remoteStorage = remoteStorage;
             _maxSizeBytes = maxSizeBytes;
-
+            this._metricValues = metricValues;
             _downloadChannel = Channel.CreateBounded<DownloadJob>(new BoundedChannelOptions(4)
             {
                 FullMode = BoundedChannelFullMode.Wait
@@ -71,8 +78,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             _evictionTask = Task.Run(ProactiveEvictionLoopAsync);
         }
 
-        public async Task InitializeAsync(CancellationToken cancellationToken)
+        public async Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, CancellationToken cancellationToken)
         {
+            if (_meter == null)
+            {
+                _meter = meter;
+                _meter.CreateObservableGauge<long>(
+                    MetricNames.LocalCacheSizeBytes, 
+                    () => new Measurement<long>(Interlocked.Read(ref _currentSize), _metricValues.TagList), 
+                    "bytes", 
+                    "Current size of the local cache in bytes");
+                _meter.CreateObservableCounter<long>(
+                    MetricNames.LocalCacheHits, 
+                    () => new Measurement<long>(Interlocked.Read(ref _cacheHits), _metricValues.TagList), 
+                    "hits", 
+                    "Number of cache hits");
+                _meter.CreateObservableCounter<long>(
+                    MetricNames.LocalCacheTotalTries, 
+                    () => new Measurement<long>(Interlocked.Read(ref _totalCacheTries), _metricValues.TagList), 
+                    "tries", 
+                    "Total number of cache tries");
+            }
             lock (_syncRoot)
             {
                 // We always clear local cache and refetch info to make sure it is updated with relevant info
@@ -109,11 +135,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAsync(long fileId, int offset, int length, uint crc32)
         {
+            Interlocked.Increment(ref _totalCacheTries);
             if (TryGetCacheEntry(fileId, out var entry))
             {
                 try
                 {
                     entry.RecordAccess();
+                    Interlocked.Increment(ref _cacheHits);
                     return await _localCache.GetMemoryAsync(fileId, offset, length, crc32);
                 }
                 catch (FlowtideChecksumMismatchException)
@@ -153,11 +181,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public async ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
+            Interlocked.Increment(ref _totalCacheTries);
             if (TryGetCacheEntry(fileId, out var entry))
             {
                 try
                 {
                     entry.RecordAccess();
+                    Interlocked.Increment(ref _cacheHits);
                     return await _localCache.ReadAsync(fileId, offset, length, crc32, stateSerializer);
                 }
                 catch (FlowtideChecksumMismatchException)
@@ -267,8 +297,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
                         await EnsureSpaceAsync(fileInfo.FileSize);
 
-                        var reader = await _remoteStorage.ReadDataFileAsync(job.FileId);
-                        await _localCache.WriteDataFileAsync(job.FileId, fileInfo.Crc64, fileInfo.FileSize, reader);
+                        _metricValues.AddPersistentRead();
+                        _metricValues.AddPersistentBytesRead(fileInfo.FileSize);
+                        var reader = await _remoteStorage.ReadDataFileAsync(job.FileId, fileInfo.FileSize, _cts.Token);
+                        await _localCache.WriteDataFileAsync(job.FileId, fileInfo.Crc64, fileInfo.FileSize, reader, _cts.Token);
 
                         lock (_syncRoot)
                         {

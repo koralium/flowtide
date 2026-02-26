@@ -14,6 +14,8 @@ using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
@@ -25,10 +27,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
     {
         private readonly IFileStorageProvider _remoteStorage;
         private LocalCacheManager _localCacheManager;
+        private LocalCacheMetricValues _metricValues;
+        private Meter? _meter;
+        private TagList _metricTagList;
+        private ObservableCounter<long>? _persistentReadCounter;
+        private ObservableCounter<long>? _persistentWriteCounter;
+        private ObservableCounter<long>? _persistentDeleteCounter;
+        private Histogram<long>? _persistentBytesRead;
+        private Histogram<long>? _persistentBytesWritten;
 
         public LocalCacheProvider(BlobPersistentStorage blobPersistentStorage, IFileStorageProvider localCache, IFileStorageProvider remoteStorage)
         {
-            _localCacheManager = new LocalCacheManager(blobPersistentStorage, localCache, remoteStorage, 10L * 1000 * 1000 * 1000);
+            _metricValues = new LocalCacheMetricValues();
+            _localCacheManager = new LocalCacheManager(blobPersistentStorage, localCache, remoteStorage, 10L * 1000 * 1000 * 1000, _metricValues);
             _remoteStorage = remoteStorage;
         }
 
@@ -39,13 +50,36 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         /// This allows the local cache to be reused even after a crash
         /// </summary>
         /// <returns></returns>
-        public Task InitializeAsync(CancellationToken cancellationToken)
+        public Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, CancellationToken cancellationToken)
         {
-            return _localCacheManager.InitializeAsync(cancellationToken);
+            if (_meter == null)
+            {
+                _meter = meter;
+                _metricTagList.Add("stream", metadata.StreamName);
+                _persistentReadCounter = _meter.CreateObservableCounter<long>(
+                    MetricNames.PersistentStorageNumberOfReads, 
+                    () => new Measurement<long>(_metricValues.PersistentReadCount, _metricTagList), 
+                    description: "Number of reads to persistent storage");
+                _persistentWriteCounter = _meter.CreateObservableCounter<long>(
+                    MetricNames.PersistentStorageNumberOfWrites, 
+                    () => new Measurement<long>(_metricValues.PersistentWriteCount, _metricTagList), 
+                    description: "Number of writes to persistent storage");
+                _persistentDeleteCounter = _meter.CreateObservableCounter<long>(
+                    MetricNames.PersistentStorageNumberOfDeletes, 
+                    () => new Measurement<long>(_metricValues.PersistentDeleteCount, _metricTagList), 
+                    description: "Number of deletes to persistent storage");
+                _metricValues.SetTagList(_metricTagList);
+                _persistentBytesRead = _meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesRead, "bytes");
+                _metricValues.SetPersistentBytesReadHistogram(_persistentBytesRead);
+                _persistentBytesWritten = _meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesWritten, "bytes");
+                _metricValues.SetPersistentBytesWrittenHistogram(_persistentBytesWritten);
+            }
+            return _localCacheManager.InitializeAsync(metadata, meter, cancellationToken);
         }
 
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentDelete();
             return _remoteStorage.DeleteCheckpointFileAsync(checkpointVersion);
         }
 
@@ -61,6 +95,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public async Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentDelete();
             await _localCacheManager.EvictDataFileAsync(fileId);
             await _remoteStorage.DeleteDataFileAsync(fileId);
         }
@@ -77,34 +112,42 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentRead();
             return _remoteStorage.ReadCheckpointFileAsync(checkpointVersion);
         }
 
         public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentRead();
             return _remoteStorage.ReadCheckpointRegistryFileAsync();
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentRead();
+            _metricValues.AddPersistentBytesRead(fileSize);
             // Fix later to read from cache also
             // Should probably have a try read from cache, if its not in cache, just skip it and read directly from remote
             // Since this method is only called on compactions
-            return _remoteStorage.ReadDataFileAsync(fileId);
+            return _remoteStorage.ReadDataFileAsync(fileId, fileSize);
         }
 
         public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentWrite();
             return _remoteStorage.WriteCheckpointFileAsync(checkpointVersion, data);
         }
 
         public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentWrite();
             return _remoteStorage.WriteCheckpointRegistryFile(data);
         }
 
         public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
         {
+            _metricValues.AddPersistentWrite();
+            _metricValues.AddPersistentBytesWritten(size);
             await _localCacheManager.RegisterNewFileAsync(fileId, crc64, size, data);
             data.CancelPendingRead(); // Cancel pending read is implemented in the file readers to reset to start, this is a special case for cache
             await _remoteStorage.WriteDataFileAsync(fileId, crc64, size, data);

@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public virtual Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {

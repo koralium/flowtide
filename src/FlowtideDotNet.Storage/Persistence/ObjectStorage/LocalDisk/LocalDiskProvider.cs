@@ -129,7 +129,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return localDiskReadManager.Read(path, offset, length, crc32);
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
