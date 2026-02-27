@@ -47,7 +47,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 result = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
 
-                //_globalOffset += (int)result.Buffer.Length;
                 if ((_globalOffset + result.Buffer.Length) > _checkpointStartOffset)
                 {
                     // We have read past the checkpoint registry, we can stop reading
@@ -58,6 +57,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     _pipeReader.AdvanceTo(pos);
                     break;
                 }
+                _globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.End);
             }
 
@@ -73,6 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     return result.Buffer.Slice(result.Buffer.Start, pos);
                 }
 
+                _globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
             }
         }
@@ -86,7 +87,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 result = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
 
-                //_globalOffset += (int)result.Buffer.Length;
                 if ((_globalOffset + result.Buffer.Length) > _checkpointRegistryStartOffset)
                 {
                     // We have read past the checkpoint registry, we can stop reading
@@ -101,6 +101,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
                 }
+                _globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.End);
             }
 
