@@ -291,12 +291,29 @@ The header of the data file has the following layout:
 
   0-31: Magic number
   32-47: Version
-  48-63: Reserved
+  48-63: Flags
   64-95: Page Counts
   96-127: Page Id Start Offset
   128-159: Page Location Start Offset
   160-191: Data Start Offset
   192-255: Reserved 40 bytes (64 byte alignment)  [colheight = 5]
+}
+```
+
+The following flag exist right now:
+
+1. ContainsCheckpointBundle, bit index 0 = 1
+
+If ContainsCheckpointBundle is set, the reserved bytes are used to provide additional information:
+
+```kroki type=packetdiag
+{
+  colwidth = 64
+  node_height = 72
+
+  0-63: Checkpoint Offset
+  64-127: Registry Offset
+  128-191: Registry footer offset
 }
 ```
 
@@ -360,14 +377,15 @@ File layout:
 
 ```kroki type=rackdiag alt=fileoverviewrack
 rackdiag {
-  5U;
+  6U;
   ascending;
 
   1: Header;
   2: Checkpoint Versions
   3: Is snaphots
-  4: CRC64s
-  5: Footer (crc64 of the registry)
+  4: IsBundle
+  5: CRC64s
+  6: Footer (crc64 of the registry)
 }
 ```
 
@@ -433,3 +451,49 @@ the registry.
   0-63: Registry CRC64 value
 }
 ```
+
+## Data And Checkpoint Bundle File
+
+The *data and checkpoint file* is a special case file where both the data and checkpoint info is bundled into a
+single file. This is done to reduce cloud costs on `PUT` operations. 
+
+This file stores all information from *data*, *checkpoint* and *registry*. This file is only created if
+all the updated pages can be contained in a single file and can be seen as a pure cost optimization.
+
+**Cost comparisons:**
+
+Over twenty checkpoints, if all changed data can fit under ex. 64 mb. If we write both a data file and a checkpoint file
+that would amount to 40 writes. Over time the page is usually overwritten and the file needs to be compacted which would
+result in 20 deletes. We would also do 20 deletes on the checkpoint files eventually. So in total we would get 
+40 writes and 40 deletes.
+
+If we instead write a single file with all information, that would amount to 20 writes. Overtime they would be overwritten
+and become 20 deletes, but we do not need to cleanup any checkpoint file. So in total 20 writes and 20 deletes.
+
+This would then result in 50% less operations to a cloud storage.
+
+The downside of this approach is that it requires a list operation to find the data files. So if a stream crashes
+often and listing is expensive, this model can become more expensive than writing double.
+
+### Data Layout
+
+```kroki type=rackdiag alt=fileoverviewrack
+rackdiag {
+  3U;
+  ascending;
+
+  1: Page Data;
+  2: Checkpoint Data;
+  3: Registry Data;
+}
+```
+
+### CRC64 for bundle files
+
+All three parts have their own CRC64 calculation and are updated when the bundle is created.
+From byte 0 to start of checkpoint data is considered the page data.
+
+The page data CRC64 is updated into the checkpoint file information, the checkpoint data is then
+recalculated which is then inserted into the registry data.
+
+Finally the registry CRC64 is calculated and put into the registry footer to have the complete chain.

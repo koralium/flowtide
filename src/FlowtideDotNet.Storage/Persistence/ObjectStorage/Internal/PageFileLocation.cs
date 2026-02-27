@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public int Size { get; set; }
 
-        public long FileId { get; set; }
+        public ulong FileId { get; set; }
 
         public uint Crc32 { get; set; }
     }

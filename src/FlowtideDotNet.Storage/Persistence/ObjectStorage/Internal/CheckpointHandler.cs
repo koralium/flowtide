@@ -16,6 +16,7 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.IO.Pipelines;
 using System.Threading.Channels;
 
@@ -30,7 +31,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly IMemoryAllocator _memoryAllocator;
         private Channel<PagesFile> _channel;
         private BlobNewCheckpoint _newCheckpoint;
-        private long _nextFileId = 0;
+        private ulong _nextFileId = 0;
         private object _lock = new object();
         private object _checkpointFileLock = new object();
         private bool _writeSnapshotCheckpoint;
@@ -42,24 +43,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private CancellationTokenSource? _cancellationTokenSource;
 
         private ConcurrentDictionary<long, PageFileLocation> _pageFileLocations = new ConcurrentDictionary<long, PageFileLocation>();
-        private ConcurrentDictionary<long, FileInformation> _fileInformations = new ConcurrentDictionary<long, FileInformation>();
+        private ConcurrentDictionary<ulong, FileInformation> _fileInformations = new ConcurrentDictionary<ulong, FileInformation>();
 
         private HashSet<long> _deletedPages = new HashSet<long>();
         private object _deletedPagesLock = new object();
 
-        private HashSet<long> _modifiedFileIds = new HashSet<long>();
-        private HashSet<long> _deletedFileIds = new HashSet<long>();
+        private HashSet<ulong> _modifiedFileIds = new HashSet<ulong>();
+        private HashSet<ulong> _deletedFileIds = new HashSet<ulong>();
         private object _modifiedFileIdsLock = new object();
         private List<DeletedFileInfo> deletedFilesList = new List<DeletedFileInfo>();
         private List<CheckpointVersion> _activeVersions = new List<CheckpointVersion>();
 
         private long _currentCheckpointVersion = 0;
         private long _checkpointVersion;
+        private long _lastSnapshotVersion;
         private bool _modifiedSinceLastCheckpoint = false;
 
         private CheckpointRegistryFile _checkpointRegistryFile;
 
         public long CheckpointVersion => _checkpointVersion;
+
+        public long LastSnapshotVersion => _lastSnapshotVersion;
 
 
         public CheckpointHandler(
@@ -91,9 +95,47 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             if (checkpointRegistryFileReader == null)
             {
                 _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
-                return;
             }
-            _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+            else
+            {
+                _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Try and read bundle files if the file provider supports it, this is to make sure we have the latest checkpoint registry file
+            // in case there are bundled checkpoint files which contains later versions than the registry file
+            if (_fileProvider.SupportsDataFileListing)
+            {
+                var lastVersion = _checkpointRegistryFile.LastOrDefault()?.Version ?? 0;
+                var fileId = (1UL << 63) | (ulong)lastVersion;
+                var bundledDataFileIds = (await _fileProvider.ListDataFilesAboveVersionAsync(fileId)).ToList();
+
+                if (bundledDataFileIds.Count > 0)
+                {
+                    ulong maxFileId = fileId;
+                    // Validate that there are no version below the asked version
+                    // This is a safe guard for implementation errors in file providers
+                    // we also take out the max fileId here
+                    for (int i = 0; i < bundledDataFileIds.Count; i++)
+                    {
+                        if (bundledDataFileIds[i] < fileId)
+                        {
+                            bundledDataFileIds.RemoveAt(i);
+                            i--;
+                        }
+                        else if (bundledDataFileIds[i] > maxFileId)
+                        {
+                            maxFileId = bundledDataFileIds[i];
+                        }
+                    }
+
+                    if (maxFileId != fileId)
+                    {
+                        // There is a later version in a bundle, so we need to read the new registry from that file
+                        var dataFilePipe = await _fileProvider.ReadDataFileAsync(maxFileId, 0, cancellationToken);
+                        _checkpointRegistryFile = await new BundleFileRegistryReader(dataFilePipe).ReadRegistryAsync(_memoryAllocator, cancellationToken);
+                    }
+                }
+            }
         }
 
         public async Task RecoverToLatest(CancellationToken cancellationToken)
@@ -181,12 +223,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 if (checkpointFile.IsSnapshot)
                 {
+                    _lastSnapshotVersion = checkpointFile.Version;
                     _countSinceLastSnapshot = 0;
                 }
                 else
                 {
                     // Increase the count since last snapshot to correctly take snapshots after X incremental even after a crash
                     _countSinceLastSnapshot++;
+                }
+                if (checkpointFile.IsBundled)
+                {
+
                 }
                 var fileReader = await _fileProvider.ReadCheckpointFileAsync(checkpointFile);
 
@@ -226,7 +273,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             while (reader.TryGetNextDeletedPageId(out var deletedFileInfo))
             {
                 deletedFilesList.Add(deletedFileInfo);
-                _pageFileLocations.TryRemove(deletedFileInfo.fileId, out _);
+                _fileInformations.TryRemove(deletedFileInfo.fileId, out _);
             }
 
             while (reader.TryGetFileInformation(out var fileInfo))
@@ -341,7 +388,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 _newCheckpoint.FinishForWriting();
             }
 
-            var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64);
+            var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64, false);
             // Write the checkpoint as a snapshot
             await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
 
@@ -363,6 +410,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _checkpointRegistryFile.FinishForWriting();
             await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
 
+            _lastSnapshotVersion = _checkpointVersion;
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
 
@@ -386,27 +434,32 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return _fileInformations.Values;
         }
 
-        public bool TryGetFileInformation(long fileId, [NotNullWhen(true)] out FileInformation? fileInfo)
+        public bool TryGetFileInformation(ulong fileId, [NotNullWhen(true)] out FileInformation? fileInfo)
         {
             return _fileInformations.TryGetValue(fileId, out fileInfo);
         }
         
-        public async Task FinishCheckpoint()
+        public async Task FinishCheckpoint(MergedBlobFileWriter? mergedFile)
         {
             if (_writeSnapshotCheckpoint)
             {
+                if (mergedFile != null)
+                {
+                    // If we are taking a snapshot, we will write the data as a normal data file
+                    // since snapshots do not contain bundles.
+                    await EnqueueFileAsync(mergedFile);
+                }
                 await WriteSnapshotCheckpoint();
                 return;
             }
 
-            if (_writeTasks == null)
+            if (_writeTasks != null)
             {
-                throw new InvalidOperationException("Checkpoint has not been started.");
+                _channel.Writer.Complete();
+                await Task.WhenAll(_writeTasks);
             }
 
-            _channel.Writer.Complete();
-
-            await Task.WhenAll(_writeTasks);
+            
 
             // Go through deleted pages add them to checkpoint and update file statistics
             lock (_deletedPagesLock)
@@ -439,7 +492,127 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
 
-            // Add all modified files to the checkpoint
+            _newCheckpoint.SetNextFileId(_nextFileId);
+
+            // All data has now been written to the checkpoint file
+
+            if (mergedFile != null)
+            {
+                await HandleBundleCheckpoint(mergedFile);
+            }
+            else
+            {
+                // Add all modified files to the checkpoint
+                // This is done seperately in bundle checkpoint since no file info has been updated yet from the write loop.
+                lock (_checkpointFileLock)
+                {
+                    lock (_modifiedFileIdsLock)
+                    {
+                        // Add all modified files first, this also adds deleted file info
+                        foreach (var modifiedFileId in _modifiedFileIds)
+                        {
+                            if (_fileInformations.TryGetValue(modifiedFileId, out var fileInfo))
+                            {
+                                _newCheckpoint.AddFileInformation(fileInfo);
+                            }
+                        }
+
+                        // Add all deleted file ids
+                        foreach (var deletedFileId in _deletedFileIds)
+                        {
+                            deletedFilesList.Add(new DeletedFileInfo()
+                            {
+                                fileId = deletedFileId,
+                                deletedAtVersion = _checkpointVersion
+                            });
+
+                            _newCheckpoint.AddDeletedFileId(new DeletedFileInfo()
+                            {
+                                fileId = deletedFileId,
+                                deletedAtVersion = _checkpointVersion
+                            });
+                            // Remove the deleted file from file informations
+                            _fileInformations.TryRemove(deletedFileId, out _);
+                        }
+                        _deletedFileIds.Clear();
+                    }
+                }
+
+                _newCheckpoint.FinishForWriting();
+
+                var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, false);
+
+                _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
+                _checkpointRegistryFile.FinishForWriting();
+
+                await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
+                _activeVersions.Add(checkpointVersion);
+                await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+            }
+
+            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
+            // Create a new channel
+            _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
+            {
+                FullMode = BoundedChannelFullMode.Wait,
+                SingleReader = false
+            });
+            if (_writeTasks != null)
+            {
+                lock (_writeTasks)
+                {
+                    _writeTasks = null;
+                }
+            }
+            
+
+            _currentCheckpointVersion = _checkpointVersion;
+            _checkpointVersion++;
+
+            lock (_checkpointFileLock)
+            {
+                _countSinceLastSnapshot++;
+                if (_countSinceLastSnapshot >= VersionBetweenSnapshot)
+                {
+                    _writeSnapshotCheckpoint = true;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Special method to handle bundled data and checkpoint info.
+        /// This is done to reduce the number of write operations being done which can help
+        /// reduce cloud costs.
+        /// </summary>
+        /// <param name="mergedFile"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
+        private async Task HandleBundleCheckpoint(MergedBlobFileWriter mergedFile)
+        {
+            // Go through all pages and update file information as the first pass
+            // we will go through it again after write to update the actual page locations
+            for (int i = 0; i < mergedFile.PageIds.Count; i++)
+            {
+                // Check if the page already exists in another file, if it does, we need to update the file information of the existing file and add it to modified file ids
+                if (_pageFileLocations.TryGetValue(mergedFile.PageIds[i], out var existingLocation))
+                {
+                    if (_fileInformations.TryGetValue(existingLocation.FileId, out var existingFileInfo))
+                    {
+                        existingFileInfo.AddNonActivePage();
+                        existingFileInfo.AddDeletedSize(existingLocation.Size);
+                        lock (_modifiedFileIdsLock)
+                        {
+                            _modifiedFileIds.Add(existingLocation.FileId);
+                            if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount)
+                            {
+                                _deletedFileIds.Add(existingFileInfo.FileId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update checkpoint file with the modified files and the deleted files
             lock (_checkpointFileLock)
             {
                 lock (_modifiedFileIdsLock)
@@ -454,7 +627,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     }
 
                     // Add all deleted file ids
-                    foreach(var deletedFileId in _deletedFileIds)
+                    foreach (var deletedFileId in _deletedFileIds)
                     {
                         deletedFilesList.Add(new DeletedFileInfo()
                         {
@@ -474,45 +647,75 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
             }
 
-            _newCheckpoint.SetNextFileId(_nextFileId);
+            ulong fileId = 1UL << 63 | (ulong)_checkpointVersion;
 
-            // All data has now been written to the checkpoint file
+            // Update fileIds for all pages
+            _newCheckpoint.UpdateAllFileIds(fileId);
+
+            // Create the file id array
+            var fileIds = new PrimitiveList<ulong>(_memoryAllocator);
+            fileIds.InsertStaticRange(0, fileId, mergedFile.PageIds.Count);
+
+            // Create the page sizes
+            var pageSizes = new PrimitiveList<int>(_memoryAllocator);
+            for (int i = 0; i < mergedFile.PageIds.Count; i++)
+            {
+                var offset = mergedFile.PageOffsets[i];
+                var next = mergedFile.PageOffsets[i + 1];
+                pageSizes.Add(next - offset);
+            }
+
+            // add the pages info to the checkpoint file
+            _newCheckpoint.AddUpsertPages(mergedFile.PageIds, fileIds, mergedFile.PageOffsets, pageSizes, mergedFile.Crc32s);
+
+            // Add a temporary file info, the crc64 will be incorrect but is updated later
+            var temporaryFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
+            _newCheckpoint.AddFileInformation(temporaryFileInfo);
             _newCheckpoint.FinishForWriting();
-            
-            var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64);
-            await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
 
-            _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
-            // Create a new channel
-            _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
-            {
-                FullMode = BoundedChannelFullMode.Wait,
-                SingleReader = false
-            });
-            lock (_writeTasks)
-            {
-                _writeTasks = null;
-            }
-            _activeVersions.Add(checkpointVersion);
+            var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, true);
+
             _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
-
             _checkpointRegistryFile.FinishForWriting();
-            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
 
-            _currentCheckpointVersion = _checkpointVersion;
-            _checkpointVersion++;
+            // Create a bundle, this recalculates crc64 of the files
+            var bundle = new DataCheckpointBundleFile(mergedFile, _newCheckpoint, _checkpointRegistryFile);
 
-            lock (_checkpointFileLock)
+            // when the bundle is created we got a new crc64 for the merged file, so we create a new file info to insert the correct info
+            var realFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
+            _fileInformations.AddOrUpdate(fileId, realFileInfo, static (key, old) => old);
+
+            await _fileProvider.WriteDataFileAsync(fileId, bundle.Crc64, bundle.FileSize, true, bundle);
+            // Add the active version, we also fetch the crc64 again since it will be different after writing the bundle file
+            _activeVersions.Add(new ObjectStorage.CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, true));
+
+            // Update local page file location for pages so they can be found
+            for (int i = 0; i < mergedFile.PageIds.Count; i++)
             {
-                _countSinceLastSnapshot++;
-                if (_countSinceLastSnapshot >= VersionBetweenSnapshot)
+                var pageInfo = new PageFileLocation()
                 {
-                    _writeSnapshotCheckpoint = true;
+                    FileId = fileId,
+                    Offset = mergedFile.PageOffsets[i],
+                    Size = mergedFile.PageOffsets[i + 1] - mergedFile.PageOffsets[i],
+                    Crc32 = mergedFile.Crc32s[i],
+                };
+
+                if (pageInfo.Size < 0)
+                {
+                    throw new InvalidOperationException("Negative page size");
                 }
+
+                _pageFileLocations[mergedFile.PageIds[i]] = pageInfo;
             }
+
+            // tell done writing to in flight buffers can be cleared
+            mergedFile.DoneWriting();
+            bundle.Dispose(); // Dispose the file when we are done
+            fileIds.Dispose();
+            pageSizes.Dispose();
         }
 
-        private long GetNextFileId()
+        private ulong GetNextFileId()
         {
             lock (_lock)
             {
@@ -579,14 +782,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             if (checkpointsToRemove != null && checkpointsToRemove.Count > 0)
             {
+                bool removedCheckpoint = false;
                 foreach (var checkpointToRemove in checkpointsToRemove)
                 {
-                    await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
+                    // Only delete non bundled checkpoint files, bundled checkpoint files are deleted when the bundle file is deleted
+                    if (!checkpointToRemove.IsBundled)
+                    {
+                        await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
+                        removedCheckpoint = true;
+                    }
                 }
 
                 // Write the registry since we removed checkpoint versions
-                _checkpointRegistryFile.FinishForWriting();
-                await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+                // We only write if we removed checkpoints that are not bundles
+                if (removedCheckpoint)
+                {
+                    _checkpointRegistryFile.FinishForWriting();
+                    await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+                }
             }
         }
 
@@ -605,9 +818,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     continue;
                 }
 
-                long fileId = GetNextFileId();
+                ulong fileId = GetNextFileId();
 
-                var fileIds = new PrimitiveList<long>(_memoryAllocator);
+                var fileIds = new PrimitiveList<ulong>(_memoryAllocator);
                 fileIds.InsertStaticRange(0, fileId, file.PageIds.Count);
 
                 var pageSizes = new PrimitiveList<int>(_memoryAllocator);
@@ -628,7 +841,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     }
                 }
 
-                await _fileProvider.WriteDataFileAsync(fileId, file.Crc64, file.FileSize, file);
+                await _fileProvider.WriteDataFileAsync(fileId, file.Crc64, file.FileSize, false, file);
 
                 for (int i = 0; i < file.PageIds.Count; i++)
                 {
@@ -674,6 +887,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 file.DoneWriting();
                 file.Dispose();
                 fileIds.Dispose();
+                pageSizes.Dispose();
             }
         }
     }

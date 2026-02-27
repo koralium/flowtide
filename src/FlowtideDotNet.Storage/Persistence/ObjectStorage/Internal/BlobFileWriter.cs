@@ -173,7 +173,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
                 // Write version
                 BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
-                headerData = headerData.Slice(4);
+                headerData = headerData.Slice(2);
+
+                // Flags
+                BinaryPrimitives.WriteInt16LittleEndian(headerData, 0);
+                headerData = headerData.Slice(2);
 
                 // Write page count
                 BinaryPrimitives.WriteInt32LittleEndian(headerData, _pageIds.Count);

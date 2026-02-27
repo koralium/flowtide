@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
     internal struct DeletedFileInfo
     {
-        public long fileId;
+        public ulong fileId;
         public long deletedAtVersion;
     }
 }

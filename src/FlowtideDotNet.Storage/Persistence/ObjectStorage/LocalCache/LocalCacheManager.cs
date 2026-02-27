@@ -30,11 +30,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         private readonly IFileStorageProvider _remoteStorage;
         private Meter? _meter;
 
-        private readonly Dictionary<long, LinkedListNode<LocalCacheEntry>> _index = new();
+        private readonly Dictionary<ulong, LinkedListNode<LocalCacheEntry>> _index = new();
         private readonly LinkedList<LocalCacheEntry> _lruList = new();
         private readonly object _syncRoot = new();
 
-        private readonly ConcurrentDictionary<long, Task<LocalCacheEntry>> _pendingDownloads = new();
+        private readonly ConcurrentDictionary<ulong, Task<LocalCacheEntry>> _pendingDownloads = new();
         private readonly Channel<DownloadJob> _downloadChannel;
 
         private readonly long _maxSizeBytes;
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public long CurrentSize => _currentSize;
 
-        private record DownloadJob(long FileId, TaskCompletionSource<LocalCacheEntry> Tcs);
+        private record DownloadJob(ulong FileId, TaskCompletionSource<LocalCacheEntry> Tcs);
 
         public LocalCacheManager(
             BlobPersistentStorage storage,
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             }
         }
 
-        public async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAsync(long fileId, int offset, int length, uint crc32)
+        public async ValueTask<ReadOnlyMemory<byte>> ReadMemoryAsync(ulong fileId, int offset, int length, uint crc32)
         {
             Interlocked.Increment(ref _totalCacheTries);
             if (TryGetCacheEntry(fileId, out var entry))
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             return await ReadMemory_FetchSlow(fileId, offset, length, crc32);
         }
 
-        private async ValueTask<ReadOnlyMemory<byte>> ReadMemory_FetchSlow(long fileId, int offset, int length, uint crc32)
+        private async ValueTask<ReadOnlyMemory<byte>> ReadMemory_FetchSlow(ulong fileId, int offset, int length, uint crc32)
         {
             var entry = await GetOrDownloadAsync(fileId);
 
@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             }
         }
 
-        public async ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        public async ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             Interlocked.Increment(ref _totalCacheTries);
             if (TryGetCacheEntry(fileId, out var entry))
@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             return await ReadAsync_FetchSlow(fileId, offset, length, crc32, stateSerializer);
         }
 
-        private async ValueTask<T> ReadAsync_FetchSlow<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        private async ValueTask<T> ReadAsync_FetchSlow<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer) where T : ICacheObject
         {
             var entry = await GetOrDownloadAsync(fileId);
 
@@ -225,7 +225,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             }
         }
 
-        private Task<LocalCacheEntry> GetOrDownloadAsync(long fileId)
+        private Task<LocalCacheEntry> GetOrDownloadAsync(ulong fileId)
         {
             return _pendingDownloads.GetOrAdd(fileId, id =>
             {
@@ -239,7 +239,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             });
         }
 
-        public async Task EvictDataFileAsync(long fileId)
+        public async Task EvictDataFileAsync(ulong fileId)
         {
             LocalCacheEntry? entry = null;
             lock (_syncRoot)
@@ -261,7 +261,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         }
 
 
-        internal bool TryGetCacheEntry(long fileId, [NotNullWhen(true)] out LocalCacheEntry? entry)
+        internal bool TryGetCacheEntry(ulong fileId, [NotNullWhen(true)] out LocalCacheEntry? entry)
         {
             lock (_syncRoot)
             {
@@ -300,7 +300,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
                         _metricValues.AddPersistentRead();
                         _metricValues.AddPersistentBytesRead(fileInfo.FileSize);
                         var reader = await _remoteStorage.ReadDataFileAsync(job.FileId, fileInfo.FileSize, _cts.Token);
-                        await _localCache.WriteDataFileAsync(job.FileId, fileInfo.Crc64, fileInfo.FileSize, reader, _cts.Token);
+                        await _localCache.WriteDataFileAsync(job.FileId, fileInfo.Crc64, fileInfo.FileSize, false, reader, _cts.Token);
 
                         lock (_syncRoot)
                         {
@@ -389,10 +389,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             }
         }
 
-        public async Task RegisterNewFileAsync(long fileId, ulong crc64, int fileSize, PipeReader reader)
+        public async Task RegisterNewFileAsync(ulong fileId, ulong crc64, int fileSize, PipeReader reader)
         {
             await EnsureSpaceAsync(fileSize);
-            await _localCache.WriteDataFileAsync(fileId, crc64, fileSize, reader);
+            await _localCache.WriteDataFileAsync(fileId, crc64, fileSize, false, reader);
 
             lock (_syncRoot)
             {

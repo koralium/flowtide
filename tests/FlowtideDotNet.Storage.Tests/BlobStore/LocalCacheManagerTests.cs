@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             var blobFile = new BlobFileWriter((file) => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
             blobFile.Write(1, new SerializableObject(new byte[] { 1, 2, 3 }));
             blobFile.Finish();
-            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, blobFile);
+            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, false, blobFile);
             Assert.True(persistentData.DataFileExists(1));
             Assert.True(cacheData.DataFileExists(1));
         }
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             blobFile.Finish();
             var crc32 = blobFile.Crc32s[0];
             var offset = blobFile.PageOffsets[0];
-            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, blobFile);
+            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, false, blobFile);
             var memory = await cacheProvider.GetMemoryAsync(1, offset, 3, crc32);
             Assert.Equal(new byte[] { 1, 2, 3 }, memory.ToArray());
             Assert.Equal(0, persistentData.NumberOfReadMemory);
@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             blobFile.Finish();
             var crc32 = blobFile.Crc32s[0];
             var offset = blobFile.PageOffsets[0];
-            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, blobFile);
+            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, false, blobFile);
             var memory = await cacheProvider.ReadAsync(1, offset, 3, crc32, new LocalCacheTestSerializer());
             Assert.Equal(new byte[] { 1, 2, 3 }, memory.Data);
             Assert.Equal(0, persistentData.NumberOfReadAsync);
@@ -309,7 +309,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         [Fact]
         public async Task EnsureZombieFileAreClearedFromCache()
         {
-            await cacheData.WriteDataFileAsync(15, 0, 1, PipeReader.Create(new ReadOnlySequence<byte>([1])));
+            await cacheData.WriteDataFileAsync(15, 0, 1, false, PipeReader.Create(new ReadOnlySequence<byte>([1])));
             await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test"));
 
             var fileExists = cacheData.TryGetFileData(15, out _);
@@ -326,7 +326,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             var blobFile = new BlobFileWriter((file) => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
             blobFile.Write(1, new SerializableObject(new byte[] { 1, 2, 3 }));
             blobFile.Finish();
-            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, blobFile);
+            await cacheProvider.WriteDataFileAsync(1, blobFile.Crc64, blobFile.FileSize, false, blobFile);
 
             await cacheProvider.DeleteDataFileAsync(1);
 

@@ -18,10 +18,10 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class FileInformation
+    internal class FileInformation : IEquatable<FileInformation>
     {
         private object _lock = new object();
-        public long FileId { get; }
+        public ulong FileId { get; }
         public int PageCount { get; }
         public int NonActivePageCount { get; private set; }
 
@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public ulong Crc64 { get; }
 
         public FileInformation(
-            long fileId, 
+            ulong fileId, 
             int pageCount, 
             int nonActivePageCount, 
             int fileSize, 
@@ -65,6 +65,28 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 DeletedSize += size;
             }
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return Equals(obj as FileInformation);
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(FileId, PageCount, NonActivePageCount, FileSize, DeletedSize, AddedAtVersion, Crc64);
+        }
+
+        public bool Equals(FileInformation? other)
+        {
+            if (other == null) return false;
+            return FileId == other.FileId &&
+                PageCount == other.PageCount &&
+                NonActivePageCount == other.NonActivePageCount &&
+                FileSize == other.FileSize &&
+                DeletedSize == other.DeletedSize &&
+                AddedAtVersion == other.AddedAtVersion &&
+                Crc64 == other.Crc64;
         }
     }
 }

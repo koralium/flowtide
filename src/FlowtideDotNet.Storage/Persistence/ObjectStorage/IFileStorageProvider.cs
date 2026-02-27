@@ -23,6 +23,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
 {
     public interface IFileStorageProvider
     {
+        bool SupportsDataFileListing { get; }
+
+
+        Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion);
+
         /// <summary>
         /// Asynchronously reads the checkpoint registry file and returns a PipeReader for its contents.
         /// </summary>
@@ -44,7 +49,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default);
+        Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously retrieves a list of checkpoint versions available in the storage.
@@ -81,21 +86,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="fileId"></param>
         /// <param name="data"></param>
         /// <returns></returns>
-        Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default);
+        Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously deletes the file corresponding to the given file ID from the storage. 
         /// </summary>
         /// <param name="fileId">The fileId to delete</param>
         /// <returns>A task that completes whwen the file has been deleted.</returns>
-        Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default);
+        Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously reads the file corresponding to the given file ID and returns a PipeReader that can be used to read the contents of the file.
         /// </summary>
         /// <param name="fileId"></param>
         /// <returns></returns>
-        Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default);
+        Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Reads a serialized object of type T from the specified file segment using the provided state serializer.
@@ -107,7 +112,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="stateSerializer">The serializer used to deserialize the object from the file segment. Cannot be null.</param>
         /// <returns>A ValueTask that represents the asynchronous read operation. The result contains the deserialized object of
         /// type T.</returns>
-        ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject;
+        ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject;
 
         /// <summary>
         /// Asynchronously retrieves a read-only block of memory containing a specified range of bytes from the file
@@ -118,6 +123,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
         /// <param name="length">The number of bytes to read from the file. Must be greater than or equal to 0.</param>
         /// <returns>A value task that represents the asynchronous operation. The result contains a read-only memory region with
         /// the requested bytes.</returns>
-        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default);
+        ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default);
     }
 }

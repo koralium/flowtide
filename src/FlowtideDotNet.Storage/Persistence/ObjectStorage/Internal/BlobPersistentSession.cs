@@ -43,7 +43,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _maxFileSize = maxFileSize;
             this._persistentStorage = persistentStorage;
             this._memoryAllocator = memoryAllocator;
-            //_temporaryWrittenPageLocations = new Dictionary<long, PageWriteLocation>();
             _deletedPages = new HashSet<long>();
             SetupFileWriter();
         }

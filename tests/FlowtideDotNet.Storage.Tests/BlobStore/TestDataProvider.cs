@@ -45,32 +45,32 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
             _writeBlock = null;
         }
 
-        public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
+        public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadMemory);
             return base.GetMemoryAsync(fileId, offset, length, crc32);
         }
 
-        public override ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default)
+        public override ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadAsync);
             return base.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public override Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
+        public override Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadDataFile);
             return base.ReadDataFileAsync(fileId, fileSize, cancellationToken);
         }
 
-        public override async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
+        public override async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
             if (_writeBlock != null)
             {
                 await _writeBlock.Task;
             }
 
-            await base.WriteDataFileAsync(fileId, crc64, size, data);
+            await base.WriteDataFileAsync(fileId, crc64, size, isBundle, data);
         }
     }
 }

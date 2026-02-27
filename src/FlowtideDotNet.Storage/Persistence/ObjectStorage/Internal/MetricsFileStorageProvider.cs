@@ -30,6 +30,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private Histogram<long> _numberOfDataBytesRead;
         private Histogram<long> _numberOfDataBytesWritten;
 
+        public bool SupportsDataFileListing => _internalProvider.SupportsDataFileListing;
+
         private void AddRead()
         {
             Interlocked.Increment(ref _numberOfReads);
@@ -61,25 +63,25 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return _internalProvider.DeleteCheckpointFileAsync(checkpointVersion, cancellationToken);
         }
 
-        public Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             AddDelete();
             return _internalProvider.DeleteDataFileAsync(fileId, cancellationToken);
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             AddRead();
             return _internalProvider.GetMemoryAsync(fileId, offset, length, crc32, cancellationToken);
         }
 
-        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
             // List data files is only used by local cache, so no metrics required here
             return _internalProvider.GetStoredDataFileIdsAsync(cancellationToken);
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             AddRead();
             return _internalProvider.ReadAsync<T>(fileId, offset, length, crc32, stateSerializer, cancellationToken);
@@ -97,7 +99,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return _internalProvider.ReadCheckpointRegistryFileAsync(cancellationToken);
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             AddRead();
             _numberOfDataBytesRead.Record(fileSize);
@@ -116,11 +118,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return _internalProvider.WriteCheckpointRegistryFile(data, cancellationToken);
         }
 
-        public Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default)
         {
             AddWrite();
             _numberOfDataBytesWritten.Record(size);
-            return _internalProvider.WriteDataFileAsync(fileId, crc64, size, data, cancellationToken);
+            return _internalProvider.WriteDataFileAsync(fileId, crc64, size, isBundled, data, cancellationToken);
+        }
+
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        {
+            return _internalProvider.ListDataFilesAboveVersionAsync(minVersion);
         }
     }
 }

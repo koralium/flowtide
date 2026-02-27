@@ -26,11 +26,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         private int _rentCount;
         private int _usageWeight;
 
-        public long FileId { get; }
+        public ulong FileId { get; }
         public long Size { get; }
         public ulong ExpectedCrc64 { get; }
 
-        public LocalCacheEntry(long fileId, long size, ulong expectedCrc64, int initialWeight = 0)
+        public LocalCacheEntry(ulong fileId, long size, ulong expectedCrc64, int initialWeight = 0)
         {
             FileId = fileId;
             Size = size;

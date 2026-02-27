@@ -45,6 +45,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
 
         public long CurrentSize => _localCacheManager.CurrentSize;
 
+        public bool SupportsDataFileListing => _remoteStorage.SupportsDataFileListing;
+
         /// <summary>
         /// Initialize the local cache, this includes listing data files from disk and adding them to the cache.
         /// This allows the local cache to be reused even after a crash
@@ -88,24 +90,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         /// </summary>
         /// <param name="fileId"></param>
         /// <returns></returns>
-        internal Task EvictDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        internal Task EvictDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             return _localCacheManager.EvictDataFileAsync(fileId);
         }
 
-        public async Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public async Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentDelete();
             await _localCacheManager.EvictDataFileAsync(fileId);
             await _remoteStorage.DeleteDataFileAsync(fileId);
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             return _localCacheManager.ReadMemoryAsync(fileId, offset, length, crc32);
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             return _localCacheManager.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
@@ -122,7 +124,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             return _remoteStorage.ReadCheckpointRegistryFileAsync();
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentRead();
             _metricValues.AddPersistentBytesRead(fileSize);
@@ -144,18 +146,23 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             return _remoteStorage.WriteCheckpointRegistryFile(data);
         }
 
-        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentWrite();
             _metricValues.AddPersistentBytesWritten(size);
             await _localCacheManager.RegisterNewFileAsync(fileId, crc64, size, data);
             data.CancelPendingRead(); // Cancel pending read is implemented in the file readers to reset to start, this is a special case for cache
-            await _remoteStorage.WriteDataFileAsync(fileId, crc64, size, data);
+            await _remoteStorage.WriteDataFileAsync(fileId, crc64, size, isBundle, data);
         }
 
-        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
+        }
+
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        {
+            return _remoteStorage.ListDataFilesAboveVersionAsync(minVersion);
         }
     }
 }

@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     internal struct UpsertPageInfo
     {
         public long pageId;
-        public long fileId;
+        public ulong fileId;
         public int offset;
         public int size;
         public uint crc32;
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long deletedFileIdsOffset;
         private long deletedFileAtVersionOffset;
 
-        private long nextFileId;
+        private ulong nextFileId;
 
         private SequenceReader<byte> _upsertPageIdsReader;
         private SequenceReader<byte> _upsertPageFileIdsReader;
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private SequenceReader<byte> _deletedFileIdsReader;
         private SequenceReader<byte> _deletedFileAtVersionReader;
 
-        public long NextFileId => nextFileId;
+        public ulong NextFileId => nextFileId;
 
         public CheckpointDataReader(ReadOnlySequence<byte> dataSequence)
         {
@@ -202,10 +202,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Could not read deleted file at version offset");
             }
 
-            if (!reader.TryReadLittleEndian(out nextFileId))
+            if (!reader.TryReadLittleEndian(out long nextFileIdLong))
             {
                 throw new InvalidOperationException("Could not read next file id");
             }
+            nextFileId = (ulong)nextFileIdLong;
 
             _upsertPageIdsReader = new SequenceReader<byte>(dataSequence.Slice(upsertPageIdsOffset, upsertPages * sizeof(long)));
             _upsertPageFileIdsReader = new SequenceReader<byte>(dataSequence.Slice(upsertPageFileIdsOffset, upsertPages * sizeof(long)));
@@ -251,7 +252,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
 
             upsertPageInfo.pageId = pageId;
-            upsertPageInfo.fileId = fileId;
+            upsertPageInfo.fileId = (ulong)fileId;
             upsertPageInfo.offset = offset;
             upsertPageInfo.size = size;
             upsertPageInfo.crc32 = (uint)crc32;
@@ -270,7 +271,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 return false;
             }
-            deletedFileInfo.fileId = deletedPageId;
+            deletedFileInfo.fileId = (ulong)deletedPageId;
             deletedFileInfo.deletedAtVersion = deletedAtVersion;
             return true;
         }
@@ -308,18 +309,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 return false;
             }
 
-            fileInformation = new FileInformation(fileId, pageCount, nonActivePageCount, size, deletedSize, addedAtVersion, (ulong)crc64);
+            fileInformation = new FileInformation((ulong)fileId, pageCount, nonActivePageCount, size, deletedSize, addedAtVersion, (ulong)crc64);
             return true;
         }
 
-        public bool TryGetNextDeletedFileId(out long fileId)
+        public bool TryGetNextDeletedFileId(out ulong fileId)
         {
             fileId = 0;
             if (!_deletedFileIdsReader.TryReadLittleEndian(out long deletedFileId))
             {
                 return false;
             }
-            fileId = deletedFileId;
+            fileId = (ulong)deletedFileId;
             return true;
         }
     }

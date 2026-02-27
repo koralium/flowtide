@@ -35,10 +35,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private const int DataStep = 3;
 
         private readonly Crc64PipeReader _pipeReader;
+        private bool _isBundle;
         private int pageCount;
         private int pageIdsOffset;
         private int pageOffsetsOffset;
         private int dataStartOffset;
+
+        private long _checkpointStartOffset;
+        private long _checkpointRegistryStartOffset;
+        private long _registryFooterOffset;
 
         private int _globalOffset;
         private int step = 0;
@@ -100,7 +105,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Unsupported data file version: " + version);
             }
 
-            sequenceReader.Advance(2); // Skip reserved bytes
+            if (!sequenceReader.TryReadLittleEndian(out short flags))
+            {
+                throw new InvalidOperationException("Failed to read flags from data file.");
+            }
 
             if (!sequenceReader.TryReadLittleEndian(out pageCount))
             {
@@ -122,11 +130,34 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 throw new InvalidOperationException("Failed to read data start offset from data file.");
             }
 
-            // Skip reserved bytes
-            sequenceReader.Advance(40);
+            if ((flags & 1) == 1)
+            {
+                _isBundle = true;
+                // This is a bundle file
+                if (!sequenceReader.TryReadLittleEndian(out _checkpointStartOffset))
+                {
+                    throw new InvalidOperationException("Failed to read checkpoint start offset from data file.");
+                }
+                if (!sequenceReader.TryReadLittleEndian(out _checkpointRegistryStartOffset))
+                {
+                    throw new InvalidOperationException("Failed to read checkpoint registry start offset from data file.");
+                }
+                if (!sequenceReader.TryReadLittleEndian(out _registryFooterOffset))
+                {
+                    throw new InvalidOperationException("Failed to read registry footer offset from data file.");
+                }
+                // Skip reserved bytes
+                sequenceReader.Advance(16);
+                _pipeReader.SetCrcEnd(_checkpointStartOffset);
+            }
+            else
+            {
+                _isBundle = false;
+                // Skip reserved bytes
+                sequenceReader.Advance(40);
+            }
 
             // Advance the pipe reader
-            
             _pipeReader.AdvanceTo(sequenceReader.Position);
             _globalOffset = 64;
         }

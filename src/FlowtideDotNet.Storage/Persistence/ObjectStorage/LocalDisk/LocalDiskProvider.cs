@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
         private readonly string checkpointDirectory;
         private LocalDiskReadManager localDiskReadManager;
 
+        public bool SupportsDataFileListing => true;
+
         public LocalDiskProvider(string dataDirectory, string checkpointDirectory)
         {
             this.dataDirectory = dataDirectory;
@@ -85,7 +87,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
@@ -101,12 +103,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             await filewrite.DisposeAsync();
         }
 
-        private string GetDataFileName(long fileId)
+        private string GetDataFileName(ulong fileId)
         {
             return $"dataFile_{fileId}.data";
         }
 
-        public Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var filePath = Path.Combine(dataDirectory, fileName);
@@ -115,21 +117,21 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.CompletedTask;
         }
 
-        public ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
+        public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
         }
 
-        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
+        public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
             return localDiskReadManager.Read(path, offset, length, crc32);
         }
 
-        public Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             var fileName = GetDataFileName(fileId);
             var path = Path.Combine(dataDirectory, fileName);
@@ -161,9 +163,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             data.Complete();
         }
 
-        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
-            List<long> storedFileIds = new List<long>();
+            List<ulong> storedFileIds = new List<ulong>();
             if (Directory.Exists(dataDirectory))
             {
                 string pattern = @"^dataFile_(?<fileId>.+)\.data$";
@@ -173,16 +175,39 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
                     Match match = Regex.Match(fileName, pattern);
                     if (match.Success)
                     {
-                        // Hämta fileId från den namngivna gruppen
                         string fileIdString = match.Groups["fileId"].Value;
-                        if (long.TryParse(fileIdString, out var fileId))
+                        if (ulong.TryParse(fileIdString, out var fileId))
                         {
                             storedFileIds.Add(fileId);
                         }
                     }
                 }
             }
-            return Task.FromResult<IEnumerable<long>>(storedFileIds);
+            return Task.FromResult<IEnumerable<ulong>>(storedFileIds);
+        }
+
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        {
+            var files = Directory.EnumerateFiles(dataDirectory);
+            var result = new List<ulong>();
+            string pattern = @"^dataFile_(?<fileId>.+)\.data$";
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+                Match match = Regex.Match(fileName, pattern);
+                if (match.Success)
+                {
+                    string fileIdString = match.Groups["fileId"].Value;
+                    if (ulong.TryParse(fileIdString, out var fileId))
+                    {
+                        if (fileId > minVersion)
+                        {
+                            result.Add(fileId);
+                        }
+                    }
+                }
+            }
+            return Task.FromResult<IEnumerable<ulong>>(result);
         }
     }
 }

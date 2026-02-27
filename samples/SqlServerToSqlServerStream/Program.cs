@@ -60,7 +60,7 @@ builder.Services.AddFlowtideStream("my_stream")
     })
     .AddCustomOptions((s, b) =>
     {
-        b.SetMinimumTimeBetweenCheckpoint(TimeSpan.FromMinutes(1));
+        //b.SetMinimumTimeBetweenCheckpoint(TimeSpan.FromMinutes(1));
     })
     .AddStorage(storage =>
     {

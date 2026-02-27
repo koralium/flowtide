@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private const int HeaderSize = 192;
 
         private readonly PrimitiveList<long> _upsertPageIds;
-        private readonly PrimitiveList<long> _upsertPageFileIds;
+        private readonly PrimitiveList<ulong> _upsertPageFileIds;
         private readonly PrimitiveList<int> _upsertPageOffsets;
         private readonly PrimitiveList<int> _upsertPageSizes;
         private readonly PrimitiveList<uint> _upsertPageCrc32;
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         // Tracks how many pages are no longer active in the file
         // This is used to determine if a file is no longer active or if it can be
         // Rewritten to remove the inactive pages
-        private readonly PrimitiveList<long> _changedFileIds;
+        private readonly PrimitiveList<ulong> _changedFileIds;
         private readonly PrimitiveList<int> _changedFilePageCounts;
         private readonly PrimitiveList<int> _changedFileNonActivePageCounts;
         private readonly PrimitiveList<long> _changedFileAddedAtVersion;
@@ -50,10 +50,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PrimitiveList<ulong> _changedFileCrc64;
 
 
-        private readonly PrimitiveList<long> _deletedFileIds;
+        private readonly PrimitiveList<ulong> _deletedFileIds;
         private readonly PrimitiveList<long> _deletedFileAtVersion;
 
-        private long _nextFileId;
+        private ulong _nextFileId;
 
         // Read specific fields
         private SequencePosition _advancedPosition;
@@ -66,18 +66,24 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
 
+        public PrimitiveList<ulong> ChangedFileCrc64 => _changedFileCrc64;
+
         public ulong Crc64 => _crc64;
+
+        public BufferSegment Head => _head;
+        public BufferSegment End => _end;
+        public int EndIndex => endIndex;
 
         public BlobNewCheckpoint(MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
             _upsertPageIds = new PrimitiveList<long>(memoryAllocator);
-            _upsertPageFileIds = new PrimitiveList<long>(memoryAllocator);
+            _upsertPageFileIds = new PrimitiveList<ulong>(memoryAllocator);
             _upsertPageOffsets = new PrimitiveList<int>(memoryAllocator);
             _upsertPageSizes = new PrimitiveList<int>(memoryAllocator);
             _upsertPageCrc32 = new PrimitiveList<uint>(memoryAllocator);
             _deletedPageIds = new PrimitiveList<long>(memoryAllocator);
 
-            _changedFileIds = new PrimitiveList<long>(memoryAllocator);
+            _changedFileIds = new PrimitiveList<ulong>(memoryAllocator);
             _changedFilePageCounts = new PrimitiveList<int>(memoryAllocator);
             _changedFileNonActivePageCounts = new PrimitiveList<int>(memoryAllocator);
             _changedFileSize = new PrimitiveList<int>(memoryAllocator);
@@ -85,7 +91,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _changedFileAddedAtVersion = new PrimitiveList<long>(memoryAllocator);
             _changedFileCrc64 = new PrimitiveList<ulong>(memoryAllocator);
 
-            _deletedFileIds = new PrimitiveList<long>(memoryAllocator);
+            _deletedFileIds = new PrimitiveList<ulong>(memoryAllocator);
             _deletedFileAtVersion = new PrimitiveList<long>(memoryAllocator);
 
             // Create a segment for the header
@@ -96,9 +102,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             endIndex = HeaderSize;
         }
 
-        public void SetNextFileId(long nextFileId)
+        public void SetNextFileId(ulong nextFileId)
         {
             _nextFileId = nextFileId;
+        }
+
+        public void UpdateAllFileIds(ulong newFileId)
+        {
+            for (int i = 0; i < _upsertPageFileIds.Count; i++)
+            {
+                _upsertPageFileIds[i] = newFileId;
+            }
         }
 
         /// <summary>
@@ -270,9 +284,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             headerData = headerData.Slice(8);
 
             // Next file id for data files
-            BinaryPrimitives.WriteInt64LittleEndian(headerData, _nextFileId);
+            BinaryPrimitives.WriteUInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
 
+            RecalculateCrc64();   
+        }
+
+        public void RecalculateCrc64()
+        {
             System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
             foreach (var segment in WrittenData)
             {
@@ -339,7 +358,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         [SkipLocalsInit]
         public unsafe void AddUpsertPages(
             PrimitiveList<long> pageIds, 
-            PrimitiveList<long> fileIds,
+            PrimitiveList<ulong> fileIds,
             PrimitiveList<int> pageOffsets,
             PrimitiveList<int> pageSizes,
             PrimitiveList<uint> crc32s)
@@ -373,7 +392,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private void AddUpsertPages_Internal(
             Span<int> indices,
             PrimitiveList<long> pageIds,
-            PrimitiveList<long> fileIds,
+            PrimitiveList<ulong> fileIds,
             PrimitiveList<int> pageOffsets,
             PrimitiveList<int> pageSizes,
             PrimitiveList<uint> pageCrc32s)

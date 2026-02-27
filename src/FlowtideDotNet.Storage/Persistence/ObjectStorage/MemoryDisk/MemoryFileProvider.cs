@@ -31,12 +31,13 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
     internal class MemoryFileProvider : IFileStorageProvider
     {
         private object _lock = new object();
-        private  Dictionary<long, byte[]> _dataFiles = new Dictionary<long, byte[]>();
+        private  Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
         private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
         private byte[]? _registryBytes;
 
+        public virtual bool SupportsDataFileListing => true;
 
-        internal bool TryGetFileData(long fileId, [NotNullWhen(true)] out byte[]? bytes)
+        internal bool TryGetFileData(ulong fileId, [NotNullWhen(true)] out byte[]? bytes)
         {
             return _dataFiles.TryGetValue(fileId, out bytes);
         }
@@ -50,7 +51,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public Task DeleteDataFileAsync(long fileId, CancellationToken cancellationToken = default)
+        public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -59,7 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public bool DataFileExists(long fileId, CancellationToken cancellationToken = default)
+        public bool DataFileExists(ulong fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -67,7 +68,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(long fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
+        public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -82,7 +83,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public virtual ValueTask<T> ReadAsync<T>(long fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
+        public virtual ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
             lock (_lock)
             {
@@ -126,7 +127,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual Task<PipeReader> ReadDataFileAsync(long fileId, int fileSize, CancellationToken cancellationToken = default)
+        public virtual Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -163,7 +164,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public virtual async Task WriteDataFileAsync(long fileId, ulong crc64, int size, PipeReader data, CancellationToken cancellationToken = default)
+        public virtual async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);
@@ -175,9 +176,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             }
         }
 
-        public Task<IEnumerable<long>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
+        public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult<IEnumerable<long>>(_dataFiles.Keys.ToList());
+            return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.ToList());
+        }
+
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        {
+            return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.Where(x => x > minVersion));
         }
     }
 }

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Hashing;
 using System.IO.Pipelines;
@@ -25,11 +26,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly PipeReader internalReader;
         private ReadResult _readResult;
         private Crc64 _crc64calculator;
+        private long _consumedCount;
+        private long _dataEndIndex;
+        private bool _crcDone;
 
         public Crc64PipeReader(PipeReader internalReader)
         {
             this.internalReader = internalReader;
             _crc64calculator = new Crc64();
+            _dataEndIndex = long.MaxValue;
+            _crcDone = false;
         }
 
         public ulong GetCrc64()
@@ -49,14 +55,36 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             internalReader.AdvanceTo(consumed, examined);
         }
 
+        public void SetCrcEnd(long endIndex)
+        {
+            _dataEndIndex = endIndex;
+        }
+
         private void AddCrc64(SequencePosition consumed)
         {
-            var slice = _readResult.Buffer.Slice(_readResult.Buffer.Start, consumed);
-            var i = _readResult.Buffer.Start;
+            if (_crcDone)
+            {
+                return;
+            }
+
+            ReadOnlySequence<byte> slice;
+            if (_consumedCount + _readResult.Buffer.Length >= _dataEndIndex)
+            {
+                var endPosition = _readResult.Buffer.GetPosition(_dataEndIndex - _consumedCount);
+                slice = _readResult.Buffer.Slice(_readResult.Buffer.Start, endPosition);
+                _crcDone = true;
+            }
+            else
+            {
+                slice = _readResult.Buffer.Slice(_readResult.Buffer.Start, consumed);
+            }
+                
+            var i = slice.Start;
             while(slice.TryGet(ref i, out var mem))
             {
                 _crc64calculator.Append(mem.Span);
             }
+            _consumedCount += slice.Length;
         }
 
         public override void CancelPendingRead()

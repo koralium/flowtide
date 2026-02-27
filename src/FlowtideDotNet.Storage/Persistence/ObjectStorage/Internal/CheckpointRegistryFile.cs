@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         private PrimitiveList<long> _versions;
         private BitmapList _isSnapshots;
+        private BitmapList _isBundle;
         private PrimitiveList<ulong> _crc64s;
         private ulong _crc64value;
         private BufferSegment _footerSegment;
@@ -38,12 +39,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private BufferSegment _end;
         private int endIndex;
 
+        public PrimitiveList<ulong> Crc64s => _crc64s;
+        public BufferSegment Head => _head;
+        public BufferSegment End => _end;
+        public int EndIndex => endIndex;
+
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
 
         public CheckpointRegistryFile(IMemoryAllocator memoryAllocator)
         {
             _versions = new PrimitiveList<long>(memoryAllocator);
             _isSnapshots = new BitmapList(memoryAllocator);
+            _isBundle = new BitmapList(memoryAllocator);
             _crc64s = new PrimitiveList<ulong>(memoryAllocator);
 
             _headerData = new BufferSegment(new byte[HeaderSize])
@@ -62,7 +69,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public CheckpointRegistryFile(
             BufferSegment headerData,
             PrimitiveList<long> versions, 
-            BitmapList isSnapshots, 
+            BitmapList isSnapshots,
+            BitmapList isBundle,
             PrimitiveList<ulong> crc64s,
             BufferSegment footer)
         {
@@ -72,6 +80,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             endIndex = HeaderSize;
             _versions = versions;
             _isSnapshots = isSnapshots;
+            _isBundle = isBundle;
             _crc64s = crc64s;
             _footerSegment = footer;
         }
@@ -80,6 +89,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             _versions.Add(checkpointVersion.Version);
             _isSnapshots.Add(checkpointVersion.IsSnapshot);
+            _isBundle.Add(checkpointVersion.IsBundled);
             _crc64s.Add(checkpointVersion.Crc64);
         }
 
@@ -100,6 +110,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     _versions.RemoveAt(i);
                     _isSnapshots.RemoveAt(i);
+                    _isBundle.RemoveAt(i);
                     _crc64s.RemoveAt(i);
                     break;
                 }
@@ -132,6 +143,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = isSnapshotSegment;
             endIndex = isSnapshotSegment.Length;
 
+            var isBundleOffset = (int)(_end.RunningIndex + endIndex);
+            var isBundleSegment = new BufferSegment(_isBundle.MemorySlice);
+            _end.SetNext(isBundleSegment);
+            _end = isBundleSegment;
+            endIndex = isBundleSegment.Length;
+
             var crc64Offset = (int)(_end.RunningIndex + endIndex);
             var crc64Segment = new BufferSegment(_crc64s.SlicedMemory);
             _end.SetNext(crc64Segment);
@@ -162,24 +179,32 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt32LittleEndian(headerData, isSnapshotOffset);
             headerData = headerData.Slice(4);
 
+            BinaryPrimitives.WriteInt32LittleEndian(headerData, isBundleOffset);
+            headerData = headerData.Slice(4);
+
             BinaryPrimitives.WriteInt32LittleEndian(headerData, crc64Offset);
             headerData = headerData.Slice(4);
 
             BinaryPrimitives.WriteInt32LittleEndian(headerData, footerOffset);
             headerData = headerData.Slice(4);
 
+            _end.SetNext(_footerSegment);
+            _end = _footerSegment;
+            endIndex = _footerSegment.Length;
+
+            RecalculateAndSetCrc64();
+        }
+
+        public void RecalculateAndSetCrc64()
+        {
             System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
-            foreach (var segment in WrittenData)
+            foreach (var segment in WrittenData.Slice(0, WrittenData.Length - 8))
             {
                 crc64.Append(segment.Span);
             }
             _crc64value = crc64.GetCurrentHashAsUInt64();
-
             var footerSpan = _footerSegment.AvailableMemory.Span;
             BinaryPrimitives.WriteUInt64LittleEndian(footerSpan, _crc64value);
-            _end.SetNext(_footerSegment);
-            _end = _footerSegment;
-            endIndex = _footerSegment.Length;
         }
 
         public override void AdvanceTo(SequencePosition consumed)
@@ -268,6 +293,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
             if (!reader.TryReadLittleEndian(out int versionsOffset) ||
                 !reader.TryReadLittleEndian(out int isSnapshotsOffset) ||
+                !reader.TryReadLittleEndian(out int isBundleOffset) ||
                 !reader.TryReadLittleEndian(out int crc64sOffset) ||
                 !reader.TryReadLittleEndian(out int footerOffset))
             {
@@ -275,7 +301,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
 
             // Skip reserved bytes
-            reader.Advance(36);
+            reader.Advance(32);
 
             // Verify CRC64
             var crc64 = new Crc64();
@@ -318,6 +344,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var isSnapshots = new BitmapList(isSnapshotsMemory, checkpointCount, memoryAllocator);
             reader.Advance(isSnapshotsMemory.Memory.Length);
 
+            var bundleMemoryCount = (checkpointCount + 31) / 32 * sizeof(int); // BitmapList uses int for storage, so we calculate the byte size needed for the bitmap
+            var isBundleMemory = memoryAllocator.Allocate(bundleMemoryCount, 64);
+            reader.Advance(isBundleOffset - reader.Consumed);
+            if (!reader.TryCopyTo(isBundleMemory.Memory.Span))
+            {
+                throw new InvalidDataException("Invalid checkpoint registry file: unable to read bundle flags.");
+            }
+            var isBundles = new BitmapList(isBundleMemory, checkpointCount, memoryAllocator);
+            reader.Advance(isBundleMemory.Memory.Length);
+
             var crc64sMemory = memoryAllocator.Allocate(checkpointCount * sizeof(ulong), 64);
             reader.Advance(crc64sOffset - reader.Consumed);
             if (!reader.TryCopyTo(crc64sMemory.Memory.Span))
@@ -327,7 +363,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var crc64s = new PrimitiveList<ulong>(crc64sMemory, checkpointCount, memoryAllocator);
             reader.Advance(crc64sMemory.Memory.Length);
 
-            return new CheckpointRegistryFile(headerSegment, checkpointVersions, isSnapshots, crc64s, footerSegment);
+            return new CheckpointRegistryFile(headerSegment, checkpointVersions, isSnapshots, isBundles, crc64s, footerSegment);
         }
 
         public IEnumerator<CheckpointVersion> GetEnumerator()
@@ -344,7 +380,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             for (int i = 0; i < _versions.Count; i++)
             {
-                yield return new CheckpointVersion(_versions[i], _isSnapshots[i], _crc64s[i]);
+                yield return new CheckpointVersion(_versions[i], _isSnapshots[i], _crc64s[i], _isBundle[i]);
             }
         }
     }

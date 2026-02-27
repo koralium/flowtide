@@ -49,6 +49,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private BufferSegment _end;
         private BufferSegment _pageIdsSegment;
         private BufferSegment _pageOffsetsSegment;
+
+        public BufferSegment Head => _head;
+        public BufferSegment End => _end;
+        public BufferSegment HeaderData => _headerData;
+
+        public int EndIndex => endIndex;
         
 
 
@@ -153,7 +159,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public void Finish()
         {
-            _pageOffset.Add(_globalOffset);
+            if (_pageIds.Count > 0)
+            {
+                // We only add offset if there is any page
+                _pageOffset.Add(_globalOffset);
+            }
             
             _pageIdsSegment.UpdateMemory_Unsafe(_pageIds.SlicedMemory);
             _pageOffsetsSegment.UpdateMemory_Unsafe(_pageOffset.SlicedMemory);
@@ -177,7 +187,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             // Write version
             BinaryPrimitives.WriteInt16LittleEndian(headerData, 1);
-            headerData = headerData.Slice(4);
+            headerData = headerData.Slice(2);
+
+            // Write flags
+            BinaryPrimitives.WriteInt16LittleEndian(headerData, 0);
+            headerData = headerData.Slice(2);
 
             // Write page count
             BinaryPrimitives.WriteInt32LittleEndian(headerData, _pageIds.Count);
@@ -195,6 +209,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
             _finished = true;
 
+            RecalculateCrc64();
+        }
+
+        public void RecalculateCrc64()
+        {
             // Calculate crc64 of the entire file
             System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
             foreach (var segment in WrittenData)
