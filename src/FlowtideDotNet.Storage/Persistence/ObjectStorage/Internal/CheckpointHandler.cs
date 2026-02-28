@@ -132,9 +132,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     {
                         // There is a later version in a bundle, so we need to read the new registry from that file
                         var dataFilePipe = await _fileProvider.ReadDataFileAsync(maxFileId, 0, cancellationToken);
-                        _checkpointRegistryFile = await new BundleFileRegistryReader(dataFilePipe).ReadRegistryAsync(_memoryAllocator, cancellationToken);
+                        _checkpointRegistryFile = await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
                     }
                 }
+            }
+        }
+
+        internal void AddDeletedFile(ulong fileId)
+        {
+            lock (_modifiedFileIdsLock)
+            {
+                _deletedFileIds.Add(fileId);
             }
         }
 
@@ -233,19 +241,27 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
                 if (checkpointFile.IsBundled)
                 {
-
+                    var fileId = (1UL << 63) | (ulong)checkpointFile.Version;
+                    var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
+                    var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
+                    ReadCheckpointFile(checkpointFile, checkpointData);
+                    dataFileReader.Complete();
                 }
-                var fileReader = await _fileProvider.ReadCheckpointFileAsync(checkpointFile);
-
-                // Read all content of the file
-                ReadResult readResult;
-                do
+                else
                 {
-                    readResult = await fileReader.ReadAsync();
-                    fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-                } while (!readResult.IsCompleted);
-                ReadCheckpointFile(checkpointFile, readResult.Buffer);
-                fileReader.Complete();
+                    var fileReader = await _fileProvider.ReadCheckpointFileAsync(checkpointFile);
+
+                    // Read all content of the file
+                    ReadResult readResult;
+                    do
+                    {
+                        readResult = await fileReader.ReadAsync();
+                        fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                    } while (!readResult.IsCompleted);
+                    ReadCheckpointFile(checkpointFile, readResult.Buffer);
+                    fileReader.Complete();
+                }
+                
             }
         }
 
@@ -438,6 +454,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             return _fileInformations.TryGetValue(fileId, out fileInfo);
         }
+
+        private bool IsBundleFile(ulong fileId)
+        {
+            return (fileId & ~(1UL << 63)) > 0;
+        }
         
         public async Task FinishCheckpoint(MergedBlobFileWriter? mergedFile)
         {
@@ -480,7 +501,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                                     fileInfo.AddDeletedSize(location.Size);
                                     _modifiedFileIds.Add(location.FileId);
 
-                                    if (fileInfo.PageCount == fileInfo.NonActivePageCount)
+                                    // If the file has all pages deleted and it is not a bundled file delete id
+                                    if (fileInfo.PageCount == fileInfo.NonActivePageCount &&
+                                        !IsBundleFile(fileInfo.FileId))
                                     {
                                         // If no of the pages are active in the file, add it to deleted file ids
                                         _deletedFileIds.Add(location.FileId);
@@ -603,7 +626,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                         lock (_modifiedFileIdsLock)
                         {
                             _modifiedFileIds.Add(existingLocation.FileId);
-                            if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount)
+                            if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount &&
+                                !IsBundleFile(existingFileInfo.FileId))
                             {
                                 _deletedFileIds.Add(existingFileInfo.FileId);
                             }
@@ -855,7 +879,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                             lock (_modifiedFileIdsLock)
                             {
                                 _modifiedFileIds.Add(existingLocation.FileId);
-                                if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount)
+                                if (existingFileInfo.PageCount == existingFileInfo.NonActivePageCount && 
+                                    !IsBundleFile(existingFileInfo.FileId))
                                 {
                                     _deletedFileIds.Add(existingFileInfo.FileId);
                                 }

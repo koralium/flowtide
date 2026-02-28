@@ -33,12 +33,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private long _registryFooterOffset;
         private int _globalOffset;
 
-        public BundleFileRegistryReader(PipeReader pipeReader) 
+        private BundleFileRegistryReader(PipeReader pipeReader) 
         {
             _pipeReader = pipeReader;
         }
 
-        public async ValueTask<ReadOnlySequence<byte>> GetCheckpointData(CancellationToken cancellationToken)
+        public static ValueTask<ReadOnlySequence<byte>> ReadCheckpointDataAsync(PipeReader pipeReader, CancellationToken cancellationToken)
+        {
+            var reader = new BundleFileRegistryReader(pipeReader);
+            return reader.GetCheckpointData(cancellationToken);
+        }
+            
+        private async ValueTask<ReadOnlySequence<byte>> GetCheckpointData(CancellationToken cancellationToken)
         {
             var result = await _pipeReader.ReadAtLeastAsync(64, cancellationToken).ConfigureAwait(false);
             ReadHeaderResult(result);
@@ -73,12 +79,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     return result.Buffer.Slice(result.Buffer.Start, pos);
                 }
 
-                _globalOffset += (int)result.Buffer.Length;
+                //_globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
             }
         }
 
-        public async ValueTask<CheckpointRegistryFile> ReadRegistryAsync(IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
+        public static ValueTask<CheckpointRegistryFile> ReadRegistryAsync(PipeReader pipeReader, IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
+        {
+            var reader = new BundleFileRegistryReader(pipeReader);
+            return reader.ReadRegistryAsync(memoryAllocator, cancellationToken);
+        }
+
+        private async ValueTask<CheckpointRegistryFile> ReadRegistryAsync(IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
         {
             var result = await _pipeReader.ReadAtLeastAsync(64, cancellationToken).ConfigureAwait(false);
             ReadHeaderResult(result);

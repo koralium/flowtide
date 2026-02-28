@@ -171,6 +171,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                         continue;
                     }
                 }
+
+                if (file.PageCount == file.NonActivePageCount)
+                {
+                    // We add the file to the delete list
+                    _checkpointHandler.AddDeletedFile(file.FileId);
+                    continue;
+                }
+
                 var actualSize = file.FileSize - file.DeletedSize;
                 var sizeRatio = (double)actualSize / _maxFileSize;
 

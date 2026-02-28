@@ -121,6 +121,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             _versions.Clear();
             _isSnapshots.Clear();
+            _isBundle.Clear();
             _crc64s.Clear();
         }
 

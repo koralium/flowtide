@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
 using System;
@@ -51,7 +52,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             var bytes = memoryStream.ToArray();
 
-            var parsedRegistry = await new BundleFileRegistryReader(PipeReader.Create(new ReadOnlySequence<byte>(bytes))).ReadRegistryAsync(GlobalMemoryManager.Instance, default);
+            var parsedRegistry = await BundleFileRegistryReader.ReadRegistryAsync(PipeReader.Create(new ReadOnlySequence<byte>(bytes)), GlobalMemoryManager.Instance, default);
             Assert.Equal(firstVersion, parsedRegistry.First());
         }
 
@@ -59,12 +60,37 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
         public async Task TestWriteAndReadCheckpointInfo()
         {
             MergedBlobFileWriter mergedFile = new MergedBlobFileWriter(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+            
+
+            int nrOfFiles = 10;
+            int nrOfPages = 100;
+
+            PrimitiveList<int> pageSizes = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+
+            for (int f = 0; f < nrOfFiles; f++)
+            {
+                BlobFileWriter blobFileWriter = new BlobFileWriter((file) => { }, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
+                for (int i = 0; i < nrOfPages; i++)
+                {
+                    blobFileWriter.Write(i, new SerializableObject(new byte[] { 1, 2, 3 }));
+                    pageSizes.Add(3);
+                }
+                mergedFile.AddBlobFile(blobFileWriter);
+            }
+            
+            mergedFile.Finish();
+
+            PrimitiveList<ulong> fileIds = new PrimitiveList<ulong>(GlobalMemoryManager.Instance);
+            fileIds.InsertStaticRange(0, 0, nrOfFiles * nrOfPages);
+
+
 
             BlobNewCheckpoint newCheckpoint = new BlobNewCheckpoint(MemoryPool<byte>.Shared, GlobalMemoryManager.Instance);
             newCheckpoint.AddFileInformation(new FileInformation(0, 0, 0, 0, 0, 0, 0));
+            newCheckpoint.AddUpsertPages(mergedFile.PageIds, fileIds, mergedFile.PageOffsets, pageSizes, mergedFile.Crc32s);
             CheckpointRegistryFile registry = new CheckpointRegistryFile(GlobalMemoryManager.Instance);
             registry.AddCheckpointVersion(new Persistence.ObjectStorage.CheckpointVersion(0, false, 0, false));
-            mergedFile.Finish();
+            
             newCheckpoint.FinishForWriting();
             registry.FinishForWriting();
 
@@ -76,7 +102,7 @@ namespace FlowtideDotNet.Storage.Tests.BlobStore
 
             var bytes = memoryStream.ToArray();
 
-            var checkpointData = await new BundleFileRegistryReader(PipeReader.Create(new ReadOnlySequence<byte>(bytes))).GetCheckpointData(default);
+            var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(PipeReader.Create(new ReadOnlySequence<byte>(bytes)), default);
             AssertCheckpointData(expectedFile, checkpointData);
         }
 

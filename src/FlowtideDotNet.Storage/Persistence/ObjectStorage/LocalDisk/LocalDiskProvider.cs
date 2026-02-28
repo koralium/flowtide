@@ -188,6 +188,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
         {
+            if (!Directory.Exists(dataDirectory))
+            {
+                return Task.FromResult(Enumerable.Empty<ulong>());
+            }
             var files = Directory.EnumerateFiles(dataDirectory);
             var result = new List<ulong>();
             string pattern = @"^dataFile_(?<fileId>.+)\.data$";
