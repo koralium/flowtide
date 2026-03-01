@@ -125,9 +125,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             return _internalProvider.WriteDataFileAsync(fileId, crc64, size, isBundled, data, cancellationToken);
         }
 
-        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
         {
             return _internalProvider.ListDataFilesAboveVersionAsync(minVersion);
+        }
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            return _internalProvider.InitializeAsync(cancellationToken);
         }
     }
 }

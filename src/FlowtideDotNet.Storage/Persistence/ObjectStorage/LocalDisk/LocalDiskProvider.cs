@@ -31,13 +31,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
     {
         private const string CheckpointRegistryFileName = "checkpoints.registry";
         private readonly string dataDirectory;
-        private readonly string checkpointDirectory;
+        private readonly string? checkpointDirectory;
         private LocalDiskReadManager localDiskReadManager;
 
         public bool SupportsDataFileListing => true;
 
-        public LocalDiskProvider(string dataDirectory, string checkpointDirectory)
+        public LocalDiskProvider(string dataDirectory, string? checkpointDirectory)
         {
+            dataDirectory = dataDirectory.TrimEnd('/').TrimEnd('\\');
             this.dataDirectory = dataDirectory;
             this.checkpointDirectory = checkpointDirectory;
             localDiskReadManager = new LocalDiskReadManager();
@@ -45,6 +46,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
+            if (checkpointDirectory == null)
+            {
+                throw new InvalidOperationException("Checkpoint directory is not configured.");
+            }
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(checkpointDirectory, fileName);
 
@@ -65,6 +70,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
+            if (checkpointDirectory == null)
+            {
+                throw new InvalidOperationException("Checkpoint directory is not configured.");
+            }
             string fileName = GetCheckpointFileName(checkpointVersion);
 
             var filePath = Path.Combine(checkpointDirectory, fileName);
@@ -81,6 +90,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
+            if (checkpointDirectory == null)
+            {
+                throw new InvalidOperationException("Checkpoint directory is not configured.");
+            }
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(checkpointDirectory, fileName);
             File.Delete(filePath);
@@ -89,8 +102,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
-            var fileName = GetDataFileName(fileId);
-            var filePath = Path.Combine(dataDirectory, fileName);
+            var filePath = GetDataFileName(fileId);
 
             if (!Directory.Exists(dataDirectory))
             {
@@ -105,13 +117,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         private string GetDataFileName(ulong fileId)
         {
-            return $"dataFile_{fileId}.data";
+            return $"{dataDirectory}/dataFile_{fileId}.data";
         }
 
         public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
-            var fileName = GetDataFileName(fileId);
-            var filePath = Path.Combine(dataDirectory, fileName);
+            var filePath = GetDataFileName(fileId);
             localDiskReadManager.DropFile(filePath);
             File.Delete(filePath);
             return Task.CompletedTask;
@@ -119,27 +130,28 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
-            var fileName = GetDataFileName(fileId);
-            var path = Path.Combine(dataDirectory, fileName);
+            var path = $"{dataDirectory}/dataFile_{fileId}.data";
             return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
         }
 
         public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
-            var fileName = GetDataFileName(fileId);
-            var path = Path.Combine(dataDirectory, fileName);
+            var path = GetDataFileName(fileId);
             return localDiskReadManager.Read(path, offset, length, crc32);
         }
 
         public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
-            var fileName = GetDataFileName(fileId);
-            var path = Path.Combine(dataDirectory, fileName);
+            var path = GetDataFileName(fileId);
             return Task.FromResult(PipeReader.Create(File.OpenRead(path)));
         }
 
         public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
+            if (checkpointDirectory == null)
+            {
+                throw new InvalidOperationException("Checkpoint directory is not configured.");
+            }
             var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
             if (!File.Exists(filePath))
             {
@@ -150,6 +162,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
 
         public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
+            if (checkpointDirectory == null)
+            {
+                throw new InvalidOperationException("Checkpoint directory is not configured.");
+            }
             var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
             if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
             {
@@ -186,7 +202,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
             return Task.FromResult<IEnumerable<ulong>>(storedFileIds);
         }
 
-        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
         {
             if (!Directory.Exists(dataDirectory))
             {
@@ -212,6 +228,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk
                 }
             }
             return Task.FromResult<IEnumerable<ulong>>(result);
+        }
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 }

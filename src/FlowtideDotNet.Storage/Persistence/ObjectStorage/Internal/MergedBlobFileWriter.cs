@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     internal class MergedBlobFileWriter : PagesFile
     {
         private const int HeaderSize = 64;
+        private readonly MemoryPool<byte> _memoryPool;
+        private readonly IMemoryAllocator _memoryAllocator;
         private PrimitiveList<long> _pageIds;
         private PrimitiveList<int> _pageOffset;
         private PrimitiveList<uint> _crc32s;
@@ -39,6 +41,10 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private int endIndex;
         private bool _finished;
         private ulong _crc64;
+
+        private bool _addingSequences = false;
+        private IMemoryOwner<byte>? _sequencesMemory;
+        private int _sequencesOffset;
 
         public List<BlobFileWriter> _files = new List<BlobFileWriter>();
 
@@ -67,7 +73,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
             _crc32s = new PrimitiveList<uint>(memoryAllocator);
-            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
+            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize), HeaderSize);
             _headerData.End = HeaderSize;
             _head = _headerData;
             _end = _headerData;
@@ -77,6 +83,19 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = _pageIdsSegment;
             _end.SetNext(_pageOffsetsSegment);
             _end = _pageOffsetsSegment;
+            _memoryPool = memoryPool;
+            _memoryAllocator = memoryAllocator;
+        }
+
+        public void StartAddingSequences(int estimatedCount)
+        {
+            if (_addingSequences)
+            {
+                throw new InvalidOperationException("Already adding sequences");
+            }
+            _sequencesMemory = _memoryAllocator.Allocate(16 * 1024 * estimatedCount, 64);
+            _addingSequences = true;
+            _sequencesOffset = 0;
         }
 
         public void AddSequence(long pageId, uint crc32, ReadOnlySequence<byte> data)
@@ -85,21 +104,52 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 throw new InvalidOperationException("Cannot add a blob file after the merged file has been finished");
             }
-            _finished = false;
-            var pointer = data.Start;
-
-            while(data.TryGet(ref pointer, out var mem))
+            if (!_addingSequences)
             {
-                // We need to take a copy of the memory since it can be re-used
-                var segment = new BufferSegment(mem.ToArray());
-                _end.SetNext(segment);
-                _end = segment;
-                endIndex = segment.Length;
+                throw new InvalidOperationException("Must call StartAddingSequences before adding sequences");
             }
+            if (_sequencesMemory == null)
+            {
+                throw new InvalidOperationException("Must call StartAddingSequences before adding sequences");
+            }
+            _finished = false;
+            
+
+            if (data.Length > (_sequencesMemory.Memory.Length - _sequencesOffset))
+            {
+                var newMemoryLength = Math.Max(_sequencesMemory.Memory.Length * 2, _sequencesOffset + (int)data.Length);
+                _sequencesMemory = _memoryAllocator.Realloc(_sequencesMemory, newMemoryLength, 64);
+            }
+
+            var sequencesMemory =_sequencesMemory.Memory;
+            var pointer = data.Start;
+            while (data.TryGet(ref pointer, out var mem))
+            {
+                mem.CopyTo(sequencesMemory.Slice(_sequencesOffset));
+                _sequencesOffset += mem.Length;
+            }
+
             _pageIds.Add(pageId);
             _pageOffset.Add(_globalOffset);
             _crc32s.Add(crc32);
             _globalOffset += (int)data.Length;
+        }
+
+        public void FinishAddingSequences()
+        {
+            if (!_addingSequences)
+            {
+                throw new InvalidOperationException("Must call StartAddingSequences before finishing adding sequences");
+            }
+            if (_sequencesMemory == null)
+            {
+                throw new InvalidOperationException("No sequences memory allocated");
+            }
+            var segment = new BufferSegment(_sequencesMemory, _sequencesOffset);
+            _end.SetNext(segment);
+            _end = segment;
+            endIndex = segment.Length;
+            _addingSequences = false;
         }
 
         public void AddBlobFile(BlobFileWriter blobFileWriter)
@@ -116,7 +166,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var segment = blobFileWriter.DataStartSegment;
             while (segment != null)
             {
-                var clone = segment.CloneWithoutNext();
+                var clone = segment.CloneWithoutNextNoOwnership();
                 _end.SetNext(clone);
                 endIndex = clone.End;
                 _end = clone;
@@ -243,6 +293,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            var obj = consumed.GetObject();
+
+            if (obj is byte[] byteArr && byteArr.Length == 0)
+            {
+                // Nothing was read, so we don't advance
+                return;
+            }
+
             _advancedPosition = consumed;
         }
 
@@ -266,15 +324,25 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 if (disposing)
                 {
-                    // TODO: dispose managed state (managed objects)
                     foreach(var file in _files)
                     {
-                        file.Dispose();
+                        file.Return();
                     }
                 }
 
                 _pageIds.Dispose();
                 _pageOffset.Dispose();
+                _crc32s.Dispose();
+                _headerData.Dispose();
+
+                // Dispose segments since there may be segments from sequences here
+                var segment = _head;
+                while (segment != null)
+                {
+                    var next = segment._next;
+                    segment.Dispose();
+                    segment = next;
+                }
 
                 disposedValue = true;
             }
@@ -286,7 +354,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             Dispose(disposing: false);
         }
 
-        public override void Dispose()
+        public override void Return()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);

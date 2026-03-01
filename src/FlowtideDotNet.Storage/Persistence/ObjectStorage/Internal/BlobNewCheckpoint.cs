@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     /// 
     /// It also contains the code to return the serialized data as a pipereader
     /// </summary>
-    internal class BlobNewCheckpoint : PipeReader
+    internal class BlobNewCheckpoint : PipeReader, IDisposable
     {
         private const int HeaderSize = 192;
 
@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private int endIndex;
 
         private ulong _crc64;
+        private bool disposedValue;
 
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
 
@@ -95,7 +96,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _deletedFileAtVersion = new PrimitiveList<long>(memoryAllocator);
 
             // Create a segment for the header
-            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
+            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize), HeaderSize);
             _headerData.End = HeaderSize;
             _head = _headerData;
             _end = _headerData;
@@ -488,6 +489,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            var obj = consumed.GetObject();
+
+            if (obj is byte[] byteArr && byteArr.Length == 0)
+            {
+                // Nothing was read, so we don't advance
+                return;
+            }
+
             _advancedPosition = consumed;
         }
 
@@ -502,6 +511,54 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void Complete(Exception? exception = null)
         {
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                _upsertPageIds.Dispose();
+                _upsertPageFileIds.Dispose();
+                _upsertPageOffsets.Dispose();
+                _upsertPageSizes.Dispose();
+                _upsertPageCrc32.Dispose();
+                _deletedPageIds.Dispose();
+
+                _changedFileIds.Dispose();
+                _changedFilePageCounts.Dispose();
+                _changedFileNonActivePageCounts.Dispose();
+                _changedFileAddedAtVersion.Dispose();
+                _changedFileSize.Dispose();
+                _changedFileDeletedSize.Dispose();
+                _changedFileCrc64.Dispose();
+
+                _deletedFileIds.Dispose();
+                _deletedFileAtVersion.Dispose();
+
+                // Dispose all segments
+                var segment = _head;
+                while (segment != null)
+                {
+                    var next = segment._next;
+                    segment.Dispose();
+                    segment = next;
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        ~BlobNewCheckpoint()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

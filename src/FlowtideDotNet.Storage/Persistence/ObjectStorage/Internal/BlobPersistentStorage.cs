@@ -67,7 +67,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             // If the user provided a cache provider, we add the local cache provider
             if (blobStorageOptions.CacheProvider != null)
             {
-                var cacheProvider = new LocalCacheProvider(this, blobStorageOptions.CacheProvider, blobStorageOptions.FileProvider);
+                var cacheProvider = new LocalCacheProvider(
+                    this, 
+                    blobStorageOptions.CacheProvider, 
+                    blobStorageOptions.FileProvider, 
+                    blobStorageOptions.MaxCacheSizeBytes);
+
                 _fileProvider = cacheProvider;
                 CacheProvider = cacheProvider;
             }
@@ -235,44 +240,51 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             var reader = await _fileProvider.ReadDataFileAsync(fileId, fileSize);
 
-            Crc32 crc32 = new Crc32();
-            DataFileReader dataFileReader = new DataFileReader(reader);
-            await dataFileReader.Initialize();
-            var pageIdsData = await dataFileReader.ReadPageIds();
-            var pageLocations = new List<PageDataInfo>();
-            ReadDataFilePageIds(fileId, pageIdsData, pageLocations);
-            // Skip the offsets since they where taken from the lookup table
-            await dataFileReader.SkipPageOffsets();
-
-            for(int i = 0; i < pageLocations.Count; i++)
+            try
             {
-                var location = pageLocations[i];
-                var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
-                // Check the checksum so there is no corruption before we add the data
-                CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
-                _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                Crc32 crc32 = new Crc32();
+                DataFileReader dataFileReader = new DataFileReader(reader);
+                await dataFileReader.Initialize();
+                var pageIdsData = await dataFileReader.ReadPageIds();
+                var pageLocations = new List<PageDataInfo>();
+                ReadDataFilePageIds(fileId, pageIdsData, pageLocations);
+                // Skip the offsets since they where taken from the lookup table
+                await dataFileReader.SkipPageOffsets();
+
+                _mergedBlobFileWriter.StartAddingSequences(pageLocations.Count);
+                for (int i = 0; i < pageLocations.Count; i++)
+                {
+                    var location = pageLocations[i];
+                    var pageData = await dataFileReader.ReadDataPage(location.Offset, location.Size);
+                    // Check the checksum so there is no corruption before we add the data
+                    CrcUtils.CheckPageCrc32(crc32, location.PageId, pageData, location.Crc32);
+                    _mergedBlobFileWriter.AddSequence(location.PageId, location.Crc32, pageData);
+                }
+                _mergedBlobFileWriter.FinishAddingSequences();
+                // Read to the end of the file, this must be done to get correct crc64
+                await dataFileReader.ReadToEnd();
+
+                // Check crc64 for the entire file, this helps if there was any bit errors in pageId list
+                // Which could cause the wrong data to be loaded or data to be missed.
+                var actualCrc64 = dataFileReader.GetCrc64();
+                if (actualCrc64 != crc64)
+                {
+                    throw new FlowtideChecksumMismatchException($"Missmatching file crc64 for fileId: '{fileId}'.");
+                }
+
+                if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
+                {
+                    _mergedBlobFileWriter.Finish();
+
+                    // Send the file to checkpoint handler
+                    Interlocked.Increment(ref _numberOfWrittenFiles);
+                    await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
+                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                }
             }
-
-            // Read to the end of the file, this must be done to get correct crc64
-            await dataFileReader.ReadToEnd();
-            await reader.CompleteAsync();
-
-            // Check crc64 for the entire file, this helps if there was any bit errors in pageId list
-            // Which could cause the wrong data to be loaded or data to be missed.
-            var actualCrc64 = dataFileReader.GetCrc64(); 
-            if (actualCrc64 != crc64)
+            finally
             {
-                throw new FlowtideChecksumMismatchException($"Missmatching file crc64 for fileId: '{fileId}'.");
-            }
-
-            if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
-            {
-                _mergedBlobFileWriter.Finish();
-
-                // Send the file to checkpoint handler
-                Interlocked.Increment(ref _numberOfWrittenFiles);
-                await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+                await reader.CompleteAsync();
             }
         }
 
@@ -408,9 +420,18 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             _meter = new Meter($"flowtide.{metadata.StreamName}.storage");
+
+            if (_checkpointHandler != null)
+            {
+                await _checkpointHandler.DisposeAsync();
+            }
+
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
             _adminSession = new BlobPersistentSession(this, _memoryAllocator, _maxFileSize);
             _temporaryPageLocations.Clear();
+
+            await _fileProvider.InitializeAsync(default);
+
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverToLatest(default);
             if (CacheProvider != null)
@@ -422,6 +443,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 // Add the metrics proxy here so we get metrics
                 _fileProvider = new MetricsFileStorageProvider(_meter, _fileProvider);
             }
+            
         }
 
         public async ValueTask RecoverAsync(long checkpointVersion)
@@ -432,8 +454,12 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             await _checkpointHandler.RecoverTo(checkpointVersion, default);
         }
 
-        public ValueTask ResetAsync()
+        public async ValueTask ResetAsync()
         {
+            if (_checkpointHandler != null)
+            {
+                await _checkpointHandler.DisposeAsync();
+            }
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
             _temporaryPageLocations.Clear();
             lock (_sessionsLock)
@@ -443,8 +469,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     session.Reset();
                 }
             }
-
-            return ValueTask.CompletedTask;
         }
             
         public bool TryGetValue(long key, [NotNullWhen(true)] out ReadOnlyMemory<byte>? value)

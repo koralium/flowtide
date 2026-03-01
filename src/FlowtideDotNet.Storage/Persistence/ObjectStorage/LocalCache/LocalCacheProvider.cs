@@ -36,10 +36,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
         private Histogram<long>? _persistentBytesRead;
         private Histogram<long>? _persistentBytesWritten;
 
-        public LocalCacheProvider(BlobPersistentStorage blobPersistentStorage, IFileStorageProvider localCache, IFileStorageProvider remoteStorage)
+        public LocalCacheProvider(
+            BlobPersistentStorage blobPersistentStorage, 
+            IFileStorageProvider localCache, 
+            IFileStorageProvider remoteStorage,
+            long maxCacheSizeBytes)
         {
             _metricValues = new LocalCacheMetricValues();
-            _localCacheManager = new LocalCacheManager(blobPersistentStorage, localCache, remoteStorage, 10L * 1000 * 1000 * 1000, _metricValues);
+            _localCacheManager = new LocalCacheManager(blobPersistentStorage, localCache, remoteStorage, maxCacheSizeBytes, _metricValues);
             _remoteStorage = remoteStorage;
         }
 
@@ -160,9 +164,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalCache
             throw new NotSupportedException();
         }
 
-        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
         {
             return _remoteStorage.ListDataFilesAboveVersionAsync(minVersion);
+        }
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            return _remoteStorage.InitializeAsync(cancellationToken);
         }
     }
 }

@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             // Add all the checkpoint data to the end of the file
             while (segment != null)
             {
-                var clone = segment.CloneWithoutNext();
+                var clone = segment.CloneWithoutNextNoOwnership();
                 _end.SetNext(clone);
                 _end = clone;
                 if (segment._next != null)
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             segment = registry.Head;
             while (segment != null)
             {
-                var clone = segment.CloneWithoutNext();
+                var clone = segment.CloneWithoutNextNoOwnership();
                 _end.SetNext(clone);
                 _end = clone;
                 if (segment._next != null)
@@ -142,6 +142,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            var obj = consumed.GetObject();
+
+            if (obj is byte[] byteArr && byteArr.Length == 0)
+            {
+                // Nothing was read, so we don't advance
+                return;
+            }
+
             _advancedPosition = consumed;
         }
 
@@ -165,7 +173,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 if (disposing)
                 {
-                    mergedFile.Dispose();
+                    mergedFile.Return();
+                    newCheckpoint.Dispose();
                 }
 
                 disposedValue = true;
@@ -173,8 +182,9 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         }
 
 
-        public override void Dispose()
+        public override void Return()
         {
+            Dispose(true);
         }
 
         public override void DoneWriting()

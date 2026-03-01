@@ -32,12 +32,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
         private readonly FileStream fileStream;
         private SemaphoreSlim semaphoreSlim;
         private bool disposedValue;
+        private byte[] _buffer;
 
         public LocalDiskReaderManaged(string fileName)
         {
             this.fileName = fileName;
             fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess);
             semaphoreSlim = new SemaphoreSlim(1, 1);
+            _buffer = new byte[4096];
         }
 
         public async ValueTask<ReadOnlyMemory<byte>> Read(long position, int length, uint crc32)
@@ -62,11 +64,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal.DiskReader
             await semaphoreSlim.WaitAsync();
             try
             {
-                var bytes = new byte[length];
+                if (_buffer.Length < length)
+                {
+                    _buffer = new byte[length];
+                }
                 fileStream.Position = position;
-                await fileStream.ReadExactlyAsync(bytes);
-                CrcUtils.CheckCrc32(bytes, crc32);
-                return serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
+                var slice = _buffer.AsMemory().Slice(0, length);
+                await fileStream.ReadExactlyAsync(slice);
+                CrcUtils.CheckCrc32(slice.Span, crc32);
+                return serializer.Deserialize(new ReadOnlySequence<byte>(slice), length);
             }
             finally
             {

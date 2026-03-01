@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal abstract class PagesFile : PipeReader, IDisposable
+    internal abstract class PagesFile : PipeReader
     {
         public abstract PrimitiveList<long> PageIds { get; }
 
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         /// </summary>
         public abstract ulong Crc64 { get; }
 
-        public abstract void Dispose();
+        public abstract void Return();
 
         public abstract void DoneWriting();
     }

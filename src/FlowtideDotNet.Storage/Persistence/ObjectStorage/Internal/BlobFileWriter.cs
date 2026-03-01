@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         private readonly Action<PagesFile> doneFunc;
         private readonly MemoryPool<byte> _memoryPool;
-        private const int InitialSegmentSize = 4 * 1024 * 1024;
+        private const int InitialSegmentSize = 16 * 1024;
         private BufferSegment _headerData;
         private BufferSegment _pageIdsSegment;
         private BufferSegment _pageOffsetsSegment;
@@ -46,15 +46,17 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();
         private ulong _crc64;
 
+        private int _rentCounter;
+
         public BlobFileWriter(Action<PagesFile> doneFunc, MemoryPool<byte> memoryPool, IMemoryAllocator memoryAllocator)
         {
             this.doneFunc = doneFunc;
             this._memoryPool = memoryPool;
-            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize));
+            _headerData = new BufferSegment(memoryPool.Rent(HeaderSize), HeaderSize);
             _headerData.End = HeaderSize;
             _head = _headerData;
             _end = _head;
-            var firstDataSegment = new BufferSegment(memoryPool.Rent(InitialSegmentSize));
+            var firstDataSegment = new BufferSegment(memoryPool.Rent(InitialSegmentSize), InitialSegmentSize);
             _dataStart = firstDataSegment;
             _pageIds = new PrimitiveList<long>(memoryAllocator);
             _pageOffset = new PrimitiveList<int>(memoryAllocator);
@@ -69,6 +71,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             _end = firstDataSegment;
 
             _advancedPosition = WrittenData.Start;
+            _rentCounter = 1;
         }
 
         public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
@@ -125,7 +128,8 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
             if (endIndex + sizeHint >= _end.AvailableMemory.Length)
             {
-                var newSegment = new BufferSegment(_memoryPool.Rent(Math.Max(sizeHint, InitialSegmentSize)));
+                var segmentSize = Math.Max(sizeHint, InitialSegmentSize);
+                var newSegment = new BufferSegment(_memoryPool.Rent(segmentSize), segmentSize);
                 _end.SetNext(newSegment);
                 _end.End = endIndex;
                 _end = newSegment;
@@ -235,6 +239,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            var obj = consumed.GetObject();
+
+            if (obj is byte[] byteArr && byteArr.Length == 0)
+            {
+                // Nothing was read, so we don't advance
+                return;
+            }
+
             _advancedPosition = consumed;
         }
 
@@ -277,7 +289,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             Dispose(disposing: false);
         }
 
-        public override void Dispose()
+        private void Dispose()
         {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
@@ -287,6 +299,26 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         public override void DoneWriting()
         {
             doneFunc(this);
+        }
+
+        public bool TryRent()
+        {
+            int current = Volatile.Read(ref _rentCounter);
+            while (true)
+            {
+                if (current == 0) return false;
+                int old = Interlocked.CompareExchange(ref _rentCounter, current + 1, current);
+                if (old == current) return true;
+                current = old;
+            }
+        }
+
+        public override void Return()
+        {
+            if (Interlocked.Decrement(ref _rentCounter) == 0)
+            {
+                Dispose();
+            }
         }
     }
 }

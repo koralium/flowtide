@@ -25,8 +25,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage
     {
         bool SupportsDataFileListing { get; }
 
+        /// <summary>
+        /// Asynchronously performs any necessary initialization.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the initialization operation.</param>
+        /// <returns>A task that represents the asynchronous initialization operation.</returns>
+        Task InitializeAsync(CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion);
+        Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously reads the checkpoint registry file and returns a PipeReader for its contents.

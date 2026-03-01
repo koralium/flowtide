@@ -38,12 +38,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
-        public BufferSegment(IMemoryOwner<byte> memory)
+        private bool disposedValue;
+
+        public BufferSegment(IMemoryOwner<byte> memory, int length)
         {
             _owner = memory;
-            this.Memory = _owner.Memory;
-            AvailableMemory = _owner.Memory;
-            _end = _owner.Memory.Length;
+            this.Memory = _owner.Memory.Slice(0, length);
+            AvailableMemory = _owner.Memory.Slice(0, length);
+            _end = length;
         }
 
         public BufferSegment(Memory<byte> memory)
@@ -51,12 +53,16 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             this.Memory = memory;
             AvailableMemory = memory;
             _end = memory.Length;
+
+            GC.SuppressFinalize(this);
         }
 
         public BufferSegment(ReadOnlyMemory<byte> memory)
         {
             this.Memory = memory;
             _end = memory.Length;
+
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
@@ -84,11 +90,15 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
-        public BufferSegment CloneWithoutNext()
+        /// <summary>
+        /// Clone wihout taking ownership
+        /// </summary>
+        /// <returns></returns>
+        public BufferSegment CloneWithoutNextNoOwnership()
         {
             if (_owner != null)
             {
-                var b = new BufferSegment(_owner);
+                var b = new BufferSegment(_owner.Memory);
                 b.End = _end;
                 return b;
             }
@@ -152,13 +162,31 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             }
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (_owner != null)
+                {
+                    _owner.Dispose();
+                    _owner = null;
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        ~BufferSegment()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
         public void Dispose()
         {
-            if (_owner != null)
-            {
-                _owner.Dispose();
-                _owner = null;
-            }
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

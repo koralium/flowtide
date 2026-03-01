@@ -181,9 +181,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk
             return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.ToList());
         }
 
-        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion)
+        public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.Where(x => x > minVersion));
+        }
+
+        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 }

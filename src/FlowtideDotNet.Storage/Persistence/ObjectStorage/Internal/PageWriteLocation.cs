@@ -22,5 +22,6 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
     internal struct PageWriteLocation
     {
         public ReadOnlySequence<byte> data;
+        public BlobFileWriter file;
     }
 }

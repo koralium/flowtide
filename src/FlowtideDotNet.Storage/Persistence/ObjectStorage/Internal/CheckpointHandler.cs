@@ -22,7 +22,7 @@ using System.Threading.Channels;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class CheckpointHandler
+    internal class CheckpointHandler : IDisposable, IAsyncDisposable
     {
         private readonly int VersionBetweenSnapshot = 5;
 
@@ -60,6 +60,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private bool _modifiedSinceLastCheckpoint = false;
 
         private CheckpointRegistryFile _checkpointRegistryFile;
+        private bool disposedValue;
 
         public long CheckpointVersion => _checkpointVersion;
 
@@ -92,6 +93,11 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         {
             
             var checkpointRegistryFileReader = await _fileProvider.ReadCheckpointRegistryFileAsync(cancellationToken).ConfigureAwait(false);
+            
+            if (_checkpointRegistryFile != null)
+            {
+                _checkpointRegistryFile.Dispose();
+            }
             if (checkpointRegistryFileReader == null)
             {
                 _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
@@ -407,6 +413,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64, false);
             // Write the checkpoint as a snapshot
             await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
+            _newCheckpoint.Dispose();
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
@@ -573,6 +580,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
             }
 
+            _newCheckpoint.Dispose();
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
             // Create a new channel
             _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
@@ -734,7 +742,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
             // tell done writing to in flight buffers can be cleared
             mergedFile.DoneWriting();
-            bundle.Dispose(); // Dispose the file when we are done
+            bundle.Return(); // Return the file when we are done
             fileIds.Dispose();
             pageSizes.Dispose();
         }
@@ -910,10 +918,71 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 }
 
                 file.DoneWriting();
-                file.Dispose();
+                file.Return();
                 fileIds.Dispose();
                 pageSizes.Dispose();
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    DisposeAsync(disposing).GetAwaiter().GetResult();
+                }
+
+
+                disposedValue = true;
+            }
+        }
+
+        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
+        ~CheckpointHandler()
+        {
+            Debug.Assert(false, "CheckpointHandler finalized without calling dispose");
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual async ValueTask DisposeAsync(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (_cancellationTokenSource != null)
+                {
+                    _cancellationTokenSource.Cancel();
+                }
+
+                _channel.Writer.Complete();
+
+                if (_writeTasks != null)
+                {
+                    await Task.WhenAll(_writeTasks);
+                }
+
+                _newCheckpoint.Dispose();
+                _checkpointRegistryFile.Dispose();
+
+                disposedValue = true;
+
+
+                disposedValue = true;
+            }
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await DisposeAsync(true);
+            GC.SuppressFinalize(this);
         }
     }
 }

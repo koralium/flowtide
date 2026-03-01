@@ -20,7 +20,7 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 {
-    internal class CheckpointRegistryFile : PipeReader, IEnumerable<CheckpointVersion>
+    internal class CheckpointRegistryFile : PipeReader, IEnumerable<CheckpointVersion>, IDisposable
     {
         private const int HeaderSize = 64;
         private const int FooterSize = 8;
@@ -38,6 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
         private BufferSegment _head;
         private BufferSegment _end;
         private int endIndex;
+        private bool disposedValue;
 
         public PrimitiveList<ulong> Crc64s => _crc64s;
         public BufferSegment Head => _head;
@@ -210,6 +211,14 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
 
         public override void AdvanceTo(SequencePosition consumed)
         {
+            var obj = consumed.GetObject();
+
+            if (obj is byte[] byteArr && byteArr.Length == 0)
+            {
+                // Nothing was read, so we don't advance
+                return;
+            }
+
             _advancedPosition = consumed;
         }
 
@@ -383,6 +392,41 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             {
                 yield return new CheckpointVersion(_versions[i], _isSnapshots[i], _crc64s[i], _isBundle[i]);
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                var segment = _head;
+                while (segment != null)
+                {
+                    var next = segment._next;
+                    segment.Dispose();
+                    segment = next;
+                }
+
+                _footerSegment.Dispose();
+                _versions.Dispose();
+                _isSnapshots.Dispose();
+                _isBundle.Dispose();
+                _crc64s.Dispose();
+
+                disposedValue = true;
+            }
+        }
+
+        ~CheckpointRegistryFile()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

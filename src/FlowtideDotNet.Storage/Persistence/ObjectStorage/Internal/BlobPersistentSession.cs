@@ -114,9 +114,22 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
                 }
-                if (_persistentStorage.TryGetTemporaryLocation(key, out var location))
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
                 {
-                    return ValueTask.FromResult(stateSerializer.Deserialize(location.data, (int)location.data.Length));
+                    try
+                    {
+                        var result = stateSerializer.Deserialize(location.data, (int)location.data.Length);
+                        return ValueTask.FromResult(result);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"Error for key {key}, Data length: {location.data.Length}");
+                        throw;
+                    }
+                    finally
+                    {
+                        location.file.Return();
+                    }
                 }
             }
 
@@ -131,21 +144,28 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                 {
                     throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
                 }
-                if (_persistentStorage.TryGetTemporaryLocation(key, out var location))
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
                 {
                     //location.data.
-                    if (location.data.FirstSpan.Length >= location.data.Length)
+                    try
                     {
-                        var start = location.data.Start;
-                        if (location.data.TryGet(ref start, out var value))
+                        if (location.data.FirstSpan.Length >= location.data.Length)
                         {
-                            return ValueTask.FromResult(value);
+                            var start = location.data.Start;
+                            if (location.data.TryGet(ref start, out var value))
+                            {
+                                return ValueTask.FromResult(value);
+                            }
                         }
+                        // If the data is not in the first span, we need to copy it to a new buffer
+                        var buffer = new byte[location.data.Length];
+                        location.data.CopyTo(buffer);
+                        return ValueTask.FromResult((ReadOnlyMemory<byte>)buffer);
                     }
-                    // If the data is not in the first span, we need to copy it to a new buffer
-                    var buffer = new byte[location.data.Length];
-                    location.data.CopyTo(buffer);
-                    return ValueTask.FromResult((ReadOnlyMemory<byte>)buffer);
+                    finally
+                    {
+                        location.file.Return();
+                    }
                 }
             }
 
@@ -187,7 +207,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
                     throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
                 }
                 // Add info to lookup so reads can find the written data before its flushed to storage
-                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence });
+                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = _fileWriter });
             }
 
             if (_fileWriter.WrittenLength >= _maxFileSize)
@@ -218,7 +238,7 @@ namespace FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal
             lock (_lock)
             {
                 _deletedPages.Clear();
-                _fileWriter.Dispose();
+                _fileWriter.Return();
                 SetupFileWriter();
             }
         }
