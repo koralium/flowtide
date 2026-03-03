@@ -243,13 +243,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.CompletedTask;
         }
 
-        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
         {
             if (!Directory.Exists(_dataFileDirectory))
             {
                 return Task.FromResult<PipeReader?>(null);
             }
-            var path = $"{optionDataDirectory}/streamVersions.json";
+            var path = $"{optionDataDirectory}/{streamName}/streamVersions.json";
 
             if (!File.Exists(path))
             {
@@ -258,9 +258,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.FromResult<PipeReader?>(PipeReader.Create(File.OpenRead(path)));
         }
 
-        public async Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            var path = $"{optionDataDirectory}/streamVersions.json";
+            var path = $"{optionDataDirectory}/{streamName}/streamVersions.json";
             if (optionDataDirectory != null && !Directory.Exists(optionDataDirectory))
             {
                 Directory.CreateDirectory(optionDataDirectory);

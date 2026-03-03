@@ -197,7 +197,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             return Task.CompletedTask;
         }
 
-        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             }
         }
 
-        public Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {

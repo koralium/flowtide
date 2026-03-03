@@ -188,9 +188,21 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             }
         }
 
-        public async Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        private string GetMetadataPath(string streamName)
         {
-            var blobClient = _blobContainerClient.GetBlobClient(_metadataFile);
+            if (_optionsDirectoryPath != null)
+            {
+                return $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{metadataFile}";
+            }
+            else
+            {
+                return $"{streamName}/{metadataFile}";
+            }
+        }
+
+        public async Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
+        {
+            var blobClient = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
             if (await blobClient.ExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
             {
                 var result = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -199,9 +211,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return default;
         }
 
-        public async Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            var client = _blobContainerClient.GetBlobClient(_metadataFile);
+            var client = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
             await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
     }

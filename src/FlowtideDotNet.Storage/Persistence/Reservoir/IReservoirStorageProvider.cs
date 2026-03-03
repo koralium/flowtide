@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// </summary>
         /// <param name="cancellationToken"></param>
         /// <returns>A pipe reader to read the metadata file, or null if it does not exist</returns>
-        Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default);
+        Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Writes a streams metadata file that contains information of all streams and their versions.
@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// <param name="data"></param>
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
         /// <returns>A task that represents the asynchronous write operation.</returns>
-        Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default);
+        Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously performs any necessary initialization.

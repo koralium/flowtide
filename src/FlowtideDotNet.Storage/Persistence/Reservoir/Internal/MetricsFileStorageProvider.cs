@@ -135,14 +135,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return _internalProvider.InitializeAsync(streamName, streamVersion, cancellationToken);
         }
 
-        public Task<PipeReader> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
         {
-            return _internalProvider.ReadStreamsMetadataFileAsync(cancellationToken);
+            return _internalProvider.ReadStreamsMetadataFileAsync(streamName, cancellationToken);
         }
 
-        public Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            return _internalProvider.WriteStreamsMetadataFileAsync(data);
+            return _internalProvider.WriteStreamsMetadataFileAsync(streamName, data);
         }
     }
 }

@@ -174,14 +174,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             return _remoteStorage.InitializeAsync(streamName, streamVersion, cancellationToken);
         }
 
-        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
         {
-            return _remoteStorage.ReadStreamsMetadataFileAsync(cancellationToken);
+            return _remoteStorage.ReadStreamsMetadataFileAsync(streamName, cancellationToken);
         }
 
-        public Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            return _remoteStorage.WriteStreamsMetadataFileAsync(data, cancellationToken);
+            return _remoteStorage.WriteStreamsMetadataFileAsync(streamName, data, cancellationToken);
         }
     }
 }

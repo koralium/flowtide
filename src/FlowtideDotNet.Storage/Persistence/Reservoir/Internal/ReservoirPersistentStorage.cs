@@ -420,9 +420,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         }
 
-        private async Task<ReservoirStreamsMetadata> ReadMetadata(CancellationToken cancellationToken)
+        private async Task<ReservoirStreamsMetadata> ReadMetadata(string streamName, CancellationToken cancellationToken)
         {
-            var pipe = await _fileProvider.ReadStreamsMetadataFileAsync(cancellationToken);
+            var pipe = await _fileProvider.ReadStreamsMetadataFileAsync(streamName, cancellationToken);
 
             if (pipe != null)
             {
@@ -449,9 +449,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return JsonSerializer.Deserialize<ReservoirStreamsMetadata>(ref reader);
         }
 
-        private async Task FetchAndUpdateMetadata(string streamVersion, CancellationToken cancellationToken)
+        private async Task FetchAndUpdateMetadata(string streamName, string streamVersion, CancellationToken cancellationToken)
         {
-            var storageMetadata = await ReadMetadata(cancellationToken);
+            var storageMetadata = await ReadMetadata(streamName, cancellationToken);
             var existingIndex = storageMetadata.Versions.FindIndex(x => x.Version == streamVersion);
             if (existingIndex >= 0)
             {
@@ -465,7 +465,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
             _storageMetadata = storageMetadata;
             var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(storageMetadata);
-            await _fileProvider.WriteStreamsMetadataFileAsync(PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
+            await _fileProvider.WriteStreamsMetadataFileAsync(streamName, PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
         }
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
@@ -494,8 +494,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
             }
             _streamVersion = streamVersion;
-            await _fileProvider.InitializeAsync(streamVersion, default);
-            await FetchAndUpdateMetadata(streamVersion, default);
+            await _fileProvider.InitializeAsync(metadata.StreamName, streamVersion, default);
+            await FetchAndUpdateMetadata(metadata.StreamName, streamVersion, default);
 
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverToLatest(default);
