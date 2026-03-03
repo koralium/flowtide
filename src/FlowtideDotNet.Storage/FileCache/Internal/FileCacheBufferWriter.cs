@@ -85,5 +85,14 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
         {
             return GetMemory(sizeHint).Span;
         }
+
+        public void ClearTemporaryAllocations()
+        {
+            if (_memory != null)
+            {
+                _memory.Dispose();
+                _memory = null;
+            }
+        }
     }
 }

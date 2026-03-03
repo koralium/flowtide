@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Memory
         {
             var ptr = NativeMemory.AlignedAlloc((nuint)size, (nuint)alignment);
             _operatorMemoryManager.RegisterAllocationToMetrics(size);
-            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, _operatorMemoryManager);
+            return NativeCreatedMemoryOwnerFactory.Get(ptr, size, (nuint)alignment, _operatorMemoryManager);
         }
 
         public void Free()
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Storage.Memory
                 var existingMemory = memory.Memory;
                 NativeMemory.Copy(existingMemory.Pin().Pointer, ptr, (nuint)Math.Min(existingMemory.Length, size));
                 memory.Dispose();
-                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
+                return NativeCreatedMemoryOwnerFactory.Get(ptr, size, (nuint)alignment, this);
             }
         }
     }
