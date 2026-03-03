@@ -31,10 +31,10 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using System.Buffers;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.MemoryDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -305,7 +305,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions() { FileProvider = new MemoryFileProvider()});
+            return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
         private void OnDataUpdate(EventBatchData actualData)

@@ -17,8 +17,8 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
@@ -149,27 +149,9 @@ namespace FlowtideDotNet.DependencyInjection
         {
             storageBuilder.SetPersistentStorage((provider) =>
             {
-                return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions()
+                return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
                 {
                     FileProvider = new LocalDiskProvider(dataDirectory, checkpointDirectory)
-                });
-            });
-            storageBuilder.ZstdPageCompression();
-            return storageBuilder;
-        }
-
-        public static IFlowtideStorageBuilder AddFileStorageWithCache(
-            this IFlowtideStorageBuilder storageBuilder, 
-            string dataDirectory, 
-            string checkpointDirectory,
-            string cacheDir)
-        {
-            storageBuilder.SetPersistentStorage((provider) =>
-            {
-                return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions()
-                {
-                    FileProvider = new LocalDiskProvider(dataDirectory, checkpointDirectory),
-                    CacheProvider = new LocalDiskProvider(cacheDir, default!)
                 });
             });
             storageBuilder.ZstdPageCompression();

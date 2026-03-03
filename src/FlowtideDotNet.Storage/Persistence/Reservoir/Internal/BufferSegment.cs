@@ -1,0 +1,192 @@
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System.Buffers;
+using System.Diagnostics;
+
+namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
+{
+    internal class BufferSegment : ReadOnlySequenceSegment<byte>, IDisposable
+    {
+        internal BufferSegment? _next;
+        private int _end;
+        private IMemoryOwner<byte>? _owner;
+        private int _rentCounter;
+
+        public Memory<byte> AvailableMemory { get; private set; }
+
+        public int Length => End;
+
+        public int End
+        {
+            get => _end;
+            set
+            {
+                Debug.Assert(value <= Memory.Length);
+
+                _end = value;
+                Memory = Memory.Slice(0, value);
+            }
+        }
+
+        private bool disposedValue;
+
+        public BufferSegment(IMemoryOwner<byte> memory, int length)
+        {
+            _owner = memory;
+            this.Memory = _owner.Memory.Slice(0, length);
+            AvailableMemory = _owner.Memory.Slice(0, length);
+            _end = length;
+        }
+
+        public BufferSegment(Memory<byte> memory)
+        {
+            this.Memory = memory;
+            AvailableMemory = memory;
+            _end = memory.Length;
+
+            GC.SuppressFinalize(this);
+        }
+
+        public BufferSegment(ReadOnlyMemory<byte> memory)
+        {
+            this.Memory = memory;
+            _end = memory.Length;
+
+            GC.SuppressFinalize(this);
+        }
+
+        /// <summary>
+        /// Updates the memory of the segment
+        /// This is unsafe since it does not update running index of children
+        /// Call UpdateRunningIndices to update the running indices.
+        /// </summary>
+        /// <param name="memory"></param>
+        public void UpdateMemory_Unsafe(Memory<byte> memory)
+        {
+            this.Memory = memory;
+            AvailableMemory = memory;
+            _end = memory.Length;
+        }
+
+        public void UpdateRunningIndices()
+        {
+            var segment = this;
+
+            while (segment.Next != null)
+            {
+                Debug.Assert(segment._next != null);
+                segment._next.RunningIndex = segment.RunningIndex + segment.Length;
+                segment = segment._next;
+            }
+        }
+
+        /// <summary>
+        /// Clone wihout taking ownership
+        /// </summary>
+        /// <returns></returns>
+        public BufferSegment CloneWithoutNextNoOwnership()
+        {
+            if (_owner != null)
+            {
+                var b = new BufferSegment(_owner.Memory);
+                b.End = _end;
+                return b;
+            }
+            var ba = new BufferSegment(AvailableMemory);
+            ba.End = _end;
+            return ba;
+        }
+
+        public void SetNext(BufferSegment segment)
+        {
+            Debug.Assert(segment != null);
+            Debug.Assert(Next == null);
+            _next = segment;
+            Next = _next;
+
+            segment = this;
+
+            while (segment.Next != null)
+            {
+                Debug.Assert(segment._next != null);
+                segment._next.RunningIndex = segment.RunningIndex + segment.Length;
+                segment = segment._next;
+            }
+        }
+
+        public void ClearNext()
+        {
+            _next = null;
+            Next = null;
+        }
+
+        public bool TryRent()
+        {
+            var localRentCount = Volatile.Read(ref _rentCounter);
+            if (localRentCount == 0)
+            {
+                return false;
+            }
+            int incrementedValue;
+            // Run a loop to try and add the new value, if compare exchange fails, add to the new returned value + 1, if 0 return false
+            do
+            {
+                incrementedValue = localRentCount;
+                localRentCount = Interlocked.CompareExchange(ref _rentCounter, incrementedValue + 1, localRentCount);
+                if (localRentCount == 0)
+                {
+                    return false;
+                }
+            } while (localRentCount != incrementedValue);
+
+            return true;
+        }
+
+        public void Return()
+        {
+            var result = Interlocked.Decrement(ref _rentCounter);
+
+            if (result <= 0)
+            {
+                Dispose();
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (_owner != null)
+                {
+                    _owner.Dispose();
+                    _owner = null;
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        ~BufferSegment()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+}

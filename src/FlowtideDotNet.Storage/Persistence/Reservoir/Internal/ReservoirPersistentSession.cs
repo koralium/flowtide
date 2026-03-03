@@ -1,0 +1,246 @@
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Storage.Exceptions;
+using FlowtideDotNet.Storage.FileCache;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
+using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
+using System.Linq;
+using System.Text;
+using System.Threading.Channels;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
+{
+    internal class ReservoirPersistentSession : IPersistentStorageSession
+    {
+        private readonly int _maxFileSize;
+        private BlobFileWriter _fileWriter;
+
+        private readonly object _lock = new object();
+        private readonly ReservoirPersistentStorage _persistentStorage;
+        private readonly IMemoryAllocator _memoryAllocator;
+        private readonly HashSet<long> _deletedPages;
+
+        public ReservoirPersistentSession(
+            ReservoirPersistentStorage persistentStorage, 
+            IMemoryAllocator memoryAllocator,
+            int maxFileSize)
+        {
+            _maxFileSize = maxFileSize;
+            this._persistentStorage = persistentStorage;
+            this._memoryAllocator = memoryAllocator;
+            _deletedPages = new HashSet<long>();
+            SetupFileWriter();
+        }
+
+        [MemberNotNull(nameof(_fileWriter))]
+        private void SetupFileWriter()
+        {
+            _fileWriter = new BlobFileWriter(OnFileWritten, MemoryPool<byte>.Shared, _memoryAllocator);
+        }
+
+        private void OnFileWritten(PagesFile pagesFile)
+        {
+            lock (_lock)
+            {
+                for (int i = 0; i < pagesFile.PageIds.Count; i++)
+                {
+                    long pageId = pagesFile.PageIds[i];
+                    _persistentStorage.RemoveTemporaryLocation(pageId);
+                }
+            }
+        }
+
+        public async Task Commit()
+        {
+            if (_fileWriter.PageIds.Count > 0)
+            {
+                // Send non full file to persistent storage, this allows for writing multiple files in a checkpoint
+                // and then merging them together before writing to disk
+                await _persistentStorage.AddNonCompletedBlobFile(_fileWriter);
+                SetupFileWriter();
+            }
+            lock (_lock)
+            {
+                // Send the deleted pages
+                if (_deletedPages.Count > 0)
+                {
+                    _persistentStorage.DeletePages(_deletedPages);
+                }
+            }
+        }
+
+        public Task Delete(long key)
+        {
+            // Deletes are added to a local set, and will be passed on commit.
+            // This is to ensure that only deletes for the current checkpoint are passed.
+            lock (_lock)
+            {
+                // Remove from temporary written since its no longer active
+                if (_persistentStorage.TemporaryLocationExists(key))
+                {
+                    _persistentStorage.RemoveTemporaryLocation(key);
+                }
+                
+                _deletedPages.Add(key);
+            }
+            return Task.CompletedTask;
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            lock (_lock)
+            {
+                if (_deletedPages.Contains(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+                }
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
+                {
+                    try
+                    {
+                        var result = stateSerializer.Deserialize(location.data, (int)location.data.Length);
+                        return ValueTask.FromResult(result);
+                    }
+                    catch
+                    {
+                        Console.WriteLine($"Error for key {key}, Data length: {location.data.Length}");
+                        throw;
+                    }
+                    finally
+                    {
+                        location.file.Return();
+                    }
+                }
+            }
+
+            return _persistentStorage.ReadAsync(key, stateSerializer);
+        }
+
+        public ValueTask<ReadOnlyMemory<byte>> Read(long key)
+        {
+            lock (_lock)
+            {
+                if (_deletedPages.Contains(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+                }
+                if (_persistentStorage.TryGetTemporaryLocation(key, out var location) && location.file.TryRent())
+                {
+                    //location.data.
+                    try
+                    {
+                        if (location.data.FirstSpan.Length >= location.data.Length)
+                        {
+                            var start = location.data.Start;
+                            if (location.data.TryGet(ref start, out var value))
+                            {
+                                return ValueTask.FromResult(value);
+                            }
+                        }
+                        // If the data is not in the first span, we need to copy it to a new buffer
+                        var buffer = new byte[location.data.Length];
+                        location.data.CopyTo(buffer);
+                        return ValueTask.FromResult((ReadOnlyMemory<byte>)buffer);
+                    }
+                    finally
+                    {
+                        location.file.Return();
+                    }
+                }
+            }
+
+            // Fetch from storage if not found in temporary locations
+            return Read_Slow(key);
+        }
+
+        private async ValueTask<ReadOnlyMemory<byte>> Read_Slow(long key)
+        {
+            var result = await _persistentStorage.ReadAsync(key);
+
+            if (result.IsSingleSegment)
+            {
+                var start = result.Start;
+                if (result.TryGet(ref start, out var value))
+                {
+                    return value;
+                }
+            }
+
+            var buffer = new byte[result.Length];
+            result.CopyTo(buffer);
+            return buffer;
+        }
+
+        public async Task Write(long key, SerializableObject value)
+        {
+            lock (_lock)
+            {
+                var sequence = _fileWriter.Write(key, value);
+                // If the page is in deleted pages, remove it from the set
+                // Since it has been written again
+                if (_deletedPages.Contains(key))
+                {
+                    _deletedPages.Remove(key);
+                }
+                if (_persistentStorage.TemporaryLocationExists(key))
+                {
+                    throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
+                }
+                // Add info to lookup so reads can find the written data before its flushed to storage
+                _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = _fileWriter });
+            }
+
+            if (_fileWriter.WrittenLength >= _maxFileSize)
+            {
+                // Finish the file writer, this adds the page ids and offsets
+                _fileWriter.Finish();
+
+                // TODO: Send the file to the blob writer
+                await _persistentStorage.AddCompleteBlobFile(_fileWriter);
+
+                SetupFileWriter();
+            }
+        }
+
+        /// <summary>
+        /// This method is used for testing only
+        /// </summary>
+        /// <returns></returns>
+        internal async Task SendBlobFile_Testing()
+        {
+            _fileWriter.Finish();
+            await _persistentStorage.AddCompleteBlobFile(_fileWriter);
+            SetupFileWriter();
+        }
+
+        public void Reset()
+        {
+            lock (_lock)
+            {
+                _deletedPages.Clear();
+                _fileWriter.Return();
+                SetupFileWriter();
+            }
+        }
+    }
+}

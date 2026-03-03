@@ -14,8 +14,8 @@ using Azure;
 using Azure.Core;
 using Azure.Storage;
 using FlowtideDotNet.Storage.AzureBlobs;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.Internal;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -161,7 +161,7 @@ namespace FlowtideDotNet.DependencyInjection
             options?.Invoke(blobOptions);
             storageBuilder.SetPersistentStorage((provider) =>
             {
-                return new BlobPersistentStorage(new Storage.Persistence.ObjectStorage.BlobStorageOptions()
+                return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
                 {
                     FileProvider = new AzureFileProvider(blobOptions),
                     CacheProvider = new LocalDiskProvider(blobOptions.LocalCacheDirectory ?? Path.Combine(Path.GetTempPath(), "flowtide_cache"), default),

@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using Azure.Storage.Blobs;
-using FlowtideDotNet.Storage.Persistence.ObjectStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Buffers;
@@ -24,7 +24,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.AzureBlobs
 {
-    internal class AzureFileProvider : IFileStorageProvider
+    internal class AzureFileProvider : IReservoirStorageProvider
     {
         private const string checkpointsDirectory = "checkpoints/";
         private const string checkpointRegistryFile = checkpointsDirectory + "checkpoints.registry";

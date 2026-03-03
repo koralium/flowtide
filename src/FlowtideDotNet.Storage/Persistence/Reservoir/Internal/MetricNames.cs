@@ -1,0 +1,26 @@
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
+{
+    internal static class MetricNames
+    {
+        public const string LocalCacheSizeBytes = "flowtide_local_cache_size_bytes";
+        public const string LocalCacheHits = "flowtide_local_cache_hits";
+        public const string LocalCacheTotalTries = "flowtide_local_cache_total_tries";
+        public const string PersistentStorageNumberOfReads = "flowtide_persistent_storage_number_of_read_operations";
+        public const string PersistentStorageNumberOfWrites = "flowtide_persistent_storage_number_of_write_operations";
+        public const string PersistentStorageNumberOfDeletes = "flowtide_persistent_storage_number_of_delete_operations";
+        public const string PersistentStorageDataBytesRead = "flowtide_persistent_storage_data_bytes_read";
+        public const string PersistentStorageDataBytesWritten = "flowtide_persistent_storage_data_bytes_written";
+    }
+}
