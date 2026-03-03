@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.Where(x => x > minVersion));
         }
 
-        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }

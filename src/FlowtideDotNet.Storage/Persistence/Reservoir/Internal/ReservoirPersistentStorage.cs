@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -44,7 +45,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private int _numberOfWrittenFiles;
         private bool _takingCheckpoint = false;
-
+        private string? _streamVersion;
+        private ReservoirStreamsMetadata? _storageMetadata;
         /// <summary>
         /// Temporary location of written pages from sessions
         /// This must be on this level and not on the individual sessions to allow compaction
@@ -461,6 +463,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 storageMetadata.Versions.Add(new ReservoirStreamVersion(streamVersion, DateTime.UtcNow, DateTime.UtcNow));
             }
+            _storageMetadata = storageMetadata;
             var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(storageMetadata);
             await _fileProvider.WriteStreamsMetadataFileAsync(PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
         }
@@ -490,6 +493,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     streamVersion = metadata.StreamVersion.Version;
                 }
             }
+            _streamVersion = streamVersion;
             await _fileProvider.InitializeAsync(streamVersion, default);
             await FetchAndUpdateMetadata(streamVersion, default);
 

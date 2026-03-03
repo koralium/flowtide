@@ -35,15 +35,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             dataDirectory = dataDirectory.TrimEnd('/').TrimEnd('\\');
             optionDataDirectory = dataDirectory;
 
-            SetDirectories("default");
+            SetDirectories("default", "default");
             localDiskReadManager = new LocalDiskReadManager();
         }
 
         [MemberNotNull(nameof(_dataFileDirectory), nameof(_checkpointFileDirectory))]
-        private void SetDirectories(string streamVersion)
+        private void SetDirectories(string streamName, string streamVersion)
         {
-            _dataFileDirectory = $"{optionDataDirectory}/{streamVersion}/";
-            _checkpointFileDirectory = $"{optionDataDirectory}/{streamVersion}/checkpoints/";
+            _dataFileDirectory = $"{optionDataDirectory}/{streamName}/{streamVersion}/";
+            _checkpointFileDirectory = $"{optionDataDirectory}/{streamName}/{streamVersion}/checkpoints/";
         }
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
@@ -236,10 +236,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.FromResult<IEnumerable<ulong>>(result);
         }
 
-        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
         {
             _streamVersion = streamVersion;
-            SetDirectories(streamVersion);
+            SetDirectories(streamName, streamVersion);
             return Task.CompletedTask;
         }
 

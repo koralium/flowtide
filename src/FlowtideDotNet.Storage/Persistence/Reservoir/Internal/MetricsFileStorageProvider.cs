@@ -130,9 +130,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return _internalProvider.ListDataFilesAboveVersionAsync(minVersion);
         }
 
-        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
         {
-            return _internalProvider.InitializeAsync(streamVersion, cancellationToken);
+            return _internalProvider.InitializeAsync(streamName, streamVersion, cancellationToken);
         }
 
         public Task<PipeReader> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
