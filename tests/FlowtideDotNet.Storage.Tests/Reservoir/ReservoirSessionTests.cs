@@ -4,37 +4,20 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using System.Buffers;
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
-    public class ReservoirSessionTests : IDisposable
+    public class ReservoirSessionTests
     {
-        private readonly string _tempPath;
-        private readonly string _dataPath;
-        private readonly string _checkpointPath;
-
         public ReservoirSessionTests()
         {
-            _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            _dataPath = Path.Combine(_tempPath, "data");
-            _checkpointPath = Path.Combine(_tempPath, "checkpoints");
-            Directory.CreateDirectory(_tempPath);
-            Directory.CreateDirectory(_dataPath);
-            Directory.CreateDirectory(_checkpointPath);
-        }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(_tempPath))
-            {
-                Directory.Delete(_tempPath, true);
-            }
         }
 
         [Fact]
         public async Task TestReadYourDeletes()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
@@ -56,7 +39,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [Fact]
         public async Task TestLargeWriteFileRolling()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() 
             { 
                 FileProvider = provider,
@@ -81,8 +64,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             // Recover and verify a few keys
             {
-                var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider2 });
+                var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
@@ -98,7 +80,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [Fact]
         public async Task TestConcurrentWriters()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
             await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
 
@@ -130,8 +112,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             // Recover and verify
             {
-                var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
-                var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider2 });
+                var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session3 = persistentStorage2.CreateSession();

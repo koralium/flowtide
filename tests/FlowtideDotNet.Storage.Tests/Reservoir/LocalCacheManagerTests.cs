@@ -42,6 +42,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = persistentData,
                 CacheProvider = cacheData
             });
+            blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test")).GetAwaiter().GetResult();
             var provider = blobPersistentStorage.CacheProvider;
             Assert.NotNull(provider);
             cacheProvider = provider;

@@ -260,19 +260,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return true;
         }
 
-        public bool TryGetNextDeletedPageId(out DeletedFileInfo deletedFileInfo)
+        public bool TryGetNextDeletedPageId(out long deletedPageId)
         {
-            deletedFileInfo = new DeletedFileInfo();
-            if (!_deletedPageIdsReader.TryReadLittleEndian(out long deletedPageId))
+            if (!_deletedPageIdsReader.TryReadLittleEndian(out deletedPageId))
             {
                 return false;
             }
-            if (!_deletedFileAtVersionReader.TryReadLittleEndian(out long deletedAtVersion))
-            {
-                return false;
-            }
-            deletedFileInfo.fileId = (ulong)deletedPageId;
-            deletedFileInfo.deletedAtVersion = deletedAtVersion;
             return true;
         }
 

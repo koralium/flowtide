@@ -8,34 +8,12 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
-    public class ReservoirSnapshotTests : IDisposable
+    public class ReservoirSnapshotTests
     {
-        private readonly string _tempPath;
-        private readonly string _dataPath;
-        private readonly string _checkpointPath;
-
-        public ReservoirSnapshotTests()
-        {
-            _tempPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-            _dataPath = Path.Combine(_tempPath, "data");
-            _checkpointPath = Path.Combine(_tempPath, "checkpoints");
-            Directory.CreateDirectory(_tempPath);
-            Directory.CreateDirectory(_dataPath);
-            Directory.CreateDirectory(_checkpointPath);
-        }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(_tempPath))
-            {
-                Directory.Delete(_tempPath, true);
-            }
-        }
-
         [Fact]
         public async Task TestSnapshot()
         {
-            var provider = new LocalDiskProvider(_dataPath, _checkpointPath);
+            var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() 
             { 
                 FileProvider = provider,
@@ -56,10 +34,9 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             }
 
             {
-                var provider2 = new LocalDiskProvider(_dataPath, _checkpointPath);
                 var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
                 {
-                    FileProvider = provider2,
+                    FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
                 await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));

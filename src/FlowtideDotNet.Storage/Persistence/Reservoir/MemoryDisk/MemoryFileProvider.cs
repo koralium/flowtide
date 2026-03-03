@@ -42,6 +42,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             return _dataFiles.TryGetValue(fileId, out bytes);
         }
 
+        internal void SetFileData(ulong fileId, byte[] bytes)
+        {
+            _dataFiles[fileId] = bytes;
+        }
+
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)

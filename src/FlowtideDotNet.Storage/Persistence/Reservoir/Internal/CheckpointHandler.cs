@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 if (bundledDataFileIds.Count > 0)
                 {
-                    ulong maxFileId = fileId;
+                    //ulong maxFileId = fileId;
                     // Validate that there are no version below the asked version
                     // This is a safe guard for implementation errors in file providers
                     // we also take out the max fileId here
@@ -128,17 +128,28 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             bundledDataFileIds.RemoveAt(i);
                             i--;
                         }
-                        else if (bundledDataFileIds[i] > maxFileId)
-                        {
-                            maxFileId = bundledDataFileIds[i];
-                        }
                     }
 
-                    if (maxFileId != fileId)
+                    bundledDataFileIds = bundledDataFileIds.OrderByDescending(x => x).ToList();
+
+                    for (int i = 0; i < bundledDataFileIds.Count; i++)
                     {
-                        // There is a later version in a bundle, so we need to read the new registry from that file
-                        var dataFilePipe = await _fileProvider.ReadDataFileAsync(maxFileId, 0, cancellationToken);
-                        _checkpointRegistryFile = await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
+                        if (bundledDataFileIds[i] > fileId)
+                        {
+                            try
+                            {
+                                var dataFilePipe = await _fileProvider.ReadDataFileAsync(bundledDataFileIds[i], 0, cancellationToken);
+                                _checkpointRegistryFile = await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
+                            }
+                            catch(InvalidOperationException)
+                            {
+                                // TODO: Log here
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
                     }
                 }
             }
@@ -292,10 +303,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 };
             }
 
-            while (reader.TryGetNextDeletedPageId(out var deletedFileInfo))
+            while (reader.TryGetNextDeletedPageId(out var deletedPageId))
             {
-                deletedFilesList.Add(deletedFileInfo);
-                _fileInformations.TryRemove(deletedFileInfo.fileId, out _);
+                _pageFileLocations.TryRemove(deletedPageId, out _);
             }
 
             while (reader.TryGetFileInformation(out var fileInfo))
