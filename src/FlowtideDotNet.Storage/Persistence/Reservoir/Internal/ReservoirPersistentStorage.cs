@@ -412,9 +412,23 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Dispose()
         {
-            // TODO: Implement
-            //throw new NotImplementedException();
+            _mergedBlobFileWriter.Return(); // Return file, will dispose when counter is 0, might be others dependent on the file still
+            
+            if (_checkpointHandler != null)
+            {
+                _checkpointHandler.Dispose();
+            }
+            if (_adminSession != null)
+            {
+                _adminSession.Dispose();
+            }
+            
+            foreach(var session in _sessions)
+            {
+                session.Dispose();
+            }
 
+            _temporaryPageLocations.Clear();
         }
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)

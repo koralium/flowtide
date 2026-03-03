@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            _fileWriter.Return(); // Return the file which will dispose it if the counter is 0
         }
 
         public ValueTask<T> Read<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
