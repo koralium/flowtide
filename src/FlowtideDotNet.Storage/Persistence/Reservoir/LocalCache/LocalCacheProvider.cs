@@ -169,9 +169,19 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             return _remoteStorage.ListDataFilesAboveVersionAsync(minVersion);
         }
 
-        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
         {
-            return _remoteStorage.InitializeAsync(cancellationToken);
+            return _remoteStorage.InitializeAsync(streamVersion, cancellationToken);
+        }
+
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        {
+            return _remoteStorage.ReadStreamsMetadataFileAsync(cancellationToken);
+        }
+
+        public Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        {
+            return _remoteStorage.WriteStreamsMetadataFileAsync(data, cancellationToken);
         }
     }
 }

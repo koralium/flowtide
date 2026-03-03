@@ -28,29 +28,37 @@ namespace FlowtideDotNet.Storage.AzureBlobs
     {
         private const string checkpointsDirectory = "checkpoints/";
         private const string checkpointRegistryFile = checkpointsDirectory + "checkpoints.registry";
+        private const string metadataFile = "streamsMetadata.json";
         private readonly BlobContainerClient _blobContainerClient;
 
-        private readonly string _dataDirectory;
-        private readonly string _checkpointDirectory;
-        private readonly string _checkpointRegistryFile;
+        private readonly string? _optionsDirectoryPath;
+        private string _dataDirectory;
+        private string _checkpointDirectory;
+        private string _checkpointRegistryFile;
+        private string _metadataFile;
+        private string? _streamVersion;
+
 
         public bool SupportsDataFileListing => true;
 
         public AzureFileProvider(FlowtideAzureBlobOptions options)
         {
             _blobContainerClient = options.GetClient();
+            _optionsDirectoryPath = options.DirectoryPath;
 
             if (options.DirectoryPath != null)
             {
                 _dataDirectory = options.DirectoryPath.TrimEnd('/') + "/";
                 _checkpointDirectory = options.DirectoryPath.TrimEnd('/') + "/" + checkpointsDirectory;
                 _checkpointRegistryFile = options.DirectoryPath.TrimEnd('/') + "/" + checkpointRegistryFile;
+                _metadataFile = options.DirectoryPath.TrimEnd('/') + "/" + metadataFile;
             }
             else
             {
                 _dataDirectory = string.Empty;
                 _checkpointDirectory = checkpointsDirectory;
                 _checkpointRegistryFile = checkpointRegistryFile;
+                _metadataFile = metadataFile;
             }
         }
 
@@ -157,12 +165,44 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), data.AsStream(), cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        public async Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
         {
+            _streamVersion = streamVersion;
+
+            if (_optionsDirectoryPath != null)
+            {
+                _dataDirectory = _optionsDirectoryPath.Trim('/') + "/" + _streamVersion + "/";
+                _checkpointDirectory = _dataDirectory + checkpointsDirectory;
+                _checkpointRegistryFile = _dataDirectory  + checkpointRegistryFile;
+            }
+            else
+            {
+                _dataDirectory = _streamVersion + "/";
+                _checkpointDirectory = _streamVersion + "/" + checkpointsDirectory;
+                _checkpointRegistryFile = _streamVersion + "/" + checkpointRegistryFile;
+            }
+
             if (!await _blobContainerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
             {
                 await _blobContainerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
             }
+        }
+
+        public async Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        {
+            var blobClient = _blobContainerClient.GetBlobClient(_metadataFile);
+            if (await blobClient.ExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                var result = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                return PipeReader.Create(result.Value.Content, new StreamPipeReaderOptions(leaveOpen: false));
+            }
+            return default;
+        }
+
+        public async Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        {
+            var client = _blobContainerClient.GetBlobClient(_metadataFile);
+            await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
     }
 }

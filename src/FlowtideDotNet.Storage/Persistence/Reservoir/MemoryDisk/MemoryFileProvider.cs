@@ -34,6 +34,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         private  Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
         private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
         private byte[]? _registryBytes;
+        private byte[]? _metadataBytes;
 
         public virtual bool SupportsDataFileListing => true;
 
@@ -191,9 +192,35 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             return Task.FromResult<IEnumerable<ulong>>(_dataFiles.Keys.Where(x => x > minVersion));
         }
 
-        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
+        }
+
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        {
+            lock (_lock)
+            {
+                if (_registryBytes != null)
+                {
+                    var pipe = new Pipe();
+                    pipe.Writer.Write(_metadataBytes);
+                    pipe.Writer.Complete();
+                    return Task.FromResult<PipeReader?>(pipe.Reader);
+                }
+                return Task.FromResult<PipeReader?>(null);
+            }
+        }
+
+        public Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        {
+            lock (_lock)
+            {
+                using MemoryStream stream = new MemoryStream();
+                data.CopyToAsync(stream).GetAwaiter().GetResult();
+                _metadataBytes = stream.ToArray();
+                return Task.CompletedTask;
+            }
         }
     }
 }

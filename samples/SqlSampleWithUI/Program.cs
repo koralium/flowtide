@@ -40,6 +40,7 @@ ON t.val = o.val;
 
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
+.AddVersioningFromString("1.0.0")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
@@ -47,7 +48,7 @@ builder.Services.AddFlowtideStream("test")
 })
 .AddStorage(b =>
 {
-    b.AddFileStorage("./stateData", "./stateData/checkpoints");
+    b.AddFileStorage("./stateData");
     //b.AddTemporaryDevelopmentStorage();
     b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;

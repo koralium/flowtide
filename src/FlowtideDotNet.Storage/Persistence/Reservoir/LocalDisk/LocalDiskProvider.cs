@@ -10,48 +10,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.FileCache;
-using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader;
 using FlowtideDotNet.Storage.StateManager.Internal;
-using System;
-using System.Buffers;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 {
     public class LocalDiskProvider : IReservoirStorageProvider
     {
         private const string CheckpointRegistryFileName = "checkpoints.registry";
-        private readonly string dataDirectory;
-        private readonly string? checkpointDirectory;
+        private readonly string optionDataDirectory;
+        private string _dataFileDirectory;
+        private string _checkpointFileDirectory;
         private LocalDiskReadManager localDiskReadManager;
+        private string? _streamVersion;
 
         public bool SupportsDataFileListing => true;
 
-        public LocalDiskProvider(string dataDirectory, string? checkpointDirectory)
+        public LocalDiskProvider(string dataDirectory)
         {
             dataDirectory = dataDirectory.TrimEnd('/').TrimEnd('\\');
-            this.dataDirectory = dataDirectory;
-            this.checkpointDirectory = checkpointDirectory;
+            optionDataDirectory = dataDirectory;
+
+            SetDirectories("default");
             localDiskReadManager = new LocalDiskReadManager();
+        }
+
+        [MemberNotNull(nameof(_dataFileDirectory), nameof(_checkpointFileDirectory))]
+        private void SetDirectories(string streamVersion)
+        {
+            _dataFileDirectory = $"{optionDataDirectory}/{streamVersion}/";
+            _checkpointFileDirectory = $"{optionDataDirectory}/{streamVersion}/checkpoints/";
         }
 
         public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
-            if (checkpointDirectory == null)
+            Debug.Assert(_streamVersion != null, "Stream version must be initialized before reading checkpoint files.");
+            if (_checkpointFileDirectory == null)
             {
                 throw new InvalidOperationException("Checkpoint directory is not configured.");
             }
             string fileName = GetCheckpointFileName(checkpointVersion);
-            var filePath = Path.Combine(checkpointDirectory, fileName);
+            var filePath = Path.Combine(_checkpointFileDirectory, fileName);
 
             return Task.FromResult(PipeReader.Create(File.OpenRead(filePath)));
         }
@@ -70,16 +73,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
-            if (checkpointDirectory == null)
+            Debug.Assert(_streamVersion != null, "Stream version must be initialized before writing checkpoint files.");
+            if (_checkpointFileDirectory == null)
             {
                 throw new InvalidOperationException("Checkpoint directory is not configured.");
             }
             string fileName = GetCheckpointFileName(checkpointVersion);
 
-            var filePath = Path.Combine(checkpointDirectory, fileName);
-            if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
+            var filePath = Path.Combine(_checkpointFileDirectory, fileName);
+            if (_checkpointFileDirectory != null && !Directory.Exists(_checkpointFileDirectory))
             {
-                Directory.CreateDirectory(checkpointDirectory);
+                Directory.CreateDirectory(_checkpointFileDirectory);
             }
 
             var filewrite = File.OpenWrite(filePath);
@@ -90,12 +94,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
         {
-            if (checkpointDirectory == null)
+            Debug.Assert(_streamVersion != null, "Stream version must be initialized before deleting checkpoint files.");
+            if (_checkpointFileDirectory == null)
             {
                 throw new InvalidOperationException("Checkpoint directory is not configured.");
             }
             string fileName = GetCheckpointFileName(checkpointVersion);
-            var filePath = Path.Combine(checkpointDirectory, fileName);
+            var filePath = Path.Combine(_checkpointFileDirectory, fileName);
             File.Delete(filePath);
             return Task.CompletedTask;
         }
@@ -104,9 +109,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         {
             var filePath = GetDataFileName(fileId);
 
-            if (!Directory.Exists(dataDirectory))
+            if (!Directory.Exists(_dataFileDirectory))
             {
-                Directory.CreateDirectory(dataDirectory);
+                Directory.CreateDirectory(_dataFileDirectory);
             }
 
             var filewrite = File.OpenWrite(filePath);
@@ -117,7 +122,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         private string GetDataFileName(ulong fileId)
         {
-            return $"{dataDirectory}/dataFile_{fileId}.data";
+            return $"{_dataFileDirectory}dataFile_{fileId}.data";
         }
 
         public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
@@ -130,7 +135,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
-            var path = $"{dataDirectory}/dataFile_{fileId}.data";
+            var path = $"{_dataFileDirectory}dataFile_{fileId}.data";
             return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
         }
 
@@ -148,11 +153,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
         {
-            if (checkpointDirectory == null)
+            Debug.Assert(_streamVersion != null);
+            if (_checkpointFileDirectory == null)
             {
                 throw new InvalidOperationException("Checkpoint directory is not configured.");
             }
-            var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
+            var filePath = Path.Combine(_checkpointFileDirectory, CheckpointRegistryFileName);
             if (!File.Exists(filePath))
             {
                 return Task.FromResult<PipeReader?>(null);
@@ -162,14 +168,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
-            if (checkpointDirectory == null)
+            if (_checkpointFileDirectory == null)
             {
                 throw new InvalidOperationException("Checkpoint directory is not configured.");
             }
-            var filePath = Path.Combine(checkpointDirectory, CheckpointRegistryFileName);
-            if (checkpointDirectory != null && !Directory.Exists(checkpointDirectory))
+            var filePath = Path.Combine(_checkpointFileDirectory, CheckpointRegistryFileName);
+            if (_checkpointFileDirectory != null && !Directory.Exists(_checkpointFileDirectory))
             {
-                Directory.CreateDirectory(checkpointDirectory);
+                Directory.CreateDirectory(_checkpointFileDirectory);
             }
 
             var filewrite = File.OpenWrite(filePath);
@@ -182,10 +188,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
         {
             List<ulong> storedFileIds = new List<ulong>();
-            if (Directory.Exists(dataDirectory))
+            if (Directory.Exists(_dataFileDirectory))
             {
                 string pattern = @"^dataFile_(?<fileId>.+)\.data$";
-                foreach (var file in Directory.EnumerateFiles(dataDirectory))
+                foreach (var file in Directory.EnumerateFiles(_dataFileDirectory))
                 {
                     var fileName = Path.GetFileName(file);
                     Match match = Regex.Match(fileName, pattern);
@@ -204,11 +210,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default)
         {
-            if (!Directory.Exists(dataDirectory))
+            if (!Directory.Exists(_dataFileDirectory))
             {
                 return Task.FromResult(Enumerable.Empty<ulong>());
             }
-            var files = Directory.EnumerateFiles(dataDirectory);
+            var files = Directory.EnumerateFiles(_dataFileDirectory);
             var result = new List<ulong>();
             string pattern = @"^dataFile_(?<fileId>.+)\.data$";
             foreach (var file in files)
@@ -230,9 +236,40 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.FromResult<IEnumerable<ulong>>(result);
         }
 
-        public Task InitializeAsync(CancellationToken cancellationToken = default)
+        public Task InitializeAsync(string streamVersion, CancellationToken cancellationToken = default)
         {
+            _streamVersion = streamVersion;
+            SetDirectories(streamVersion);
             return Task.CompletedTask;
+        }
+
+        public Task<PipeReader?> ReadStreamsMetadataFileAsync(CancellationToken cancellationToken = default)
+        {
+            if (!Directory.Exists(_dataFileDirectory))
+            {
+                return Task.FromResult<PipeReader?>(null);
+            }
+            var path = $"{optionDataDirectory}/streamVersions.json";
+
+            if (!File.Exists(path))
+            {
+                return Task.FromResult<PipeReader?>(null);
+            }
+            return Task.FromResult<PipeReader?>(PipeReader.Create(File.OpenRead(path)));
+        }
+
+        public async Task WriteStreamsMetadataFileAsync(PipeReader data, CancellationToken cancellationToken = default)
+        {
+            var path = $"{optionDataDirectory}/streamVersions.json";
+            if (optionDataDirectory != null && !Directory.Exists(optionDataDirectory))
+            {
+                Directory.CreateDirectory(optionDataDirectory);
+            }
+            var filewrite = File.OpenWrite(path);
+            await data.CopyToAsync(filewrite);
+            await filewrite.FlushAsync();
+            await filewrite.DisposeAsync();
+            await data.CompleteAsync();
         }
     }
 }

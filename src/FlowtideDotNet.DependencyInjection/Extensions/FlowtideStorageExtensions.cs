@@ -145,13 +145,13 @@ namespace FlowtideDotNet.DependencyInjection
             return storageBuilder.SetCompression(new FlowtideDotNet.Storage.StateSerializeOptions());
         }
 
-        public static IFlowtideStorageBuilder AddFileStorage(this IFlowtideStorageBuilder storageBuilder, string dataDirectory, string checkpointDirectory)
+        public static IFlowtideStorageBuilder AddFileStorage(this IFlowtideStorageBuilder storageBuilder, string directory)
         {
             storageBuilder.SetPersistentStorage((provider) =>
             {
                 return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
                 {
-                    FileProvider = new LocalDiskProvider(dataDirectory, checkpointDirectory)
+                    FileProvider = new LocalDiskProvider(directory)
                 });
             });
             storageBuilder.ZstdPageCompression();
