@@ -266,7 +266,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             {
                 Directory.CreateDirectory(dir);
             }
-            var filewrite = File.OpenWrite(path);
+            var filewrite = File.Open(path, FileMode.Create, FileAccess.Write);
             await data.CopyToAsync(filewrite);
             await filewrite.FlushAsync();
             await filewrite.DisposeAsync();

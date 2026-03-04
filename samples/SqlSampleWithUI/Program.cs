@@ -40,7 +40,7 @@ ON t.val = o.val;
 
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
-.AddVersioningFromString("1.0.3")
+.AddVersioningFromString("1.0.2")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
