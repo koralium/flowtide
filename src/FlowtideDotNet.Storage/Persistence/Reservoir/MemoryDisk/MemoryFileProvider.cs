@@ -222,5 +222,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
                 return Task.CompletedTask;
             }
         }
+
+        public Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

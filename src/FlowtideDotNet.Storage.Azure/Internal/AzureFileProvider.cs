@@ -13,6 +13,7 @@
 using Azure.Storage.Blobs;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.VisualBasic;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -215,6 +216,33 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         {
             var client = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
             await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        private string GetStreamVersionDirectory(string streamName, string streamVersion)
+        {
+            if (_optionsDirectoryPath != null)
+            {
+                return $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{streamVersion}/";
+            }
+            else
+            {
+                return $"{streamName}/{streamVersion}/";
+            }
+        }
+
+        public async Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            var versionPath = GetStreamVersionDirectory(streamName, streamVersion);
+
+            var blobs = _blobContainerClient.GetBlobsAsync(new Azure.Storage.Blobs.Models.GetBlobsOptions()
+            {
+                Prefix = versionPath,
+            }, cancellationToken);
+
+            await foreach (var blob in blobs.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                await _blobContainerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
         }
     }
 }

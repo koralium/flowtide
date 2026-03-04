@@ -33,5 +33,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Versions = versions;
         }
+
+        public ReservoirStreamsMetadata UpdateVersions(List<ReservoirStreamVersion> newVersions)
+        {
+            return new ReservoirStreamsMetadata(newVersions);
+        }
     }
 }

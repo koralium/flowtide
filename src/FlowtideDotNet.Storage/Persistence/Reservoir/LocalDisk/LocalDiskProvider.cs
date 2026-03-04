@@ -245,7 +245,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
         {
-            if (!Directory.Exists(_dataFileDirectory))
+            if (!Directory.Exists($"{optionDataDirectory}/{streamName}"))
             {
                 return Task.FromResult<PipeReader?>(null);
             }
@@ -260,16 +260,27 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            var path = $"{optionDataDirectory}/{streamName}/streamVersions.json";
-            if (optionDataDirectory != null && !Directory.Exists(optionDataDirectory))
+            var dir = $"{optionDataDirectory}/{streamName}";
+            var path = $"{dir}/streamVersions.json";
+            if (!Directory.Exists(dir))
             {
-                Directory.CreateDirectory(optionDataDirectory);
+                Directory.CreateDirectory(dir);
             }
             var filewrite = File.OpenWrite(path);
             await data.CopyToAsync(filewrite);
             await filewrite.FlushAsync();
             await filewrite.DisposeAsync();
             await data.CompleteAsync();
+        }
+
+        public Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            var path = $"{optionDataDirectory}/{streamName}/{streamVersion}";
+            if (Directory.Exists(path))
+            {
+                Directory.Delete(path, true);
+            }
+            return Task.CompletedTask;
         }
     }
 }

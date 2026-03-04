@@ -183,5 +183,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         {
             return _remoteStorage.WriteStreamsMetadataFileAsync(streamName, data, cancellationToken);
         }
+
+        public Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            return _remoteStorage.DeleteStreamVersionAsync(streamName, streamVersion, cancellationToken);
+        }
     }
 }

@@ -42,6 +42,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// <returns>A task that represents the asynchronous write operation.</returns>
         Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default);
 
+        Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Asynchronously performs any necessary initialization.
         /// </summary>

@@ -59,5 +59,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// Default is 10 GB.
         /// </summary>
         public long MaxCacheSizeBytes { get; set; } = 10L * 1000 * 1000 * 1000;
+
+
+        /// <summary>
+        /// Gets or sets the number of most recent stream versions to retain.
+        /// </summary>
+        /// <remarks>A value of -1 indicates that all versions are retained without limit. Any positive value specifies the maximum number of versions
+        /// to keep. This is to cleanup old streams and not old checkpoints. A value of 0 indicates that no old versions are kept.
+        /// 1 will keep the previous versions.</remarks>
+        public int KeepLastStreamVersions { get; set; } = -1;
     }
 }

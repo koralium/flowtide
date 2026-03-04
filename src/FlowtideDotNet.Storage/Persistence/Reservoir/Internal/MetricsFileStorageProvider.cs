@@ -144,5 +144,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             return _internalProvider.WriteStreamsMetadataFileAsync(streamName, data);
         }
+
+        public Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            return _internalProvider.DeleteStreamVersionAsync(streamName, streamVersion, cancellationToken);
+        }
     }
 }
