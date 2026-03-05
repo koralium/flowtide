@@ -60,6 +60,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// </summary>
         internal LocalCacheProvider? CacheProvider { get; }
 
+        public ReservoirPersistentStorage(ReservoirBuilder reservoirBuilder)
+            : this(reservoirBuilder.Build())
+        {
+            
+        }
+
         public ReservoirPersistentStorage(ReservoirStorageOptions blobStorageOptions)
         {
             if (blobStorageOptions.FileProvider == null)

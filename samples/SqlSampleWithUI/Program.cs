@@ -48,8 +48,9 @@ builder.Services.AddFlowtideStream("test")
 })
 .AddStorage(b =>
 {
-    b.AddFileStorage("./stateData", 0);
-    //b.AddTemporaryDevelopmentStorage();
+    b.AddTemporaryStorage("./stateData")
+    .OldStreamVersionsRetention(0);
+
     b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;
 });
