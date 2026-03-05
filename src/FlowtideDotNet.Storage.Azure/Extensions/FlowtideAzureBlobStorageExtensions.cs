@@ -164,7 +164,7 @@ namespace FlowtideDotNet.DependencyInjection
                 return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
                 {
                     FileProvider = new AzureFileProvider(blobOptions),
-                    CacheProvider = new LocalDiskProvider(blobOptions.LocalCacheDirectory ?? Path.Combine(Path.GetTempPath(), "flowtide_cache"), default),
+                    CacheProvider = new LocalDiskProvider(blobOptions.LocalCacheDirectory ?? Path.Combine(Path.GetTempPath(), "flowtide_cache")),
                     CompactionFileSizeRatioThreshold = blobOptions.CompactionFileSizeRatioThreshold,
                     MaxFileSize = blobOptions.MaxFileSize,
                     SnapshotCheckpointInterval = blobOptions.SnapshotCheckpointInterval,

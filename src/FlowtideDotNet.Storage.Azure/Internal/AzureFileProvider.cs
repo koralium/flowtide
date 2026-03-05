@@ -13,6 +13,7 @@
 using Azure.Storage.Blobs;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.VisualBasic;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -28,29 +29,37 @@ namespace FlowtideDotNet.Storage.AzureBlobs
     {
         private const string checkpointsDirectory = "checkpoints/";
         private const string checkpointRegistryFile = checkpointsDirectory + "checkpoints.registry";
+        private const string metadataFile = "streamsMetadata.json";
         private readonly BlobContainerClient _blobContainerClient;
 
-        private readonly string _dataDirectory;
-        private readonly string _checkpointDirectory;
-        private readonly string _checkpointRegistryFile;
+        private readonly string? _optionsDirectoryPath;
+        private string _dataDirectory;
+        private string _checkpointDirectory;
+        private string _checkpointRegistryFile;
+        private string _metadataFile;
+        private string? _streamVersion;
+
 
         public bool SupportsDataFileListing => true;
 
         public AzureFileProvider(FlowtideAzureBlobOptions options)
         {
             _blobContainerClient = options.GetClient();
+            _optionsDirectoryPath = options.DirectoryPath;
 
             if (options.DirectoryPath != null)
             {
                 _dataDirectory = options.DirectoryPath.TrimEnd('/') + "/";
                 _checkpointDirectory = options.DirectoryPath.TrimEnd('/') + "/" + checkpointsDirectory;
                 _checkpointRegistryFile = options.DirectoryPath.TrimEnd('/') + "/" + checkpointRegistryFile;
+                _metadataFile = options.DirectoryPath.TrimEnd('/') + "/" + metadataFile;
             }
             else
             {
                 _dataDirectory = string.Empty;
                 _checkpointDirectory = checkpointsDirectory;
                 _checkpointRegistryFile = checkpointRegistryFile;
+                _metadataFile = metadataFile;
             }
         }
 
@@ -157,11 +166,82 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), data.AsStream(), cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task InitializeAsync(CancellationToken cancellationToken = default)
+        public async Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
         {
+            _streamVersion = streamVersion;
+
+            if (_optionsDirectoryPath != null)
+            {
+                _dataDirectory = $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{_streamVersion}/";
+                _checkpointDirectory = _dataDirectory + checkpointsDirectory;
+                _checkpointRegistryFile = _dataDirectory  + checkpointRegistryFile;
+            }
+            else
+            {
+                _dataDirectory = $"{streamName}/{_streamVersion}/";
+                _checkpointDirectory = _dataDirectory + "/" + checkpointsDirectory;
+                _checkpointRegistryFile = _dataDirectory + "/" + checkpointRegistryFile;
+            }
+
             if (!await _blobContainerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
             {
                 await _blobContainerClient.CreateIfNotExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        private string GetMetadataPath(string streamName)
+        {
+            if (_optionsDirectoryPath != null)
+            {
+                return $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{metadataFile}";
+            }
+            else
+            {
+                return $"{streamName}/{metadataFile}";
+            }
+        }
+
+        public async Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default)
+        {
+            var blobClient = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
+            if (await blobClient.ExistsAsync(cancellationToken: cancellationToken).ConfigureAwait(false))
+            {
+                var result = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                return PipeReader.Create(result.Value.Content, new StreamPipeReaderOptions(leaveOpen: false));
+            }
+            return default;
+        }
+
+        public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
+        {
+            var client = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
+            await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+        }
+
+        private string GetStreamVersionDirectory(string streamName, string streamVersion)
+        {
+            if (_optionsDirectoryPath != null)
+            {
+                return $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{streamVersion}/";
+            }
+            else
+            {
+                return $"{streamName}/{streamVersion}/";
+            }
+        }
+
+        public async Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        {
+            var versionPath = GetStreamVersionDirectory(streamName, streamVersion);
+
+            var blobs = _blobContainerClient.GetBlobsAsync(new Azure.Storage.Blobs.Models.GetBlobsOptions()
+            {
+                Prefix = versionPath,
+            }, cancellationToken);
+
+            await foreach (var blob in blobs.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                await _blobContainerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
         }
     }

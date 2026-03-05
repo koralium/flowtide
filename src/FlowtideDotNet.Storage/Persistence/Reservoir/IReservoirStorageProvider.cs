@@ -26,11 +26,30 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         bool SupportsDataFileListing { get; }
 
         /// <summary>
+        /// Fetches streams metadata file that contains information of all streams and their versions.
+        /// Usually its only one stream and its versions (such as different plan hashes etc).
+        /// This is used to determine of older versions of the stream exist and if so what are their versions, so they can be deleted if needed.
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns>A pipe reader to read the metadata file, or null if it does not exist</returns>
+        Task<PipeReader?> ReadStreamsMetadataFileAsync(string streamName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Writes a streams metadata file that contains information of all streams and their versions.
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
+        /// <returns>A task that represents the asynchronous write operation.</returns>
+        Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default);
+
+        Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Asynchronously performs any necessary initialization.
         /// </summary>
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the initialization operation.</param>
         /// <returns>A task that represents the asynchronous initialization operation.</returns>
-        Task InitializeAsync(CancellationToken cancellationToken = default);
+        Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default);
 
         Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default);
 

@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -22,6 +23,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.IO.Hashing;
 using System.IO.Pipelines;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
@@ -43,7 +45,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private int _numberOfWrittenFiles;
         private bool _takingCheckpoint = false;
-
+        private string? _streamVersion;
+        private string? _streamName;
+        private ReservoirStreamsMetadata? _storageMetadata;
         /// <summary>
         /// Temporary location of written pages from sessions
         /// This must be on this level and not on the individual sessions to allow compaction
@@ -357,6 +361,45 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             Volatile.Write(ref _numberOfWrittenFiles, 0);
             Volatile.Write(ref _takingCheckpoint, false);
+            await TryDeleteOldStreamVersions(default);
+        }
+
+        private Task TryDeleteOldStreamVersions(CancellationToken cancellationToken)
+        {
+            if (_storageMetadata == null ||
+                _streamVersion == null ||
+                _streamName == null ||
+                _blobStorageOptions.KeepLastStreamVersions == -1 ||
+                (_blobStorageOptions.KeepLastStreamVersions + 1) == _storageMetadata.Versions.Count)
+            {
+                return Task.CompletedTask;
+            }
+
+            return TryDeleteOldStreamVersions_Slow(cancellationToken);
+        }
+
+        private async Task TryDeleteOldStreamVersions_Slow(CancellationToken cancellationToken)
+        {
+            Debug.Assert(_storageMetadata != null);
+            Debug.Assert(_streamVersion != null);
+            Debug.Assert(_streamName != null);
+            var sorted = _storageMetadata.Versions.OrderBy(x => x.LastInitializeTime).ToList();
+
+            var index = sorted.FindIndex(x => x.Version == _streamVersion);
+            if (index == -1)
+            {
+                sorted.Add(new ReservoirStreamVersion(_streamVersion, DateTime.UtcNow, DateTime.UtcNow));
+            }
+
+            for (int i = 0; i < sorted.Count - (_blobStorageOptions.KeepLastStreamVersions + 1); i++)
+            {
+                var versionToDelete = sorted[i];
+                await _fileProvider.DeleteStreamVersionAsync(_streamName, versionToDelete.Version);
+                sorted.RemoveAt(i);
+                i--;
+            }
+            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(_storageMetadata.UpdateVersions(sorted));
+            await _fileProvider.WriteStreamsMetadataFileAsync(_streamName, PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
         }
 
         internal async ValueTask<ReadOnlySequence<byte>> ReadAsync(long key)
@@ -431,6 +474,54 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _temporaryPageLocations.Clear();
         }
 
+        private async Task<ReservoirStreamsMetadata> ReadMetadata(string streamName, CancellationToken cancellationToken)
+        {
+            var pipe = await _fileProvider.ReadStreamsMetadataFileAsync(streamName, cancellationToken);
+
+            if (pipe != null)
+            {
+                ReadResult readResult;
+                do
+                {
+                    readResult = await pipe.ReadAsync();
+                    pipe.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                } while (!readResult.IsCompleted);
+                
+                var parsedMetadata = ParseMetadata(readResult.Buffer);
+                await pipe.CompleteAsync();
+                if (parsedMetadata != null)
+                {
+                    return parsedMetadata;
+                }
+            }
+            return new ReservoirStreamsMetadata(new List<ReservoirStreamVersion>());
+        }
+
+        private ReservoirStreamsMetadata? ParseMetadata(ReadOnlySequence<byte> data)
+        {
+            var reader = new Utf8JsonReader(data);
+            return JsonSerializer.Deserialize<ReservoirStreamsMetadata>(ref reader);
+        }
+
+        private async Task FetchAndUpdateMetadata(string streamName, string streamVersion, CancellationToken cancellationToken)
+        {
+            var storageMetadata = await ReadMetadata(streamName, cancellationToken);
+            var existingIndex = storageMetadata.Versions.FindIndex(x => x.Version == streamVersion);
+            if (existingIndex >= 0)
+            {
+                var existing = storageMetadata.Versions[existingIndex];
+                storageMetadata.Versions.Remove(existing);
+                storageMetadata.Versions.Add(existing.UpdateLastInitializeTime(DateTime.UtcNow));
+            }
+            else
+            {
+                storageMetadata.Versions.Add(new ReservoirStreamVersion(streamVersion, DateTime.UtcNow, DateTime.UtcNow));
+            }
+            _storageMetadata = storageMetadata;
+            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(storageMetadata);
+            await _fileProvider.WriteStreamsMetadataFileAsync(streamName, PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
+        }
+
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
             _meter = new Meter($"flowtide.{metadata.StreamName}.storage");
@@ -444,7 +535,22 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _adminSession = new ReservoirPersistentSession(this, _memoryAllocator, _maxFileSize);
             _temporaryPageLocations.Clear();
 
-            await _fileProvider.InitializeAsync(default);
+            string streamVersion = "default";
+            if (metadata.StreamVersion != null)
+            {
+                if (string.IsNullOrEmpty(metadata.StreamVersion.Version))
+                {
+                    streamVersion = metadata.StreamVersion.Hash;
+                }
+                else
+                {
+                    streamVersion = metadata.StreamVersion.Version;
+                }
+            }
+            _streamName = metadata.StreamName;
+            _streamVersion = streamVersion;
+            await _fileProvider.InitializeAsync(metadata.StreamName, streamVersion, default);
+            await FetchAndUpdateMetadata(metadata.StreamName, streamVersion, default);
 
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverToLatest(default);
