@@ -12,8 +12,23 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents the options to dynamically pause and resume a Flowtide dataflow stream.
+    /// </summary>
+    /// <remarks>
+    /// This class is typically used in conjunction with <c>IOptionsMonitor&lt;FlowtidePauseOptions&gt;</c>.
+    /// By subscribing to changes via the options monitor, the engine can halt or resume event propagation 
+    /// at runtime without needing to tear down or restart the stream.
+    /// </remarks>
     public class FlowtidePauseOptions
     {
+        /// <summary>
+        /// Gets or sets a value indicating whether the stream should be paused.
+        /// </summary>
+        /// <remarks>
+        /// When set to <c>true</c>, the stream will temporarily stop processing new events.
+        /// Changing this value to <c>false</c> will cause the stream to resume normal processing operations.
+        /// </remarks>
         public bool IsPaused { get; set; }
     }
 }
