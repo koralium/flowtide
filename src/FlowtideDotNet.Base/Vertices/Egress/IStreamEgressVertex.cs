@@ -12,6 +12,9 @@
 
 namespace FlowtideDotNet.Base.Vertices.Egress
 {
+    /// <summary>
+    /// Represents an egress node (sink operator) within the Flowtide dataflow stream.
+    /// </summary>
     public interface IStreamEgressVertex : IStreamVertex
     {
         internal void SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone);

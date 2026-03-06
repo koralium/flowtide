@@ -18,7 +18,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress.Internal
 {
-    public class IngressSource<T> : ITargetBlock<T>, IReceivableSourceBlock<T>, IDebuggerDisplay
+    internal class IngressSource<T> : ITargetBlock<T>, IReceivableSourceBlock<T>, IDebuggerDisplay
     {
         /// <summary>The core logic for the buffer block.</summary>
         private readonly SourceCore<T> _source;

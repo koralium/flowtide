@@ -28,6 +28,17 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
+    /// <summary>
+    /// Vertex capable of receiving and processing input from multiple distinct upstream sources concurrently.
+    /// </summary>
+    /// <typeparam name="T">The underlying data type of the stream messages being processed.</typeparam>
+    /// <remarks>
+    /// This vertex acts as an <see cref="ISourceBlock{IStreamEvent}"/> emitting a unified output after accepting and coordinating multiple inputs.
+    /// It heavily manages stream coordination by synchronizing <see cref="Watermark"/>s, <see cref="ILockingEvent"/>s (checkpoints), 
+    /// and <see cref="InitialDataDoneEvent"/>s across all configured input targets. This ensures the operator advances its logical state 
+    /// only when all discrete input branches have reached an agreed-upon synchronization point. Derived classes implement 
+    /// <see cref="OnRecieve(int, T, long)"/> to provide specific processing logic per target.
+    /// </remarks>
     public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex
     {
         private readonly MultipleInputTargetHolder[] _targetHolders;
@@ -60,20 +71,35 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private bool _initialWatermarkSent;
 
         private string? _name;
+
+        /// <summary>
+        /// Gets the configured explicit identifier name of the vertex.
+        /// </summary>
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
         private string? _streamName;
         protected string StreamName => _streamName ?? throw new InvalidOperationException("StreamName can only be fetched after initialize or setup method calls");
 
+        /// <summary>
+        /// Gets the display name for the specific vertex type, largely used for logging and metrics visualization.
+        /// </summary>
         public abstract string DisplayName { get; }
 
         private IMeter? _metrics;
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
         private ILogger? _logger;
+
+        /// <summary>
+        /// Gets the logger instance associated with this vertex.
+        /// </summary>
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
         private StreamVersionInformation? _streamVersion;
+
+        /// <summary>
+        /// Gets the stream version information.
+        /// </summary>
         public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
@@ -85,6 +111,11 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
         private StreamWriter? allInput;
 #endif
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="MultipleInputVertex{T}"/> class.
+        /// </summary>
+        /// <param name="targetCount">The exact expected number of distinct upstream sources this operator must bind to.</param>
+        /// <param name="executionDataflowBlockOptions">Configuration options covering block capacities and parallel properties.</param>
         protected MultipleInputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             _targetCheckpointLock = new object();
@@ -538,6 +569,12 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return EmptyAsyncEnumerable<IStreamEvent>.Instance;
         }
 
+        /// <summary>
+        /// Handles custom logic executed when the operator processes a queued trigger event.
+        /// </summary>
+        /// <param name="name">The name identifier distinguishing the associated trigger execution.</param>
+        /// <param name="state">Associated state.</param>
+        /// <returns>Asynchronous stream of response data payloads generated autonomously by the trigger.</returns>
         public virtual IAsyncEnumerable<T> OnTrigger(string name, object? state)
         {
             return EmptyAsyncEnumerable<T>.Instance;
@@ -595,14 +632,33 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        /// <summary>
+        /// Executed when an actual checkpoint boundary occurs. Derived classes can clear state or commit offsets.
+        /// </summary>
         public abstract Task OnCheckpoint();
 
+        /// <summary>
+        /// Subscribes to incoming payload data mapped to specific stream branches allowing the operator to parse multiplexed elements efficiently.
+        /// </summary>
+        /// <param name="targetId">The identifier reflecting which specific target/source yielded the event.</param>
+        /// <param name="msg">The strongly-typed message payload received</param>
+        /// <param name="time">The stream logical time when the message was generated.</param>
+        /// <returns>An asynchronous stream of new outgoing payloads.</returns>
         public abstract IAsyncEnumerable<T> OnRecieve(int targetId, T msg, long time);
 
+        /// <summary>
+        /// Gets a task that represents the completion of the vertex processing block.
+        /// </summary>
         public Task Completion => _transformBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after create blocks method.");
 
+        /// <summary>
+        /// The input targets for the vertex
+        /// </summary>
         public MultipleInputTargetHolder[] Targets => _targetHolders;
 
+        /// <summary>
+        /// Signals to the dataflow block that it should not process any new elements and complete its execution gracefully.
+        /// </summary>
         public void Complete()
         {
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));
@@ -619,12 +675,19 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             _transformBlock.Complete();
         }
 
+        /// <summary>
+        /// Consumes a message from this block. Mostly used via underlying TPL dataflow interfaces.
+        /// </summary>
         public IStreamEvent? ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target, out bool messageConsumed)
         {
             Debug.Assert(_sourceBlock != null, nameof(_sourceBlock));
             return _sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
 
+        /// <summary>
+        /// Puts the underlying block immediately into a faulted state due to a severe exception.
+        /// </summary>
+        /// <param name="exception">The triggering exception.</param>
         public void Fault(Exception exception)
         {
             Debug.Assert(_transformBlock != null, nameof(_transformBlock));
@@ -636,6 +699,12 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
 
+        /// <summary>
+        /// Links the output of this vertex to a new target block.
+        /// </summary>
+        /// <param name="target">The target block.</param>
+        /// <param name="linkOptions">Link behavior options.</param>
+        /// <returns>Null, breaking a link is not possible in a stream</returns>
         public IDisposable LinkTo(ITargetBlock<IStreamEvent> target, DataflowLinkOptions linkOptions)
         {
             _links.Add((target, linkOptions));
@@ -648,6 +717,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return _sourceBlock.LinkTo(target, linkOptions);
         }
 
+        /// <summary>
+        /// Releases a previously reserved message.
+        /// </summary>
         public void ReleaseReservation(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target)
         {
             if (_parallelSource != null)
@@ -661,12 +733,23 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        /// <summary>
+        /// Reserves a message that is about to be consumed.
+        /// </summary>
         public bool ReserveMessage(DataflowMessageHeader messageHeader, ITargetBlock<IStreamEvent> target)
         {
             Debug.Assert(_sourceBlock != null, nameof(_sourceBlock));
             return (_sourceBlock as ISourceBlock<IStreamEvent>).ReserveMessage(messageHeader, target);
         }
 
+        /// <summary>
+        /// Asynchronously initializes the vertex, wiring up metrics, dependencies, and persistent state retrieval.
+        /// </summary>
+        /// <param name="name">The name assigned to the vertex.</param>
+        /// <param name="restoreTime">The time representing the last known good state to restore from.</param>
+        /// <param name="newTime">The new logical stream execution time.</param>
+        /// <param name="vertexHandler">The handler containing stream environment references like state client and metrics.</param>
+        /// <param name="streamVersionInformation">Configuration tracking the overall version of stream changes.</param>
         public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
@@ -769,8 +852,15 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
 
         protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
+        /// <summary>
+        /// Requests the operator to compact its persistent storage.
+        /// </summary>
         public abstract Task Compact();
 
+        /// <summary>
+        /// Enqueues an execution trigger.
+        /// </summary>
+        /// <param name="triggerEvent">The event data concerning the trigger schedule and state.</param>
         public Task QueueTrigger(TriggerEvent triggerEvent)
         {
             // Trigger injection happens at the first target.
@@ -778,6 +868,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return _targetHolders.First().SendAsync(triggerEvent);
         }
 
+        /// <summary>
+        /// Disposes internal async resources asynchronously.
+        /// </summary>
         public virtual ValueTask DisposeAsync()
         {
             if (tokenSource != null)
@@ -788,6 +881,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             return ValueTask.CompletedTask;
         }
 
+        /// <summary>
+        /// Translates logical linkages created over Setup/Initialize phases to physical Dataflow block links.
+        /// </summary>
         public void Link()
         {
             if (_links.Count > 0)
@@ -799,13 +895,24 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        /// <summary>
+        /// Instantiates underlying processing blocks. Must be called before linkages or message pushing.
+        /// </summary>
         public void CreateBlock()
         {
             InitializeBlock();
         }
 
+        /// <summary>
+        /// Initiates the deletion process, allowing derived classes to clean up disk storage or other unmanaged environments permanently.
+        /// </summary>
         public abstract Task DeleteAsync();
 
+        /// <summary>
+        /// Sets up the basic identifying information for the vertex within the pipeline.
+        /// </summary>
+        /// <param name="streamName">The globally scoped stream name.</param>
+        /// <param name="operatorName">The explicit component name associated tightly with state storage.</param>
         public void Setup(string streamName, string operatorName)
         {
             _name = operatorName;
@@ -817,11 +924,17 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        /// <summary>
+        /// Fetches the current targets attached to this node.
+        /// </summary>
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             return _links.Select(x => x.Item1);
         }
 
+        /// <summary>
+        /// Halts current processing. Used during debug or suspension states.
+        /// </summary>
         public void Pause()
         {
             if (_pauseSource == null)
@@ -830,6 +943,9 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        /// <summary>
+        /// Resumes processing of events queued while suspended.
+        /// </summary>
         public void Resume()
         {
             if (_pauseSource != null)
@@ -839,11 +955,19 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
+        // <summary>
+        /// A notification hook invoked prior to finalizing changes in persistent stores for a checkpoint.
+        /// Can be used cautiously to record minimal forward state markers (e.g. streaming offsets).
+        /// </summary>
         public virtual Task BeforeSaveCheckpoint()
         {
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.
+        /// </summary>
+        /// <param name="rollbackVersion">The version that the stream will be rolled back to.</param>
         public virtual Task OnFailure(long rollbackVersion)
         {
             return Task.CompletedTask;
