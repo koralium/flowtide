@@ -125,10 +125,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             throw new NotSupportedException();
         }
 
-        public Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default)
         {
-            _streamVersion = streamVersion;
-            SetDirectories(streamName, streamVersion);
+            _streamVersion = providerContext.StreamVersion;
+            SetDirectories(providerContext.StreamName, providerContext.StreamVersion);
             return Task.CompletedTask;
         }
 

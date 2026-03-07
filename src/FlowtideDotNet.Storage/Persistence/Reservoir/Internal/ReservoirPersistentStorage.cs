@@ -555,7 +555,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
             _streamName = metadata.StreamName;
             _streamVersion = streamVersion;
-            await _fileProvider.InitializeAsync(metadata.StreamName, streamVersion, default);
+            await _fileProvider.InitializeAsync(new StorageProviderContext(metadata.StreamName, streamVersion, _memoryAllocator), default);
             await FetchAndUpdateMetadata(metadata.StreamName, streamVersion, default);
 
             // CancellationToken needs to be added upstream

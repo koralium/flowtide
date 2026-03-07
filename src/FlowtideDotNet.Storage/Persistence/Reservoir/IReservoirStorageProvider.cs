@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// </summary>
         /// <param name="cancellationToken">A cancellation token that can be used to cancel the initialization operation.</param>
         /// <returns>A task that represents the asynchronous initialization operation.</returns>
-        Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default);
+        Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default);
 
         Task<IEnumerable<ulong>> ListDataFilesAboveVersionAsync(ulong minVersion, CancellationToken cancellationToken = default);
 

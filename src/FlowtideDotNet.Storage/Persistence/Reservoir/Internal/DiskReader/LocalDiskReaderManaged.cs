@@ -16,6 +16,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Hashing;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
     /// Managed reader of local disk items
     /// Used to fetch pages from offsets
     /// </summary>
-    internal class LocalDiskReaderManaged : ILocalDiskReader
+    internal class LocalDiskReaderManaged : ILocalDiskFile
     {
         private readonly string fileName;
         private readonly FileStream fileStream;
@@ -37,7 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         public LocalDiskReaderManaged(string fileName)
         {
             this.fileName = fileName;
-            fileStream = new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.RandomAccess);
+            fileStream = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
             semaphoreSlim = new SemaphoreSlim(1, 1);
             _buffer = new byte[4096];
         }
@@ -99,6 +100,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public async Task Write(PipeReader reader)
+        {
+            await semaphoreSlim.WaitAsync();
+            try
+            {
+                fileStream.Seek(0, SeekOrigin.Begin);
+                await reader.CopyToAsync(fileStream);
+                reader.Complete();
+            }
+            finally
+            {
+                semaphoreSlim.Release();
+            }
         }
     }
 }

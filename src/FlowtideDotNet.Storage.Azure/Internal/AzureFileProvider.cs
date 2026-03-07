@@ -166,19 +166,19 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), data.AsStream(), cancellationToken).ConfigureAwait(false);
         }
 
-        public async Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        public async Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default)
         {
-            _streamVersion = streamVersion;
+            _streamVersion = providerContext.StreamVersion;
 
             if (_optionsDirectoryPath != null)
             {
-                _dataDirectory = $"{_optionsDirectoryPath.Trim('/')}/{streamName}/{_streamVersion}/";
+                _dataDirectory = $"{_optionsDirectoryPath.Trim('/')}/{providerContext.StreamName}/{_streamVersion}/";
                 _checkpointDirectory = _dataDirectory + checkpointsDirectory;
                 _checkpointRegistryFile = _dataDirectory  + checkpointRegistryFile;
             }
             else
             {
-                _dataDirectory = $"{streamName}/{_streamVersion}/";
+                _dataDirectory = $"{providerContext.StreamName}/{_streamVersion}/";
                 _checkpointDirectory = _dataDirectory + "/" + checkpointsDirectory;
                 _checkpointRegistryFile = _dataDirectory + "/" + checkpointRegistryFile;
             }

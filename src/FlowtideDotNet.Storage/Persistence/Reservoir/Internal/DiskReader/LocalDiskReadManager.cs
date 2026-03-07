@@ -10,9 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,39 +23,54 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 {
     internal class LocalDiskReadManager
     {
-        private readonly Dictionary<string, ILocalDiskReader> _fileReaders = new Dictionary<string, ILocalDiskReader>();
+        private readonly Dictionary<string, ILocalDiskFile> _fileReaders = new Dictionary<string, ILocalDiskFile>();
+        private readonly IMemoryAllocator memoryAllocator;
         private object _lock = new object();
 
-        public LocalDiskReadManager()
+        public LocalDiskReadManager(IMemoryAllocator memoryAllocator)
         {
+            this.memoryAllocator = memoryAllocator;
+        }
+
+        private ILocalDiskFile GetOrCreateReader(string fileName)
+        {
+            lock (_lock)
+            {
+                if (!_fileReaders.TryGetValue(fileName, out var reader))
+                {
+                    if (Environment.OSVersion.Platform == PlatformID.Unix)
+                    {
+                        reader = new LocalDiskReaderUnix(fileName, 4096, memoryAllocator);
+                        _fileReaders.Add(fileName, reader);
+                        return reader;
+                    }
+                    else
+                    {
+                        reader = new LocalDiskReaderManaged(fileName);
+                        _fileReaders.Add(fileName, reader);
+                    }
+                    return reader;
+                }
+                return reader;
+            }
         }
 
         public ValueTask<ReadOnlyMemory<byte>> Read(string fileName, long position, int length, uint crc32)
         {
-            ILocalDiskReader? reader;
-            lock (_lock)
-            {
-                if (!_fileReaders.TryGetValue(fileName, out reader))
-                {
-                    reader = new LocalDiskReaderManaged(fileName);
-                    _fileReaders.Add(fileName, reader);
-                }
-            }
+            ILocalDiskFile reader = GetOrCreateReader(fileName);
             return reader.Read(position, length, crc32);
         }
 
         public ValueTask<T> Read<T>(string fileName, long position, int length, uint crc32, IStateSerializer<T> serializer) where T : ICacheObject
         {
-            ILocalDiskReader? reader;
-            lock (_lock)
-            {
-                if (!_fileReaders.TryGetValue(fileName, out reader))
-                {
-                    reader = new LocalDiskReaderManaged(fileName);
-                    _fileReaders.Add(fileName, reader);
-                }
-            }
+            ILocalDiskFile reader = GetOrCreateReader(fileName);
             return reader.Read(position, length, crc32, serializer);
+        }
+
+        public Task Write(string fileName, PipeReader reader)
+        {
+            ILocalDiskFile file = GetOrCreateReader(fileName);
+            return file.Write(reader);
         }
 
         public void DropFile(string fileName)

@@ -13,17 +13,20 @@
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 {
-    internal interface ILocalDiskReader : IDisposable
+    internal interface ILocalDiskFile : IDisposable
     {
         ValueTask<ReadOnlyMemory<byte>> Read(long position, int length, uint crc32);
 
         ValueTask<T> Read<T>(long position, int length, uint crc32, IStateSerializer<T> serializer)
             where T : ICacheObject;
+
+        Task Write(PipeReader reader);
     }
 }

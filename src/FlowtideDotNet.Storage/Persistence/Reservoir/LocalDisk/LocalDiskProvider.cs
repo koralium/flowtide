@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         private readonly string optionDataDirectory;
         private string _dataFileDirectory;
         private string _checkpointFileDirectory;
-        private LocalDiskReadManager localDiskReadManager;
+        private LocalDiskReadManager? localDiskReadManager;
         private string? _streamVersion;
 
         public bool SupportsDataFileListing => true;
@@ -36,7 +36,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             optionDataDirectory = dataDirectory;
 
             SetDirectories("default", "default");
-            localDiskReadManager = new LocalDiskReadManager();
         }
 
         [MemberNotNull(nameof(_dataFileDirectory), nameof(_checkpointFileDirectory))]
@@ -107,6 +106,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
+            Debug.Assert(localDiskReadManager != null, "LocalDiskReadManager must be initialized before writing data files.");
             var filePath = GetDataFileName(fileId);
 
             if (!Directory.Exists(_dataFileDirectory))
@@ -114,10 +114,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
                 Directory.CreateDirectory(_dataFileDirectory);
             }
 
-            var filewrite = File.OpenWrite(filePath);
-            await data.CopyToAsync(filewrite);
-            await filewrite.FlushAsync();
-            await filewrite.DisposeAsync();
+            await localDiskReadManager.Write(filePath, data);
         }
 
         private string GetDataFileName(ulong fileId)
@@ -127,6 +124,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
+            Debug.Assert(localDiskReadManager != null);
             var filePath = GetDataFileName(fileId);
             localDiskReadManager.DropFile(filePath);
             File.Delete(filePath);
@@ -135,12 +133,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
+            Debug.Assert(localDiskReadManager != null);
             var path = $"{_dataFileDirectory}dataFile_{fileId}.data";
             return localDiskReadManager.Read(path, offset, length, crc32, stateSerializer);
         }
 
         public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
+            Debug.Assert(localDiskReadManager != null);
             var path = GetDataFileName(fileId);
             return localDiskReadManager.Read(path, offset, length, crc32);
         }
@@ -236,10 +236,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.FromResult<IEnumerable<ulong>>(result);
         }
 
-        public Task InitializeAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
+        public Task InitializeAsync(StorageProviderContext context, CancellationToken cancellationToken = default)
         {
-            _streamVersion = streamVersion;
-            SetDirectories(streamName, streamVersion);
+            localDiskReadManager = new LocalDiskReadManager(context.MemoryAllocator);
+            _streamVersion = context.StreamVersion;
+            SetDirectories(context.StreamName, context.StreamVersion);
             return Task.CompletedTask;
         }
 
