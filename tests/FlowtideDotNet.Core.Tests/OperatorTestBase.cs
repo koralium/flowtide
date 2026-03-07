@@ -31,7 +31,6 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Base.Vertices.Egress;
 using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Core.Tests

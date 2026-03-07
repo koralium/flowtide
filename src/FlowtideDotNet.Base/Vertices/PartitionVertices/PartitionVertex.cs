@@ -12,9 +12,6 @@
 
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.FixedPoint;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -24,7 +21,7 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.PartitionVertices
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Vertex responsible for partitioning an input stream into multiple target streams.

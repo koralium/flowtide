@@ -16,7 +16,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.MultipleInput
+namespace FlowtideDotNet.Base.Vertices
 {
     internal class MultipleInputTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<KeyValuePair<int, T>>, IDebuggerDisplay
     {

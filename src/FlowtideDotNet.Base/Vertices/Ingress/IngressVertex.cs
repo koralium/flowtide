@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -22,7 +21,7 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Ingress
+namespace FlowtideDotNet.Base.Vertices
 {
     internal class IngressState<TData>
     {

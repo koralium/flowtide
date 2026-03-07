@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;

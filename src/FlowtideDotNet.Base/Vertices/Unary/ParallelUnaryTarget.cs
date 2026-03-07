@@ -16,7 +16,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Unary
+namespace FlowtideDotNet.Base.Vertices
 {
     internal class ParallelUnaryTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<T>, IDebuggerDisplay
     {

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Operators.Set.Structs;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;

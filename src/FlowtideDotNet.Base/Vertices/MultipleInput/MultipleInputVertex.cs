@@ -26,7 +26,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.MultipleInput
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Vertex capable of receiving and processing input from multiple distinct upstream sources concurrently.

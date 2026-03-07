@@ -13,7 +13,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.MultipleInput
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Holder that represents one input slot of a <see cref="MultipleInputVertex{T}"/>,
