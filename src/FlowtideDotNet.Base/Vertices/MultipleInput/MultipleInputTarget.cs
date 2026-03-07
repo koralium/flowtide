@@ -18,7 +18,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.MultipleInput
 {
-    public class MultipleInputTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<KeyValuePair<int, T>>, IDebuggerDisplay
+    internal class MultipleInputTarget<T> : ITargetBlock<T>, IReceivableSourceBlock<KeyValuePair<int, T>>, IDebuggerDisplay
     {
         /// <summary>The core logic for the buffer block.</summary>
         private readonly SourceCore<KeyValuePair<int, T>> _source;

@@ -19,6 +19,11 @@ namespace FlowtideDotNet.Base
     /// </summary>
     internal class LockingEventPrepare : IStreamEvent
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LockingEventPrepare"/> class with a new unique identifier.
+        /// </summary>
+        /// <param name="lockingEvent">The underlying locking event that this prepare message is associated with.</param>
+        /// <param name="isInitEvent">Indicates if this is the initial checkpoint sequence.</param>
         public LockingEventPrepare(ILockingEvent lockingEvent, bool isInitEvent)
         {
             LockingEvent = lockingEvent;
@@ -27,6 +32,13 @@ namespace FlowtideDotNet.Base
             Id = Guid.NewGuid();
         }
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="LockingEventPrepare"/> class with an existing identifier and specific input state.
+        /// </summary>
+        /// <param name="lockingEvent">The underlying locking event that this prepare message is associated with.</param>
+        /// <param name="isInitEvent">Indicates if this is the initial checkpoint sequence.</param>
+        /// <param name="otherInputsNotInCheckpoint">Indicates if other inputs to a vertex have not yet entered the checkpoint state.</param>
+        /// <param name="id">The unique identifier for this locking prepare message.</param>
         public LockingEventPrepare(ILockingEvent lockingEvent, bool isInitEvent, bool otherInputsNotInCheckpoint, Guid id)
         {
             LockingEvent = lockingEvent;
@@ -35,6 +47,9 @@ namespace FlowtideDotNet.Base
             Id = id;
         }
 
+        /// <summary>
+        /// Gets the actual locking event (such as a checkpoint event) that operators are preparing for.
+        /// </summary>
         public ILockingEvent LockingEvent { get; }
         
         /// <summary>

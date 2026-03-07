@@ -15,6 +15,15 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.Ingress
 {
+    /// <summary>
+    /// Provides an output for an <see cref="IngressVertex{TData}"/> to push data and watermarks into the stream.
+    /// </summary>
+    /// <typeparam name="T">The type of the underlying data payload emitted by this output.</typeparam>
+    /// <remarks>
+    /// This class acts as a synchronized channel to the downstream <see cref="ITargetBlock{IStreamEvent}"/>. 
+    /// It ensures that data and watermarks are safely emitted while respecting the operator's checkpoint locking 
+    /// mechanisms and any paused execution states within the ingress lifecycle.
+    /// </remarks>
     public class IngressOutput<T> : IDisposable
     {
         private readonly IngressState<T> _ingressState;
@@ -29,8 +38,16 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _inLock = true;
         }
 
+        /// <summary>
+        /// Gets the <see cref="System.Threading.CancellationToken"/> associated with the overarching ingress vertex's lifecycle.
+        /// </summary>
         public CancellationToken CancellationToken => _ingressState._tokenSource?.Token ?? throw new NotSupportedException("Token source not set before getting cancellation token");
 
+        /// <summary>
+        /// Asynchronously sends a data payload into the dataflow stream.
+        /// </summary>
+        /// <param name="data">The structured data element to be emitted.</param>
+        /// <returns>A <see cref="Task"/> that represents the asynchronous send operation.</returns>
         public Task SendAsync(T data)
         {
             if (_stopEvents != null)
@@ -55,6 +72,10 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             ExitCheckpointLock();
         }
 
+        /// <summary>
+        /// Asynchronously acquires the checkpoint lock.
+        /// </summary>
+        /// <returns>A <see cref="Task"/> representing the asynchronous lock acquisition.</returns>
         public async Task EnterCheckpointLock()
         {
             Debug.Assert(_ingressState._checkpointLock != null, nameof(_ingressState._checkpointLock));
@@ -62,6 +83,9 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             _inLock = true;
         }
 
+        /// <summary>
+        /// Releases the previously acquired checkpoint lock.
+        /// </summary>
         public void ExitCheckpointLock()
         {
             Debug.Assert(_ingressState._checkpointLock != null, nameof(_ingressState._checkpointLock));
@@ -107,6 +131,11 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             return _targetBlock.SendAsync(streamEvent, CancellationToken);
         }
 
+        /// <summary>
+        /// Asynchronously emits a <see cref="Watermark"/> interval into the stream to advance the downstream logical time.
+        /// </summary>
+        /// <param name="watermark">The structured watermark to propagate.</param>
+        /// <returns>A <see cref="Task"/> that represents the asynchronous send operation.</returns>
         public Task SendWatermark(Watermark watermark)
         {
             if (_stopEvents != null)
@@ -129,6 +158,9 @@ namespace FlowtideDotNet.Base.Vertices.Ingress
             ExitCheckpointLock();
         }
 
+        /// <summary>
+        /// Disposes the <see cref="IngressOutput{T}"/>.
+        /// </summary>
         public void Dispose()
         {
             if (_stopEvents != null)

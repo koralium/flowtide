@@ -26,6 +26,15 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 {
+    /// <summary>
+    /// Vertex responsible for partitioning an input stream into multiple target streams.
+    /// </summary>
+    /// <typeparam name="T">The type of the underlying data payload processed by this vertex.</typeparam>
+    /// <remarks>
+    /// This vertex acts as a router. It accepts a single stream of events and distributes them to multiple linked 
+    /// target blocks based on predefined logic. It ensures that control events (watermarks, checkpoints) are multiplexed 
+    /// accurately to all downstream targets keeping the pipeline synchronized.
+    /// </remarks>
     public abstract class PartitionVertex<T> : ITargetBlock<IStreamEvent>, IStreamVertex
     {
         private TransformManyBlock<IStreamEvent, KeyValuePair<int, IStreamEvent>>? _inputBlock;
@@ -44,16 +53,30 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         private TaskCompletionSource? _pauseSource;
         private StreamVersionInformation? _streamVersion;
 
+        /// <summary>
+        /// Gets the logger instance associated with this vertex.
+        /// </summary>
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after or during initialize");
 
+        /// <summary>
+        /// Gets the overall version information of the running stream, if applicable.
+        /// </summary>
         public StreamVersionInformation? StreamVersion => _streamVersion;
 
         protected IMeter Metrics => _metrics ?? throw new InvalidOperationException("Metrics can only be fetched after or during initialize");
 
+        /// <summary>
+        /// Gets the array of source blocks representing the output partitions maintained by this vertex.
+        /// </summary>
         public ISourceBlock<IStreamEvent>[] Sources => _sources;
 
         protected IMemoryAllocator MemoryAllocator => _memoryAllocator ?? throw new InvalidOperationException("Memory allocator can only be fetched after initialization.");
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="PartitionVertex{T}"/> class.
+        /// </summary>
+        /// <param name="targetNumber">The number of outgoing target partitions.</param>
+        /// <param name="executionDataflowBlockOptions">The execution options covering bounded capacity and parallelism.</param>
         public PartitionVertex(int targetNumber, ExecutionDataflowBlockOptions executionDataflowBlockOptions)
         {
             this.targetNumber = targetNumber;
@@ -64,17 +87,33 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
                 _sources[i] = new FixedPointSource(executionDataflowBlockOptions);
             }
         }
+
+        /// <summary>
+        /// Gets a task that represents the completion of the vertex processing block.
+        /// </summary>
         public Task Completion => _inputBlock?.Completion ?? throw new InvalidOperationException("Completion can only be fetched after create blocks method.");
 
+        /// <summary>
+        /// Gets the configured explicit identifier name of the vertex.
+        /// </summary>
         public string Name => _name ?? throw new InvalidOperationException("Name can only be fetched after initialize or setup method calls");
 
+        /// <summary>
+        /// Gets the display name for the specific partitioning logic type, largely used for logging and metrics visualization.
+        /// </summary>
         public abstract string DisplayName { get; }
 
+        /// <summary>
+        /// Signals the vertex to compress or compact any underlying persistent state.
+        /// </summary>
         public Task Compact()
         {
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Signals to the initial input block that it should not receive any more inputs natively triggering sequence completion.
+        /// </summary>
         public void Complete()
         {
             Debug.Assert(_inputBlock != null);
@@ -83,7 +122,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 
         protected abstract IAsyncEnumerable<KeyValuePair<int, StreamMessage<T>>> PartitionData(T data, long time);
 
-
+        /// <summary>
+        /// Instantiates underlying processing pipeline dataflow blocks to route and branch messages to target components.
+        /// </summary>
         public void CreateBlock()
         {
             _inputBlock = new TransformManyBlock<IStreamEvent, KeyValuePair<int, IStreamEvent>>(x =>
@@ -222,34 +263,52 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             }
         }
 
+        /// <summary>
+        /// Explicitly deletes any persistent resources corresponding to this partitioning operator's internal tracking configuration.
+        /// </summary>
         public Task DeleteAsync()
         {
             return Task.CompletedTask;
         }
 
+        /// <summary>
+        /// Releases all underlying data structures inherently attached.
+        /// </summary>
         public ValueTask DisposeAsync()
         {
             return ValueTask.CompletedTask;
         }
 
+        /// <summary>
+        /// Attempts to dispatch a generic dataflow message to this operator. Exposes the TPL pipeline interface.
+        /// </summary>
         public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, IStreamEvent messageValue, ISourceBlock<IStreamEvent>? source, bool consumeToAccept)
         {
             Debug.Assert(_inputTargetBlock != null);
             return _inputTargetBlock.OfferMessage(messageHeader, messageValue, source, consumeToAccept);
         }
 
+        /// <summary>
+        /// Manually trips the processing block into a permanently faulted state based on a registered exception.
+        /// </summary>
         public void Fault(Exception exception)
         {
             Debug.Assert(_inputTargetBlock != null);
             _inputTargetBlock.Fault(exception);
         }
 
+        /// <summary>
+        /// Connects operator identity properties dynamically ahead of structural linking sequences.
+        /// </summary>
         public void Setup(string streamName, string operatorName)
         {
             _streamName = streamName;
             _name = operatorName;
         }
 
+        /// <summary>
+        /// Initializes logical resources metrics and states for routing context prior to start execution.
+        /// </summary>
         public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
@@ -333,6 +392,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
 
         protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient);
 
+        /// <summary>
+        /// Links internal mapping routines dynamically to downstream destinations configured on sources representation.
+        /// </summary>
         public void Link()
         {
             for (int i = 0; i < _sources.Length; i++)
@@ -350,6 +412,11 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return _vertexHandler.RegisterTrigger(name, scheduleInterval);
         }
 
+        /// <summary>
+        /// Enqueues an execution trigger.
+        /// Triggers are not supported in this vertex implementation as it is designed to operate purely as a data router without any internal stateful
+        /// processing logic that would require time-based or event-based triggers.
+        /// </summary>
         public virtual Task QueueTrigger(TriggerEvent triggerEvent)
         {
             throw new NotSupportedException("Triggers are not supported in partition vertices");
@@ -364,6 +431,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             _vertexHandler.ScheduleCheckpoint(inTime);
         }
 
+        /// <summary>
+        /// Emits a collection composed uniquely to list downstream pipeline targets attached resolving flow branches.
+        /// </summary>
         public IEnumerable<ITargetBlock<IStreamEvent>> GetLinks()
         {
             List<ITargetBlock<IStreamEvent>> output = new List<ITargetBlock<IStreamEvent>>();
@@ -374,6 +444,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return output;
         }
 
+        /// <summary>
+        /// Halts current processing. Used during debug or suspension states.
+        /// </summary>
         public void Pause()
         {
             if (_pauseSource == null)
@@ -382,6 +455,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             }
         }
 
+        /// <summary>
+        /// Resumes processing of events queued while suspended.
+        /// </summary>
         public void Resume()
         {
             if (_pauseSource != null)
@@ -391,6 +467,9 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             }
         }
 
+        /// <summary>
+        /// A notification hook invoked prior to finalizing changes in persistent stores for a checkpoint.
+        /// </summary>
         public virtual Task BeforeSaveCheckpoint()
         {
             return Task.CompletedTask;
@@ -407,6 +486,10 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
             return _vertexHandler.FailAndRollback(exception, restoreVersion);
         }
 
+        /// <summary>
+        /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.
+        /// </summary>
+        /// <param name="rollbackVersion">The version that the stream will be rolled back to.</param>
         public virtual Task OnFailure(long rollbackVersion)
         {
             return Task.CompletedTask;
