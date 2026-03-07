@@ -27,17 +27,6 @@ using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
-    public enum StreamStateValue
-    {
-        NotStarted = 0,
-        Starting = 1,
-        Running = 2,
-        Failure = 3,
-        Deleting = 4,
-        Deleted = 5,
-        Stopping = 6
-    }
-
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
         private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
@@ -115,11 +104,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     case StreamStatus.Running:
                         return FlowtideHealth.Healthy;
                     case StreamStatus.Paused:
-                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                        if (currentState == StreamStateValue.Running)
                         {
                             return FlowtideHealth.Healthy;
                         }
-                        if (currentState == Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+                        if (currentState == StreamStateValue.Failure)
                         {
                             return FlowtideHealth.Unhealthy;
                         }
