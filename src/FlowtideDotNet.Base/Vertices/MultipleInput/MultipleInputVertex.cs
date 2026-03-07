@@ -955,7 +955,7 @@ namespace FlowtideDotNet.Base.Vertices.MultipleInput
             }
         }
 
-        // <summary>
+        /// <summary>
         /// A notification hook invoked prior to finalizing changes in persistent stores for a checkpoint.
         /// Can be used cautiously to record minimal forward state markers (e.g. streaming offsets).
         /// </summary>

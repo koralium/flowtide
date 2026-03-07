@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         }
 
         /// <summary>
-        /// Explicitly deletes any persistent resources corresponding to this partioning operator's internal tracking configuration.
+        /// Explicitly deletes any persistent resources corresponding to this partitioning operator's internal tracking configuration.
         /// </summary>
         public Task DeleteAsync()
         {

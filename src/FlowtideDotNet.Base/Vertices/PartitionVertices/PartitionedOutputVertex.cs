@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Base.Vertices.PartitionVertices
         /// <summary>
         /// Gets the display name of this operator type, typically used in logging and graphical graph representations.
         /// </summary>
-        public override string DisplayName => "Partioned Output";
+        public override string DisplayName => "Partitioned Output";
 
         /// <summary>
         /// Represents a request to compact local storage space. As this vertex does not hold persistent records, it runs a completed task.

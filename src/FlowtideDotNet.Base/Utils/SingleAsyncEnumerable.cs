@@ -13,7 +13,7 @@
 namespace FlowtideDotNet.Base.Utils
 {
     /// <summary>
-    /// A zero-allocation async enumerable that yields exactly one element of type <typeparamref name="T"/>.
+    /// A single-allocation async enumerable that yields exactly one element of type <typeparamref name="T"/>.
     /// </summary>
     /// <typeparam name="T">The type of the single element produced by this enumerable.</typeparam>
     /// <remarks>

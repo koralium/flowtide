@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Base.Vertices
         Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation);
 
         /// <summary>
-        /// Instantiates the internal <see cref="TPL Dataflow"/> blocks and internal processing logic.
+        /// Instantiates the internal <see cref="System.Threading.Tasks.Dataflow"/> blocks and internal processing logic.
         /// </summary>
         void CreateBlock();
 
