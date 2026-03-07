@@ -22,7 +22,6 @@ namespace FlowtideDotNet.Base.Utils
     /// static instance of the enumerable, and <see cref="GetAsyncEnumerator"/> always returns the same
     /// static <c>Enumerator</c> instance. This means the type produces no heap allocations at all,
     /// whether accessed via <see cref="Instance"/> or by calling <see cref="GetAsyncEnumerator"/>.
-    /// Because the enumerator is shared, this type is <b>not safe for concurrent enumeration</b>.
     /// </para>
     /// <para>
     /// It is used throughout the dataflow vertex pipeline wherever a method returning
