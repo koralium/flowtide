@@ -11,11 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage.StateManager;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.PartitionVertices
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Represents a specialized vertex that gathers data from multiple upstream partitions and merges them back into a single continuous stream.

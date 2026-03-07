@@ -13,7 +13,7 @@
 using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.Egress.Internal;
+using FlowtideDotNet.Base.Vertices.Internal;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -23,7 +23,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Egress
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Abstract base class for stream egress vertices (sinks) that consume stream events from the dataflow pipeline.

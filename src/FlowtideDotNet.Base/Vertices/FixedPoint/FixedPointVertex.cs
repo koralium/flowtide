@@ -13,7 +13,6 @@
 using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -23,7 +22,7 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.FixedPoint
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Abstract base class for stream vertices that implement fixed-point iteration over a cyclic dataflow graph.

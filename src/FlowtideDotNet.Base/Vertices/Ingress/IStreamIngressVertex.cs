@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Base.Vertices.Ingress
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Represents an ingress node (source operator) within the Flowtide dataflow stream.

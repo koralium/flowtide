@@ -14,7 +14,6 @@ using DataflowStream.dataflow.Internal.Extensions;
 using FlowtideDotNet.Base.dataflow;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -25,7 +24,7 @@ using System.Diagnostics.Metrics;
 using System.Text;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Unary
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Base class for stream vertices that have a single input stream and one or more output streams.

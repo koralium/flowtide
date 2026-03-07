@@ -13,7 +13,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Ingress
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Provides an output for an <see cref="IngressVertex{TData}"/> to push data and watermarks into the stream.
