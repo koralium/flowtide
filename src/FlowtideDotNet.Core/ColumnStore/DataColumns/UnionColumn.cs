@@ -176,6 +176,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     case ArrowTypeId.Timestamp:
                         valueColumns.Add(new TimestampTzColumn(_memoryAllocator));
                         break;
+                    case ArrowTypeId.Guid:
+                        valueColumns.Add(new GuidColumn(_memoryAllocator));
+                        break;
                     default:
                         throw new NotImplementedException();
                 }

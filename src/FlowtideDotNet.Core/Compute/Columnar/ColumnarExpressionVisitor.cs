@@ -81,6 +81,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             return System.Linq.Expressions.Expression.Constant(new StringValue(stringLiteral.Value), typeof(IDataValue));
         }
 
+        public override System.Linq.Expressions.Expression? VisitUuidLiteral(UuidLiteral uuidLiteral, ColumnParameterInfo state)
+        {
+            return System.Linq.Expressions.Expression.Constant(new GuidValue(uuidLiteral.Value), typeof(IDataValue));
+        }
+
         private static IDataValue GetColumnValue(in EventBatchData data, in int column, in int index, ReferenceSegment? segment, in DataValueContainer result)
         {
             data.GetColumn(column).GetValueAt(index, result, segment);
@@ -187,6 +192,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     return ColumnCastImplementations.CallCastToDouble(expr, state.ResultDataValue);
                 case SubstraitType.TimestampTz:
                     return ColumnCastImplementations.CallCastToTimestamp(expr, state.ResultDataValue);
+                case SubstraitType.Uuid:
+                    return ColumnCastImplementations.CallCastToGuid(expr, state.ResultDataValue);
             }
 
             throw new InvalidOperationException($"The type {castExpression.Type.Type} is not supported in cast.");

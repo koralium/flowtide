@@ -60,6 +60,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IStructValue AsStruct => throw new NotSupportedException();
 
+        public Guid AsGuid => throw new NotSupportedException();
+
         public void CopyToContainer(DataValueContainer container)
         {
             container._type = ArrowTypeId.List;

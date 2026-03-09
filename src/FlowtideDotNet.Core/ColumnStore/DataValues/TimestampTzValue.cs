@@ -116,6 +116,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IStructValue AsStruct => throw new NotSupportedException();
 
+        public Guid AsGuid => throw new NotSupportedException();
+
         public override string ToString()
         {
             return ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffffffzzz");

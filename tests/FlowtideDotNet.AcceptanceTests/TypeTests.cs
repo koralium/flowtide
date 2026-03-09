@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Exceptions;
+using SqlParser.Ast;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.AcceptanceTests
             SELECT
             GuidVal
             FROM orders
-            WHERE guidval = '" + order.GuidVal.ToString() + @"'
+            WHERE guidval = uuid'" + order.GuidVal.ToString() + @"'
             ");
             await WaitForUpdate();
 

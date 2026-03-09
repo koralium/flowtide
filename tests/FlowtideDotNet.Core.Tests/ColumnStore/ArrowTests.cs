@@ -831,6 +831,120 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var row2 = deserializedBatch.Columns[0].GetValueAt(1, default).AsStruct;
             Assert.Equal(321, row2.GetAt(0).AsLong);
             Assert.Equal("world", row2.GetAt(1).AsString.ToString());
-        }   
+        }
+
+        [Fact]
+        public void GuidSerializeDeserialize()
+        {
+            var g1 = Guid.NewGuid();
+            var g2 = Guid.NewGuid();
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new GuidValue(g1));
+            column.Add(NullValue.Instance);
+            column.Add(new GuidValue(g2));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            Assert.Equal(g1, deserializedBatch.Columns[0].GetValueAt(0, default).AsGuid);
+            Assert.True(deserializedBatch.Columns[0].GetValueAt(1, default).Type == ArrowTypeId.Null);
+            Assert.Equal(g2, deserializedBatch.Columns[0].GetValueAt(2, default).AsGuid);
+        }
+
+        [Fact]
+        public void GuidToArrow()
+        {
+            var g1 = Guid.NewGuid();
+            var g2 = Guid.NewGuid();
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new GuidValue(g1));
+            column.Add(NullValue.Instance);
+            column.Add(new GuidValue(g2));
+
+            var result = column.ToArrowArray();
+            var arr = (Apache.Arrow.Arrays.FixedSizeBinaryArray)result.Item1;
+
+            Assert.Equal(g1, Apache.Arrow.SpanExtensions.CastTo<Guid>(arr.GetBytes(0))[0]);
+            Assert.True(arr.IsNull(1));
+            Assert.Equal(g2, Apache.Arrow.SpanExtensions.CastTo<Guid>(arr.GetBytes(2))[0]);
+        }
+
+        [Fact]
+        public void TestGuidInListSerializeDeserialize()
+        {
+            var g1 = Guid.NewGuid();
+            var g2 = Guid.NewGuid();
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new ListValue(new List<IDataValue>()
+            {
+                new GuidValue(g1),
+                new GuidValue(g2)
+            }));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            var list = deserializedBatch.Columns[0].GetValueAt(0, default).AsList;
+            Assert.Equal(g1, list.GetAt(0).AsGuid);
+            Assert.Equal(g2, list.GetAt(1).AsGuid);
+        }
+
+        [Fact]
+        public void TestGuidInMapSerializeDeserialize()
+        {
+            var g1 = Guid.NewGuid();
+            var g2 = Guid.NewGuid();
+            Column column = new Column(GlobalMemoryManager.Instance);
+            column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
+            {
+                { new StringValue("key"), new GuidValue(g1) },
+                { new StringValue("value"), new GuidValue(g2) }
+            }));
+
+            var recordBatch = EventArrowSerializer.BatchToArrow(new EventBatchData(
+            [
+                column
+            ]), column.Count);
+
+            MemoryStream memoryStream = new MemoryStream();
+
+            var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
+            writer.WriteRecordBatch(recordBatch);
+            writer.Dispose();
+            memoryStream.Position = 0;
+            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            var deserializedRecordBatch = reader.ReadNextRecordBatch();
+            var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
+
+            var map = deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "key" }).AsGuid;
+            Assert.Equal(g1, map);
+
+            map = deserializedBatch.Columns[0].GetValueAt(0, new MapKeyReferenceSegment() { Key = "value" }).AsGuid;
+            Assert.Equal(g2, map);
+
+        }
     }
 }

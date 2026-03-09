@@ -181,6 +181,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IStructValue AsStruct => this;
 
+        public Guid AsGuid => throw new NotSupportedException();
+
         public StructValue(StructHeader header, params IDataValue[] columnValues)
         {
             _header = header;

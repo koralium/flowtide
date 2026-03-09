@@ -37,6 +37,11 @@ namespace FlowtideDotNet.Substrait.Expressions
             return default;
         }
 
+        public virtual TOutput? VisitUuidLiteral(UuidLiteral uuidLiteral, TState state)
+        {
+            return default;
+        }
+
         public virtual TOutput? VisitArrayLiteral(ArrayLiteral arrayLiteral, TState state)
         {
             foreach (var expr in arrayLiteral.Expressions)

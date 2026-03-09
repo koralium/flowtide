@@ -108,7 +108,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (type == typeof(Guid))
             {
-                return new StringType();
+                return new UuidType();
             }
             else if (type == typeof(List<int>))
             {

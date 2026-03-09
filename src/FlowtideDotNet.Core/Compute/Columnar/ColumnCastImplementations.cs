@@ -58,6 +58,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             return Expression.Call(method, value, result);
         }
 
+        internal static Expression CallCastToGuid(Expression value, Expression result)
+        {
+            var genericMethod = typeof(ColumnCastImplementations).GetMethod(nameof(CastToGuid), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            Debug.Assert(genericMethod != null);
+            var method = genericMethod.MakeGenericMethod(value.Type);
+            return Expression.Call(method, value, result);
+        }
+
         internal static Expression CallCastToBool(Expression value, Expression result)
         {
             var genericMethod = typeof(ColumnCastImplementations).GetMethod(nameof(CastToBool), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
@@ -286,6 +294,38 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 case ArrowTypeId.Int64:
                     result._type = ArrowTypeId.Decimal128;
                     result._decimalValue = new DecimalValue((decimal)value.AsLong);
+                    return result;
+                default:
+                    result._type = ArrowTypeId.Null;
+                    return result;
+            }
+        }
+
+        internal static IDataValue CastToGuid<T>(T value, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (value.IsNull)
+            {
+                result._type = ArrowTypeId.Null;
+                return result;
+            }
+            switch (value.Type)
+            {
+                case ArrowTypeId.String:
+                    if (Guid.TryParse(value.AsString.ToString(), CultureInfo.InvariantCulture, out var guidValue))
+                    {
+                        result._type = ArrowTypeId.Guid;
+                        result._guidValue = new GuidValue(guidValue);
+                        return result;
+                    }
+                    else
+                    {
+                        result._type = ArrowTypeId.Null;
+                        return result;
+                    }
+                case ArrowTypeId.Guid:
+                    result._type = ArrowTypeId.Guid;
+                    result._guidValue = new GuidValue(value.AsGuid);
                     return result;
                 default:
                     result._type = ArrowTypeId.Null;

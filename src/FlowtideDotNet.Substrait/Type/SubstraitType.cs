@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Substrait.Type
         List = 11,
         Binary = 12,
         TimestampTz = 13,
-        Null = 14
+        Null = 14,
+        Uuid = 15
     }
 }

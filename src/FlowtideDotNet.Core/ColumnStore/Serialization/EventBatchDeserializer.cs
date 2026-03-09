@@ -506,6 +506,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 return new DataColumnResult(DeserializeTimestampTzColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Timestamp);
             }
+            if (valueBytes.SequenceEqual("flowtide.guid"u8))
+            {
+                return new DataColumnResult(DeserializeGuidColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Guid);
+            }
 
             throw new NotImplementedException(Encoding.UTF8.GetString(valueBytes));
         }
@@ -534,6 +538,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 return new DecimalColumn(memory, length, memoryAllocator);
             }
             return new DecimalColumn(memoryAllocator);
+        }
+
+        private GuidColumn DeserializeGuidColumn(
+            ref SequenceReader<byte> data,
+            ref readonly FieldStruct fieldStruct,
+            ref readonly RecordBatchStruct recordBatchStruct,
+            int length)
+        {
+            if (TryReadNextBuffer(ref data, out var memory))
+            {
+                return new GuidColumn(memory, length, memoryAllocator);
+            }
+            return new GuidColumn(memoryAllocator);
         }
 
         private BinaryColumn DeserializeBinaryColumn(

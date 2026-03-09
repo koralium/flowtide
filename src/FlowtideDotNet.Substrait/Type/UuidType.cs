@@ -10,16 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Expressions.Literals
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace FlowtideDotNet.Substrait.Type
 {
-    public enum LiteralType
+    public class UuidType : SubstraitBaseType
     {
-        Bool,
-        String,
-        Array,
-        Numeric,
-        Null,
-        Binary,
-        Uuid
+        public override SubstraitType Type => SubstraitType.Uuid;
     }
 }

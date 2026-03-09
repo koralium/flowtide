@@ -727,6 +727,10 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 baseType = new TimestampType();
             }
+            else if (cast.DataType is DataType.Uuid)
+            {
+                baseType = new UuidType();
+            }
             else
             {
                 throw new NotImplementedException($"The data type '{cast.DataType.GetType().Name}' is not yet supported in cast for SQL.");
@@ -852,6 +856,22 @@ namespace FlowtideDotNet.Substrait.Sql
             }
 
             return result;
+        }
+
+        protected override ExpressionData VisitTypedString(TypedString typedString, EmitData state)
+        {
+            if (typedString.DataType is SqlParser.Ast.DataType.Uuid)
+            {
+                if (!Guid.TryParse(typedString.Value, out var guidValue))
+                {
+                    throw new SubstraitParseException($"The value '{typedString.Value}' is not a valid UUID.");
+                }
+                return new ExpressionData(new UuidLiteral()
+                {
+                    Value = guidValue
+                }, "$uuid", new UuidType());
+            }
+            return base.VisitTypedString(typedString, state);
         }
     }
 }

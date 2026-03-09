@@ -10,31 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Core.ColumnStore.DataColumns;
-using FlowtideDotNet.Core.Flexbuffer;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
-    public struct ReferenceStructValue : IStructValue
+    public struct GuidValue : IDataValue
     {
-        internal readonly StructColumn column;
-        internal readonly int index;
+        private Guid _guid;
 
-        internal ReferenceStructValue(StructColumn column, int index)
+        public GuidValue(Guid guid)
         {
-            this.column = column;
-            this.index = index;
+            _guid = guid;
         }
-        public StructHeader Header => column._header;
 
-        public ArrowTypeId Type => ArrowTypeId.Struct;
+        public ArrowTypeId Type => ArrowTypeId.Guid;
 
         public long AsLong => throw new NotImplementedException();
 
@@ -56,47 +51,26 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public TimestampTzValue AsTimestamp => throw new NotImplementedException();
 
-        public IStructValue AsStruct => this;
+        public IStructValue AsStruct => throw new NotImplementedException();
 
-        public Guid AsGuid => throw new NotSupportedException();
+        public Guid AsGuid => _guid;
 
         public void Accept(in DataValueVisitor visitor)
         {
-            visitor.VisitReferenceStructValue(ref this);
+            visitor.VisitGuidValue(in this);
         }
 
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
-            column.AddToHash(index, default, hashAlgorithm);
+            Span<byte> buffer = stackalloc byte[16];
+            _guid.TryWriteBytes(buffer);
+            hashAlgorithm.Append(buffer);
         }
 
         public void CopyToContainer(DataValueContainer container)
         {
-            container._structValue = this;
-            container._type = ArrowTypeId.Struct;
-        }
-
-        public IDataValue GetAt(in int index)
-        {
-            return column._columns[index].GetValueAt(this.index, default);
-        }
-
-        public override string ToString()
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.Append("{");
-            for (int i = 0; i < column._columns.Length; i++)
-            {
-                stringBuilder.Append(column._header.GetColumnName(i));
-                stringBuilder.Append(": ");
-                stringBuilder.Append(column._columns[i].GetValueAt(this.index, default).ToString());
-                if (i < column._columns.Length - 1)
-                {
-                    stringBuilder.Append(", ");
-                }
-            }
-            stringBuilder.Append("}");
-            return stringBuilder.ToString();
+            container._type = ArrowTypeId.Guid;
+            container._guidValue = this;
         }
     }
 }

@@ -149,5 +149,10 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
             castExpression.Expression = Visit(castExpression.Expression, state)!;
             return castExpression;
         }
+
+        public override Expression? VisitUuidLiteral(UuidLiteral uuidLiteral, object state)
+        {
+            return uuidLiteral;
+        }
     }
 }

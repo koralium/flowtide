@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ReadOnlyMemory<byte> Memory => _utf8;
 
+        public Guid AsGuid => throw new NotSupportedException();
+
         public StringValue(byte[] utf8)
         {
             _utf8 = utf8;

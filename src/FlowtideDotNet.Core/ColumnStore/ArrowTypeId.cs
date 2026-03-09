@@ -49,6 +49,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         BinaryView,
         StringView,
         ListView,
+        Guid
     }
 
 }

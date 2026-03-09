@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Encoders;
 using FlowtideDotNet.Substrait.Type;
 
@@ -27,19 +28,23 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             {
                 return new Guid(value.AsString.ToString());
             }
+            else if (value.Type == ArrowTypeId.Guid)
+            {
+                return value.AsGuid;
+            }
             throw new NotImplementedException($"Cannot convert {value.Type} to Guid");
         }
 
         public SubstraitBaseType GetSubstraitType()
         {
-            return new StringType();
+            return new UuidType();
         }
 
         public void Serialize(object obj, ref AddToColumnFunc addFunc)
         {
             if (obj is Guid guid)
             {
-                addFunc.AddValue(new StringValue(guid.ToString()));
+                addFunc.AddValue(new GuidValue(guid));
                 return;
             }
             throw new NotImplementedException();

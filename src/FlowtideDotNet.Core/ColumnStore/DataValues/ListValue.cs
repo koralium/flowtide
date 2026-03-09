@@ -62,6 +62,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public IStructValue AsStruct => throw new NotSupportedException();
 
+        public Guid AsGuid => throw new NotSupportedException();
+
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitListValue(in this);

@@ -403,5 +403,22 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Users.Select(u => new { val = 1609459200000000 }));
         }
+
+        [Fact]
+        public async Task ConvertStringToUuid()
+        {
+            GenerateData();
+            await StartStream(@"
+            INSERT INTO output
+            SELECT 
+                CAST('550e8400-e29b-41d4-a716-446655440000' AS UUID)
+            FROM users
+            ");
+
+            await WaitForUpdate();
+
+            var expected = Guid.Parse("550e8400-e29b-41d4-a716-446655440000");
+            AssertCurrentDataEqual(Users.Select(u => new { val = expected }));
+        }
     }
 }

@@ -205,5 +205,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             containsAggregate |= Visit(isNotDistinctFrom.Expression2, state);
             return containsAggregate;
         }
+
+        protected override bool VisitTypedString(TypedString typedString, object? state)
+        {
+            return false;
+        }
     }
 }

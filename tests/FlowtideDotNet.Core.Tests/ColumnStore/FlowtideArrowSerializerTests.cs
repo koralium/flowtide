@@ -899,5 +899,48 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             new StructValue(otherHeader, new Int64Value(321)),
             new StringValue("world"));
         }
+
+        [Fact]
+        public void TestSerializeGuidColumn()
+        {
+            Guid g1 = Guid.NewGuid();
+            Guid g2 = Guid.NewGuid();
+            Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new GuidValue(g1));
+            column.Add(new GuidValue(g2));
+
+            var batch = new EventBatchData([column]);
+
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, 2);
+
+            var serializedBytes = bufferWriter.WrittenSpan.ToArray();
+
+            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            var recordBatch = reader.ReadNextRecordBatch();
+
+            Assert.True(recordBatch.Schema.FieldsList[0].Metadata.TryGetValue("ARROW:extension:name", out var customExtensionName));
+            Assert.Equal("flowtide.guid", customExtensionName);
+
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is FixedSizeBinaryType);
+            var fixedSizeType = (FixedSizeBinaryType)recordBatch.Schema.FieldsList[0].DataType;
+            Assert.Equal(16, fixedSizeType.ByteWidth);
+
+            var deserializedColumn = (Apache.Arrow.Arrays.FixedSizeBinaryArray)recordBatch.Column(0);
+            Assert.Equal(g1, MemoryMarshal.Cast<byte, Guid>(deserializedColumn.GetBytes(0))[0]);
+            Assert.Equal(g2, MemoryMarshal.Cast<byte, Guid>(deserializedColumn.GetBytes(1))[0]);
+        }
+
+        [Fact]
+        public void TestSerializeDeserializeGuidColumn()
+        {
+            Guid g1 = Guid.NewGuid();
+            Guid g2 = Guid.NewGuid();
+            SerializeDeserializeTest(
+                new GuidValue(g1),
+                new GuidValue(g2));
+        }
     }
 }

@@ -100,7 +100,16 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitIsNotDistinctFrom(isNotDistinctFrom, state);
             }
+            if (expression is Expression.TypedString typedString)
+            {
+                return VisitTypedString(typedString, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitTypedString(Expression.TypedString typedString, TState state)
+        {
+            throw new NotImplementedException($"The expression '{typedString.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitIsNotDistinctFrom(Expression.IsNotDistinctFrom isNotDistinctFrom, TState state)

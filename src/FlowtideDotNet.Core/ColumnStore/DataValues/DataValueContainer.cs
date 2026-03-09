@@ -38,6 +38,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal IMapValue? _mapValue;
         internal TimestampTzValue _timestampValue;
         internal IStructValue? _structValue;
+        internal GuidValue _guidValue;
         internal ArrowTypeId _type;
 
 
@@ -65,6 +66,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         public TimestampTzValue AsTimestamp => _timestampValue;
 
         public IStructValue AsStruct => _structValue!;
+
+        public Guid AsGuid => _guidValue.AsGuid;
 
         public void Accept(in DataValueVisitor visitor)
         {
@@ -136,6 +139,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                         throw new System.InvalidOperationException($"Unknown struct type: {_structValue!.GetType()}");
                     }
                     break;
+                case ArrowTypeId.Guid:
+                    visitor.VisitGuidValue(in _guidValue);
+                    break;
                 default:
                     throw new System.InvalidOperationException($"Unknown type: {Type}");
             }
@@ -175,6 +181,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 case ArrowTypeId.Timestamp:
                     _timestampValue.AddToHash(hashAlgorithm);
                     return;
+                case ArrowTypeId.Guid:
+                    _guidValue.AddToHash(hashAlgorithm);
+                    return;
             }
             throw new NotImplementedException($"{Type} is not supported for hashing.");
         }
@@ -192,6 +201,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             container._mapValue = _mapValue;
             container._structValue = _structValue;
             container._timestampValue = _timestampValue;
+            container._guidValue = _guidValue;
         }
     }
 }

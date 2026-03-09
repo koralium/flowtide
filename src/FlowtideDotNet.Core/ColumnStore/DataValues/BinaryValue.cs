@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IStructValue AsStruct => throw new NotSupportedException();
 
+        public Guid AsGuid => throw new NotImplementedException();
+
         public void Accept(in DataValueVisitor visitor)
         {
             visitor.VisitBinaryValue(in this);

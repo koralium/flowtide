@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
+using System;
 using System.Buffers;
 using System.Diagnostics;
 
@@ -334,6 +335,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         var timestampMemory = GetMemoryOwner(array.ValueBuffer);
                         _dataColumn = new TimestampTzColumn(timestampMemory, array.Length, preAllocatedMemoryManager);
                         _typeId = ArrowTypeId.Timestamp;
+                        break;
+                    case GuidType.ExtensionName:
+                        var guidMemory = GetMemoryOwner(array.ValueBuffer);
+                        _dataColumn = new GuidColumn(guidMemory, array.Length, preAllocatedMemoryManager);
+                        _typeId = ArrowTypeId.Guid;
                         break;
                     default:
                         throw new NotImplementedException(typeName);

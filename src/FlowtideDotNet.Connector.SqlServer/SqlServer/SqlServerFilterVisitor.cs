@@ -173,6 +173,11 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"'{stringLiteral.Value}'", false);
         }
 
+        public override FilterResult? VisitUuidLiteral(UuidLiteral uuidLiteral, object? state)
+        {
+            return new FilterResult($"'{uuidLiteral.Value}'", false);
+        }
+
         public override FilterResult? VisitCastExpression(CastExpression castExpression, object? state)
         {
             var inner = castExpression.Expression.Accept(this, state);

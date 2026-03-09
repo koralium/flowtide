@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         IStructValue AsStruct { get; }
 
+        Guid AsGuid { get; }
+
         void CopyToContainer(DataValueContainer container);
 
         void Accept(in DataValueVisitor visitor);

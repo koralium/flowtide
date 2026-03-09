@@ -95,5 +95,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         {
             throw new NotImplementedException();
         }
+
+        public virtual void VisitGuidValue(ref readonly GuidValue guidValue)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
