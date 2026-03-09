@@ -61,7 +61,14 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                     column.Add(new Int64Value(bsonValue.AsInt64));
                     break;
                 case BsonType.Binary:
-                    column.Add(new BinaryValue(bsonValue.AsByteArray));
+                    if (bsonValue.IsGuid)
+                    {
+                        column.Add(new GuidValue(bsonValue.AsGuid));
+                    }
+                    else
+                    {
+                        column.Add(new BinaryValue(bsonValue.AsByteArray));
+                    }
                     break;
                 case BsonType.DateTime:
                     column.Add(new TimestampTzValue(bsonValue.ToUniversalTime()));

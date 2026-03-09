@@ -200,7 +200,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                             }
 
                             var guid = reader.GetGuid(index);
-                            column.Add(new StringValue(guid.ToString()));
+                            column.Add(new GuidValue(guid));
                         });
                         break;
                     case "binary":
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 case "float":
                     return new Fp64Type();
                 case "uniqueidentifier":
-                    return new StringType();
+                    return new UuidType();
                 case "binary":
                 case "varbinary":
                     return new BinaryType();
@@ -1485,6 +1485,10 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     if (dataValueContainer.Type == ArrowTypeId.String)
                     {
                         return new Guid(dataValueContainer.AsString.ToString());
+                    }
+                    else if (dataValueContainer.Type == ArrowTypeId.Guid)
+                    {
+                        return dataValueContainer.AsGuid;
                     }
                     else
                     {
