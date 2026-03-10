@@ -1347,23 +1347,17 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 Schema = schemaText
             }, metadata);
 
+            var readRequest = ISpiceDbReadRelationshipsRequest.Create(
+                 ISpiceDbRelationshipFilter.Create(resourceType: "document", optionalRelation: "reader"),
+                 consistency: ISpiceDbConsistency.CreateFullyConsistent()
+                );
+
             var stream = new SpiceDbTestStream(
                 nameof(TestInsertDeleteExisting),
                 spiceDbFixture.GetChannel(),
                 true,
                 false,
-                new ReadRelationshipsRequest()
-                {
-                    RelationshipFilter = new RelationshipFilter()
-                    {
-                        ResourceType = "document",
-                        OptionalRelation = "reader"
-                    },
-                    Consistency = new Consistency()
-                    {
-                        FullyConsistent = true
-                    }
-                });
+                readRequest);
             stream.Generate(10);
 
             var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
