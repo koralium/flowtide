@@ -25,7 +25,7 @@
   </ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="Internal\proto\**\*.proto" ProtoRoot="Internal\proto" Access="public" />
+		<Protobuf Include="Internal\proto\**\*.proto" ProtoRoot="Internal\proto" Access="internal" />
 	</ItemGroup>
 
 	<ItemGroup>

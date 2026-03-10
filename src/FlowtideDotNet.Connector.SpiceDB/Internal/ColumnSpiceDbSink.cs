@@ -130,14 +130,24 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             }
             int count = 0;
 
+            var optionsRequest = m_spiceDbSinkOptions.DeleteExistingDataFilter;
+            var request = new ReadRelationshipsRequest();
+            // Change to interface to set interface properties
+            var requestInterface = (ISpiceDbReadRelationshipsRequest)request;
+            requestInterface.RelationshipFilter = optionsRequest.RelationshipFilter;
+            if (requestInterface.Consistency != null)
+            {
+                requestInterface.Consistency = optionsRequest.Consistency;
+            }
+            
             while (run)
             {
                 if (cursor != null)
                 {
-                    m_spiceDbSinkOptions.DeleteExistingDataFilter.OptionalCursor = cursor;
+                    request.OptionalCursor = cursor;
                 }
 
-                var relationshipsStream = m_client.ReadRelationships(m_spiceDbSinkOptions.DeleteExistingDataFilter, metadata);
+                var relationshipsStream = m_client.ReadRelationships(request, metadata);
                 var readAllEnumerable = relationshipsStream.ResponseStream;
 
                 while (run)
