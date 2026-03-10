@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Connector.SpiceDB
         /// consistency requirement.
         /// </returns>
         public static ISpiceDbReadRelationshipsRequest Create(
-            ISpiceDbRelationshipFilter? relationshipFilter = default,
+            ISpiceDbRelationshipFilter relationshipFilter,
             ISpiceDbConsistency? consistency = default
             )
         {

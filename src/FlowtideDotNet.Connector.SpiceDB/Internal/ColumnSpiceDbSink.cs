@@ -135,7 +135,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             // Change to interface to set interface properties
             var requestInterface = (ISpiceDbReadRelationshipsRequest)request;
             requestInterface.RelationshipFilter = optionsRequest.RelationshipFilter;
-            requestInterface.Consistency = optionsRequest.Consistency;
+            if (requestInterface.Consistency != null)
+            {
+                requestInterface.Consistency = optionsRequest.Consistency;
+            }
+            
             while (run)
             {
                 if (cursor != null)

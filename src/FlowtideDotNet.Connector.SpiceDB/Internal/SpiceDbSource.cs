@@ -347,7 +347,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         try
                         {
                             var readRequest = new ReadRelationshipsRequest();
-                            var readRequestInterface = readRequest as ISpiceDbReadRelationshipsRequest;
+                            var readRequestInterface = (ISpiceDbReadRelationshipsRequest)readRequest;
 
                             if (m_spiceDbSourceOptions.Consistency != null)
                             {
