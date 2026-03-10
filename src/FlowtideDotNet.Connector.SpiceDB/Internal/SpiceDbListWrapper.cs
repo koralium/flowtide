@@ -30,7 +30,13 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         public void Add(TPublic item) => _internalList.Add((TInternal)item!);
         public void Clear() => _internalList.Clear();
         public bool Contains(TPublic item) => _internalList.Contains((TInternal)item!);
-        public void CopyTo(TPublic[] array, int arrayIndex) => throw new NotImplementedException();
+        public void CopyTo(TPublic[] array, int arrayIndex)
+        {
+            for (int i = 0; i < _internalList.Count; i++)
+            {
+                array[arrayIndex + i] = _internalList[i];
+            }
+        }
         public IEnumerator<TPublic> GetEnumerator() => _internalList.GetEnumerator();
         public int IndexOf(TPublic item) => _internalList.IndexOf((TInternal)item!);
         public void Insert(int index, TPublic item) => _internalList.Insert(index, (TInternal)item!);
