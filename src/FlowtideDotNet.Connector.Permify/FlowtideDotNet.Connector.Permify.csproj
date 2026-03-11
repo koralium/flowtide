@@ -20,6 +20,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Protobuf Include="proto\**\*.proto" ProtoRoot="proto" Access="public" />
+		<Protobuf Include="proto\**\*.proto" ProtoRoot="proto" Access="internal" />
 	</ItemGroup>
 </Project>
