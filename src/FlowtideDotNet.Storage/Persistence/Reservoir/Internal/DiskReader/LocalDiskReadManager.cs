@@ -73,6 +73,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             return file.Write(reader);
         }
 
+        public Task<PipeReader> ReadFile(string fileName, CancellationToken cancellationToken = default)
+        {
+            ILocalDiskFile file = GetOrCreateReader(fileName);
+            return file.ReadFile(cancellationToken);
+        }
+
         public void DropFile(string fileName)
         {
             lock (_lock)

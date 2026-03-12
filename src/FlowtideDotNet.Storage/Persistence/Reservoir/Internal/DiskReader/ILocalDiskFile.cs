@@ -28,5 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             where T : ICacheObject;
 
         Task Write(PipeReader reader);
+
+        Task<PipeReader> ReadFile(CancellationToken cancellationToken = default);
     }
 }

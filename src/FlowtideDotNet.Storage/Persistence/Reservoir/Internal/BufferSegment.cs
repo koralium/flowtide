@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public Memory<byte> AvailableMemory { get; private set; }
 
+        public IMemoryOwner<byte>? MemoryOwner => _owner;
+
         public int Length => End;
 
         public int End
@@ -174,6 +176,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 disposedValue = true;
             }
+        }
+
+        public void ClearOwner()
+        {
+            _owner = null;
         }
 
         ~BufferSegment()

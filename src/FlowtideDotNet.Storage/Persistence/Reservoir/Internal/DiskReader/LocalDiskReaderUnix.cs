@@ -34,6 +34,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         private readonly object _lock = new object();
         private IMemoryOwner<byte>? alignedBuffer;
 
+        public int Alignment => alignment;
+
         [DllImport("libc", SetLastError = true)]
         private static extern int open([MarshalAs(UnmanagedType.LPStr)] string pathname, int flags, uint mode);
 
@@ -63,19 +65,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             if (directoryName != null && !Directory.Exists(directoryName))
             {
                 Directory.CreateDirectory(directoryName);
-            }
-
-            // Check if the file already exists, if so delete it
-            if (File.Exists(fileName))
-            {
-                try
-                {
-                    File.Delete(fileName);
-                }
-                catch
-                {
-                    File.Delete(fileName);
-                }
             }
 
             this.fileDescriptor = open(fileName, O_RDWR | O_DIRECT | O_CREAT, S_IRUSR | S_IWUSR);
@@ -140,7 +129,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                     int alignedWriteSize = ((bytesInBuffer + alignment - 1) / alignment) * alignment;
                     alignedBuffer.Memory.Span.Slice(bytesInBuffer, alignedWriteSize - bytesInBuffer).Clear();
                     Write(currentFilePosition, alignedBuffer.Memory.Slice(0, alignedWriteSize));
-                    ftruncate(fileDescriptor, currentFilePosition + bytesInBuffer);
+                    var truncateResponse = ftruncate(fileDescriptor, currentFilePosition + bytesInBuffer);
+                    if (truncateResponse == -1)
+                    {
+                        int errorCode = Marshal.GetLastWin32Error();
+                        throw new InvalidOperationException($"Failed to truncate file. {errorCode}: {strerror(errorCode)}");
+                    }
+                }
+                else
+                {
+                    var truncateResponse = ftruncate(fileDescriptor, currentFilePosition);
+                    if (truncateResponse == -1)
+                    {
+                        int errorCode = Marshal.GetLastWin32Error();
+                        throw new InvalidOperationException($"Failed to truncate file. {errorCode}: {strerror(errorCode)}");
+                    }
                 }
                 return false;
             }
@@ -165,6 +168,33 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             finally
             {
                 handle.Dispose();
+            }
+        }
+
+        internal unsafe int ReadToBuffer(long logicalOffset, Memory<byte> buffer)
+        {
+            if (logicalOffset % alignment != 0)
+            {
+                throw new ArgumentException("Offset must be aligned to block size.");
+            }
+
+            if (buffer.Length % alignment != 0)
+            {
+                throw new ArgumentException("Buffer length must be a multiple of block size.");
+            }
+
+            // Lock so we dont use file descriptor concurrently, which can cause issues with pread
+            lock (_lock)
+            {
+                fixed (byte* ptr = buffer.Span)
+                {
+                    int bytesRead = (int)pread(fileDescriptor, (nint)ptr, (IntPtr)buffer.Length, (IntPtr)logicalOffset);
+
+                    if (bytesRead == -1)
+                        throw new IOException($"pread failed with errno {Marshal.GetLastPInvokeError()}");
+
+                    return bytesRead;
+                }
             }
         }
 
@@ -227,6 +257,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         public void Dispose()
         {
             alignedBuffer?.Dispose();
+        }
+
+        public Task<PipeReader> ReadFile(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<PipeReader>(new LocalDiskPipeReaderUnix(this, memoryAllocator));
         }
     }
 }

@@ -40,15 +40,15 @@ ON t.val = o.val;
 
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
-.AddVersioningFromString("1.0.2")
+.AddVersioningFromString("1.0.3")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
-    connectorManager.AddConsoleSink("*");
+    connectorManager.AddBlackholeSink("*");
 })
 .AddStorage(b =>
 {
-    b.AddTemporaryStorage("./stateData")
+    b.AddFileStorage("./stateData")
     .OldStreamVersionsRetention(0);
 
     b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;

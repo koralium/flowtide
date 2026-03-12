@@ -25,18 +25,22 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     /// </summary>
     internal class ReservoirStreamsMetadata
     {
+        [JsonPropertyName("streamName")]
+        public string StreamName { get; }
+
         [JsonPropertyName("versions")]
         public List<ReservoirStreamVersion> Versions { get; }
 
         [JsonConstructor]
-        public ReservoirStreamsMetadata(List<ReservoirStreamVersion> versions)
+        public ReservoirStreamsMetadata(string streamName, List<ReservoirStreamVersion> versions)
         {
+            StreamName = streamName;
             Versions = versions;
         }
 
         public ReservoirStreamsMetadata UpdateVersions(List<ReservoirStreamVersion> newVersions)
         {
-            return new ReservoirStreamsMetadata(newVersions);
+            return new ReservoirStreamsMetadata(StreamName, newVersions);
         }
     }
 }

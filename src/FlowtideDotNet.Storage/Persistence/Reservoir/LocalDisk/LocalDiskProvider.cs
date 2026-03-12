@@ -147,8 +147,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
 
         public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
+            Debug.Assert(localDiskReadManager != null);
             var path = GetDataFileName(fileId);
-            return Task.FromResult(PipeReader.Create(File.OpenRead(path)));
+            return localDiskReadManager.ReadFile(path, cancellationToken);
         }
 
         public Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)

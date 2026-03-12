@@ -404,7 +404,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 sorted.RemoveAt(i);
                 i--;
             }
-            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(_storageMetadata.UpdateVersions(sorted));
+            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(_storageMetadata.UpdateVersions(sorted), new JsonSerializerOptions()
+            {
+                WriteIndented = true
+            });
             await _fileProvider.WriteStreamsMetadataFileAsync(_streamName, PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
         }
 
@@ -500,7 +503,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     return parsedMetadata;
                 }
             }
-            return new ReservoirStreamsMetadata(new List<ReservoirStreamVersion>());
+            return new ReservoirStreamsMetadata(streamName, new List<ReservoirStreamVersion>());
         }
 
         private ReservoirStreamsMetadata? ParseMetadata(ReadOnlySequence<byte> data)
@@ -524,7 +527,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 storageMetadata.Versions.Add(new ReservoirStreamVersion(streamVersion, DateTime.UtcNow, DateTime.UtcNow));
             }
             _storageMetadata = storageMetadata;
-            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(storageMetadata);
+            var metadataBytes = JsonSerializer.SerializeToUtf8Bytes(storageMetadata, new JsonSerializerOptions()
+            {
+                WriteIndented = true
+            });
             await _fileProvider.WriteStreamsMetadataFileAsync(streamName, PipeReader.Create(new ReadOnlySequence<byte>(metadataBytes)), cancellationToken);
         }
 

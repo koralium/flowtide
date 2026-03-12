@@ -141,7 +141,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                                 var dataFilePipe = await _fileProvider.ReadDataFileAsync(bundledDataFileIds[i], 0, cancellationToken);
                                 _checkpointRegistryFile = await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
                             }
-                            catch(InvalidOperationException)
+                            catch(InvalidOperationException e)
                             {
                                 // TODO: Log here
                             }

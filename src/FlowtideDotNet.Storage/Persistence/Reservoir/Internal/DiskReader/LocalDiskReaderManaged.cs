@@ -116,5 +116,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                 semaphoreSlim.Release();
             }
         }
+
+        public Task<PipeReader> ReadFile(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(PipeReader.Create(File.OpenRead(fileName)));
+        }
     }
 }
