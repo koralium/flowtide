@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private readonly PrimitiveList<ulong> _deletedFileIds;
         private readonly PrimitiveList<long> _deletedFileAtVersion;
-
+        private readonly IMemoryAllocator memoryAllocator;
         private ulong _nextFileId;
 
         // Read specific fields
@@ -60,12 +60,23 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private BufferSegment _headerData;
         private BufferSegment _head;
         private BufferSegment _end;
+        private BufferSegment? _compressedSegment;
         private int endIndex;
 
         private ulong _crc64;
         private bool disposedValue;
 
-        public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
+        public ReadOnlySequence<byte> WrittenData => GetWrittenData();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private ReadOnlySequence<byte> GetWrittenData()
+        {
+            if (_compressedSegment != null)
+            {
+                return new ReadOnlySequence<byte>(_compressedSegment, 0, _compressedSegment, _compressedSegment.Length);
+            }
+            return new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
+        }
 
         public PrimitiveList<ulong> ChangedFileCrc64 => _changedFileCrc64;
 
@@ -101,6 +112,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _head = _headerData;
             _end = _headerData;
             endIndex = HeaderSize;
+            this.memoryAllocator = memoryAllocator;
         }
 
         public void SetNextFileId(ulong nextFileId)
@@ -287,8 +299,22 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             // Next file id for data files
             BinaryPrimitives.WriteUInt64LittleEndian(headerData, _nextFileId);
             headerData = headerData.Slice(8);
+        }
 
-            RecalculateCrc64();   
+        public void CompressData()
+        {
+            using ZstdCompression compressor = new ZstdCompression(memoryAllocator, 3, (int)WrittenData.Length, 8);
+            foreach(var segment in WrittenData)
+            {
+                compressor.Write(segment.Span);
+            }
+            var result = compressor.Complete();
+            var headerSpan = result.memoryOwner.Memory.Span;
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, MagicNumbers.CompressedZstdCheckpointFileMagicNumber);
+            headerSpan = headerSpan.Slice(4);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, result.writtenLength);
+
+            _compressedSegment = new BufferSegment(result.memoryOwner, result.writtenLength + 8);
         }
 
         public void RecalculateCrc64()

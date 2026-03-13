@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -287,6 +288,20 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             CrcUtils.CheckCrc64(checkpointFileInfo.Crc64, buffer);
 
+            SequenceReader<byte> seqReader = new SequenceReader<byte>(buffer);
+            if (!seqReader.TryReadLittleEndian(out int magicNumber))
+            {
+                throw new InvalidOperationException("Could not read magic number on checkpoint file");
+            }
+            if(magicNumber == MagicNumbers.CompressedZstdCheckpointFileMagicNumber)
+            {
+                if (seqReader.TryReadLittleEndian(out int decompressedSize))
+                {
+                    var destination = _memoryAllocator.Allocate(decompressedSize, 64);
+                    
+                }
+            }
+
             var reader = new CheckpointDataReader(buffer);
             
             while (reader.TryGetNextUpsertPageInfo(out var upsertPageInfo))
@@ -419,6 +434,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 // Finish the checkpoint for writing, adds header information
                 _newCheckpoint.FinishForWriting();
+                _newCheckpoint.CompressData();
+                _newCheckpoint.RecalculateCrc64();
             }
 
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64, false);
@@ -580,6 +597,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
 
                 _newCheckpoint.FinishForWriting();
+                _newCheckpoint.CompressData();
+                _newCheckpoint.RecalculateCrc64();
 
                 var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, false);
 
@@ -715,6 +734,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             var temporaryFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
             _newCheckpoint.AddFileInformation(temporaryFileInfo);
             _newCheckpoint.FinishForWriting();
+            _newCheckpoint.CompressData();
+            _newCheckpoint.RecalculateCrc64();
 
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, true);
 

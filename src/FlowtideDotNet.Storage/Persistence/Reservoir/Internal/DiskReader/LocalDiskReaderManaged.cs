@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         public LocalDiskReaderManaged(string fileName)
         {
             this.fileName = fileName;
-            fileStream = new FileStream(fileName, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
+            fileStream = new FileStream(fileName, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite, 4096, FileOptions.RandomAccess);
             semaphoreSlim = new SemaphoreSlim(1, 1);
             _buffer = new byte[4096];
         }

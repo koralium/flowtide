@@ -23,5 +23,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         public const int DataFileMagicNumber = 0x46445446;
         public const int CheckpointFileMagicNumber = 0x46435446;
         public const int CheckpointRegistryMagicNumber = 0x52435446;
+        public const int CompressedZstdCheckpointFileMagicNumber = 0x47435446;
     }
 }
