@@ -288,6 +288,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             CrcUtils.CheckCrc64(checkpointFileInfo.Crc64, buffer);
 
+            IMemoryOwner<byte>? memoryOwner = default;
+
             SequenceReader<byte> seqReader = new SequenceReader<byte>(buffer);
             if (!seqReader.TryReadLittleEndian(out int magicNumber))
             {
@@ -297,8 +299,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 if (seqReader.TryReadLittleEndian(out int decompressedSize))
                 {
-                    var destination = _memoryAllocator.Allocate(decompressedSize, 64);
-                    
+                    memoryOwner = _memoryAllocator.Allocate(decompressedSize, 64);
+                    using var decompressor = new ZstdDecompression(_memoryAllocator);
+                    decompressor.Read(buffer.Slice(8), memoryOwner.Memory.Span);
+                    buffer = new ReadOnlySequence<byte>(memoryOwner.Memory.Slice(0, decompressedSize));
                 }
             }
 
@@ -340,6 +344,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             _nextFileId = reader.NextFileId;
+
+            if (memoryOwner != null)
+            {
+                memoryOwner.Dispose();
+            }
         }
 
         public async Task EnqueueFileAsync(PagesFile fileWriter)
@@ -734,7 +743,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             var temporaryFileInfo = new FileInformation(fileId, mergedFile.PageIds.Count, 0, mergedFile.FileSize, 0, CheckpointVersion, mergedFile.Crc64);
             _newCheckpoint.AddFileInformation(temporaryFileInfo);
             _newCheckpoint.FinishForWriting();
-            _newCheckpoint.CompressData();
+            // No compression in bundle files, since crc64 is recalculated and updated
+            // Bundle files are usually small so compression only adds complexity
             _newCheckpoint.RecalculateCrc64();
 
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, false, _newCheckpoint.Crc64, true);

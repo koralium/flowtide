@@ -152,5 +152,38 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 }
             }
         }
+
+        [Fact]
+        public async Task TestCompactSingleFileAfterRestore()
+        {
+            var provider = new MemoryFileProvider();
+            
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                SnapshotCheckpointInterval = 5
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+
+            var session = persistentStorage.CreateSession();
+            await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
+            await session.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
+
+            var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                SnapshotCheckpointInterval = 5
+            });
+            await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+
+            var lastData = (await provider.GetStoredDataFileIdsAsync()).Last();
+
+            persistentStorage2.TryGetFileInformation(lastData, out var fileInfo);
+            Assert.NotNull(fileInfo);
+            await persistentStorage2.CompactFile(lastData, fileInfo.FileSize, fileInfo.Crc64);
+
+            
+        }
     }
 }

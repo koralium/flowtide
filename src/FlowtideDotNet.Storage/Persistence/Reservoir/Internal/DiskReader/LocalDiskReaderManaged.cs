@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 
         public Task<PipeReader> ReadFile(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(PipeReader.Create(File.OpenRead(fileName)));
+            return Task.FromResult(PipeReader.Create(new FileStream(fileName, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 4096)));
         }
     }
 }

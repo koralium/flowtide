@@ -66,17 +66,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private ulong _crc64;
         private bool disposedValue;
 
-        public ReadOnlySequence<byte> WrittenData => GetWrittenData();
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private ReadOnlySequence<byte> GetWrittenData()
-        {
-            if (_compressedSegment != null)
-            {
-                return new ReadOnlySequence<byte>(_compressedSegment, 0, _compressedSegment, _compressedSegment.Length);
-            }
-            return new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
-        }
+        public ReadOnlySequence<byte> WrittenData => new ReadOnlySequence<byte>(_head, 0, _end, endIndex);
 
         public PrimitiveList<ulong> ChangedFileCrc64 => _changedFileCrc64;
 
@@ -312,9 +302,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             var headerSpan = result.memoryOwner.Memory.Span;
             BinaryPrimitives.WriteInt32LittleEndian(headerSpan, MagicNumbers.CompressedZstdCheckpointFileMagicNumber);
             headerSpan = headerSpan.Slice(4);
-            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, result.writtenLength);
+            BinaryPrimitives.WriteInt32LittleEndian(headerSpan, (int)WrittenData.Length);
 
             _compressedSegment = new BufferSegment(result.memoryOwner, result.writtenLength + 8);
+
+            var disposeSegment = _head;
+            while (disposeSegment != null)
+            {
+                var next = disposeSegment._next;
+                disposeSegment.Dispose();
+                disposeSegment = next;
+            }
+
+            _head = _compressedSegment;
+            _end = _compressedSegment;
+            endIndex = _compressedSegment.Length;
         }
 
         public void RecalculateCrc64()

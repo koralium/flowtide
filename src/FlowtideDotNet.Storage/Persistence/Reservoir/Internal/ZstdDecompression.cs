@@ -23,13 +23,15 @@ using ZstdSharp.Unsafe;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
-    internal class ZstdDecompression
+    internal class ZstdDecompression : IDisposable
     {
         FlowtideZstdCompressor _compressor;
         private bool contextDrained = true;
         private nuint lastDecompressResult = 0;
 
         private ZSTD_inBuffer_s input;
+        private bool disposedValue;
+
         public ZstdDecompression(IMemoryAllocator memoryAllocator)
         {
             _compressor = new FlowtideZstdCompressor(memoryAllocator, 0);
@@ -56,7 +58,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 return 0;
             }
 
-            SequencePosition segPos = default;
+            SequencePosition segPos = data.Start;
             ReadOnlyMemory<byte> inputBuffer = default; 
 
             var output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)outputData.Length };
@@ -93,6 +95,26 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 input.size = (nuint)inputBuffer.Length;
                 input.pos = 0;
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _compressor.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
