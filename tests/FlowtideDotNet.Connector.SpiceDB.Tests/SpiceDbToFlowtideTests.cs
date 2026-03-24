@@ -16,11 +16,7 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
 {
