@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     else
                     {
                         var val = arr.GetBytes(i);
-                        writtenBytes  += val.Length;
+                        writtenBytes += val.Length;
                         WriteValue(val);
                     }
                 }
