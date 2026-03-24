@@ -10,10 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Authzed.Api.V1;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Zanzibar.QueryPlanner;
+using Grpc.Core;
 
 namespace FlowtideDotNet.Connector.SpiceDB
 {
@@ -130,6 +132,30 @@ namespace FlowtideDotNet.Connector.SpiceDB
             outputPlan.Relations.Add(rootRelation);
 
             return outputPlan;
+        }
+
+        /// <summary>
+        /// Reads the SpiceDB schema from the provided gRPC channel and converts a specific permission relation into a Flowtide plan using the <see cref="Convert"/> method.
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <param name="type"></param>
+        /// <param name="relation"></param>
+        /// <param name="inputTypeName"></param>
+        /// <param name="recurseAtStopType"></param>
+        /// <param name="stopAtTypes"></param>
+        /// <returns></returns>
+        public static async Task<Plan> ConvertAsync(
+            ChannelBase channel,
+            Metadata headers,
+            string type, 
+            string relation, 
+            string inputTypeName, 
+            bool recurseAtStopType = false,
+            params string[]? stopAtTypes)
+        {
+            SchemaService.SchemaServiceClient client = new SchemaService.SchemaServiceClient(channel);
+            var schemaResponse = await client.ReadSchemaAsync(new ReadSchemaRequest(), headers: headers);
+            return Convert(schemaResponse.SchemaText, type, relation, inputTypeName, recurseAtStopType, stopAtTypes);
         }
     }
 }
