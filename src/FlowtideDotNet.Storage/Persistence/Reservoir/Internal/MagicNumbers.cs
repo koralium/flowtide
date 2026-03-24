@@ -20,9 +20,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
     internal static class MagicNumbers
     {
-        public const int DataFileMagicNumber = 0x46445446;
-        public const int CheckpointFileMagicNumber = 0x46435446;
-        public const int CheckpointRegistryMagicNumber = 0x52435446;
-        public const int CompressedZstdCheckpointFileMagicNumber = 0x47435446;
+        public const int DataFileMagicNumber = 0x46544446; // FTDF
+        public const int CheckpointFileMagicNumber = 0x46544346; // FTCF
+        public const int CheckpointRegistryMagicNumber = 0x46544352; // FTCR
+        public const int CompressedZstdCheckpointFileMagicNumber = 0x4654435A; // FTCZ
+        public const int BundleCheckpointFileMagicNumber = 0x46544342; // FTCB
     }
 }
