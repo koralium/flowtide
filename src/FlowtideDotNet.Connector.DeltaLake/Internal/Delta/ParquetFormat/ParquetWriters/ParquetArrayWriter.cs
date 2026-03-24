@@ -32,20 +32,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         }
 
 
-        public void CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             Debug.Assert(_nullBitmap != null);
             Debug.Assert(_offsetBuilder != null);
 
             if (array is ListArray arr)
             {
+                int addedCount = 0;
+                long addedBytes = 0;
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
                     {
                         continue;
                     }
-
+                    addedCount++;
                     if (arr.IsNull(i))
                     {
                         WriteNull();
@@ -55,12 +57,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         var offset = arr.ValueOffsets[i];
                         var length = arr.GetValueLength(i);
 
-                        _inner.CopyArray(arr.Values, 0, EmptyDeleteVector.Instance, offset, length);
+                        addedBytes += _inner.CopyArray(arr.Values, 0, EmptyDeleteVector.Instance, offset, length);
                         _nullBitmap.Append(true);
                         _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1] + length);
                     }
                 }
-                return;
+                return addedBytes + (addedCount * 4);
             }
             throw new NotImplementedException();
         }
@@ -97,24 +99,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _nullCount++;
         }
 
-        public void WriteValue<T>(T value) where T : IDataValue
+        public long WriteValue<T>(T value) where T : IDataValue
         {
             Debug.Assert(_nullBitmap != null);
             Debug.Assert(_offsetBuilder != null);
             if (value.IsNull)
             {
                 WriteNull();
-                return;
+                return 4;
             }
             _nullBitmap.Append(true);
             var val = value.AsList;
-
+            long written = 0;
             for (int i = 0; i < val.Count; i++)
             {
-                _inner.WriteValue(val.GetAt(i));
+                written += _inner.WriteValue(val.GetAt(i));
             }
 
             _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1] + val.Count);
+            return written + 4;
         }
     }
 }

@@ -342,11 +342,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
 
                 // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
-                if (writer.WrittenCount >= 100_000)
+                if (writer.WrittenBytes >= _options.MaxFileSizeBytes)
                 {
                     await WriteNewFile(writer, actions, currentTime, schema);
                 }
-                if (cdcWriter != null && cdcWriter.WrittenCount >= 100_000)
+                if (cdcWriter != null && cdcWriter.WrittenBytes >= _options.MaxFileSizeBytes)
                 {
                     await WriteNewCdcFile(cdcWriter, actions, currentTime);
                 }
