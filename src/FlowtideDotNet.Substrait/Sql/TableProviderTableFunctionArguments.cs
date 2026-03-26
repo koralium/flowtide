@@ -128,6 +128,7 @@ namespace FlowtideDotNet.Substrait.Sql
             TableAlias = tableAlias;
             ExpressionVisitor = expressionVisitor;
             EmitData = emitData;
+            ParentRelation = parentRelation;
             JoinType = joinType;
             JoinCondition = joinCondition;
         }
