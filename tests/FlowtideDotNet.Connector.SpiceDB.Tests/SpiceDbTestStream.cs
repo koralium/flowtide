@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
         {
             if (addReadResolver)
             {
-                factory.AddSpiceDbSource("*", new SpiceDbSourceOptions()
+                factory.AddSpiceDbSource("spicedb", new SpiceDbSourceOptions()
                 {
                     Channel = grpcChannel,
                     Consistency = new Consistency()

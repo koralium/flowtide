@@ -169,6 +169,12 @@ namespace FlowtideDotNet.Substrait.Sql
             _types[index] = type;
         }
 
+        public void AddSourceColumn(string name, SubstraitBaseType type)
+        {
+            var index = _names.Count;
+            Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(name) })), index, name, type);
+        }
+
         public void Add(Expression expr, int index, string name, SubstraitBaseType type)
         {
             if (expr is Expression.CompoundIdentifier compound)
