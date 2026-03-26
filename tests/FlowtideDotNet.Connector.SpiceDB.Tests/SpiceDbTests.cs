@@ -1846,7 +1846,6 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             await stream.WaitForUpdate();
 
-            var act = stream.GetActualRowsAsVectors();
             stream.AssertCurrentDataEqual([
                 new { subjectType = "organization", subjectId = "1", relation = "can_view_wildcard", resourceType = "project", resourceId = "123"},
                  new { subjectType = "user", subjectId = "*", relation = "can_view_wildcard", resourceType = "project", resourceId = "123"},
