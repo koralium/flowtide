@@ -114,5 +114,11 @@ namespace FlowtideDotNet.SqlServer
             });
             return true;
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }

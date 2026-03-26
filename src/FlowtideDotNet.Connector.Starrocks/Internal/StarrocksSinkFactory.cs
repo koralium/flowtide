@@ -86,5 +86,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             return _tablesCache.TryGetValue(key, out tableMetadata);
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }

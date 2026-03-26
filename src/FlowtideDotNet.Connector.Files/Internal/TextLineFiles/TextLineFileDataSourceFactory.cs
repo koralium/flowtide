@@ -96,5 +96,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
             return false;
             throw new NotImplementedException();
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }
