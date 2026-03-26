@@ -276,7 +276,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 EmitData emitData = new EmitData();
                 if (mainRelation == null)
                 {
-                    throw new InvalidOperationException("Could not create a query plan for spicedb permisssion materialization.");
+                    throw new InvalidOperationException("Could not create a query plan for spicedb permission materialization.");
                 }
 
                 List<string> names = ["subject_type", "subject_id", "subject_relation", "relation", "resource_type", "resource_id"];
