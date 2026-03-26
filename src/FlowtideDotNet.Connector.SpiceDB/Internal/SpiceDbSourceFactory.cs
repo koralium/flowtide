@@ -246,12 +246,12 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                             }
                             else
                             {
-                                throw new SubstraitParseException("All elements of the fourth argument array must be string literals representing stop types.");
+                                throw new SubstraitParseException("Each stop type argument (from the fourth argument onward) must be a string literal representing a stop type.");
                             }
                         }
                         else
                         {
-                            throw new SubstraitParseException("The fourth argument of the table function must be an array of string literals representing stop types.");
+                            throw new SubstraitParseException("Each stop type argument (from the fourth argument onward) must be provided as an unnamed string literal representing a stop type.");
                         }
                     }
                 }
