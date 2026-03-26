@@ -51,8 +51,8 @@ builder.Services.AddHealthChecks()
 // Create the stream
 builder.Services.AddFlowtideStream("my_stream")
     .AddSqlFileAsPlan("stream.sql")
-    .AddVersioningFromPlanHash()
     .AddVersioningFromString("1.0")
+    .AddVersioningFromPlanHash()
     .AddConnectors(connectors =>
     {
         connectors.AddSqlServerAsCatalog("db1", () => sqlDb1ConnStr);
@@ -74,7 +74,8 @@ builder.Services.AddFlowtideStream("my_stream")
         //storage.AddFasterKVFileSystemStorage("./fasterkvstate");
         //storage.AddFileStorageWithCache("./stateData", "./stateData/checkpoints", "./cache");
 
-        storage.AddAzureBlobStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream");
+        //storage.AddFileStorage("./state");
+        storage.AddAzureBlobStorage(builder.Configuration.GetConnectionString("blobs")!, "streams", localCacheDirectory: "./cacheState");
         // Use azure storage for persistence
         //storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
         //{

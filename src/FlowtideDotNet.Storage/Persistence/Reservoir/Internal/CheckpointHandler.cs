@@ -93,20 +93,53 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private async Task ReadCheckpointRegistryFile(CancellationToken cancellationToken)
         {
             
-            var checkpointRegistryFileReader = await _fileProvider.ReadCheckpointRegistryFileAsync(cancellationToken).ConfigureAwait(false);
-            
-            if (_checkpointRegistryFile != null)
+            if (_fileProvider.SupportsDataFileListing)
             {
-                _checkpointRegistryFile.Dispose();
-            }
-            if (checkpointRegistryFileReader == null)
-            {
-                _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+                // List checkpoint files
+                var checkpointIds = await _fileProvider.ListCheckpointFilesAsync(cancellationToken);
+                var lastCheckpoint = checkpointIds.OrderByDescending(x => x.Version).FirstOrDefault();
+
+                bool foundRegistry = false;
+                if (lastCheckpoint != null)
+                {
+                    var checkpointBundlePipeReader = await _fileProvider.ReadCheckpointFileAsync(lastCheckpoint, cancellationToken).ConfigureAwait(false);
+                    if (checkpointBundlePipeReader != null)
+                    {
+                        if (_checkpointRegistryFile != null)
+                        {
+                            _checkpointRegistryFile.Dispose();
+                        }
+                        _checkpointRegistryFile = await CheckpointRegistryFile.DeserializeFromBundle(checkpointBundlePipeReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+                        foundRegistry = true;
+                    }
+                }
+                if (!foundRegistry)
+                {
+                    if (_checkpointRegistryFile != null)
+                    {
+                        _checkpointRegistryFile.Dispose();
+                    }
+                    _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+                }
             }
             else
             {
-                _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+                var checkpointRegistryFileReader = await _fileProvider.ReadCheckpointRegistryFileAsync(cancellationToken).ConfigureAwait(false);
+
+                if (_checkpointRegistryFile != null)
+                {
+                    _checkpointRegistryFile.Dispose();
+                }
+                if (checkpointRegistryFileReader == null)
+                {
+                    _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+                }
+                else
+                {
+                    _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+                }
             }
+            
 
             // Try and read bundle files if the file provider supports it, this is to make sure we have the latest checkpoint registry file
             // in case there are bundled checkpoint files which contains later versions than the registry file
@@ -268,7 +301,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
                 else
                 {
-                    var fileReader = await _fileProvider.ReadCheckpointFileAsync(checkpointFile);
+                    var fileReader = await _fileProvider.ReadCheckpointFileAsync(new CheckpointId((ulong)checkpointFile.Version, checkpointFile.IsSnapshot));
 
                     // Read all content of the file
                     ReadResult readResult;
@@ -286,6 +319,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private void ReadCheckpointFile(CheckpointVersion checkpointFileInfo, ReadOnlySequence<byte> buffer)
         {
+            buffer = CheckpointFileDataExtractor.GetCheckpointData(buffer);
             CrcUtils.CheckCrc64(checkpointFileInfo.Crc64, buffer);
 
             IMemoryOwner<byte>? memoryOwner = default;
@@ -448,8 +482,26 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             var checkpointVersion = new CheckpointVersion(_checkpointVersion, true, _newCheckpoint.Crc64, false);
-            // Write the checkpoint as a snapshot
-            await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
+
+            _activeVersions.Add(checkpointVersion);
+            _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
+
+            _checkpointRegistryFile.FinishForWriting();
+
+            if (_fileProvider.SupportsDataFileListing)
+            {
+                // Create a bundle with checkpoint data and registry to reduce number of writes
+                var bundle = new CheckpointRegistryBundleFile(_newCheckpoint, _checkpointRegistryFile);
+                await _fileProvider.WriteCheckpointFileAsync(new CheckpointId((ulong)checkpointVersion.Version, checkpointVersion.IsSnapshot), bundle);
+            }
+            else
+            {
+                // Write the checkpoint file
+                await _fileProvider.WriteCheckpointFileAsync(new CheckpointId((ulong)checkpointVersion.Version, checkpointVersion.IsSnapshot), _newCheckpoint);
+                // Write the registry separately since provider does not support listing
+                await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+            }
+            
             _newCheckpoint.Dispose();
 
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, _memoryAllocator);
@@ -464,16 +516,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _writeTasks = null;
             }
 
-            _activeVersions.Add(checkpointVersion);
-            _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
-
-            _checkpointRegistryFile.FinishForWriting();
-            await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
-
             _lastSnapshotVersion = _checkpointVersion;
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
-
 
             lock (_checkpointFileLock)
             {
@@ -614,9 +659,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
                 _checkpointRegistryFile.FinishForWriting();
 
-                await _fileProvider.WriteCheckpointFileAsync(checkpointVersion, _newCheckpoint);
+                if (_fileProvider.SupportsDataFileListing)
+                {
+                    var bundle = new CheckpointRegistryBundleFile(_newCheckpoint, _checkpointRegistryFile);
+                    await _fileProvider.WriteCheckpointFileAsync(new CheckpointId((ulong)checkpointVersion.Version, checkpointVersion.IsSnapshot), bundle);
+                }
+                else
+                {
+                    await _fileProvider.WriteCheckpointFileAsync(new CheckpointId((ulong)checkpointVersion.Version, checkpointVersion.IsSnapshot), _newCheckpoint);
+                    await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
+                }
                 _activeVersions.Add(checkpointVersion);
-                await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
             }
 
             _newCheckpoint.Dispose();
@@ -862,14 +915,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     // Only delete non bundled checkpoint files, bundled checkpoint files are deleted when the bundle file is deleted
                     if (!checkpointToRemove.IsBundled)
                     {
-                        await _fileProvider.DeleteCheckpointFileAsync(checkpointToRemove);
+                        await _fileProvider.DeleteCheckpointFileAsync(new CheckpointId((ulong)checkpointToRemove.Version, checkpointToRemove.IsSnapshot));
                         removedCheckpoint = true;
                     }
                 }
 
                 // Write the registry since we removed checkpoint versions
                 // We only write if we removed checkpoints that are not bundles
-                if (removedCheckpoint)
+                if (removedCheckpoint && !_fileProvider.SupportsDataFileListing)
                 {
                     _checkpointRegistryFile.FinishForWriting();
                     await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);
@@ -980,7 +1033,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
         }
 
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
         ~CheckpointHandler()
         {
             Debug.Assert(false, "CheckpointHandler finalized without calling dispose");

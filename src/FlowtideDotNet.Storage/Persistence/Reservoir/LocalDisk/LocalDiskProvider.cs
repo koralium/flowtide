@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             _checkpointFileDirectory = $"{optionDataDirectory}/{streamName}/{streamVersion}/checkpoints/";
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             Debug.Assert(_streamVersion != null, "Stream version must be initialized before reading checkpoint files.");
             if (_checkpointFileDirectory == null)
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             return Task.FromResult(PipeReader.Create(File.OpenRead(filePath)));
         }
 
-        private string GetCheckpointFileName(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        private string GetCheckpointFileName(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             if (checkpointVersion.IsSnapshot)
             {
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             }
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             Debug.Assert(_streamVersion != null, "Stream version must be initialized before writing checkpoint files.");
             if (_checkpointFileDirectory == null)
@@ -91,7 +92,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             await filewrite.DisposeAsync();
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             Debug.Assert(_streamVersion != null, "Stream version must be initialized before deleting checkpoint files.");
             if (_checkpointFileDirectory == null)
@@ -100,7 +101,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             }
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(_checkpointFileDirectory, fileName);
-            File.Delete(filePath);
+            if (File.Exists(filePath))
+            {
+                File.Delete(filePath);
+            }
             return Task.CompletedTask;
         }
 
@@ -283,6 +287,32 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
                 Directory.Delete(path, true);
             }
             return Task.CompletedTask;
+        }
+
+        public Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            if (!Directory.Exists(_checkpointFileDirectory))
+            {
+                return Task.FromResult(Enumerable.Empty<CheckpointId>());
+            }
+            var files = Directory.EnumerateFiles(_checkpointFileDirectory);
+            var result = new List<CheckpointId>();
+            string pattern = @"^(?<fileId>\d+)(?<isSnapshot>\.snapshot)?\.checkpoint$";
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+                Match match = Regex.Match(fileName, pattern);
+                if (match.Success)
+                {
+                    string fileIdString = match.Groups["fileId"].Value;
+                    bool isSnapshot = match.Groups["isSnapshot"].Success;
+                    if (ulong.TryParse(fileIdString, out var fileId))
+                    {
+                        result.Add(new CheckpointId(fileId, isSnapshot));
+                    }
+                }
+            }
+            return Task.FromResult<IEnumerable<CheckpointId>>(result);
         }
     }
 }

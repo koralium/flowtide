@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
     {
         private object _lock = new object();
         private  Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
-        private Dictionary<CheckpointVersion, byte[]> _checkpointFiles = new Dictionary<CheckpointVersion, byte[]>();
+        private Dictionary<CheckpointId, byte[]> _checkpointFiles = new Dictionary<CheckpointId, byte[]>();
         private byte[]? _registryBytes;
         private byte[]? _metadataBytes;
 
@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             _dataFiles[fileId] = bytes;
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             throw new InvalidOperationException("Data file not found");
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             using MemoryStream stream = new MemoryStream();
             await data.CopyToAsync(stream);
@@ -226,6 +226,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         public Task DeleteStreamVersionAsync(string streamName, string streamVersion, CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
+        }
+
+        public Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IEnumerable<CheckpointId>>(_checkpointFiles.Keys.ToList());
         }
     }
 }

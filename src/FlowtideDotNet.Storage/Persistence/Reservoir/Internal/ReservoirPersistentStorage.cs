@@ -561,14 +561,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
             _streamName = metadata.StreamName;
             _streamVersion = streamVersion;
-            await _fileProvider.InitializeAsync(new StorageProviderContext(metadata.StreamName, streamVersion, _memoryAllocator), default);
+            var storageContext = new StorageProviderContext(metadata.StreamName, streamVersion, _memoryAllocator);
+            await _fileProvider.InitializeAsync(storageContext, default);
             await FetchAndUpdateMetadata(metadata.StreamName, streamVersion, default);
 
             // CancellationToken needs to be added upstream
             await _checkpointHandler.RecoverToLatest(default);
             if (CacheProvider != null)
             {
-                await CacheProvider.InitializeAsync(metadata, _meter, default);
+                await CacheProvider.InitializeAsync(metadata, _meter, storageContext, default);
             }
             else if (!(_fileProvider is MetricsFileStorageProvider))
             {

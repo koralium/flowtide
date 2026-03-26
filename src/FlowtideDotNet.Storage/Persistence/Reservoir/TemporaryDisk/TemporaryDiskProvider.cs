@@ -11,10 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
+using System.Text.RegularExpressions;
 using System.Threading;
+using static System.Net.WebRequestMethods;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
 {
@@ -49,7 +52,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             return $"{_dataFileDirectory}dataFile_{fileId}.data";
         }
 
-        private string GetCheckpointFileName(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        private string GetCheckpointFileName(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             if (checkpointVersion.IsSnapshot)
             {
@@ -61,7 +64,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             }
         }
 
-        public async Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public async Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             string fileName = GetCheckpointFileName(checkpointVersion);
             var filePath = Path.Combine(_checkpointFileDirectory, fileName);
@@ -172,7 +175,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             }
         }
 
-        public async Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public async Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             if (_checkpointFileDirectory == null)
             {
@@ -197,6 +200,38 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
                 _semaphore.Release();
             }
             throw new InvalidOperationException("Tried to read a checkpoint file that has not been written, in temporary storage this is not supported.");
+        }
+
+        public async Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            await _semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var keys = _openFiles.Keys
+                    .Where(fileName => fileName.StartsWith(_checkpointFileDirectory));
+
+                var result = new List<CheckpointId>();
+                string pattern = @"^(?<fileId>\d+)(?<isSnapshot>\.snapshot)?\.checkpoint$";
+                foreach (var file in keys)
+                {
+                    var fileName = Path.GetFileName(file);
+                    Match match = Regex.Match(fileName, pattern);
+                    if (match.Success)
+                    {
+                        string fileIdString = match.Groups["fileId"].Value;
+                        bool isSnapshot = match.Groups["isSnapshot"].Success;
+                        if (ulong.TryParse(fileIdString, out var fileId))
+                        {
+                            result.Add(new CheckpointId(fileId, isSnapshot));
+                        }
+                    }
+                }
+                return result;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
         }
 
         public async Task<PipeReader?> ReadCheckpointRegistryFileAsync(CancellationToken cancellationToken = default)
@@ -247,7 +282,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             throw new InvalidOperationException("Tried to read a data file that has not been written, in temporary storage this is not supported.");
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             if (_checkpointFileDirectory == null)
             {

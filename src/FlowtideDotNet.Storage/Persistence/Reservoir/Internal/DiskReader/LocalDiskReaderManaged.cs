@@ -109,6 +109,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             {
                 fileStream.Seek(0, SeekOrigin.Begin);
                 await reader.CopyToAsync(fileStream);
+                await fileStream.FlushAsync();
                 reader.Complete();
             }
             finally

@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _numberOfDataBytesWritten = meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesWritten, "bytes");
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             AddDelete();
             return _internalProvider.DeleteCheckpointFileAsync(checkpointVersion, cancellationToken);
@@ -87,7 +87,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return _internalProvider.ReadAsync<T>(fileId, offset, length, crc32, stateSerializer, cancellationToken);
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             AddRead();
             return _internalProvider.ReadCheckpointFileAsync(checkpointVersion, cancellationToken);
@@ -106,10 +106,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return _internalProvider.ReadDataFileAsync(fileId, fileSize, cancellationToken);
         }
 
-        public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             AddWrite();
             return _internalProvider.WriteCheckpointFileAsync(checkpointVersion, data, cancellationToken);
+        }
+
+        public Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            return _internalProvider.ListCheckpointFilesAsync(cancellationToken);
         }
 
         public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)

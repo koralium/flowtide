@@ -63,9 +63,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             }
         }
 
-        public async Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public async Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
-            await _blobContainerClient.DeleteBlobAsync(GetCheckpointFileName(checkpointVersion), cancellationToken: cancellationToken).ConfigureAwait(false);
+            await _blobContainerClient.DeleteBlobIfExistsAsync(GetCheckpointFileName(checkpointVersion), cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         public async Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
@@ -113,7 +113,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             throw new NotSupportedException();
         }
 
-        public async Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public async Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             var blobClient = _blobContainerClient.GetBlobClient(GetCheckpointFileName(checkpointVersion));
             var result = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
@@ -140,14 +140,41 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return PipeReader.Create(result.Value.Content, new StreamPipeReaderOptions(leaveOpen: false, pool: MemoryPool<byte>.Shared));
         }
 
-        private string GetCheckpointFileName(CheckpointVersion checkpointVersion)
+        private string GetCheckpointFileName(CheckpointId checkpointVersion)
         {
             return $"{_checkpointDirectory}{checkpointVersion.Version.ToString("D20")}.checkpoint";
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             await _blobContainerClient.UploadBlobAsync(GetCheckpointFileName(checkpointVersion), data.AsStream(), cancellationToken).ConfigureAwait(false);
+        }
+
+        public async Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            var list = _blobContainerClient.GetBlobsAsync(new Azure.Storage.Blobs.Models.GetBlobsOptions()
+            {
+                Prefix = _checkpointDirectory
+            }, cancellationToken);
+            string pattern = @"^(?<fileId>\d+)(?<isSnapshot>\.snapshot)?\.checkpoint$";
+            List<CheckpointId> result = new List<CheckpointId>();
+            await foreach (var file in list.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                var name = file.Name;
+                
+                var fileName = Path.GetFileName(name);
+                Match match = Regex.Match(fileName, pattern);
+                if (match.Success)
+                {
+                    string fileIdString = match.Groups["fileId"].Value;
+                    bool isSnapshot = match.Groups["isSnapshot"].Success;
+                    if (ulong.TryParse(fileIdString, out var fileId))
+                    {
+                        result.Add(new CheckpointId(fileId, isSnapshot));
+                    }
+                }
+            }
+            return result;
         }
 
         public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)

@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// </summary>
         /// <param name="checkpointVersion">The checkpoint version to read</param>
         /// <returns>A PipeReader that can be used to read the contents of the checkpoint file.</returns>
-        Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default);
+        Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously writes the contents of the specified PipeReader to a checkpoint file corresponding to the given checkpoint version.
@@ -96,14 +96,22 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
         /// <param name="checkpointVersion">Checkpoint version</param>
         /// <param name="data">The PipeReader that provides the data to write to the checkpoint file.</param>
         /// <returns>A task that represents the asynchronous write operation.</returns>
-        Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default);
+        Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously deletes the checkpoint file corresponding to the specified checkpoint version from the storage.
         /// </summary>
         /// <param name="checkpointVersion">The checkpoint version to delete.</param>
         /// <returns></returns>
-        Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default);
+        Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Asynchronously retrieves a collection of checkpoint file identifiers.
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
+        /// <returns>A task that represents the asynchronous operation. The task result contains an enumerable collection of
+        /// checkpoint identifiers. The collection is empty if no checkpoint files are found.</returns>
+        Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Asynchronously writes the contents of the specified PipeReader to a file corresponding to the given file ID.

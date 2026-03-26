@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             _evictionTask = Task.Run(ProactiveEvictionLoopAsync);
         }
 
-        public async Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, CancellationToken cancellationToken)
+        public async Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, StorageProviderContext storageProviderContext, CancellationToken cancellationToken)
         {
             if (_meter == null)
             {
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                 _index.Clear();
                 _lruList.Clear();
             }
-
+            await _localCache.InitializeAsync(storageProviderContext, cancellationToken);
             // Fetch already existing data file ids
             var dataFileIds = await _localCache.GetStoredDataFileIdsAsync();
             
@@ -223,6 +223,39 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             {
                 if (entry.Return()) await HandlePhysicalDeletion(entry);
             }
+        }
+
+        /// <summary>
+        /// Try and read a data file, if it does not exist it will not download it to the cache.
+        /// This is used by compaction, so there is no point in saving the data if its not already in the cache.
+        /// </summary>
+        /// <param name="fileId"></param>
+        /// <param name="fileSize"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async ValueTask<PipeReader?> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
+        {
+            Interlocked.Increment(ref _totalCacheTries);
+            if (TryGetCacheEntry(fileId, out var entry))
+            {
+                try
+                {
+                    entry.RecordAccess();
+                    Interlocked.Increment(ref _cacheHits);
+                    return await _localCache.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
+                }
+                catch (FlowtideChecksumMismatchException)
+                {
+                    // If there is a CRC missmatch, we delete the file
+                    await EvictDataFileAsync(fileId);
+                    return default;
+                }
+                finally
+                {
+                    if (entry.Return()) await HandlePhysicalDeletion(entry).ConfigureAwait(false);
+                }
+            }
+            return default;
         }
 
         private Task<LocalCacheEntry> GetOrDownloadAsync(ulong fileId)

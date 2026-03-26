@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         /// This allows the local cache to be reused even after a crash
         /// </summary>
         /// <returns></returns>
-        public Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, CancellationToken cancellationToken)
+        public Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, StorageProviderContext storageProviderContext, CancellationToken cancellationToken)
         {
             if (_meter == null)
             {
@@ -80,10 +80,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                 _persistentBytesWritten = _meter.CreateHistogram<long>(MetricNames.PersistentStorageDataBytesWritten, "bytes");
                 _metricValues.SetPersistentBytesWrittenHistogram(_persistentBytesWritten);
             }
-            return _localCacheManager.InitializeAsync(metadata, meter, cancellationToken);
+            return _localCacheManager.InitializeAsync(metadata, meter, storageProviderContext, cancellationToken);
         }
 
-        public Task DeleteCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task DeleteCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentDelete();
             return _remoteStorage.DeleteCheckpointFileAsync(checkpointVersion);
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             return _localCacheManager.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointVersion checkpointVersion, CancellationToken cancellationToken = default)
+        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentRead();
             return _remoteStorage.ReadCheckpointFileAsync(checkpointVersion);
@@ -128,20 +128,30 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             return _remoteStorage.ReadCheckpointRegistryFileAsync();
         }
 
-        public Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
+        public async Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
+            // Try and read the data file from cache
+            var cacheReader = await _localCacheManager.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
+            if (cacheReader != null)
+            {
+                return cacheReader;
+            }
+            // If not in the cache we do a persistent read
             _metricValues.AddPersistentRead();
             _metricValues.AddPersistentBytesRead(fileSize);
-            // Fix later to read from cache also
-            // Should probably have a try read from cache, if its not in cache, just skip it and read directly from remote
-            // Since this method is only called on compactions
-            return _remoteStorage.ReadDataFileAsync(fileId, fileSize);
+
+            return await _remoteStorage.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
         }
 
-        public Task WriteCheckpointFileAsync(CheckpointVersion checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
             _metricValues.AddPersistentWrite();
             return _remoteStorage.WriteCheckpointFileAsync(checkpointVersion, data);
+        }
+
+        public Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
+        {
+            return _remoteStorage.ListCheckpointFilesAsync(cancellationToken);
         }
 
         public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
