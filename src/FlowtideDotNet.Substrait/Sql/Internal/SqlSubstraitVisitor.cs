@@ -1039,7 +1039,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             GetTableFunctionNameAndArgs(tableFactor, out var name, out var args);
 
             var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData(), default, default), out var tableProviderRelationData))
+            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData(), default, default, default), out var tableProviderRelationData))
             {
                 return MapTableProviderTableFunction(tableProviderRelationData);
             }
@@ -1101,7 +1101,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
             // try and fetch table function info from providers
-            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData, joinType, onCondition), out var tableProviderRelationData))
+            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData, parent.Relation, joinType, onCondition), out var tableProviderRelationData))
             {
                 return MapTableProviderTableFunction(tableProviderRelationData);
             }

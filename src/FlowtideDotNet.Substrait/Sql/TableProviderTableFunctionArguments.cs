@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Substrait.Sql
         public string? TableAlias { get; }
         public SqlExpressionVisitor ExpressionVisitor { get; }
         public EmitData EmitData { get; }
+        public Relation? ParentRelation { get; }
         public JoinType? JoinType { get; }
         public Expression? JoinCondition { get; }
 
@@ -35,6 +36,7 @@ namespace FlowtideDotNet.Substrait.Sql
             string? tableAlias, 
             SqlExpressionVisitor expressionVisitor, 
             EmitData emitData,
+            Relation? parentRelation,
             JoinType? joinType,
             Expression? joinCondition)
         {
