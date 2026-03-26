@@ -20,14 +20,14 @@ namespace FlowtideDotNet.Substrait.Sql
         bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata);
 
         /// <summary>
-        /// Attempts to handle a table-valued function by name and arguments, returning the resulting relation if
+        /// Attempts to handle a table-valued function by name and arguments, producing a table function result if
         /// successful.
         /// </summary>
         /// <param name="functionName">The name of the table-valued function to handle. Cannot be null.</param>
         /// <param name="sqlTableFunction">The arguments to pass to the table-valued function. Cannot be null.</param>
-        /// <param name="relation">When this method returns <see langword="true"/>, contains the resulting <see cref="Relation"/>; otherwise,
+        /// <param name="relation">When this method returns <see langword="true"/>, contains the resulting <see cref="TableProviderTableFunctionResult"/>; otherwise,
         /// <see langword="null"/>.</param>
-        /// <returns><see langword="true"/> if the table function was successfully handled and a relation was produced;
+        /// <returns><see langword="true"/> if the table function was successfully handled and a table function result was produced;
         /// otherwise, <see langword="false"/>.</returns>
         bool TryHandleTableFunction(IReadOnlyList<string> functionName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation);
     }
