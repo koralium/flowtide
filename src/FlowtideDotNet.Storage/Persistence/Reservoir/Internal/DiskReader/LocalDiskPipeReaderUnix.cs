@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 
             if (obj is BufferSegment bufferSegment)
             {
-                while (bufferSegment != _head)
+                while (bufferSegment != _head && _head != null)
                 {
                     var next = _head._next;
                     _head.Dispose();

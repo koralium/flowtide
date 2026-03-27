@@ -37,7 +37,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private IMemoryOwner<byte>? _destinationOwner;
         private Memory<byte> _destination;
         private bool disposedValue;
-        private int _writtenLength;
 
         public ZstdCompression(
             IMemoryAllocator memoryAllocator, 
@@ -49,7 +48,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _destinationOwner = memoryAllocator.Allocate(upperBoundCompressSize + headerReserve, 64);
             _destination = _destinationOwner.Memory.Slice(headerReserve);
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
-            _writtenLength = 0;
             output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)_destination.Length };
         }
 

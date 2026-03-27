@@ -10,16 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Buffers;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO.Hashing;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
@@ -35,15 +27,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private const int DataStep = 3;
 
         private readonly Crc64PipeReader _pipeReader;
-        private bool _isBundle;
-        private int pageCount;
-        private int pageIdsOffset;
         private int pageOffsetsOffset;
         private int dataStartOffset;
-
         private long _checkpointStartOffset;
-        private long _checkpointRegistryStartOffset;
-        private long _registryFooterOffset;
 
         private int _globalOffset;
         private int step = 0;
@@ -110,12 +96,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 throw new InvalidOperationException("Failed to read flags from data file.");
             }
 
-            if (!sequenceReader.TryReadLittleEndian(out pageCount))
+            if (!sequenceReader.TryReadLittleEndian(out int _))
             {
                 throw new InvalidOperationException("Failed to read page count from data file.");
             }
 
-            if (!sequenceReader.TryReadLittleEndian(out pageIdsOffset))
+            if (!sequenceReader.TryReadLittleEndian(out int _))
             {
                 throw new InvalidOperationException("Failed to read page ids offset from data file.");
             }
@@ -132,17 +118,16 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             if ((flags & 1) == 1)
             {
-                _isBundle = true;
                 // This is a bundle file
                 if (!sequenceReader.TryReadLittleEndian(out _checkpointStartOffset))
                 {
                     throw new InvalidOperationException("Failed to read checkpoint start offset from data file.");
                 }
-                if (!sequenceReader.TryReadLittleEndian(out _checkpointRegistryStartOffset))
+                if (!sequenceReader.TryReadLittleEndian(out long _))
                 {
                     throw new InvalidOperationException("Failed to read checkpoint registry start offset from data file.");
                 }
-                if (!sequenceReader.TryReadLittleEndian(out _registryFooterOffset))
+                if (!sequenceReader.TryReadLittleEndian(out long _))
                 {
                     throw new InvalidOperationException("Failed to read registry footer offset from data file.");
                 }
@@ -152,7 +137,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
             else
             {
-                _isBundle = false;
                 // Skip reserved bytes
                 sequenceReader.Advance(40);
             }
