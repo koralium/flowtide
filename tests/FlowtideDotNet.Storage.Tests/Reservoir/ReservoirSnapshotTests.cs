@@ -54,7 +54,67 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 persistentStorage2.Dispose();
             }
             persistentStorage.Dispose();
+        }
 
+        /// <summary>
+        /// This test checks that the stream can still start even when a snapshot checkpoint got written and ended prematurely
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task TestFailureToReadSnapshotRegistry()
+        {
+            var provider = new TestDataProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                SnapshotCheckpointInterval = 5
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+
+            var session = persistentStorage.CreateSession();
+            for (int i = 0; i < 6; i++)
+            {
+                await session.Write(100 + i, new SerializableObject(new byte[] { 1 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
+            }
+            var getData = provider.TryGetCheckpointFileData(new Persistence.Reservoir.CheckpointId(6, true), out var checkpointData);
+            Assert.True(getData);
+            Assert.NotNull(checkpointData);
+            var startOffset = checkpointData.Length - 30;
+            for (int i = startOffset; i < checkpointData.Length; i++)
+            {
+                // Set 0 on the last 30 bytes to simulate that it stopped writing correctly
+                checkpointData[i] = 0;
+            }
+
+            {
+                var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    FileProvider = provider,
+                    SnapshotCheckpointInterval = 5
+                });
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+
+                // Check that we restored so current version is 6, (previous storage was at 7, but restore failed to that version).
+                Assert.Equal(6, persistentStorage2.CurrentVersion);
+                var session2 = persistentStorage2.CreateSession();
+                var data = await session2.Read(100);
+                for (int i = 0; i < 5; i++)
+                {
+                    var loopData = await session2.Read(100 + i);
+                    Assert.Equal(new byte[] { 1 }, loopData);
+                }
+                // check that we cant read key 105 since that was added in the last version that "failed".
+                var exc = await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+                {
+                    await session2.Read(105);
+                });
+                Assert.Equal("Key 105 not found in persistent storage.", exc.Message);
+
+                persistentStorage2.Dispose();
+            }
+            persistentStorage.Dispose();
         }
 
         [Fact]

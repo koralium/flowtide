@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
     internal class MemoryFileProvider : IReservoirStorageProvider
     {
         private object _lock = new object();
-        private  Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
+        private Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
         private Dictionary<CheckpointId, byte[]> _checkpointFiles = new Dictionary<CheckpointId, byte[]>();
         private byte[]? _registryBytes;
         private byte[]? _metadataBytes;
@@ -41,6 +41,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         internal bool TryGetFileData(ulong fileId, [NotNullWhen(true)] out byte[]? bytes)
         {
             return _dataFiles.TryGetValue(fileId, out bytes);
+        }
+
+        internal bool TryGetCheckpointFileData(CheckpointId checkpointId, [NotNullWhen(true)] out byte[]? bytes)
+        {
+            return _checkpointFiles.TryGetValue(checkpointId, out bytes);
         }
 
         internal void SetFileData(ulong fileId, byte[] bytes)

@@ -97,20 +97,34 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 // List checkpoint files
                 var checkpointIds = await _fileProvider.ListCheckpointFilesAsync(cancellationToken);
-                var lastCheckpoint = checkpointIds.OrderByDescending(x => x.Version).FirstOrDefault();
+                var checkpoints = checkpointIds.OrderByDescending(x => x.Version).ToList();
 
                 bool foundRegistry = false;
-                if (lastCheckpoint != null)
+                
+                for (int i = 0; i < checkpoints.Count; i++)
                 {
-                    var checkpointBundlePipeReader = await _fileProvider.ReadCheckpointFileAsync(lastCheckpoint, cancellationToken).ConfigureAwait(false);
-                    if (checkpointBundlePipeReader != null)
+                    var checkpoint = checkpoints[i];
+                    try
                     {
-                        if (_checkpointRegistryFile != null)
+                        var checkpointBundlePipeReader = await _fileProvider.ReadCheckpointFileAsync(checkpoint, cancellationToken).ConfigureAwait(false);
+                        if (checkpointBundlePipeReader != null)
                         {
-                            _checkpointRegistryFile.Dispose();
+                            if (_checkpointRegistryFile != null)
+                            {
+                                _checkpointRegistryFile.Dispose();
+                            }
+                            _checkpointRegistryFile = await CheckpointRegistryFile.DeserializeFromBundle(checkpointBundlePipeReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+                            foundRegistry = true;
+                            break;
                         }
-                        _checkpointRegistryFile = await CheckpointRegistryFile.DeserializeFromBundle(checkpointBundlePipeReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
-                        foundRegistry = true;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                         // TODO: Log here
+                    }
+                    catch (InvalidDataException)
+                    {
+                        // TODO: Log here
                     }
                 }
                 if (!foundRegistry)
