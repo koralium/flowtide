@@ -17,7 +17,6 @@ using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using System.IO.Hashing;
 using System.IO.Pipelines;
 using System.Threading.Channels;
 

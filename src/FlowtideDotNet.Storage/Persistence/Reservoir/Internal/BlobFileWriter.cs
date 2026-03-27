@@ -16,7 +16,6 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
-using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal

@@ -11,13 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
-using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
 using System.Text.RegularExpressions;
-using System.Threading;
-using static System.Net.WebRequestMethods;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
 {
