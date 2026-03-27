@@ -14,13 +14,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
     internal static class MetricNames
     {
-        public const string LocalCacheSizeBytes = "flowtide_local_cache_size_bytes";
-        public const string LocalCacheHits = "flowtide_local_cache_hits";
-        public const string LocalCacheTotalTries = "flowtide_local_cache_total_tries";
-        public const string PersistentStorageNumberOfReads = "flowtide_persistent_storage_number_of_read_operations";
-        public const string PersistentStorageNumberOfWrites = "flowtide_persistent_storage_number_of_write_operations";
-        public const string PersistentStorageNumberOfDeletes = "flowtide_persistent_storage_number_of_delete_operations";
-        public const string PersistentStorageDataBytesRead = "flowtide_persistent_storage_data_bytes_read";
-        public const string PersistentStorageDataBytesWritten = "flowtide_persistent_storage_data_bytes_written";
+        public const string LocalCacheSizeBytes = "flowtide_reservoir_local_cache_size_bytes";
+        public const string LocalCacheHits = "flowtide_reservoir_local_cache_hits";
+        public const string LocalCacheTotalTries = "flowtide_reservoir_local_cache_total_tries";
+        public const string PersistentStorageNumberOfReads = "flowtide_reservoir_persistent_storage_number_of_read_operations";
+        public const string PersistentStorageNumberOfWrites = "flowtide_reservoir_persistent_storage_number_of_write_operations";
+        public const string PersistentStorageNumberOfDeletes = "flowtide_reservoir_persistent_storage_number_of_delete_operations";
+        public const string PersistentStorageDataBytesRead = "flowtide_reservoir_persistent_storage_data_bytes_read";
+        public const string PersistentStorageDataBytesWritten = "flowtide_reservoir_persistent_storage_data_bytes_written";
     }
 }
