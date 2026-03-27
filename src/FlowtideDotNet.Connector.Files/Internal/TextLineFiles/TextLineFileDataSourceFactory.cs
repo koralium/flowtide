@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
@@ -95,6 +95,12 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
             tableMetadata = default;
             return false;
             throw new NotImplementedException();
+        }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
         }
     }
 }

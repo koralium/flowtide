@@ -34,6 +34,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using FlowtideDotNet.Base;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Storage.DataStructures;
+using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Core.Tests
 {

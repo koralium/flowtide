@@ -13,7 +13,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Egress.Internal
+namespace FlowtideDotNet.Base.Vertices.Internal
 {
     internal class NonParallelEgressVertex<T> : IEgressImplementation
     {

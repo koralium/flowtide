@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set.Structs;

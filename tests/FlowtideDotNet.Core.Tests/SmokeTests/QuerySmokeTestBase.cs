@@ -679,7 +679,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             await Crash();
 
             var graph = dataflowStream.GetDiagnosticsGraph();
-            while (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (dataflowStream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = dataflowStream.GetDiagnosticsGraph();
                 await _streamScheduler.Tick();
@@ -692,7 +692,7 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             stopwatch.Start();
             while (true)
             {
-                if (dataflowStream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+                if (dataflowStream.State == StreamStateValue.Running)
                 {
                     graph = dataflowStream.GetDiagnosticsGraph();
 

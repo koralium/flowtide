@@ -44,7 +44,7 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="ParquetSharp" Version="18.1.0" />
     <PackageVersion Include="Stowage" Version="2.0.1" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.13.0" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.13.1" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
     <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.0" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
@@ -60,8 +60,8 @@
     <PackageVersion Include="xunit" Version="2.7.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <PackageVersion Include="xunit.v3" Version="2.0.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.23" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.24" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
     <!-- Testcontainers -->
     <PackageVersion Include="Testcontainers" Version="4.10.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
@@ -73,26 +73,26 @@
     <PackageVersion Include="Testcontainers.Qdrant" Version="4.10.0" />
     <!-- Entity framework -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.0" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.12" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.13" />
     <!-- Serilog -->
     <PackageVersion Include="Serilog.Extensions.Logging" Version="8.0.0" />
     <PackageVersion Include="Serilog.Sinks.File" Version="5.0.0" />
     <!-- Other -->
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.0" />
     <PackageVersion Include="Bogus" Version="35.6.5" />
     <PackageVersion Include="FastMember" Version="1.5.0" />
     <PackageVersion Include="MySql.Data" Version="9.4.0" />
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
     <!-- Sample packages -->
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.1.1" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.1.2" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
-    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.12" />
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.49.1" />
     <PackageVersion Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />

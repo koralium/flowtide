@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal.StateMachine;
+using FlowtideDotNet.Base.Engine;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests

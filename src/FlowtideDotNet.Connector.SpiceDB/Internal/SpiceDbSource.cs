@@ -13,7 +13,7 @@
 using Authzed.Api.V1;
 using Authzed.Internal;
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.SpiceDB.Internal.SchemaParser;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
@@ -347,10 +347,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         try
                         {
                             var readRequest = new ReadRelationshipsRequest();
+                            var readRequestInterface = (ISpiceDbReadRelationshipsRequest)readRequest;
 
                             if (m_spiceDbSourceOptions.Consistency != null)
                             {
-                                readRequest.Consistency = m_spiceDbSourceOptions.Consistency;
+                                readRequestInterface.Consistency = m_spiceDbSourceOptions.Consistency;
                             }
                             readRequest.RelationshipFilter = new RelationshipFilter()
                             {

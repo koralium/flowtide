@@ -12,23 +12,45 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Base abstract class for data-carrying messages flowing through the stream.
+    /// </summary>
+    /// <remarks>
+    /// Stream messages encapsulate actual data records (or batches of records) as opposed to control 
+    /// events like watermarks or checkpoints.
+    /// </remarks>
     public abstract class StreamMessage : IStreamEvent
     {
+        /// <summary>
+        /// Gets or internal sets the logical stream time associated with this message.
+        /// </summary>
         public abstract long Time { get; internal set; }
     }
 
+    /// <summary>
+    /// Strongly-typed data message flowing through the stream.
+    /// </summary>
+    /// <typeparam name="T">The type of the underlying data payload.</typeparam>
     public class StreamMessage<T> : StreamMessage
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StreamMessage{T}"/> class.
+        /// </summary>
+        /// <param name="data">The payload data to be transported.</param>
+        /// <param name="time">The logical stream time associated with this message.</param>
         public StreamMessage(T data, long time)
         {
             Data = data;
             Time = time;
         }
 
+        /// <summary>
+        /// Gets the strongly-typed payload data transported by this message.
+        /// </summary>
         public T Data { get; }
 
         /// <summary>
-        /// The current time
+        /// Gets or internal sets the current logical stream time associated with this message.
         /// </summary>
         public override long Time { get; internal set; }
     }

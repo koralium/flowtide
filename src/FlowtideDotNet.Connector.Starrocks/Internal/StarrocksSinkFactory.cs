@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Substrait.Relations;
@@ -85,6 +85,12 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             var key = new StarRocksTableKey(tableName[0], tableName[1]);
 
             return _tablesCache.TryGetValue(key, out tableMetadata);
+        }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
         }
     }
 }

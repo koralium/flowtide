@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Serializers;

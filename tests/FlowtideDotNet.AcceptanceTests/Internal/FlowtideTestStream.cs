@@ -339,7 +339,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
@@ -371,7 +371,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 if (stopwatch.Elapsed.CompareTo(time) > 0)
                 {
@@ -382,7 +382,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
-            if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            if (graph.State != StreamStateValue.Running || graph.State != StreamStateValue.Running)
             {
                 Assert.Fail("Stream failed");
             }

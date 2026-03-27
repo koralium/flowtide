@@ -11,17 +11,11 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.PartitionVertices;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Exchange

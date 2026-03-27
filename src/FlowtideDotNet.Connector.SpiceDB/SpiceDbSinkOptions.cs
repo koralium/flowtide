@@ -17,44 +17,89 @@ using Grpc.Core;
 
 namespace FlowtideDotNet.Connector.SpiceDB
 {
+    /// <summary>
+    /// Provides configuration options for the SpiceDB relationship sink connector.
+    /// </summary>
+    /// <remarks>
+    /// Pass an instance of this class to
+    /// <see cref="SpiceDbConnectorManagerExtensions.AddSpiceDbSink"/> to configure the gRPC
+    /// connection, write behaviour, and lifecycle callbacks for the SpiceDB sink.
+    /// </remarks>
     public class SpiceDbSinkOptions
     {
+        /// <summary>
+        /// Gets or sets the gRPC channel used to connect to the SpiceDB API.
+        /// </summary>
         public required ChannelBase Channel { get; set; }
 
+        /// <summary>
+        /// Gets or sets an optional factory function that returns gRPC <see cref="Metadata"/>
+        /// to attach to each request, such as an <c>Authorization</c> bearer token header.
+        /// </summary>
         public Func<Metadata>? GetMetadata { get; set; }
 
+        /// <summary>
+        /// Gets or sets the maximum number of relationship mutations to include in a single
+        /// <c>WriteRelationships</c> request. Defaults to <c>50</c>.
+        /// </summary>
         public int BatchSize { get; set; } = 50;
 
         /// <summary>
-        /// If set, all relationships returned by this filter that are not in the result set
-        /// will be deleted after the initial loading of data has completed.
+        /// Gets or sets an optional filter that scopes which existing SpiceDB relationships are
+        /// candidates for deletion after the initial data load has completed.
         /// </summary>
-        public ReadRelationshipsRequest? DeleteExistingDataFilter { get; set; }
+        /// <remarks>
+        /// When set, the sink reads all relationships from SpiceDB that match this filter after
+        /// the initial data load. A relationship is deleted only if it satisfies both conditions:
+        /// it matches this filter <em>and</em> it is not present in the result set.
+        /// Relationships that do not match the filter are never deleted, regardless of whether
+        /// they appear in the result set.
+        /// </remarks>
+        public ISpiceDbReadRelationshipsRequest? DeleteExistingDataFilter { get; set; }
 
         /// <summary>
-        /// Called before each write to SpiceDB.
-        /// Makes it possible to modify any data before it is sent.
+        /// Gets or sets an optional asynchronous callback invoked before each
+        /// <see cref="ISpiceDbWriteRelationshipRequest"/> is sent to SpiceDB.
         /// </summary>
-        public Func<WriteRelationshipsRequest, Task>? BeforeWriteRequestFunc { get; set; }
+        /// <remarks>
+        /// Use this callback to inspect or modify the write request before it is submitted,
+        /// for example to add preconditions or adjust relationship updates.
+        /// </remarks>
+        public Func<ISpiceDbWriteRelationshipRequest, Task>? BeforeWriteRequestFunc { get; set; }
 
         /// <summary>
-        /// Called each time a new watermark is received.
-        /// The second argument contains the last recieved zedtoken from spicedb.
-        /// Can be used to keep track what data has been sent to SpiceDB from the sources.
+        /// Gets or sets an optional asynchronous callback invoked each time a new watermark
+        /// is received after a successful batch write.
         /// </summary>
+        /// <remarks>
+        /// The first argument is the <see cref="Watermark"/> from the stream. The second
+        /// argument is the <see cref="ISpiceDbZedToken.Token"/> string returned by SpiceDB for
+        /// the last committed write. Use this to track which source data has been successfully
+        /// written to SpiceDB.
+        /// </remarks>
         public Func<Watermark, string, Task>? OnWatermarkFunc { get; set; }
 
         /// <summary>
-        /// Called when the initial data has been sent to the SpiceDB API.
-        /// This can be used to do any cleanup of data.
-        /// 
-        /// Such as if an external store is used to store tuples that this integration has handled.
-        /// It can then delete old tuples that was not present in the initial data.
+        /// Gets or sets an optional asynchronous callback invoked once the initial data load
+        /// has been fully committed to SpiceDB.
         /// </summary>
+        /// <remarks>
+        /// Use this callback to perform post-load cleanup. For example, if an external store
+        /// tracks tuples managed by this integration, it can delete any stale tuples that were
+        /// not present in the initial result set.
+        /// </remarks>
         public Func<Task>? OnInitialDataSentFunc { get; set; }
 
+        /// <summary>
+        /// Gets or sets the maximum number of <c>WriteRelationships</c> requests that may be
+        /// in flight concurrently. Defaults to <c>4</c>.
+        /// </summary>
         public int MaxParallellCalls { get; set; } = 4;
 
+        /// <summary>
+        /// Gets or sets the execution mode for the sink operator. Defaults to
+        /// <see cref="ExecutionMode.Hybrid"/>.
+        /// </summary>
         public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
     }
 }

@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Storage;

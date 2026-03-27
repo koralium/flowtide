@@ -12,7 +12,7 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.Sharepoint.Internal.Decoders;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;

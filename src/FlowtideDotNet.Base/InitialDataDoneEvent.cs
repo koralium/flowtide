@@ -12,6 +12,15 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents an event that signals the completion of the initial data load for a partition or stream.
+    /// </summary>
+    /// <remarks>
+    /// This event is primarily used by ingress vertices to notify downstream operators 
+    /// that the historical or initial full dataset has been sent, and that subsequent data 
+    /// will represent ongoing changes or deltas. This helps operators correctly align 
+    /// watermarks and checkpoint states immediately following startup.
+    /// </remarks>
     internal class InitialDataDoneEvent : IStreamEvent
     {
     }
