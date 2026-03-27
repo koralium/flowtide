@@ -30,9 +30,7 @@
     <Project Path="src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj" />
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
-    <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" Id="3cc66f20-ffcf-4de5-b58d-e1f738bf0c1d">
-      <Build Solution="Debug|*" Project="false" />
-    </Project>
+    <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
     <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
     <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />
