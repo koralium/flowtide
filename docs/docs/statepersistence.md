@@ -106,8 +106,9 @@ The `AddFileStorage` method returns an `IReservoirBuilder` that allows further c
 | `SetSnapshotCheckpointInterval`   | 20                | Number of checkpoints between full snapshots. |
 | `SetMaxDataFileSize`              | 64 MB             | Maximum data file size in bytes. |
 | `SetCacheSize`                    | 10 GB             | Maximum local cache size in bytes. |
+| `SetCache`                        | Same directory     | Set a custom cache storage provider. |
 | `DisableCache`                    | —                 | Disable the local cache entirely. |
-| `OldStreamVersionsRetention`      | -1 (keep all)     | Number of old stream versions to keep. 0 removes all old versions immediately. |
+| `OldStreamVersionsRetention`      | -1 (keep all)     | Number of previous stream versions to retain. Only applies when versioning is explicitly configured on the stream builder via `AddVersioningFromPlanHash()`, `AddVersioningFromString()`, or `AddVersioningFromAssembly()`. Without versioning, the stream uses a single default version and this setting has no effect. The current version is always preserved; this setting controls how many *previous* versions are kept alongside it. A value of 0 deletes all old versions immediately, 1 keeps one previous version, and -1 retains all versions indefinitely. |
 
 ### Temporary Development Storage
 

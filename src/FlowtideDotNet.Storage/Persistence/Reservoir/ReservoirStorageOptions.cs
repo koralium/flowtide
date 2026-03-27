@@ -62,11 +62,19 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
 
 
         /// <summary>
-        /// Gets or sets the number of most recent stream versions to retain.
+        /// Gets or sets the number of previous stream versions to retain.
+        /// Stream versioning is opt-in and requires explicit configuration on the stream builder using
+        /// <c>AddVersioningFromPlanHash()</c>, <c>AddVersioningFromString()</c>, or <c>AddVersioningFromAssembly()</c>.
+        /// Without versioning, the stream uses a single default version and this setting has no effect.
+        /// The current version is always preserved; this setting controls how many <em>previous</em> versions are kept alongside it.
         /// </summary>
-        /// <remarks>A value of -1 indicates that all versions are retained without limit. Any positive value specifies the maximum number of versions
-        /// to keep. This is to cleanup old streams and not old checkpoints. A value of 0 indicates that no old versions are kept.
-        /// 1 will keep the previous versions.</remarks>
+        /// <remarks>
+        /// A value of -1 retains all versions indefinitely (default).
+        /// A value of 0 deletes all old versions immediately after a checkpoint, keeping only the current version.
+        /// A value of 1 keeps one previous version in addition to the current version.
+        /// Versions are sorted by their last initialization time; the oldest versions beyond the retention count are deleted first.
+        /// This controls cleanup of old stream versions, not old checkpoints within a version.
+        /// </remarks>
         public int KeepLastStreamVersions { get; set; } = -1;
     }
 }
