@@ -87,13 +87,12 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         {
             var list = _blobContainerClient.GetBlobsAsync(new Azure.Storage.Blobs.Models.GetBlobsOptions()
             {
-                Prefix = "dataFile_",
-                StartFrom = GetDataFileName(minVersion)
+                Prefix = $"{_dataDirectory}dataFile_"
             }, cancellationToken);
             List<ulong> result = new List<ulong>();
             await foreach(var file in list.WithCancellation(cancellationToken).ConfigureAwait(false))
             {
-                var name = file.Name;
+                var name = Path.GetFileName(file.Name);
                 if (name.Length == 34 && name.StartsWith("dataFile_") && name.EndsWith(".data"))
                 {
                     if (ulong.TryParse(name.AsSpan(9, 20), out var fileId))
@@ -136,7 +135,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         {
             var blobClient = _blobContainerClient.GetBlobClient(GetDataFileName(fileId));
             var result = await blobClient.DownloadStreamingAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-
+            
             return PipeReader.Create(result.Value.Content, new StreamPipeReaderOptions(leaveOpen: false, pool: MemoryPool<byte>.Shared));
         }
 

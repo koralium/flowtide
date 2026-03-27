@@ -74,8 +74,8 @@ builder.Services.AddFlowtideStream("my_stream")
         //storage.AddFasterKVFileSystemStorage("./fasterkvstate");
         //storage.AddFileStorageWithCache("./stateData", "./stateData/checkpoints", "./cache");
 
-        storage.AddFileStorage("./state");
-        //storage.AddAzureBlobStorage(builder.Configuration.GetConnectionString("blobs")!, "streams", localCacheDirectory: "./cacheState");
+        //storage.AddFileStorage("./state");
+        storage.AddAzureBlobStorage(builder.Configuration.GetConnectionString("blobs")!, "streams", localCacheDirectory: "./cacheState");
         // Use azure storage for persistence
         //storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
         //{
