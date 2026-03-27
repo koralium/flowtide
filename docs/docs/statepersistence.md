@@ -17,16 +17,17 @@ Reservoir storage packs pages into large immutable files (default 64 MB), uses C
 
 ### Azure Blob Storage
 
-Store persistent state to Azure Blob Storage. This is the recommended configuration for production deployments.
+Store persistent state in Azure Blob Storage. This is the recommended configuration for production deployments.
 
-Install the `FlowtideDotNet.Storage.AzureBlobs` NuGet package and use one of the `AddAzureBlobStorage` extension methods:
+Install the `FlowtideDotNet.Storage.Azure` NuGet package and use one of the `AddAzureBlobStorage` extension methods.
+
+**Connection string:**
 
 ```csharp
 builder.Services.AddFlowtideStream("yourstream")
     // ...
     .AddStorage(s =>
     {
-        // Using a connection string
         s.AddAzureBlobStorage(
             connectionString: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
             containerName: "flowtide-state",
@@ -36,51 +37,71 @@ builder.Services.AddFlowtideStream("yourstream")
     });
 ```
 
-Other authentication methods are also supported:
+**Token credential (e.g. Managed Identity / DefaultAzureCredential):**
 
 ```csharp
-// Using a TokenCredential (e.g., DefaultAzureCredential for managed identity)
 s.AddAzureBlobStorage(
     storageUri: new Uri("https://myaccount.blob.core.windows.net"),
     containerName: "flowtide-state",
     tokenCredential: new DefaultAzureCredential(),
     directoryPath: "mystream"
 );
+```
 
-// Using a SAS credential
+**SAS credential:**
+
+```csharp
 s.AddAzureBlobStorage(
     storageUri: new Uri("https://myaccount.blob.core.windows.net"),
     containerName: "flowtide-state",
     sasCredential: new AzureSasCredential("sv=..."),
     directoryPath: "mystream"
 );
+```
 
-// Using an options delegate for full control
+**Shared key credential:**
+
+```csharp
+s.AddAzureBlobStorage(
+    storageUri: new Uri("https://myaccount.blob.core.windows.net"),
+    containerName: "flowtide-state",
+    sharedKeyCredential: new StorageSharedKeyCredential("myaccount", "key"),
+    directoryPath: "mystream"
+);
+```
+
+**Options delegate (full control):**
+
+For advanced scenarios — including supplying a custom `BlobContainerClient` via `ClientFactory` — use the options delegate overload:
+
+```csharp
 s.AddAzureBlobStorage(opt =>
 {
     opt.ConnectionString = "...";
     opt.ContainerName = "flowtide-state";
     opt.DirectoryPath = "mystream";
     opt.LocalCacheDirectory = "/cache/flowtide";
-    opt.MaxFileSize = 64 * 1024 * 1024;
-    opt.SnapshotCheckpointInterval = 20;
-    opt.CompactionFileSizeRatioThreshold = 0.33f;
-    opt.MaxCacheSizeBytes = 10L * 1000 * 1000 * 1000;
+
+    // Or provide a fully custom client:
+    // opt.ClientFactory = () => new BlobContainerClient(...);
 });
 ```
 
-#### Configuration
+#### Azure Blob Storage Options
 
-| Property                          | Default           | Description |
-| --------------------------------- | ----------------- | ----------- |
-| `ConnectionString`                | —                 | Azure Storage connection string. |
-| `ContainerName`                   | —                 | Name of the blob container. |
-| `DirectoryPath`                   | `null`            | Sub-directory within the container. |
-| `LocalCacheDirectory`             | System temp folder | Local directory for the disk cache. |
-| `MaxFileSize`                     | 64 MB             | Maximum size of each data file. |
-| `SnapshotCheckpointInterval`      | 20                | Number of checkpoints between full snapshots. Lower values speed up recovery at the cost of larger checkpoint writes. |
-| `CompactionFileSizeRatioThreshold`| 0.33              | When active data in a file drops below this ratio of max file size, the file is eligible for compaction. |
-| `MaxCacheSizeBytes`               | 10 GB             | Maximum size of the local disk cache. Least recently used files are evicted when the cache is full. |
+| Property              | Default            | Description |
+| --------------------- | ------------------ | ----------- |
+| `ConnectionString`    | —                  | Azure Storage connection string. |
+| `ServiceUri`          | —                  | Blob service endpoint URI (used with credential options). |
+| `ContainerName`       | —                  | Name of the blob container. |
+| `DirectoryPath`       | `null`             | Sub-directory within the container. |
+| `LocalCacheDirectory` | System temp folder | Local directory for the disk cache. |
+| `TokenCredential`     | —                  | Azure token credential (e.g. `DefaultAzureCredential`). |
+| `SasCredential`       | —                  | SAS credential for authentication. |
+| `SharedKeyCredential` | —                  | Shared key credential for authentication. |
+| `ClientFactory`       | —                  | Factory function that returns a custom `BlobContainerClient`. Takes priority over all other authentication options. |
+
+`AddAzureBlobStorage` returns an `IReservoirBuilder` for further tuning — see [Reservoir Builder Options](#reservoir-builder-options) below.
 
 ### Local File Storage
 
@@ -91,24 +112,11 @@ builder.Services.AddFlowtideStream("yourstream")
     // ...
     .AddStorage(s =>
     {
-        var reservoirBuilder = s.AddFileStorage("/persistence/flowtide");
-
-        // Optionally configure the reservoir
-        reservoirBuilder.SetSnapshotCheckpointInterval(10);
-        reservoirBuilder.SetMaxDataFileSize(32 * 1024 * 1024);
+        s.AddFileStorage("/persistence/flowtide");
     });
 ```
 
-The `AddFileStorage` method returns an `IReservoirBuilder` that allows further configuration:
-
-| Method                            | Default           | Description |
-| --------------------------------- | ----------------- | ----------- |
-| `SetSnapshotCheckpointInterval`   | 20                | Number of checkpoints between full snapshots. |
-| `SetMaxDataFileSize`              | 64 MB             | Maximum data file size in bytes. |
-| `SetCacheSize`                    | 10 GB             | Maximum local cache size in bytes. |
-| `SetCache`                        | Same directory     | Set a custom cache storage provider. |
-| `DisableCache`                    | —                 | Disable the local cache entirely. |
-| `OldStreamVersionsRetention`      | -1 (keep all)     | Number of previous stream versions to retain. Only applies when versioning is explicitly configured on the stream builder via `AddVersioningFromPlanHash()`, `AddVersioningFromString()`, or `AddVersioningFromAssembly()`. Without versioning, the stream uses a single default version and this setting has no effect. The current version is always preserved; this setting controls how many *previous* versions are kept alongside it. A value of 0 deletes all old versions immediately, 1 keeps one previous version, and -1 retains all versions indefinitely. |
+`AddFileStorage` returns an `IReservoirBuilder` for further tuning — see [Reservoir Builder Options](#reservoir-builder-options) below.
 
 ### Temporary Development Storage
 
@@ -131,6 +139,36 @@ builder.Services.AddFlowtideStream("yourstream")
 Temporary storage is not suitable for production. All data is deleted when the application exits.
 
 :::
+
+### Reservoir Builder Options
+
+All reservoir storage providers (`AddAzureBlobStorage`, `AddFileStorage`, `AddTemporaryStorage`) return an `IReservoirBuilder` that exposes shared tuning options:
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    // ...
+    .AddStorage(s =>
+    {
+        var reservoir = s.AddAzureBlobStorage(
+            connectionString: "...",
+            containerName: "flowtide-state"
+        );
+
+        reservoir.SetMaxDataFileSize(64 * 1024 * 1024);
+        reservoir.SetCacheSize(10L * 1024 * 1024 * 1024);
+        reservoir.SetSnapshotCheckpointInterval(20);
+        reservoir.OldStreamVersionsRetention(-1);
+    });
+```
+
+| Method                          | Default       | Description |
+| ------------------------------- | ------------- | ----------- |
+| `SetMaxDataFileSize(int)`       | 64 MB         | Maximum size, in bytes, of each data file uploaded to storage. Larger values reduce API call count at the cost of larger individual uploads. |
+| `SetCacheSize(long)`            | 10 GB         | Maximum total size, in bytes, of the local disk cache. LRU eviction kicks in at 80% capacity. |
+| `SetSnapshotCheckpointInterval(int)` | 20       | Number of incremental checkpoints between full snapshot checkpoints. Lower values speed up recovery at the cost of more writes. |
+| `OldStreamVersionsRetention(int)` | -1 (keep all) | Number of previous stream versions to retain. Only applies when versioning is explicitly configured on the stream builder via `AddVersioningFromPlanHash()`, `AddVersioningFromString()`, or `AddVersioningFromAssembly()`. Without versioning, the stream uses a single default version and this setting has no effect. The current version is always preserved; this setting controls how many *previous* versions are kept alongside it. A value of 0 deletes all old versions immediately, 1 keeps one previous version, and -1 retains all versions indefinitely. |
+| `SetCache(IReservoirStorageProvider)` | Provider-specific | Set a custom cache storage provider. |
+| `DisableCache()`                | Cache enabled | Disable the local disk cache entirely. Not recommended for cloud storage providers. |
 
 ### Using FlowtideBuilder (without Dependency Injection)
 

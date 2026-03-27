@@ -14,13 +14,9 @@ using Azure;
 using Azure.Core;
 using Azure.Storage;
 using FlowtideDotNet.Storage.AzureBlobs;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -39,7 +35,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// container is used.</param>
         /// <param name="localCacheDirectory">An optional local directory path for caching data. If not specified, a default temporary directory will be used for caching.</param>
         /// <returns>The same storage builder instance with Azure Blob Storage configured as a storage provider.</returns>
-        public static IFlowtideStorageBuilder AddAzureBlobStorage(
+        public static IReservoirBuilder AddAzureBlobStorage(
             this IFlowtideStorageBuilder storageBuilder,
             string connectionString,
             string containerName,
@@ -67,7 +63,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// the container is used.</param>
         /// <param name="localCacheDirectory">An optional local directory path for caching data. If not specified, a default temporary directory will be used for caching.</param>
         /// <returns>The same storage builder instance, configured to use Azure Blob Storage.</returns>
-        public static IFlowtideStorageBuilder AddAzureBlobStorage(
+        public static IReservoirBuilder AddAzureBlobStorage(
             this IFlowtideStorageBuilder storageBuilder,
             Uri storageUri,
             string containerName,
@@ -97,7 +93,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// the container is used.</param>
         /// <param name="localCacheDirectory">An optional local directory path for caching data. If not specified, a default temporary directory will be used for caching.</param>
         /// <returns>The same storage builder instance, configured to use Azure Blob Storage for persistent storage.</returns>
-        public static IFlowtideStorageBuilder AddAzureBlobStorage(
+        public static IReservoirBuilder AddAzureBlobStorage(
             this IFlowtideStorageBuilder storageBuilder,
             Uri storageUri,
             string containerName,
@@ -127,7 +123,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// the container is used.</param>
         /// <param name="localCacheDirectory">An optional local directory path for caching data. If not specified, a default temporary directory will be used for caching.</param>
         /// <returns>The same storage builder instance with Azure Blob Storage configured as a storage provider.</returns>
-        public static IFlowtideStorageBuilder AddAzureBlobStorage(
+        public static IReservoirBuilder AddAzureBlobStorage(
             this IFlowtideStorageBuilder storageBuilder,
             Uri storageUri,
             string containerName,
@@ -153,26 +149,25 @@ namespace FlowtideDotNet.DependencyInjection
         /// <param name="storageBuilder">The storage builder to configure with Azure Blob Storage support.</param>
         /// <param name="options">A delegate to configure the options for Azure Blob Storage integration. Cannot be null.</param>
         /// <returns>The same storage builder instance, configured to use Azure Blob Storage for persistent storage.</returns>
-        public static IFlowtideStorageBuilder AddAzureBlobStorage(
+        public static IReservoirBuilder AddAzureBlobStorage(
             this IFlowtideStorageBuilder storageBuilder,
             Action<FlowtideAzureBlobOptions> options)
         {
+            ReservoirBuilder reservoirBuilder = new ReservoirBuilder();
+
             FlowtideAzureBlobOptions blobOptions = new FlowtideAzureBlobOptions();
             options?.Invoke(blobOptions);
+
+            reservoirBuilder.SetStorage(new AzureFileProvider(blobOptions));
+            reservoirBuilder.SetCache(new LocalDiskProvider(blobOptions.LocalCacheDirectory ?? Path.Combine(Path.GetTempPath(), "flowtide_cache")));
+
             storageBuilder.SetPersistentStorage((provider) =>
             {
-                return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
-                {
-                    FileProvider = new AzureFileProvider(blobOptions),
-                    CacheProvider = new LocalDiskProvider(blobOptions.LocalCacheDirectory ?? Path.Combine(Path.GetTempPath(), "flowtide_cache")),
-                    CompactionFileSizeRatioThreshold = blobOptions.CompactionFileSizeRatioThreshold,
-                    MaxFileSize = blobOptions.MaxFileSize,
-                    SnapshotCheckpointInterval = blobOptions.SnapshotCheckpointInterval,
-                    MaxCacheSizeBytes = blobOptions.MaxCacheSizeBytes
-                });
+                return new ReservoirPersistentStorage(reservoirBuilder);
             });
+
             storageBuilder.ZstdPageCompression();
-            return storageBuilder;
+            return reservoirBuilder;
         }
     }
 }
