@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
-            throw new NotSupportedException("GetMemoryy is not supported, Azure Blobs should be used with local cache which supports this operation.");
+            throw new NotSupportedException("GetMemory is not supported, Azure Blobs should be used with local cache which supports this operation.");
         }
 
         public Task<IEnumerable<ulong>> GetStoredDataFileIdsAsync(CancellationToken cancellationToken = default)
