@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         private byte[]? _registryBytes;
         private byte[]? _metadataBytes;
 
-        public virtual bool SupportsDataFileListing => true;
+        public virtual bool SupportsFileListing => true;
 
         internal bool TryGetFileData(ulong fileId, [NotNullWhen(true)] out byte[]? bytes)
         {

@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private async Task ReadCheckpointRegistryFile(CancellationToken cancellationToken)
         {
             
-            if (_fileProvider.SupportsDataFileListing)
+            if (_fileProvider.SupportsFileListing)
             {
                 // List checkpoint files
                 var checkpointIds = await _fileProvider.ListCheckpointFilesAsync(cancellationToken);
@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             // Try and read bundle files if the file provider supports it, this is to make sure we have the latest checkpoint registry file
             // in case there are bundled checkpoint files which contains later versions than the registry file
-            if (_fileProvider.SupportsDataFileListing)
+            if (_fileProvider.SupportsFileListing)
             {
                 var lastVersion = _checkpointRegistryFile.LastOrDefault()?.Version ?? 0;
                 var fileId = (1UL << 63) | (ulong)lastVersion;
@@ -488,7 +488,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             _checkpointRegistryFile.FinishForWriting();
 
-            if (_fileProvider.SupportsDataFileListing)
+            if (_fileProvider.SupportsFileListing)
             {
                 // Create a bundle with checkpoint data and registry to reduce number of writes
                 var bundle = new CheckpointRegistryBundleFile(_newCheckpoint, _checkpointRegistryFile);
@@ -659,7 +659,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _checkpointRegistryFile.AddCheckpointVersion(checkpointVersion);
                 _checkpointRegistryFile.FinishForWriting();
 
-                if (_fileProvider.SupportsDataFileListing)
+                if (_fileProvider.SupportsFileListing)
                 {
                     var bundle = new CheckpointRegistryBundleFile(_newCheckpoint, _checkpointRegistryFile);
                     await _fileProvider.WriteCheckpointFileAsync(new CheckpointId((ulong)checkpointVersion.Version, checkpointVersion.IsSnapshot), bundle);
@@ -922,7 +922,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 // Write the registry since we removed checkpoint versions
                 // We only write if we removed checkpoints that are not bundles
-                if (removedCheckpoint && !_fileProvider.SupportsDataFileListing)
+                if (removedCheckpoint && !_fileProvider.SupportsFileListing)
                 {
                     _checkpointRegistryFile.FinishForWriting();
                     await _fileProvider.WriteCheckpointRegistryFile(_checkpointRegistryFile);

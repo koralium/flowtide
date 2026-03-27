@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
 {
     public interface IReservoirStorageProvider
     {
-        bool SupportsDataFileListing { get; }
+        bool SupportsFileListing { get; }
 
         /// <summary>
         /// Fetches streams metadata file that contains information of all streams and their versions.

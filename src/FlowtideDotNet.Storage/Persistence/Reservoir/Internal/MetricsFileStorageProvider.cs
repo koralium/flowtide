@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private Histogram<long> _numberOfDataBytesRead;
         private Histogram<long> _numberOfDataBytesWritten;
 
-        public bool SupportsDataFileListing => _internalProvider.SupportsDataFileListing;
+        public bool SupportsFileListing => _internalProvider.SupportsFileListing;
 
         private void AddRead()
         {

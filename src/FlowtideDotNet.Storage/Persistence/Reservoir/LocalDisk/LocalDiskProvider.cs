@@ -12,7 +12,6 @@
 
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader;
 using FlowtideDotNet.Storage.StateManager.Internal;
-using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Pipelines;
@@ -29,7 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         private LocalDiskReadManager? localDiskReadManager;
         private string? _streamVersion;
 
-        public bool SupportsDataFileListing => true;
+        public bool SupportsFileListing => true;
 
         public LocalDiskProvider(string dataDirectory)
         {

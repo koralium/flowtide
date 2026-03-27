@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         private string? _streamVersion;
 
 
-        public bool SupportsDataFileListing => true;
+        public bool SupportsFileListing => true;
 
         public AzureFileProvider(FlowtideAzureBlobOptions options)
         {

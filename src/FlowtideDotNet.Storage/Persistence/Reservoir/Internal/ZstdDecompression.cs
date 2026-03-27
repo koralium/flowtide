@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     {
         FlowtideZstdCompressor _compressor;
         private bool contextDrained = true;
-        private nuint lastDecompressResult = 0;
 
         private ZSTD_inBuffer_s input;
         private bool disposedValue;
@@ -52,7 +51,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public int Read(ReadOnlySequence<byte> data, Span<byte> outputData)
         {
-            // Guard against infinite loop (output.pos would never become non-zero)
             if (outputData.Length == 0)
             {
                 return 0;
@@ -65,22 +63,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             while (true)
             {
                 // If there is still input available, or there might be data buffered in the decompressor context, flush that out
-                while (input.pos < input.size || !contextDrained)
+                while (input.pos < input.size)
                 {
-                    nuint oldInputPos = input.pos;
                     nuint result = DecompressStream(ref output, inputBuffer.Span, outputData);
-                    if (output.pos > 0 || oldInputPos != input.pos)
-                    {
-                        // Keep result from last decompress call that made some progress, so we known if we're at end of frame
-                        lastDecompressResult = result;
-                    }
-                    // If decompression filled the output buffer, there might still be data buffered in the decompressor context
-                    contextDrained = output.pos < output.size;
-                    // If we have data to return, return it immediately, so we won't stall on Read
-                    if (output.pos > 0)
-                    {
-                        return (int)output.pos;
-                    }
                 }
 
                 if (data.TryGet(ref segPos, out var mem))
@@ -89,7 +74,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 }
                 else
                 {
-                    return 0;
+                    return (int)output.pos;
                 }
 
                 input.size = (nuint)inputBuffer.Length;

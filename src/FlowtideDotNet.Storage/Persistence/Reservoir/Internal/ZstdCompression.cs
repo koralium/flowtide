@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _destination = _destinationOwner.Memory.Slice(headerReserve);
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
             _writtenLength = 0;
-            output = new ZSTD_outBuffer_s { pos = 0, size = 0 };
+            output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)_destinationOwner.Memory.Length };
         }
 
         internal unsafe nuint CompressStream(
@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return new CompressionResult()
             {
                 memoryOwner = memOwner,
-                writtenLength = _writtenLength
+                writtenLength = (int)output.pos
             };
         }
 
@@ -96,16 +96,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             nuint remaining;
             do
             {
-                output.pos = 0;
-                output.size = (nuint)destinationSpan.Length;
                 remaining = CompressStream(ref input, buffer, destinationSpan, directive);
-
-                var written = (int)output.pos;
-                if (written > 0)
-                {
-                    _writtenLength += written;
-                    destinationSpan = destinationSpan.Slice(written);
-                }
             } while (directive == ZSTD_EndDirective.ZSTD_e_continue ? input.pos < input.size : remaining > 0);
         }
 

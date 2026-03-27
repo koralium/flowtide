@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
             _checkpointFileDirectory = $"{optionDataDirectory}/{streamName}/{streamVersion}/checkpoints/";
         }
 
-        public bool SupportsDataFileListing => true;
+        public bool SupportsFileListing => true;
 
         private string GetDataFileName(ulong fileId)
         {

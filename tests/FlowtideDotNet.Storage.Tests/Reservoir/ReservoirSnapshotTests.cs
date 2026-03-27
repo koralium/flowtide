@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             await session.Commit();
             await persistentStorage.CheckpointAsync(new byte[] { 1, 2, 3 }, false);
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 100; i++)
             {
                 await session.Write(100 + i + 1, new SerializableObject(new byte[] { 1 }));
                 await session.Commit();
@@ -44,6 +44,13 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
                 Assert.Equal(new byte[] { 1, 2, 3, 4 }, data.ToArray());
+
+                for (int i = 0; i < 100; i++)
+                {
+                    var loopData = await session2.Read(101 + i);
+                    Assert.Equal(new byte[] { 1 }, loopData);
+                }
+
                 persistentStorage2.Dispose();
             }
             persistentStorage.Dispose();

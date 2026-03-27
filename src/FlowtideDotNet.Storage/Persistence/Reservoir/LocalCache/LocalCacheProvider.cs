@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public long CurrentSize => _localCacheManager.CurrentSize;
 
-        public bool SupportsDataFileListing => _remoteStorage.SupportsDataFileListing;
+        public bool SupportsFileListing => _remoteStorage.SupportsFileListing;
 
         /// <summary>
         /// Initialize the local cache, this includes listing data files from disk and adding them to the cache.
