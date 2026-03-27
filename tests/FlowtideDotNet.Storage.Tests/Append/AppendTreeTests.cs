@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             {
                 CachePageCount = cachePageCount,
                 PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>(path, deleteOnClose))
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");

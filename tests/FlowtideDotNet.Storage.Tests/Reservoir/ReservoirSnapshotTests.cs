@@ -1,10 +1,11 @@
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
-using System.Buffers;
-using FlowtideDotNet.Storage.Exceptions;
-using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
@@ -19,7 +20,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
@@ -69,7 +70,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             for (int i = 0; i < 6; i++)
@@ -94,7 +95,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
                 // Check that we restored so current version is 6, (previous storage was at 7, but restore failed to that version).
                 Assert.Equal(6, persistentStorage2.CurrentVersion);
@@ -126,7 +127,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -152,7 +153,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
@@ -180,7 +181,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
                 var session = persistentStorage.CreateSession();
                 await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -195,7 +196,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
                 var session2 = persistentStorage2.CreateSession();
 
                 // Create enough checkpoints to have a snapshot and some history
@@ -230,7 +231,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -242,7 +243,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var lastData = (await provider.GetStoredDataFileIdsAsync()).Last();
 

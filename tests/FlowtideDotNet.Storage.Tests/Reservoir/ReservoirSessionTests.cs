@@ -1,10 +1,11 @@
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
-using System.Buffers;
-using FlowtideDotNet.Storage.Exceptions;
-using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Buffers;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
@@ -19,7 +20,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             // Initial write and commit
@@ -45,7 +46,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 MaxFileSize = 1024 * 1024 // 1MB to force rolling after ~100 keys
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             var session = persistentStorage.CreateSession();
             
@@ -65,7 +66,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             // Recover and verify a few keys
             {
                 var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
 
@@ -82,7 +83,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var provider = new TestDataProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a"));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
 
             // Two sessions writing non-overlapping keys concurrently
             var session1 = persistentStorage.CreateSession();
@@ -113,7 +114,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             // Recover and verify
             {
                 var persistentStorage2 = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a"));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session3 = persistentStorage2.CreateSession();
 

@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -26,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     internal class CheckpointHandler : IDisposable, IAsyncDisposable
     {
         private readonly int VersionBetweenSnapshot = 5;
-
+        private readonly ILogger _logger;
         private readonly IReservoirStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
@@ -72,7 +73,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             IReservoirStorageProvider fileProvider, 
             MemoryPool<byte> pool,
             IMemoryAllocator memoryAllocator,
-            int snapshotCheckpointInterval)
+            int snapshotCheckpointInterval,
+            ILogger logger)
         {
             _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
             {
@@ -83,7 +85,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _memoryPool = pool;
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, memoryAllocator);
             VersionBetweenSnapshot = snapshotCheckpointInterval;
-
+            _logger = logger;
             this._memoryAllocator = memoryAllocator;
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
@@ -118,13 +120,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             break;
                         }
                     }
-                    catch (InvalidOperationException)
+                    catch (InvalidOperationException e)
                     {
-                         // TODO: Log here
+                         _logger.LogWarning(e, "Failed to read checkpoint registry from bundle file with id {CheckpointId}", checkpoint);
                     }
-                    catch (InvalidDataException)
+                    catch (InvalidDataException e)
                     {
-                        // TODO: Log here
+                        _logger.LogWarning(e, "Invalid data in checkpoint registry from bundle file with id {CheckpointId}", checkpoint);
                     }
                 }
                 if (!foundRegistry)
@@ -192,7 +194,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             }
                             catch(InvalidOperationException e)
                             {
-                                // TODO: Log here
+                                _logger.LogWarning(e, "Failed to read checkpoint registry from bundle file with id {FileId}", bundledDataFileIds[i]);
+                            }
+                            catch(InvalidDataException e)
+                            {
+                                _logger.LogWarning(e, "Invalid data in checkpoint registry from bundle file with id {FileId}", bundledDataFileIds[i]);
                             }
                         }
                         else

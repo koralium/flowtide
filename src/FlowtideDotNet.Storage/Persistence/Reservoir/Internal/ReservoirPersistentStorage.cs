@@ -16,6 +16,8 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -41,6 +43,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private List<ReservoirPersistentSession> _sessions = new List<ReservoirPersistentSession>();
         private object _sessionsLock = new object();
         private Meter? _meter;
+        private ILoggerFactory _loggerFactory;
 
 
         private int _numberOfWrittenFiles;
@@ -73,6 +76,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 throw new ArgumentNullException(nameof(blobStorageOptions.FileProvider), "FileProvider must be provided in BlobStorageOptions.");
             }
             this._fileProvider = blobStorageOptions.FileProvider;
+            _loggerFactory = NullLoggerFactory.Instance;
 
             // If the user provided a cache provider, we add the local cache provider
             if (blobStorageOptions.CacheProvider != null)
@@ -536,6 +540,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata)
         {
+            _loggerFactory = metadata.LoggerFactory;
             _meter = new Meter($"flowtide.{metadata.StreamName}.storage");
 
             if (_checkpointHandler != null)
@@ -543,7 +548,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 await _checkpointHandler.DisposeAsync();
             }
 
-            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
+            var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger);
             _adminSession = new ReservoirPersistentSession(this, _memoryAllocator, _maxFileSize);
             _temporaryPageLocations.Clear();
 
@@ -593,7 +599,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 await _checkpointHandler.DisposeAsync();
             }
-            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval);
+            var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger);
             _temporaryPageLocations.Clear();
             lock (_sessionsLock)
             {

@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter, streamName)
+        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName)
         {
         }
 
@@ -65,6 +65,7 @@ namespace FlowtideDotNet.Storage.StateManager
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
+        private readonly ILoggerFactory m_loggerFactory;
         private readonly ILogger logger;
         private readonly Meter meter;
         private readonly string streamName;
@@ -103,11 +104,12 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long LastCompletedCheckpointVersion { get; private set; }
 
-        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
+        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
-            this.logger = logger;
+            m_loggerFactory = loggerFactory;
+            this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
             this.streamName = streamName;
         }
@@ -403,7 +405,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, streamVersionInformation)).ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, streamVersionInformation)).ConfigureAwait(false);
 
             // Check that metadata exist, also that the checkpoint version is larger than 0
             // If zero we revert back to an empty state

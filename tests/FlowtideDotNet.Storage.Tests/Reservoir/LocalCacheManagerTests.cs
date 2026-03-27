@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.Extensions.Logging.Abstractions;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -42,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = persistentData,
                 CacheProvider = cacheData
             });
-            blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test")).GetAwaiter().GetResult();
+            blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance)).GetAwaiter().GetResult();
             var provider = blobPersistentStorage.CacheProvider;
             Assert.NotNull(provider);
             cacheProvider = provider;
@@ -296,7 +297,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 });
                 var newProvider = blobPersistentStorage.CacheProvider;
                 Assert.NotNull(newProvider);
-                await newStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test"));
+                await newStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance));
 
                 var newMemory = await newProvider.ReadAsync(0, offset, 3, crc32, new LocalCacheTestSerializer());
                 Assert.Equal(new byte[] { 1, 2, 3 }, newMemory.Data);
@@ -311,7 +312,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public async Task EnsureZombieFileAreClearedFromCache()
         {
             await cacheData.WriteDataFileAsync(15, 0, 1, false, PipeReader.Create(new ReadOnlySequence<byte>([1])));
-            await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test"));
+            await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance));
 
             var fileExists = cacheData.TryGetFileData(15, out _);
             Assert.False(fileExists);

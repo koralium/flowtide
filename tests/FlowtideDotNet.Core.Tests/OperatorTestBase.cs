@@ -10,29 +10,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Engine.Internal;
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Engine.Internal;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
-using Microsoft.Extensions.Logging.Debug;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging.Debug;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using FlowtideDotNet.Storage.Memory;
 using System.Threading.Tasks.Dataflow;
-using FlowtideDotNet.Base;
-using FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters;
-using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Base.Vertices.Egress;
-using System.Collections.Immutable;
 
 namespace FlowtideDotNet.Core.Tests
 {
@@ -60,7 +61,7 @@ namespace FlowtideDotNet.Core.Tests
             var statemanagermeter = new Meter("statemanager");
             _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions()
             {
-            }, new DebugLoggerProvider().CreateLogger("state"), statemanagermeter, "stream");
+            }, NullLoggerFactory.Instance, statemanagermeter, "stream");
             await _stateManager.InitializeAsync();
             await ReinitializeOperator(@operator);
         }
