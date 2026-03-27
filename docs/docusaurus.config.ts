@@ -42,7 +42,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
            remarkPlugins: [
-             [remarkKroki, { server: 'http://localhost:8000', alias: ['blockdiag', 'kroki' ]}],
+             [remarkKroki, { server: 'https://kroki.io', alias: ['blockdiag', 'kroki' ]}],
              // [remarkGridTables, {}]
            ],
           // Please change this to your repo.

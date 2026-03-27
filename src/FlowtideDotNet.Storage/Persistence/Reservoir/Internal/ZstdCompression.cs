@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _destination = _destinationOwner.Memory.Slice(headerReserve);
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
             _writtenLength = 0;
-            output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)_destinationOwner.Memory.Length };
+            output = new ZSTD_outBuffer_s { pos = 0, size = (nuint)_destination.Length };
         }
 
         internal unsafe nuint CompressStream(

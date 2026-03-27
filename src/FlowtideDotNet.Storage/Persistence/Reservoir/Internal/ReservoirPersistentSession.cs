@@ -121,11 +121,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         var result = stateSerializer.Deserialize(location.data, (int)location.data.Length);
                         return ValueTask.FromResult(result);
                     }
-                    catch
-                    {
-                        Console.WriteLine($"Error for key {key}, Data length: {location.data.Length}");
-                        throw;
-                    }
                     finally
                     {
                         location.file.Return();

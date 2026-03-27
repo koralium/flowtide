@@ -256,6 +256,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 
         public void Dispose()
         {
+            if (!disposedValue)
+            {
+                close(fileDescriptor);
+                disposedValue = true;
+            }
             alignedBuffer?.Dispose();
         }
 

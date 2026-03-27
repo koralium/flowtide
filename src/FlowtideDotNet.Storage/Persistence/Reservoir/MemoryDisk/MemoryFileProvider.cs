@@ -206,7 +206,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         {
             lock (_lock)
             {
-                if (_registryBytes != null)
+                if (_metadataBytes != null)
                 {
                     var pipe = new Pipe();
                     pipe.Writer.Write(_metadataBytes);
