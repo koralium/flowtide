@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             }
         }
 
-        private async Task<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateTree(int bucketSize = 8, bool deleteOnClose = true, int cachePageCount = 1000000)
+        private async Task<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateTree(int bucketSize = 8, int cachePageCount = 1000000)
         {
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
@@ -187,12 +187,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
         [Fact]
         public async Task TestCommit()
         {
-            if (Directory.Exists("./data/temp/testcommit"))
-            {
-                Directory.Delete("./data/temp/testcommit", true);
-            }
-
-            var tree = await CreateTree(1, false);
+            var tree = await CreateTree(1);
 
             await tree.Append(1, 1);
             await tree.Append(2, 2);
@@ -200,7 +195,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
             await tree.Commit();
             await stateManager!.CheckpointAsync();
             stateManager!.Dispose();
-            tree = await CreateTree(1, false);
+            tree = await CreateTree(1);
 
             var printed = await tree.Print();
             var graph = KrokiUrlBuilder.ToKrokiUrl(printed);

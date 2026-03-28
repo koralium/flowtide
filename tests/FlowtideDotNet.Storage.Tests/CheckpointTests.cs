@@ -201,10 +201,6 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestRestoreTwoCheckpointsBack()
         {
-            if (Directory.Exists("./data/tmp/persistentrestoretwo"))
-            {
-                Directory.Delete("./data/tmp/persistentrestoretwo", true);
-            }
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {

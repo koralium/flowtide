@@ -24,10 +24,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            if (Directory.Exists($"./data/tempFiles/faster/{testName}/persist"))
-            {
-                Directory.Delete($"./data/tempFiles/faster/{testName}/persist", true);
-            }
             return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
             {
                 FileProvider = new MemoryFileProvider()
