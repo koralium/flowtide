@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
+using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 using ZstdSharp;
 using ZstdSharp.Unsafe;
@@ -138,6 +139,27 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
                     .EnsureZstdSuccess();
             }
         }
+
+        internal unsafe nuint CompressStream(ref ZSTD_inBuffer_s input, ref ZSTD_outBuffer_s output, ZSTD_EndDirective directive)
+        {
+            CreateContexts();
+            fixed (ZSTD_inBuffer_s* inputPtr = &input)
+            fixed (ZSTD_outBuffer_s* outputPtr = &output)
+            {
+                return Methods.ZSTD_compressStream2(_cctx, outputPtr, inputPtr, directive).EnsureZstdSuccess();
+            }
+        }
+
+        internal nuint DecompressStream(ref ZSTD_inBuffer_s input, ref ZSTD_outBuffer_s output)
+        {
+            CreateContexts();
+            fixed (ZSTD_inBuffer_s* inputPtr = &input)
+            fixed (ZSTD_outBuffer_s* outputPtr = &output)
+            {
+                return Methods.ZSTD_decompressStream(_dctx, outputPtr, inputPtr).EnsureZstdSuccess();
+            }
+        }
+
 
         protected virtual void Dispose(bool disposing)
         {

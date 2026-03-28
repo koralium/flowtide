@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Storage.Tests
                 {
                     DirectoryPath = "./data/tmp/" + nameof(TestCommitedValueIsSaved)
                 }, true)
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var stateClient = stateManager.GetOrCreateClient("stateClient");
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.Tests
                 {
                     DirectoryPath = "./data/tmp/" + nameof(TestNonCommitedValueIsRestored)
                 }, true)
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var stateClient = stateManager.GetOrCreateClient("stateClient");

@@ -29,6 +29,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private List<IParquetWriter> toWrite;
         private List<IParquetWriter> nullWriters;
         private int rowCount;
+        private long _writtenBytes;
         private Apache.Arrow.Schema _schema;
         private readonly bool _isCdcWriter;
         private readonly IParquetWriter? _cdcWriter;
@@ -122,7 +123,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 {
                     for (int i = 0; i < writers.Count; i++)
                     {
-                        writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector, 0, batch.Length);
+                        _writtenBytes += writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector, 0, batch.Length);
                     }
                     globalIndex += batch.Length;
                 }
@@ -132,13 +133,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public int WrittenCount => rowCount;
 
+        public long WrittenBytes => _writtenBytes;
+
         public void AddRow(ColumnRowReference row, bool isDelete = false)
         {
             rowCount++;
             for (int i = 0; i < toWrite.Count; i++)
             {
                 var value = row.referenceBatch.Columns[i].GetValueAt(row.RowIndex, default);
-                toWrite[i].WriteValue(value);
+                _writtenBytes += toWrite[i].WriteValue(value);
             }
             for (int i = 0; i < nullWriters.Count; i++)
             {
@@ -152,13 +155,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 {
                     throw new InvalidOperationException("Delete records are only supported in CDC mode.");
                 }
-                _cdcWriter!.WriteValue(new StringValue("delete"));
+                _writtenBytes += _cdcWriter!.WriteValue(new StringValue("delete"));
             }
             else
             {
                 if (_isCdcWriter)
                 {
-                    _cdcWriter!.WriteValue(new StringValue("insert"));
+                    _writtenBytes += _cdcWriter!.WriteValue(new StringValue("insert"));
                 }
             }
         }
@@ -166,6 +169,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public void NewBatch()
         {
             rowCount = 0;
+            _writtenBytes = 0;
             foreach (var writer in writers)
             {
                 writer.NewBatch();

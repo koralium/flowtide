@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests.Queue
                     PageSize = 16 * 1024 * 1024,
                     MemorySize = 32 * 1024 * 1024
                 })
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var stateManagerClient = stateManager.GetOrCreateClient("test");

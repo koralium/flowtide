@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             _memoryAllocator = memoryAllocator;
         }
 
-        private void EnsureCapacity(int length)
+        internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)
             {
@@ -275,6 +275,17 @@ namespace FlowtideDotNet.Storage.DataStructures
             slicedMem.Span.CopyTo(newMemory.Memory.Span);
 
             return new PrimitiveList<T>(newMemory, _length, memoryAllocator);
+        }
+
+        public int BinarySearch<TComp>(TComp value)
+            where TComp : IComparable<T>
+        {
+            return AccessSpan.Slice(0, _length).BinarySearch(value);
+        }
+
+        public void SetLength(int newLength)
+        {
+            _length = newLength;
         }
     }
 }

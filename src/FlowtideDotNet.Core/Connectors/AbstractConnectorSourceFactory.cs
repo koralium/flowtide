@@ -13,6 +13,8 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Connectors
@@ -20,6 +22,12 @@ namespace FlowtideDotNet.Core.Connectors
     public abstract class AbstractConnectorSourceFactory : IConnectorSourceFactory
     {
         public abstract bool CanHandle(ReadRelation readRelation);
+
+        public virtual bool TryHandleTableFunction(string functionName, SqlTableFunctionArgument sqlTableFunction, [NotNullWhen(true)] out Relation? relation)
+        {
+            relation = null;
+            return false;
+        }
 
         public abstract IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions);
 

@@ -77,5 +77,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             tableMetadata = default;
             return false;
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }

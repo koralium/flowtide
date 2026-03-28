@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Storage.Blobs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FlowtideDotNet.DependencyInjection\FlowtideDotNet.DependencyInjection.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.Storage\FlowtideDotNet.Storage.csproj" />
+  </ItemGroup>
+
+</Project>

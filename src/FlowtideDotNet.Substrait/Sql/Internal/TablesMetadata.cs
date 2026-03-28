@@ -60,6 +60,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             };
         }
 
+        public bool TryHandleTableFunction(IReadOnlyList<string> functionName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            foreach (var tableProvider in _tableProviders)
+            {
+                if (tableProvider.TryHandleTableFunction(functionName, sqlTableFunction, out relation))
+                {
+                    return true;
+                }
+            }
+            relation = default;
+            return false;
+        }
+
         public bool TryGetTable(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
         {
             string fullName = string.Join(".", tableName);

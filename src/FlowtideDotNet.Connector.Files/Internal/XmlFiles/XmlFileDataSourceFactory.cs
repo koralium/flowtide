@@ -78,5 +78,11 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             tableMetadata = default;
             return false;
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
+            return false;
+        }
     }
 }

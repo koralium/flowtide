@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
