@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Storage.Tests
                 CachePageCount = 0,
                 UseReadCache = true
             };
-            var manager = new StateManagerSync<StateManagerMetadata>(a, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("tmp"), "test");
+            var manager = new StateManagerSync<StateManagerMetadata>(a, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp"), "test");
             await manager.InitializeAsync();
             await manager.LruTable.StopCleanupTask();
 

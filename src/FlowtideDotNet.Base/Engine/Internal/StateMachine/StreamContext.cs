@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             _checkpointLock = new object();
 
-            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory.CreateLogger("StateManager"), new Meter($"flowtide.{streamName}.storage"), streamName);
+            _stateManager = new FlowtideDotNet.Storage.StateManager.StateManagerSync<StreamState>(stateManagerOptions, this.loggerFactory, new Meter($"flowtide.{streamName}.storage"), streamName);
 
 
             _streamScheduler.Initialize(this);

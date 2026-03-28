@@ -13,11 +13,17 @@
 using FASTER.core;
 using FASTER.devices;
 using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Buffers;
 
 namespace FlowtideDotNet.DependencyInjection
 {
@@ -139,6 +145,52 @@ namespace FlowtideDotNet.DependencyInjection
         public static IFlowtideStorageBuilder NoCompression(this IFlowtideStorageBuilder storageBuilder)
         {
             return storageBuilder.SetCompression(new FlowtideDotNet.Storage.StateSerializeOptions());
+        }
+
+        public static IReservoirBuilder AddFileStorage(this IFlowtideStorageBuilder storageBuilder, string directory)
+        {
+            ReservoirBuilder reservoirBuilder = new ReservoirBuilder();
+            reservoirBuilder.SetStorage(new LocalDiskProvider(directory));
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                return new ReservoirPersistentStorage(reservoirBuilder);
+            });
+
+            storageBuilder.ZstdPageCompression();
+            return reservoirBuilder;
+        }
+
+        /// <summary>
+        /// Add temporary storage that uses the local disk for development and testing purposes. 
+        /// It will store the data in the system's temporary directory and automatically clean up all files when the application closes. 
+        /// This is not recommended for production use.
+        /// </summary>
+        /// <remarks>
+        /// The temporary storage is designed for ease of use during development and testing, providing a simple way to run a state without persisting the data.
+        /// </remarks>
+        /// <param name="storageBuilder">
+        /// </param>
+        /// <param name="directory">
+        /// Optional directory name for the temporary storage. If not provided, it will default to a "flowtide-state" folder within the system's temporary directory.
+        /// </param>
+        /// <returns></returns>
+        public static IReservoirBuilder AddTemporaryStorage(this IFlowtideStorageBuilder storageBuilder, string? directory = default)
+        {
+            ReservoirBuilder reservoirBuilder = new ReservoirBuilder();
+
+            if (directory == null)
+            {
+                directory = Path.Combine(Path.GetTempPath(), "flowtide-state");
+            }
+
+            reservoirBuilder.SetStorage(new TemporaryDiskProvider(directory));
+            storageBuilder.SetPersistentStorage((provider) =>
+            {
+                return new ReservoirPersistentStorage(reservoirBuilder);
+            });
+
+            storageBuilder.ZstdPageCompression();
+            return reservoirBuilder;
         }
     }
 }

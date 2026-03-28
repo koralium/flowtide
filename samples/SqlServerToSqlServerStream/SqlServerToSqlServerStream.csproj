@@ -14,12 +14,17 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Storage.Azure\FlowtideDotNet.Storage.AzureBlobs.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <None Update="stream.sql">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="state\" />
   </ItemGroup>
 
 </Project>

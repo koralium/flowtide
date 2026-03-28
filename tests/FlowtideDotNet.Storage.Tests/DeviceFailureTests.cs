@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Storage.Tests
                         PageSize = 128,
 
                     })
-                }, nullFactory.CreateLogger("logger"), new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await manager.InitializeAsync();
             var client = manager.GetOrCreateClient("test");
             var tree = await client.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
@@ -287,7 +287,7 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestReadFailure()
         {
-            var logger = new LoggerFactory(new List<ILoggerProvider>() { new DebugLoggerProvider() }).CreateLogger("test");
+            var logger = NullLoggerFactory.Instance;
             var device = new ReadFailureDevice(Devices.CreateLogDevice("test", deleteOnClose: true));
             var manager = new StateManagerSync<object>(
                 new StateManagerOptions()

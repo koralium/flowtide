@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                 {
                     DirectoryPath = $"./data/temp/{testName}",
                 })
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");

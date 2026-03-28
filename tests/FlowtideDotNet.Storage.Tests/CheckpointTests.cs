@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistent"
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentfail"
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Storage.Tests
                         LogDevice = device,
                         CheckpointDir = "./data/tmp/persistentcompact"
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -220,7 +220,7 @@ namespace FlowtideDotNet.Storage.Tests
                         CheckpointDir = "./data/tmp/persistentrestoretwo",
                         RemoveOutdatedCheckpoints = false
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
             Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);
