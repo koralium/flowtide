@@ -17,11 +17,11 @@
     <!-- Microsoft clients -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageVersion Include="Microsoft.Graph" Version="5.58.0" />
-    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.1" />
     <!-- Grpc -->
     <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
-    <PackageVersion Include="Google.Protobuf" Version="3.33.5" />
+    <PackageVersion Include="Google.Protobuf" Version="3.34.0" />
     <!-- Polly -->
     <PackageVersion Include="Polly.Core" Version="8.6.4" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.5.2" />
@@ -45,9 +45,9 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="ParquetSharp" Version="18.1.0" />
     <PackageVersion Include="Stowage" Version="2.0.1" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.13.1" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.13.2" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.0" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.2" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <!-- Deprecated only for .net 8 -->
@@ -61,7 +61,7 @@
     <PackageVersion Include="xunit" Version="2.7.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <PackageVersion Include="xunit.v3" Version="2.0.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.24" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.25" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
     <!-- Testcontainers -->
     <PackageVersion Include="Testcontainers" Version="4.10.0" />
