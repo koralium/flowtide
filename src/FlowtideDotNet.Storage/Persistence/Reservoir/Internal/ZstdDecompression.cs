@@ -20,8 +20,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     internal class ZstdDecompression : IDisposable
     {
         FlowtideZstdCompressor _compressor;
-        private bool contextDrained = true;
-
         private ZSTD_inBuffer_s input;
         private bool disposedValue;
 
