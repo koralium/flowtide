@@ -13,6 +13,7 @@
     <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
     <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />

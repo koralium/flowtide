@@ -18,7 +18,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Persistence.FasterStorage
+namespace FlowtideDotNet.Storage.FasterKV.Internal
 {
     internal struct CheckpointInfo
     {

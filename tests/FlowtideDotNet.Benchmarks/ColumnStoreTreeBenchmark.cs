@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using FASTER.core;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -44,8 +43,6 @@ namespace FlowtideDotNet.Benchmarks
         [GlobalSetup]
         public void GlobalSetup()
         {
-            var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
-            localStorage.Initialize("./data/temp");
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1_000_000

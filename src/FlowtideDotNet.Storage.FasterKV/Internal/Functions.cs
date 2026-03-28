@@ -12,33 +12,20 @@
 
 using FASTER.core;
 
-namespace FlowtideDotNet.Storage.StateManager.Internal
+namespace FlowtideDotNet.Storage.FasterKV.Internal
 {
     internal class Functions : SpanByteFunctions<long, byte[], long>
     {
-        //private protected readonly MemoryPool<byte> memoryPool;
-
-        ///// <summary>
-        ///// Constructor
-        ///// </summary>
-        ///// <param name="memoryPool"></param>
-        //public Functions(MemoryPool<byte> memoryPool = default)
-        //{
-        //    this.memoryPool = memoryPool ?? MemoryPool<byte>.Shared;
-        //}
 
         public unsafe override bool SingleReader(ref long key, ref SpanByte input, ref SpanByte value, ref byte[] dst, ref ReadInfo readInfo)
         {
             dst = value.ToByteArray();
-            //value.CopyTo(ref dst, memoryPool);
             return true;
         }
 
-        /// <inheritdoc />
         public unsafe override bool ConcurrentReader(ref long key, ref SpanByte input, ref SpanByte value, ref byte[] dst, ref ReadInfo readInfo)
         {
             dst = value.ToByteArray();
-            //value.CopyTo(ref dst, memoryPool);
             return true;
         }
     }

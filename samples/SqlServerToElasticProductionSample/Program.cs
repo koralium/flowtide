@@ -79,7 +79,7 @@ builder.Services.AddFlowtideStream("sqlservertoelastic")
     })
     .AddStorage(storage =>
     {
-        storage.AddFasterKVAzureStorage(azureStorageString, "sqlservertoelastic", streamVersion);
+        storage.AddAzureBlobStorage(azureStorageString, "sqlservertoelastic", streamVersion);
     });
 
 var app = builder.Build();

@@ -13,6 +13,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.DeltaLake\FlowtideDotNet.Connector.DeltaLake.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Storage.Azure\FlowtideDotNet.Storage.AzureBlobs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

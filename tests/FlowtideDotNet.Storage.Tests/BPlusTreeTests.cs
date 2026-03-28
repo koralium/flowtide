@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -33,8 +32,6 @@ namespace FlowtideDotNet.Storage.Tests
 
         private async Task<IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>> Init()
         {
-            var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
-            localStorage.Initialize("./data/temp");
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000000,

@@ -12,7 +12,7 @@
 
 using FASTER.core;
 
-namespace FlowtideDotNet.Storage.DeviceFactories
+namespace FlowtideDotNet.Storage.FasterKV.DeviceFactories
 {
     public class InMemoryDeviceFactory : INamedDeviceFactory
     {

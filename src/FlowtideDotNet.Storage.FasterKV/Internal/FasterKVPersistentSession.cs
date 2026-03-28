@@ -11,10 +11,11 @@
 // limitations under the License.
 
 using FASTER.core;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using System.Buffers;
 
-namespace FlowtideDotNet.Storage.Persistence.FasterStorage
+namespace FlowtideDotNet.Storage.FasterKV.Internal
 {
     internal class FasterKVPersistentSession : IPersistentStorageSession
     {

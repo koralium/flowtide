@@ -11,12 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -28,13 +24,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            if (Directory.Exists($"./data/tempFiles/faster/{testName}/persist"))
+            return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions()
             {
-                Directory.Delete($"./data/tempFiles/faster/{testName}/persist", true);
-            }
-            return new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/faster/{testName}/persist")
-            {
-                RemoveOutdatedCheckpoints = false
+                FileProvider = new MemoryFileProvider()
             });
         }
     }
