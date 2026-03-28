@@ -10,14 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Tests.SmokeTests.Count;
 using FlowtideDotNet.Core.Tests.SmokeTests.LineItemLeftJoinOrders;
 using FlowtideDotNet.Core.Tests.SmokeTests.StringJoin;
-using FlowtideDotNet.Storage.DeviceFactories;
 using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
 using Serilog;
@@ -91,10 +89,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                 b.AddDebug();
             });
 
-            var checkpointManager = new DeviceLogCommitCheckpointManager(
-                new InMemoryDeviceFactory(),
-                new DefaultCheckpointNamingScheme($"checkpoints/"));
-            var logDevice = new ManagedLocalStorageDevice("logdevice", deleteOnClose: true);
             dataflowStream = differentialComputeBuilder
                 .AddPlan(modifiedPlan, false)
                 .AddConnectorManager(connectorManager)

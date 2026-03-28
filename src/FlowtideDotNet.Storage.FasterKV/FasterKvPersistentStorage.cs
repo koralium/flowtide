@@ -11,11 +11,12 @@
 // limitations under the License.
 
 using FASTER.core;
-using FlowtideDotNet.Storage.StateManager.Internal;
+using FlowtideDotNet.Storage.FasterKV.Internal;
+using FlowtideDotNet.Storage.Persistence;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 
-namespace FlowtideDotNet.Storage.Persistence.FasterStorage
+namespace FlowtideDotNet.Storage.FasterKV
 {
     public class FasterKvPersistentStorage : IPersistentStorage
     {

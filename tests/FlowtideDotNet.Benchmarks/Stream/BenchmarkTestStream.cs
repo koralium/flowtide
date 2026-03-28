@@ -13,7 +13,9 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.Persistence;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.Benchmarks.Stream
 {
@@ -49,7 +51,10 @@ namespace FlowtideDotNet.Benchmarks.Stream
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new FasterKvPersistentStorage(meta => new FASTER.core.FasterKVSettings<long, FASTER.core.SpanByte>($"./data/tempFiles/{testName}/fasterkv", true));
+            return new ReservoirPersistentStorage(new ReservoirStorageOptions()
+            {
+                FileProvider = new MemoryFileProvider()
+            });
         }
     }
 }

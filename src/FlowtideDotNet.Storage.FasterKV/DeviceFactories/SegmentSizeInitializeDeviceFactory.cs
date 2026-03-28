@@ -12,7 +12,7 @@
 
 using FASTER.core;
 
-namespace FlowtideDotNet.Storage.DeviceFactories
+namespace FlowtideDotNet.Storage.FasterKV.DeviceFactories
 {
     /// <summary>
     /// Helper device factory that initializes the device with a segment size.

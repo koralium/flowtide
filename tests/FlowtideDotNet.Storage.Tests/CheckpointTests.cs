@@ -10,10 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -27,14 +28,12 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestCheckpoint()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistent");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistent"
+                        FileProvider = new MemoryFileProvider()
                     })
                 }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
@@ -83,14 +82,12 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestFailureAfterNewRootInBPlusTree()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistentfail");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistentfail"
+                        FileProvider = new MemoryFileProvider()
                     })
                 }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
@@ -147,14 +144,12 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestCheckpointWithCompactionRestore()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistentcompact");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistentcompact"
+                        FileProvider = new MemoryFileProvider()
                     })
                 }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
@@ -210,15 +205,12 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 Directory.Delete("./data/tmp/persistentrestoretwo", true);
             }
-            var device = Devices.CreateLogDevice("./data/tmp/persistentrestoretwo");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistentrestoretwo",
-                        RemoveOutdatedCheckpoints = false
+                        FileProvider = new MemoryFileProvider()
                     })
                 }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 

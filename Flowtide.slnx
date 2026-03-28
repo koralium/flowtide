@@ -13,6 +13,7 @@
     <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" Id="397d265e-f3bc-4faf-b9cc-bc857ecae747" />
     <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
     <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />
@@ -30,7 +31,9 @@
     <Project Path="src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj" />
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
-    <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj">
+      <Build Solution="Debug|*" Project="false" />
+    </Project>
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
     <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
     <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />

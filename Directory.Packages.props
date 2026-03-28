@@ -13,6 +13,7 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
     <PackageVersion Include="System.IO.Hashing" Version="10.0.2" />
     <PackageVersion Include="System.IO.Pipelines" Version="10.0.2" />
+	<PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
     <!-- Microsoft clients -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageVersion Include="Microsoft.Graph" Version="5.58.0" />

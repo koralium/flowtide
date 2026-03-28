@@ -58,7 +58,7 @@ builder.Services.AddFlowtideStream("my_stream")
         storage.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
 
         // Use azure storage for persistence
-        storage.AddFasterKVAzureStorage(azurePersistenceBlobStorage!, "mystream", "mydirname");
+        storage.AddAzureBlobStorage(azurePersistenceBlobStorage!, "mystream", "mydirname");
     });
 
 var app = builder.Build();

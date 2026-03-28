@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
     /// This is primarily intended for testing purposes, allowing for fast and efficient storage operations without the overhead of disk I/O. 
     /// The MemoryFileProvider can be used to simulate file storage behavior in unit tests or other scenarios where a lightweight, in-memory storage solution is sufficient.
     /// </summary>
-    internal class MemoryFileProvider : IReservoirStorageProvider
+    public class MemoryFileProvider : IReservoirStorageProvider
     {
         private object _lock = new object();
         private Dictionary<ulong, byte[]> _dataFiles = new Dictionary<ulong, byte[]>();
