@@ -102,7 +102,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                                     {
                                         if (_waitingForFullLoad)
                                         {
-                                            _deltaLoadTask = RunTask(FullLoadTrigger);
+                                            _deltaLoadTask = RunTask(FullLoadTrigger)
+                                              .ContinueWith((t) =>
+                                              {
+                                                  lock (_taskLock)
+                                                  {
+                                                      // Full load just happened, so we reset the flag
+                                                      _waitingForFullLoad = false;
+                                                      _deltaLoadTask = default;
+                                                  }
+                                              });
                                             _waitingForFullLoad = false;
                                         }
                                         else
@@ -136,7 +145,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                         }
                         return Task.CompletedTask;
                     }
-
             }
             return Task.CompletedTask;
         }
