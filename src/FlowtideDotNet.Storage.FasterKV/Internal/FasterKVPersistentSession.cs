@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Storage.FasterKV.Internal
                 var handle = value.PreSerializedData.Value.Pin();
                 var spanByte = CreateSpanByteFromHandle(handle, value.PreSerializedData.Value.Length);
                 var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
-                var status = result.Complete();
+                result.Complete();
                 handle.Dispose();
             }
             else
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Storage.FasterKV.Internal
                 var handle = writer.WrittenMemory.Pin();
                 var spanByte = CreateSpanByteFromHandle(handle, writer.WrittenMemory.Length);
                 var result = await _session.UpsertAsync(key, spanByte, token: tokenSource.Token);
-                var status = result.Complete();
+                result.Complete();
                 handle.Dispose();
             }
         }

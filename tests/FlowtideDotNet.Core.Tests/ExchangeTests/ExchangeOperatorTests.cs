@@ -39,7 +39,6 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
         [Fact]
         public async Task TestPullBucketOutput()
         {
-            var listeners = Trace.Listeners;
             var relation = new ExchangeRelation()
             {
                 ExchangeKind = new ScatterExchangeKind()
@@ -164,7 +163,6 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
         [Fact]
         public async Task TestStandardOutputAsSecondTarget()
         {
-            var listeners = Trace.Listeners;
             var relation = new ExchangeRelation()
             {
                 ExchangeKind = new ScatterExchangeKind()
@@ -222,8 +220,8 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
-            var initWatermarkMessage = await outputBlock.ReceiveAsync();
-            var rowsMessage = await outputBlock.ReceiveAsync();
+            await outputBlock.ReceiveAsync();
+            await outputBlock.ReceiveAsync();
 
             var fetchData = new ExchangeFetchDataMessage()
             {

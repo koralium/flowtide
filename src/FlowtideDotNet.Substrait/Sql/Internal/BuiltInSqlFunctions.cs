@@ -30,11 +30,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 return listArguments.ArgumentList;
             }
-            if (arguments is FunctionArguments.None noneArguments)
+            if (arguments is FunctionArguments.None)
             {
                 return new FunctionArgumentList(new SqlParser.Sequence<FunctionArg>());
             }
-            if (arguments is FunctionArguments.Subquery subQueryArgument)
+            if (arguments is FunctionArguments.Subquery)
             {
                 throw new SubstraitParseException("Subquery is not supported as an argument");
             }

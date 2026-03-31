@@ -43,7 +43,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestUpdateToNull()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
             Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
@@ -60,7 +59,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestUpdateToIntToStringColumnAreadyExists()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
             Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
@@ -77,7 +75,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertNull()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
             Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
@@ -98,7 +95,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertStrings()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
             Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));
@@ -119,7 +115,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestDelete()
         {
-            UnionColumn unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
             Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new Int64Value(1));

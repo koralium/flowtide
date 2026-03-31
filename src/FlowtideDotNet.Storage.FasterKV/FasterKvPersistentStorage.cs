@@ -216,7 +216,7 @@ namespace FlowtideDotNet.Storage.FasterKV
             }
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await m_adminSession.ReadAsync(ref key, token: tokenSource.Token);
-            var (status, bytes) = result.Complete();
+            var (_, bytes) = result.Complete();
             return bytes;
         }
 
