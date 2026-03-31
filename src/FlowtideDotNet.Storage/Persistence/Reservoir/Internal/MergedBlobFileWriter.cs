@@ -41,8 +41,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private IMemoryOwner<byte>? _sequencesMemory;
         private int _sequencesOffset;
 
-        public readonly List<BlobFileWriter> _files = new List<BlobFileWriter>();
+        private readonly List<BlobFileWriter> _files = new List<BlobFileWriter>();
 
+        public IReadOnlyList<BlobFileWriter> Files => _files;
         // Read fields
         private SequencePosition _advancedPosition;
         private BufferSegment _headerData;
