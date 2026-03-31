@@ -48,8 +48,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(g =>
                 {
@@ -93,8 +91,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(g =>
@@ -157,8 +153,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
                 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             DeleteUser(Users.First());
 
@@ -1043,8 +1037,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
                 {
@@ -1089,8 +1081,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
@@ -1137,8 +1127,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
                 {
@@ -1179,8 +1167,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
@@ -1224,8 +1210,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
                 {
@@ -1267,8 +1251,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
@@ -1312,8 +1294,6 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await WaitForUpdate();
 
-            var actual = GetActualRows();
-
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>
                 {
@@ -1351,8 +1331,6 @@ namespace FlowtideDotNet.AcceptanceTests
             ");
 
             await WaitForUpdate();
-
-            var actual = GetActualRows();
 
             var expected = Users.GroupBy(x => x.CompanyId)
                 .SelectMany(x =>

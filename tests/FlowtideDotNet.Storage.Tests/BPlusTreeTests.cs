@@ -335,8 +335,6 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            var printedTree = await _tree.Print();
-
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
@@ -352,7 +350,7 @@ namespace FlowtideDotNet.Storage.Tests
                     var ex = sortedOrder[count];
                     if (ex != kv.Key)
                     {
-                        v = await _tree.GetValue(sortedOrder[count]);
+                        await _tree.GetValue(sortedOrder[count]);
                     }
                     Assert.Equal(ex, kv.Key);
                     count++;
@@ -387,7 +385,6 @@ namespace FlowtideDotNet.Storage.Tests
                     await _tree.Upsert(val, val.ToString());
                     values.Add(val);
                 }
-                var printedTree = await _tree.Print();
                 var sortedOrder = values.OrderBy(x => x).ToList();
                 var it = _tree.CreateIterator();
                 await it.SeekFirst();

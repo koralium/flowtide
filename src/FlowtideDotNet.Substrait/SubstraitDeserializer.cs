@@ -1145,8 +1145,6 @@ namespace FlowtideDotNet.Substrait
                 }
                 else if (typeName == CustomProtobuf.BufferRelation.Descriptor.FullName)
                 {
-                    var bufferRel = extensionSingle.Detail.Unpack<CustomProtobuf.BufferRelation>();
-
                     return new BufferRelation()
                     {
                         Input = input,

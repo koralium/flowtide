@@ -58,14 +58,14 @@ namespace FlowtideDotNet.Storage.Tests
 
             await tree.Upsert(1, "helloOther");
 
-            var (found, val) = await tree.GetValue(1);
+            var (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore
             await stateManager.InitializeAsync();
 
             await tree.Upsert(1, "helloOther");
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Commit data and take only checkpoint without metadata, this is to force written data
@@ -73,10 +73,9 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.InitializeAsync();
 
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
-            ;
         }
 
         [Fact]
@@ -181,7 +180,6 @@ namespace FlowtideDotNet.Storage.Tests
 
             // Restore
             await stateManager.InitializeAsync();
-            (found, val) = await tree.GetValue(1);
 
             await tree.Upsert(1, "helloOther");
             (found, val) = await tree.GetValue(1);

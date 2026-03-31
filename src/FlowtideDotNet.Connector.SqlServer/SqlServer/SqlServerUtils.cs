@@ -1125,7 +1125,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     var val = mapFuncs[i](e);
                     if (val == null)
                     {
-                        val = DBNull.Value;
+                        row[columnNames[i]] = DBNull.Value;
                     }
                     else
                     {

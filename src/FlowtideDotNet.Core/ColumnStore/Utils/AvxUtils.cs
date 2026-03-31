@@ -75,38 +75,34 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             unsafe
             {
-                fixed (int* pArray = array)
-                fixed (sbyte* pCond = conditionalValues)
+                // Check if there is overlap
+                if (sourceIndex < destIndex && sourceIndex + length > destIndex)
                 {
-                    // Check if there is overlap
-                    if (sourceIndex < destIndex && sourceIndex + length > destIndex)
+                    int i = length;
+                    for (int j = i - 1; j >= 0; j--)
                     {
-                        int i = length;
-                        for (int j = i - 1; j >= 0; j--)
+                        if (conditionalValues[sourceIndex + j] == conditionalValue)
                         {
-                            if (conditionalValues[sourceIndex + j] == conditionalValue)
-                            {
-                                array[destIndex + j] = array[sourceIndex + j] + valueToAdd;
-                            }
-                            else
-                            {
-                                array[destIndex + j] = array[sourceIndex + j];
-                            }
+                            array[destIndex + j] = array[sourceIndex + j] + valueToAdd;
+                        }
+                        else
+                        {
+                            array[destIndex + j] = array[sourceIndex + j];
                         }
                     }
-                    else
+                }
+                else
+                {
+                    int i = 0;
+                    for (; i < length; i++)
                     {
-                        int i = 0;
-                        for (; i < length; i++)
+                        if (conditionalValues[sourceIndex + i] == conditionalValue)
                         {
-                            if (conditionalValues[sourceIndex + i] == conditionalValue)
-                            {
-                                array[destIndex + i] = array[sourceIndex + i] + valueToAdd;
-                            }
-                            else
-                            {
-                                array[destIndex + i] = array[sourceIndex + i];
-                            }
+                            array[destIndex + i] = array[sourceIndex + i] + valueToAdd;
+                        }
+                        else
+                        {
+                            array[destIndex + i] = array[sourceIndex + i];
                         }
                     }
                 }
@@ -208,27 +204,23 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             unsafe
             {
-                fixed (int* pArray = array)
-                fixed (sbyte* pCond = typeIds)
+                // Check if there is overlap
+                if (sourceIndex < destIndex && sourceIndex + length > destIndex)
                 {
-                    // Check if there is overlap
-                    if (sourceIndex < destIndex && sourceIndex + length > destIndex)
+                    int i = length;
+                    for (int j = i - 1; j >= 0; j--)
                     {
-                        int i = length;
-                        for (int j = i - 1; j >= 0; j--)
-                        {
-                            var typeId = typeIds[sourceIndex + j];
-                            array[destIndex + j] = array[sourceIndex + j] + toAdd[typeId];
-                        }
+                        var typeId = typeIds[sourceIndex + j];
+                        array[destIndex + j] = array[sourceIndex + j] + toAdd[typeId];
                     }
-                    else
+                }
+                else
+                {
+                    int i = 0;
+                    for (; i < length; i++)
                     {
-                        int i = 0;
-                        for (; i < length; i++)
-                        {
-                            var typeId = typeIds[sourceIndex + i];
-                            array[destIndex + i] = array[sourceIndex + i] + toAdd[typeId];
-                        }
+                        var typeId = typeIds[sourceIndex + i];
+                        array[destIndex + i] = array[sourceIndex + i] + toAdd[typeId];
                     }
                 }
             }
