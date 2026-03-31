@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
@@ -296,6 +297,26 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
         public ITableProvider Create()
         {
             return this;
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("spicedb", "relationships", new NamedStruct()
+            {
+                Names = ["subject_type", "subject_id", "subject_relation", "relation", "resource_type", "resource_id"],
+                Struct = new Struct()
+                {
+                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                    {
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType()
+                    }
+                }
+            });
         }
     }
 }

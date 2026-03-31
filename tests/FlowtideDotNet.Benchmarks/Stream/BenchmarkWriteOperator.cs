@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
@@ -33,6 +34,11 @@ namespace FlowtideDotNet.Benchmarks.Stream
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
             return new BenchmarkWriteOperator(dataflowBlockOptions, onCheckpoint);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("benchmark", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 

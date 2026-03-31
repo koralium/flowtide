@@ -13,8 +13,10 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Tests.SqlServer;
 using Microsoft.Data.SqlClient;
 using System.Threading.Tasks.Dataflow;
@@ -56,6 +58,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 throw new NotSupportedException("SQL Server sink does not support overwrite.");
             }
             return new ColumnSqlServerSink(sqlServerSinkOptions, writeRelation, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            if (includeSchema && _sqlServerTableProvider.TryGetTableInformation(writeRelation.NamedObject.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("mssql", writeRelation.NamedObject.DotSeperated, tableMetadata.Schema);
+            }
+
+            return new TableLineageMetadata("mssql", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 }

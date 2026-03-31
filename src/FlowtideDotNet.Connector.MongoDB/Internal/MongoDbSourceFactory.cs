@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -50,6 +51,11 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             var database = readRelation.NamedTable.Names[0];
             var collection = readRelation.NamedTable.Names[1];
             return new MongoDbSource(options, database, collection, readRelation, functionsRegister, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("mongodb", readRelation.NamedTable.DotSeperated, default);
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)

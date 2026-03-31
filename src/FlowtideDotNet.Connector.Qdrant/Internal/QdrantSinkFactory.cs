@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
@@ -62,6 +63,11 @@ namespace FlowtideDotNet.Connector.Qdrant.Internal
                 throw new NotSupportedException("Qdrant sink does not support overwrite.");
             }
             return new QdrantSink(_options, writeRelation, dataflowBlockOptions, _embeddingsGenerator, _chunker);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("qdrant", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 }

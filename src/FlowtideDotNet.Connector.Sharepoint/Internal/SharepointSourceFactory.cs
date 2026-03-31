@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -67,6 +68,11 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         {
             var listId = tableProvider.GetListId(readRelation.NamedTable.DotSeperated);
             return new SharepointSource(sharepointSourceOptions, listId, readRelation, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("sharepoint", readRelation.NamedTable.DotSeperated, default);
         }
     }
 }

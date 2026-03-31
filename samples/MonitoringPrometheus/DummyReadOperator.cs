@@ -15,6 +15,7 @@ using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
@@ -32,6 +33,11 @@ namespace MonitoringPrometheus
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new DummyReadOperator(dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("dummy", readRelation.NamedTable.DotSeperated, default);
         }
     }
 
