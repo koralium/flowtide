@@ -233,7 +233,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
             using MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
