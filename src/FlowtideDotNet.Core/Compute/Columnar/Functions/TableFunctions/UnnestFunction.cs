@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         private static StringValue _keyValue = new StringValue("key");
         private static StringValue _valueValue = new StringValue("value");
 
-        private static MethodInfo _unnestMethod = GetUnnestMethod();
+        private static readonly MethodInfo _unnestMethod = GetUnnestMethod();
         private static MethodInfo GetUnnestMethod()
         {
             var method = typeof(UnnestFunction).GetMethod(nameof(DoUnnest), BindingFlags.Static | BindingFlags.Public);

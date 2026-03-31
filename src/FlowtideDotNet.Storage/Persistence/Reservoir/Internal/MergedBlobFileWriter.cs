@@ -29,9 +29,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private const int HeaderSize = 64;
         private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
-        private PrimitiveList<long> _pageIds;
-        private PrimitiveList<int> _pageOffset;
-        private PrimitiveList<uint> _crc32s;
+        private readonly PrimitiveList<long> _pageIds;
+        private readonly PrimitiveList<int> _pageOffset;
+        private readonly PrimitiveList<uint> _crc32s;
         private int _globalOffset;
         private int endIndex;
         private bool _finished;
@@ -41,8 +41,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private IMemoryOwner<byte>? _sequencesMemory;
         private int _sequencesOffset;
 
-        public List<BlobFileWriter> _files = new List<BlobFileWriter>();
+        private readonly List<BlobFileWriter> _files = new List<BlobFileWriter>();
 
+        public IReadOnlyList<BlobFileWriter> Files => _files;
         // Read fields
         private SequencePosition _advancedPosition;
         private BufferSegment _headerData;

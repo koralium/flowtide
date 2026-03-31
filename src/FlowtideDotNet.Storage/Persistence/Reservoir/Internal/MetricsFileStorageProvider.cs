@@ -22,8 +22,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private long _numberOfReads;
         private long _numberOfWrites;
         private long _numberOfDeletes;
-        private Histogram<long> _numberOfDataBytesRead;
-        private Histogram<long> _numberOfDataBytesWritten;
+        private readonly Histogram<long> _numberOfDataBytesRead;
+        private readonly Histogram<long> _numberOfDataBytesWritten;
 
         public bool SupportsFileListing => _internalProvider.SupportsFileListing;
 

@@ -652,7 +652,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         class BatchCompressor : IBatchCompressor
         {
-            Compressor compressor;
+            private readonly Compressor compressor;
             public BatchCompressor(Compressor compressor)
             {
                 this.compressor = compressor;
