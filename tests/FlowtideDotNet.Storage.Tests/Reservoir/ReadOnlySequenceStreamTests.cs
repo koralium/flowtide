@@ -318,5 +318,236 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             Assert.Equal(3, bytesRead);
             Assert.Equal(new byte[] { 1, 2, 3 }, buffer[..3]);
         }
+
+        [Fact]
+        public void ReadSpan_SingleSegment_ReadsAllData()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            Span<byte> buffer = stackalloc byte[5];
+            var bytesRead = stream.Read(buffer);
+
+            Assert.Equal(5, bytesRead);
+            Assert.Equal(data, buffer.ToArray());
+            Assert.Equal(5, stream.Position);
+        }
+
+        [Fact]
+        public void ReadSpan_PartialReads_ReadsSequentially()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            Span<byte> buffer1 = stackalloc byte[3];
+            var bytesRead1 = stream.Read(buffer1);
+            Assert.Equal(3, bytesRead1);
+            Assert.Equal(new byte[] { 1, 2, 3 }, buffer1.ToArray());
+
+            Span<byte> buffer2 = stackalloc byte[3];
+            var bytesRead2 = stream.Read(buffer2);
+            Assert.Equal(2, bytesRead2);
+            Assert.Equal(4, buffer2[0]);
+            Assert.Equal(5, buffer2[1]);
+        }
+
+        [Fact]
+        public void ReadSpan_AtEnd_ReturnsZero()
+        {
+            var data = new byte[] { 1, 2 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            stream.ReadExactly(new byte[2], 0, 2);
+
+            Span<byte> buffer = stackalloc byte[2];
+            var bytesRead = stream.Read(buffer);
+            Assert.Equal(0, bytesRead);
+        }
+
+        [Fact]
+        public void ReadSpan_EmptySequence_ReturnsZero()
+        {
+            using var stream = new ReadOnlySequenceStream(ReadOnlySequence<byte>.Empty);
+
+            Span<byte> buffer = stackalloc byte[5];
+            var bytesRead = stream.Read(buffer);
+            Assert.Equal(0, bytesRead);
+        }
+
+        [Fact]
+        public void ReadSpan_MultiSegment_ReadsAcrossSegments()
+        {
+            using var stream = new ReadOnlySequenceStream(
+                CreateMultiSegmentSequence(
+                    new byte[] { 1, 2, 3 },
+                    new byte[] { 4, 5, 6 },
+                    new byte[] { 7, 8 }
+                ));
+
+            Span<byte> buffer = stackalloc byte[8];
+            var bytesRead = stream.Read(buffer);
+
+            Assert.Equal(8, bytesRead);
+            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }, buffer.ToArray());
+        }
+
+        [Fact]
+        public void ReadSpan_LargerBufferThanData_ReturnsActualCount()
+        {
+            var data = new byte[] { 1, 2, 3 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            Span<byte> buffer = stackalloc byte[10];
+            var bytesRead = stream.Read(buffer);
+
+            Assert.Equal(3, bytesRead);
+            Assert.Equal(new byte[] { 1, 2, 3 }, buffer[..3].ToArray());
+        }
+
+        [Fact]
+        public async Task ReadAsyncByteArray_SingleSegment_ReadsAllData()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            var buffer = new byte[5];
+            var bytesRead = await stream.ReadAsync(buffer, 0, 5, CancellationToken.None);
+
+            Assert.Equal(5, bytesRead);
+            Assert.Equal(data, buffer);
+            Assert.Equal(5, stream.Position);
+        }
+
+        [Fact]
+        public async Task ReadAsyncByteArray_PartialReads_ReadsSequentially()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            var buffer1 = new byte[3];
+            var bytesRead1 = await stream.ReadAsync(buffer1, 0, 3, CancellationToken.None);
+            Assert.Equal(3, bytesRead1);
+            Assert.Equal(new byte[] { 1, 2, 3 }, buffer1);
+
+            var buffer2 = new byte[3];
+            var bytesRead2 = await stream.ReadAsync(buffer2, 0, 3, CancellationToken.None);
+            Assert.Equal(2, bytesRead2);
+            Assert.Equal(new byte[] { 4, 5, 0 }, buffer2);
+        }
+
+        [Fact]
+        public async Task ReadAsyncByteArray_AtEnd_ReturnsZero()
+        {
+            var data = new byte[] { 1, 2 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            stream.ReadExactly(new byte[2], 0, 2);
+
+            var buffer = new byte[2];
+            var bytesRead = await stream.ReadAsync(buffer, 0, 2, CancellationToken.None);
+            Assert.Equal(0, bytesRead);
+        }
+
+        [Fact]
+        public async Task ReadAsyncByteArray_MultiSegment_ReadsAcrossSegments()
+        {
+            using var stream = new ReadOnlySequenceStream(
+                CreateMultiSegmentSequence(
+                    new byte[] { 1, 2, 3 },
+                    new byte[] { 4, 5, 6 }
+                ));
+
+            var buffer = new byte[6];
+            var bytesRead = await stream.ReadAsync(buffer, 0, 6, CancellationToken.None);
+
+            Assert.Equal(6, bytesRead);
+            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, buffer);
+        }
+
+        [Fact]
+        public async Task ReadAsyncByteArray_CancelledToken_ThrowsOperationCanceled()
+        {
+            var data = new byte[] { 1, 2, 3 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var buffer = new byte[3];
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                () => stream.ReadAsync(buffer, 0, 3, cts.Token));
+        }
+
+        [Fact]
+        public async Task ReadAsyncMemory_SingleSegment_ReadsAllData()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            var buffer = new byte[5];
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+
+            Assert.Equal(5, bytesRead);
+            Assert.Equal(data, buffer);
+            Assert.Equal(5, stream.Position);
+        }
+
+        [Fact]
+        public async Task ReadAsyncMemory_PartialReads_ReadsSequentially()
+        {
+            var data = new byte[] { 1, 2, 3, 4, 5 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            var buffer1 = new byte[3];
+            var bytesRead1 = await stream.ReadAsync(buffer1.AsMemory(), CancellationToken.None);
+            Assert.Equal(3, bytesRead1);
+            Assert.Equal(new byte[] { 1, 2, 3 }, buffer1);
+
+            var buffer2 = new byte[3];
+            var bytesRead2 = await stream.ReadAsync(buffer2.AsMemory(), CancellationToken.None);
+            Assert.Equal(2, bytesRead2);
+            Assert.Equal(new byte[] { 4, 5, 0 }, buffer2);
+        }
+
+        [Fact]
+        public async Task ReadAsyncMemory_AtEnd_ReturnsZero()
+        {
+            var data = new byte[] { 1, 2 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+
+            stream.ReadExactly(new byte[2], 0, 2);
+
+            var buffer = new byte[2];
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+            Assert.Equal(0, bytesRead);
+        }
+
+        [Fact]
+        public async Task ReadAsyncMemory_MultiSegment_ReadsAcrossSegments()
+        {
+            using var stream = new ReadOnlySequenceStream(
+                CreateMultiSegmentSequence(
+                    new byte[] { 1, 2, 3 },
+                    new byte[] { 4, 5, 6 }
+                ));
+
+            var buffer = new byte[6];
+            var bytesRead = await stream.ReadAsync(buffer.AsMemory(), CancellationToken.None);
+
+            Assert.Equal(6, bytesRead);
+            Assert.Equal(new byte[] { 1, 2, 3, 4, 5, 6 }, buffer);
+        }
+
+        [Fact]
+        public async Task ReadAsyncMemory_CancelledToken_ThrowsOperationCanceled()
+        {
+            var data = new byte[] { 1, 2, 3 };
+            using var stream = new ReadOnlySequenceStream(CreateSingleSegmentSequence(data));
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var buffer = new byte[3];
+            await Assert.ThrowsAsync<OperationCanceledException>(
+                async () => await stream.ReadExactlyAsync(buffer.AsMemory(), cts.Token));
+        }
     }
 }

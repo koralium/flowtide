@@ -93,6 +93,45 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
             return _position;
         }
 
+        public override int Read(Span<byte> buffer)
+        {
+            var remaining = _sequence.Slice(_currentPosition);
+            if (remaining.IsEmpty)
+            {
+                return 0;
+            }
+
+            int bytesRead;
+
+            if (remaining.Length <= buffer.Length)
+            {
+                bytesRead = (int)remaining.Length;
+                remaining.CopyTo(buffer);
+                _currentPosition = _sequence.End;
+            }
+            else
+            {
+                bytesRead = buffer.Length;
+                remaining.Slice(0, bytesRead).CopyTo(buffer);
+                _currentPosition = _sequence.GetPosition(bytesRead, _currentPosition);
+            }
+
+            _position += bytesRead;
+            return bytesRead;
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(Read(buffer, offset, count));
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return new ValueTask<int>(Read(buffer.Span));
+        }
+
         public override void SetLength(long value)
         {
             throw new NotSupportedException();
