@@ -185,6 +185,16 @@ namespace FlowtideDotNet.Substrait.Sql
                     compundIdentifiers.Add(string.Join(".", compound.Idents.Select(x => x.Value)), compound);
                 }
             }
+            else if (expr is Expression.Identifier identifer)
+            {
+                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifer.Ident.Value]));
+                expr = compound;
+                var k = identifer.Ident.Value;
+                if (!compundIdentifiers.ContainsKey(k))
+                {
+                    compundIdentifiers.Add(k, compound);
+                }
+            }
 
             if (!emitList.TryGetValue(expr, out var existingIndex))
             {
@@ -230,6 +240,11 @@ namespace FlowtideDotNet.Substrait.Sql
                 name = GetName(emitInfo.Index[0]);
                 type = _types[emitInfo.Index[0]];
                 return true;
+            }
+
+            if (expression is Expression.Identifier identifier)
+            {
+                expression = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident.Value]));
             }
 
             // If it is a compound identifier, we can try to look for it with case insensitive lookup
