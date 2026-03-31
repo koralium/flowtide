@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         private readonly IWindowFunction[] _windowFunctions;
         private WindowOutputBuilder? _outputBuilder;
-        private List<int> _emitList;
+        private readonly List<int> _emitList;
         private WriterPartitionIterator? _partitionIterator;
 
         private ICounter<long>? _eventsOutCounter;

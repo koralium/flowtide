@@ -17,9 +17,9 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
 {
     public class MapNestedEquality
     {
-        private MapNestedExpression root;
-        private MapNestedExpression clone;
-        private MapNestedExpression notEqual;
+        private readonly MapNestedExpression root;
+        private readonly MapNestedExpression clone;
+        private readonly MapNestedExpression notEqual;
 
         public MapNestedEquality()
         {

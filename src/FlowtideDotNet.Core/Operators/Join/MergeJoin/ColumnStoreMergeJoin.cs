@@ -34,16 +34,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected IBPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>? _rightTree;
 
         private readonly MergeJoinRelation _mergeJoinRelation;
-        private MergeJoinInsertComparer _leftInsertComparer;
-        private MergeJoinInsertComparer _rightInsertComparer;
-        private MergeJoinSearchComparer _searchLeftComparer;
-        private MergeJoinSearchComparer _searchRightComparer;
+        private readonly MergeJoinInsertComparer _leftInsertComparer;
+        private readonly MergeJoinInsertComparer _rightInsertComparer;
+        private readonly MergeJoinSearchComparer _searchLeftComparer;
+        private readonly MergeJoinSearchComparer _searchRightComparer;
 
-        private List<int> _leftOutputColumns;
-        private List<int> _rightOutputColumns;
+        private readonly List<int> _leftOutputColumns;
+        private readonly List<int> _rightOutputColumns;
 
-        private List<int> _leftOutputIndices;
-        private List<int> _rightOutputIndices;
+        private readonly List<int> _leftOutputIndices;
+        private readonly List<int> _rightOutputIndices;
 
         // Metrics
         private ICounter<long>? _eventsCounter;

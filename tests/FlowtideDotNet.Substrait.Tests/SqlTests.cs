@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Tests
 {
     public class SqlTests
     {
-        private SqlPlanBuilder builder;
+        private readonly SqlPlanBuilder builder;
         public SqlTests()
         {
             builder = new SqlPlanBuilder();

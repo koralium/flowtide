@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 {
     internal class StreamContext : IStreamTriggerCaller, IAsyncDisposable
     {
-        private static ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
+        private static readonly ActivitySource s_exceptionActivitySource = new ActivitySource("FlowtideDotNet.Base.StreamException");
 
         internal readonly string streamName;
         internal readonly string version;
