@@ -529,7 +529,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = false
             });
-            lock (_writeTasks)
+            lock (_taskLock)
             {
                 _writeTasks = null;
             }
@@ -700,7 +700,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             });
             if (_writeTasks != null)
             {
-                lock (_writeTasks)
+                lock (_taskLock)
                 {
                     _writeTasks = null;
                 }
