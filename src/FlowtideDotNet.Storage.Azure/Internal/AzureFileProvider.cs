@@ -260,19 +260,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return default;
         }
 
-        public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
-            Stream stream;
-            if (data is IFileWithSequence fileWithSequence)
-            {
-                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
-            }
-            else
-            {
-                stream = data.AsStream();
-            }
-            var client = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
-            await client.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return UploadBlob(GetMetadataPath(streamName), data, cancellationToken);
         }
 
         private string GetStreamVersionDirectory(string streamName, string streamVersion)
