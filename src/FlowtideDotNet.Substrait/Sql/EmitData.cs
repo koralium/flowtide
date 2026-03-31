@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Substrait.Sql
             }
             else if (expr is Expression.Identifier identifier)
             {
-                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident.Value]));
+                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident]));
                 expr = compound;
                 var k = identifier.Ident.Value;
                 if (!compundIdentifiers.ContainsKey(k))
@@ -244,7 +244,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
             if (expression is Expression.Identifier identifier)
             {
-                expression = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident.Value]));
+                expression = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident]));
             }
 
             // If it is a compound identifier, we can try to look for it with case insensitive lookup
