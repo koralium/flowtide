@@ -185,11 +185,11 @@ namespace FlowtideDotNet.Substrait.Sql
                     compundIdentifiers.Add(string.Join(".", compound.Idents.Select(x => x.Value)), compound);
                 }
             }
-            else if (expr is Expression.Identifier identifer)
+            else if (expr is Expression.Identifier identifier)
             {
-                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifer.Ident.Value]));
+                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident.Value]));
                 expr = compound;
-                var k = identifer.Ident.Value;
+                var k = identifier.Ident.Value;
                 if (!compundIdentifiers.ContainsKey(k))
                 {
                     compundIdentifiers.Add(k, compound);
