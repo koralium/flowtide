@@ -20,7 +20,7 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
-    internal class CheckpointRegistryFile : PipeReader, IEnumerable<CheckpointVersion>, IDisposable
+    internal class CheckpointRegistryFile : PipeReader, IEnumerable<CheckpointVersion>, IDisposable, IFileWithSequence
     {
         private const int HeaderSize = 64;
         private const int FooterSize = 8;

@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     /// This is used to reduce the number of writes to the storage provider since many cloud providers
     /// cost per write.
     /// </summary>
-    internal class DataCheckpointBundleFile : PagesFile
+    internal class DataCheckpointBundleFile : PagesFile, IFileWithSequence
     {
         private readonly MergedBlobFileWriter mergedFile;
         private readonly BlobNewCheckpoint newCheckpoint;

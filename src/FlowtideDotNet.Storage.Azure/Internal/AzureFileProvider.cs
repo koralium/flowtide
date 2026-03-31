@@ -146,7 +146,16 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
         {
-            await _blobContainerClient.UploadBlobAsync(GetCheckpointFileName(checkpointVersion), data.AsStream(), cancellationToken).ConfigureAwait(false);
+            Stream stream;
+            if (data is IFileWithSequence fileWithSequence)
+            {
+                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
+            }
+            else
+            {
+                stream = data.AsStream();
+            }
+            await _blobContainerClient.UploadBlobAsync(GetCheckpointFileName(checkpointVersion), stream, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
@@ -178,8 +187,17 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
+            Stream stream;
+            if (data is IFileWithSequence fileWithSequence)
+            {
+                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
+            }
+            else
+            {
+                stream = data.AsStream();
+            }
             var client = _blobContainerClient.GetBlobClient(_checkpointRegistryFile);
-            await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await client.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         private string GetDataFileName(ulong fileId)
@@ -189,7 +207,16 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default)
         {
-            await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), data.AsStream(), cancellationToken).ConfigureAwait(false);
+            Stream stream;
+            if (data is IFileWithSequence fileWithSequence)
+            {
+                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
+            }
+            else
+            {
+                stream = data.AsStream();
+            }
+            await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), stream, cancellationToken).ConfigureAwait(false);
         }
 
         public async Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default)
@@ -205,8 +232,8 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             else
             {
                 _dataDirectory = $"{providerContext.StreamName}/{_streamVersion}/";
-                _checkpointDirectory = _dataDirectory + "/" + checkpointsDirectory;
-                _checkpointRegistryFile = _dataDirectory + "/" + checkpointRegistryFile;
+                _checkpointDirectory = _dataDirectory + checkpointsDirectory;
+                _checkpointRegistryFile = _dataDirectory + checkpointRegistryFile;
             }
 
             if (!await _blobContainerClient.ExistsAsync(cancellationToken).ConfigureAwait(false))
@@ -240,8 +267,17 @@ namespace FlowtideDotNet.Storage.AzureBlobs
 
         public async Task WriteStreamsMetadataFileAsync(string streamName, PipeReader data, CancellationToken cancellationToken = default)
         {
+            Stream stream;
+            if (data is IFileWithSequence fileWithSequence)
+            {
+                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
+            }
+            else
+            {
+                stream = data.AsStream();
+            }
             var client = _blobContainerClient.GetBlobClient(GetMetadataPath(streamName));
-            await client.UploadAsync(data.AsStream(), overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            await client.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
         }
 
         private string GetStreamVersionDirectory(string streamName, string streamVersion)

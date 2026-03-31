@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     /// 
     /// This is used to gather multiple small files into a single file to reduce the number of files on disk and improve read performance.
     /// </summary>
-    internal class MergedBlobFileWriter : PagesFile
+    internal class MergedBlobFileWriter : PagesFile, IFileWithSequence
     {
         private const int HeaderSize = 64;
         private readonly MemoryPool<byte> _memoryPool;

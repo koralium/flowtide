@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     /// 
     /// It also contains the code to return the serialized data as a pipereader
     /// </summary>
-    internal class BlobNewCheckpoint : PipeReader, IDisposable
+    internal class BlobNewCheckpoint : PipeReader, IDisposable, IFileWithSequence
     {
         private const int HeaderSize = 192;
 

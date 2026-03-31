@@ -20,7 +20,7 @@ using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
-    internal class BlobFileWriter : PagesFile, IBufferWriter<byte>
+    internal class BlobFileWriter : PagesFile, IBufferWriter<byte>, IFileWithSequence
     {
         private const int HeaderSize = 64;
 
