@@ -144,7 +144,12 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return $"{_checkpointDirectory}{checkpointVersion.Version.ToString("D20")}.checkpoint";
         }
 
-        public async Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteCheckpointFileAsync(CheckpointId checkpointVersion, PipeReader data, CancellationToken cancellationToken = default)
+        {
+            return UploadBlob(GetCheckpointFileName(checkpointVersion), data, cancellationToken);
+        }
+
+        private async Task UploadBlob(string fileName, PipeReader data, CancellationToken cancellationToken)
         {
             Stream stream;
             if (data is IFileWithSequence fileWithSequence)
@@ -155,7 +160,15 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             {
                 stream = data.AsStream();
             }
-            await _blobContainerClient.UploadBlobAsync(GetCheckpointFileName(checkpointVersion), stream, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                var client = _blobContainerClient.GetBlobClient(fileName);
+                await client.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                await stream.DisposeAsync();
+            }
         }
 
         public async Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
@@ -185,19 +198,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return result;
         }
 
-        public async Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteCheckpointRegistryFile(PipeReader data, CancellationToken cancellationToken = default)
         {
-            Stream stream;
-            if (data is IFileWithSequence fileWithSequence)
-            {
-                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
-            }
-            else
-            {
-                stream = data.AsStream();
-            }
-            var client = _blobContainerClient.GetBlobClient(_checkpointRegistryFile);
-            await client.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken).ConfigureAwait(false);
+            return UploadBlob(_checkpointRegistryFile, data, cancellationToken);
         }
 
         private string GetDataFileName(ulong fileId)
@@ -205,18 +208,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             return $"{_dataDirectory}dataFile_{fileId.ToString("D20")}.data";
         }
 
-        public async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default)
+        public Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundled, PipeReader data, CancellationToken cancellationToken = default)
         {
-            Stream stream;
-            if (data is IFileWithSequence fileWithSequence)
-            {
-                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
-            }
-            else
-            {
-                stream = data.AsStream();
-            }
-            await _blobContainerClient.UploadBlobAsync(GetDataFileName(fileId), stream, cancellationToken).ConfigureAwait(false);
+            return UploadBlob(GetDataFileName(fileId), data, cancellationToken);
         }
 
         public async Task InitializeAsync(StorageProviderContext providerContext, CancellationToken cancellationToken = default)
