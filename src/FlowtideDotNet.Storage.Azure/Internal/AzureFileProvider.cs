@@ -10,7 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Azure;
+using Azure.Core;
+using Azure.Core.Pipeline;
+using Azure.Storage;
 using Azure.Storage.Blobs;
+using FlowtideDotNet.Storage.AzureBlobs.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using Microsoft.VisualBasic;
@@ -31,6 +36,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         private const string checkpointRegistryFile = checkpointsDirectory + "checkpoints.registry";
         private const string metadataFile = "streamsMetadata.json";
         private readonly BlobContainerClient _blobContainerClient;
+        private readonly HttpBlobClient _httpBlobClient;
 
         private readonly string? _optionsDirectoryPath;
         private string _dataDirectory;
@@ -46,7 +52,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
         {
             _blobContainerClient = options.GetClient();
             _optionsDirectoryPath = options.DirectoryPath;
-
+            _httpBlobClient = new HttpBlobClient(_blobContainerClient);
             if (options.DirectoryPath != null)
             {
                 _dataDirectory = options.DirectoryPath.TrimEnd('/') + "/";
@@ -154,7 +160,8 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             Stream stream;
             if (data is IFileWithSequence fileWithSequence)
             {
-                stream = new ReadOnlySequenceStream(fileWithSequence.WrittenData);
+                await _httpBlobClient.PutBlob(fileName, fileWithSequence.WrittenData, cancellationToken).ConfigureAwait(false);
+                return;
             }
             else
             {
@@ -170,6 +177,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
                 await stream.DisposeAsync();
                 data.Complete();
             }
+            
         }
 
         public async Task<IEnumerable<CheckpointId>> ListCheckpointFilesAsync(CancellationToken cancellationToken = default)
