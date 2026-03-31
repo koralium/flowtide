@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     /// This is used to reduce the number of writes and also to simplify registry writing since
     /// it can easily be corrupt if overwritten at the wrong time.
     /// </summary>
-    internal class CheckpointRegistryBundleFile : PipeReader
+    internal class CheckpointRegistryBundleFile : PipeReader, IFileWithSequence
     {
         public const int HeaderSize = 64;
 
