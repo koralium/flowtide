@@ -104,12 +104,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column
             ]), column.Count);
 
-            var memoryStream = new MemoryStream();
+            using var memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
             writer.WriteRecordBatch(recordBatch);
             writer.Dispose();
             memoryStream.Position = 0;
-            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            using var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
@@ -615,12 +615,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column
             ]), column.Count);
 
-            MemoryStream memoryStream = new MemoryStream();
+            using MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
             writer.WriteRecordBatch(recordBatch);
             writer.Dispose();
             memoryStream.Position = 0;
-            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            using var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
@@ -642,12 +642,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column
             ]), column.Count);
 
-            MemoryStream memoryStream = new MemoryStream();
+            using MemoryStream memoryStream = new MemoryStream();
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
             writer.WriteRecordBatch(recordBatch);
             writer.Dispose();
             memoryStream.Position = 0;
-            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            using var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 
@@ -754,13 +754,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column
             ]), column.Count);
 
-            MemoryStream memoryStream = new MemoryStream();
+            using MemoryStream memoryStream = new MemoryStream();
 
             var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
             writer.WriteRecordBatch(recordBatch);
             writer.Dispose();
             memoryStream.Position = 0;
-            var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
+            using var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
             var deserializedBatch = EventArrowSerializer.ArrowToBatch(deserializedRecordBatch, GlobalMemoryManager.Instance);
 

@@ -193,7 +193,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 FROM orders o
             ");
 
-            var postClient = new OpenFgaClient(conf);
+            using var postClient = new OpenFgaClient(conf);
             while (true)
             {
                 var readResp = await postClient.Read(options: new ClientReadOptions() { PageSize = 100 });
@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
               ]
             }";
-            var client = new OpenFgaClient(config);
+            using var client = new OpenFgaClient(config);
 
             var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
             {
@@ -460,7 +460,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             conf.StoreId = createStoreResponse.Id;
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
 
-            var addTupleClient = new OpenFgaClient(conf);
+            using var addTupleClient = new OpenFgaClient(conf);
 
             for (int i = 0; i < 10; i++)
             {
@@ -620,7 +620,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
                 }
               ]
             }";
-            var client = new OpenFgaClient(config);
+            using var client = new OpenFgaClient(config);
 
             var createStoreResponse = await client.CreateStore(new ClientCreateStoreRequest()
             {
@@ -635,7 +635,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             conf.StoreId = createStoreResponse.Id;
             conf.AuthorizationModelId = createModelResponse.AuthorizationModelId;
 
-            var addTupleClient = new OpenFgaClient(conf);
+            using var addTupleClient = new OpenFgaClient(conf);
 
             await addTupleClient.Write(new ClientWriteRequest()
             {
