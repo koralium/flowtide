@@ -705,6 +705,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 lock (_taskLock)
                 {
                     _writeTasks = null;
+                    _cancellationTokenSource?.Dispose();
+                    _cancellationTokenSource = null;
                 }
             }
             
