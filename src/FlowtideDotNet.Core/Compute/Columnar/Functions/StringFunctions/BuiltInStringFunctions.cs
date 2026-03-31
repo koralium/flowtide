@@ -103,7 +103,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                         ignoreNulls = true;
                     }
 
-                    List<Expression> expressions = new List<Expression>();
                     var stringBuilder = new StringBuilder();
 
                     var appendMethod = typeof(StringBuilder).GetMethod("Append", new System.Type[] { typeof(string) });

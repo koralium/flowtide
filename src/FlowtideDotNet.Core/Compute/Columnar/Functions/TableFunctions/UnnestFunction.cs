@@ -64,8 +64,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         public static IEnumerable<EventBatchWeighted> DoUnnest<T>(T value, IMemoryAllocator memoryAllocator)
             where T : IDataValue
         {
-            List<RowEvent> output = new List<RowEvent>();
-
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryAllocator);
             IColumn[] outputColumns = [Column.Create(memoryAllocator)];

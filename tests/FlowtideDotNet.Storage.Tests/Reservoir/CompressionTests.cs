@@ -80,8 +80,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             zstdCompression.Write(data);
             var result = zstdCompression.Complete();
 
-            List<BufferSegment> segments = new List<BufferSegment>();
-
             var resultMemory = result.memoryOwner.Memory.Slice(0, result.writtenLength);
             int dataDivide = resultMemory.Length / 16;
 
