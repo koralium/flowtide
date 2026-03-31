@@ -232,7 +232,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
             ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
@@ -406,8 +406,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
             Assert.NotNull(recordBatch);
@@ -732,8 +732,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             File.WriteAllBytes("compressed.arrow", serializedBytes);
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
             var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.Equal(2000, recordBatch.Length);
