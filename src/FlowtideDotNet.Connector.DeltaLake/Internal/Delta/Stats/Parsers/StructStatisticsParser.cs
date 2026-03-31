@@ -32,9 +32,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
-            List<KeyValuePair<IDataValue, IDataValue>> values = new List<KeyValuePair<IDataValue, IDataValue>>();
-
-
             while (true)
             {
                 reader.Read();

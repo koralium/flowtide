@@ -99,7 +99,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
             foreach (var m in modified)
             {
                 StringBuilder keyBuilder = new StringBuilder();
-                Dictionary<string, FlxValue> key = new Dictionary<string, FlxValue>();
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
@@ -108,7 +107,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
                     {
                         keyBuilder.Append("|");
                     }
-                    key.Add(writeRelation.TableSchema.Names[primaryKeyIndex], m.GetColumn(primaryKeyIndex));
                 }
                 var (rows, isDeleted) = await this.GetGroup(m);
 
