@@ -168,6 +168,7 @@ namespace FlowtideDotNet.Storage.AzureBlobs
             finally
             {
                 await stream.DisposeAsync();
+                data.Complete();
             }
         }
 
