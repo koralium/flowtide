@@ -395,7 +395,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    userkey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
+                    userKey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
                 FROM orders
                 GROUP BY userkey
                 ", ignoreSameDataCheck: true);
