@@ -88,6 +88,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
             _checkpointRegistryFile = new CheckpointRegistryFile(_memoryAllocator);
+
+            if (snapshotCheckpointInterval == 0)
+            {
+                _writeSnapshotCheckpoint = true;
+            }
         }
 
         private async Task ReadCheckpointRegistryFile(CancellationToken cancellationToken)

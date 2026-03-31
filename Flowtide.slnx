@@ -13,7 +13,6 @@
     <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
     <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />
@@ -32,6 +31,8 @@
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.S3/FlowtideDotNet.Storage.S3.csproj" Id="36df7603-5367-4da3-a514-e0ac2b164004" />
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
     <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
     <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />
@@ -57,6 +58,7 @@
     <Project Path="tests/FlowtideDotNet.Connector.Starrocks.Tests/FlowtideDotNet.Connector.StarRocks.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Core.Tests/FlowtideDotNet.Core.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.SqlServer.Tests/FlowtideDotNet.SqlServer.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Storage.S3.Tests/FlowtideDotNet.Storage.S3.Tests.csproj" Id="111dee2d-3974-4e4a-a6b3-e314179a5695" />
     <Project Path="tests/FlowtideDotNet.Storage.SqlServer.Tests/FlowtideDotNet.Storage.SqlServer.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Storage.Tests/FlowtideDotNet.Storage.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Substrait.Tests/FlowtideDotNet.Substrait.Tests.csproj" />
