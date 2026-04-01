@@ -10,25 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Lineage.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
     internal class ColumnLineage : IEquatable<ColumnLineage>
     {
+        [JsonPropertyName("_producer")]
+        public string Producer => "https://github.com/koralium/flowtide";
+
+        [JsonPropertyName("_schemaURL")]
+        public string SchemaURL => "https://openlineage.io/spec/facets/1-2-0/ColumnLineageDatasetFacet.json";
+
         [JsonPropertyName("fields")]
-        public IReadOnlyDictionary<string, IReadOnlyList<LineageInputField>> Fields { get; }
+        public IReadOnlyDictionary<string, ColumnLineageField> Fields { get; }
 
         [JsonPropertyName("dataset")]
         public IReadOnlyList<LineageInputField> Dataset { get; }
 
         public ColumnLineage(
-            IReadOnlyDictionary<string, IReadOnlyList<LineageInputField>> fields,
+            IReadOnlyDictionary<string, ColumnLineageField> fields,
             IReadOnlyList<LineageInputField> datasetFields)
         {
             Fields = fields;
@@ -53,13 +54,13 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     return false;
                 }
                 var fields = kv.Value;
-                if (fields.Count != otherFields.Count)
+                if (fields.InputFields.Count != otherFields.InputFields.Count)
                 {
                     return false;
                 }
-                for (int i = 0; i < fields.Count; i++)
+                for (int i = 0; i < fields.InputFields.Count; i++)
                 {
-                    if (!fields[i].Equals(otherFields[i]))
+                    if (!fields.InputFields[i].Equals(otherFields.InputFields[i]))
                     {
                         return false;
                     }

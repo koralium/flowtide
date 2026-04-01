@@ -10,27 +10,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageRun
+    internal class LineageOutputFacets
     {
-        [JsonPropertyName("runId")]
-        public Guid RunId { get; }
+        [JsonPropertyName("columnLineage")]
+        public ColumnLineage? ColumnLineage { get; set; }
 
-        [JsonPropertyName("facets")]
-        public LineageRunFacets? Facets { get; }
-
-        public LineageRun(Guid runId, LineageRunFacets? facets = default)
-        {
-            RunId = runId;
-            Facets = facets;
-        }
+        [JsonPropertyName("schema")]
+        public LineageSchemaFacet? Schema { get; set; }
     }
 }

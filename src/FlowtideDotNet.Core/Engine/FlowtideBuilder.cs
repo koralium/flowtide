@@ -16,12 +16,14 @@ using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -46,6 +48,7 @@ namespace FlowtideDotNet.Core.Engine
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckFailureRegistered = false;
         private readonly string _streamName;
+        private OpenLineageHttpOptions? _openLineageHttpOptions;
 
         public FlowtideBuilder(string streamName)
         {
@@ -234,6 +237,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder WithOpenLineageHttp(OpenLineageHttpOptions options)
+        {
+            _openLineageHttpOptions = options;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -313,9 +322,9 @@ namespace FlowtideDotNet.Core.Engine
                 _useColumnStore,
                 _taskScheduler);
 
-            if (_connectorManager != null)
+            if (_connectorManager != null && _openLineageHttpOptions != null)
             {
-                var ev = LineageEventCreator.CreateFromPlan(_streamName, _plan, _connectorManager);
+                WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageHttpOptions));
             }
 
             // Set the notification receiver to the function register to allow check functions get access to it.

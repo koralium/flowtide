@@ -10,15 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text.Json.Serialization;
+
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageVisitorResult
+    internal class LineageInputFacets
     {
-        public IReadOnlyList<LineageInputField> InputFields { get; }
-
-        public LineageVisitorResult(IReadOnlyList<LineageInputField> inputFields)
-        {
-            InputFields = inputFields;
-        }
+        [JsonPropertyName("schema")]
+        public LineageSchemaFacet? Schema { get; set; }
     }
 }

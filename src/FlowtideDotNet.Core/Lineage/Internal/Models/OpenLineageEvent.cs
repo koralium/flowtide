@@ -10,14 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Lineage.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
     internal class OpenLineageEvent
     {
@@ -61,6 +56,11 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             Job = job;
             Inputs = inputs;
             Outputs = outputs;
+        }
+
+        public OpenLineageEvent ChangeEventType(LineageEventType eventType)
+        {
+            return new OpenLineageEvent(EventTime, Producer, eventType, Run, Job, Inputs, Outputs);
         }
     }
 }

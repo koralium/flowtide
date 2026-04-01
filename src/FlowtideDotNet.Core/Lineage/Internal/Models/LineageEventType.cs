@@ -10,15 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text.Json.Serialization;
+
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageVisitorResult
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    internal enum LineageEventType
     {
-        public IReadOnlyList<LineageInputField> InputFields { get; }
-
-        public LineageVisitorResult(IReadOnlyList<LineageInputField> inputFields)
-        {
-            InputFields = inputFields;
-        }
+        Start,
+        Running,
+        Complete,
+        Abort,
+        Fail,
+        Other
     }
 }

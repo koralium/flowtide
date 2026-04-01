@@ -10,21 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
-namespace FlowtideDotNet.Core.Lineage.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
-    internal enum LineageJobType
+    internal class LineageRunFacets
     {
-        Query,
-        Command,
-        Dag,
-        Task,
-        Job,
-        Model
+        public LineageRunFacets(LineageRunProcessingEngineFacet? processingEngine = default)
+        {
+            ProcessingEngine = processingEngine;
+        }
+
+        [JsonPropertyName("processing_engine")]
+        public LineageRunProcessingEngineFacet? ProcessingEngine { get; }
     }
 }

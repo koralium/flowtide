@@ -10,15 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Core.Lineage.Internal
-{
-    internal class LineageVisitorResult
-    {
-        public IReadOnlyList<LineageInputField> InputFields { get; }
+using System.Text.Json.Serialization;
 
-        public LineageVisitorResult(IReadOnlyList<LineageInputField> inputFields)
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
+{
+    internal class LineageRun
+    {
+        [JsonPropertyName("runId")]
+        public Guid RunId { get; }
+
+        [JsonPropertyName("facets")]
+        public LineageRunFacets? Facets { get; }
+
+        public LineageRun(Guid runId, LineageRunFacets? facets = default)
         {
-            InputFields = inputFields;
+            RunId = runId;
+            Facets = facets;
         }
     }
 }

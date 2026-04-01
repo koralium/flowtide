@@ -12,11 +12,6 @@
 
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
@@ -30,14 +25,16 @@ namespace FlowtideDotNet.Core.Lineage.Internal
     internal class LineageInputOutputFinderVisitor : OptimizerBaseVisitor
     {
         private readonly IConnectorManager connectorManager;
+        private readonly bool includeSchema;
         private Dictionary<string, TableLineageMetadata> _metadatas = new Dictionary<string, TableLineageMetadata>();
 
         private Dictionary<string, LineageInputTable> _inputTables = new Dictionary<string, LineageInputTable>();
         private Dictionary<string, LineageOutputTable> _outputTables = new Dictionary<string, LineageOutputTable>();
 
-        public LineageInputOutputFinderVisitor(IConnectorManager connectorManager)
+        public LineageInputOutputFinderVisitor(IConnectorManager connectorManager, bool includeSchema)
         {
             this.connectorManager = connectorManager;
+            this.includeSchema = includeSchema;
         }
 
         public Dictionary<string, LineageInputTable> InputTables => _inputTables;
@@ -50,8 +47,20 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             if (!_inputTables.ContainsKey(key))
             {
                 var sourceFactory = connectorManager.GetSourceFactory(readRelation);
-                var metadata = sourceFactory.GetLineageMetadata(readRelation, false);
-                _inputTables.Add(key, new LineageInputTable(metadata.Namespace, metadata.TableName));
+                var metadata = sourceFactory.GetLineageMetadata(readRelation, includeSchema);
+
+                var inputTable = new LineageInputTable(metadata.Namespace, metadata.TableName);
+                if (includeSchema)
+                {
+                    var schema = metadata.Schema;
+                    if (schema == null)
+                    {
+                        schema = readRelation.BaseSchema;
+                    }
+                    inputTable.Facets.Schema = LineageSchemaConverter.ConvertToFacet(schema);
+                }
+
+                _inputTables.Add(key, inputTable);
                 _metadatas.Add(key, metadata);
             }
             
@@ -65,9 +74,22 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             if (!_outputTables.ContainsKey(key))
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
-                var metadata = sinkFactory.GetLineageMetadata(writeRelation, false);
+                var metadata = sinkFactory.GetLineageMetadata(writeRelation, includeSchema);
+
+
+                var outputTable = new LineageOutputTable(metadata.Namespace, metadata.TableName);
+                if (includeSchema)
+                {
+                    var schema = metadata.Schema;
+                    if (schema == null)
+                    {
+                        schema = writeRelation.TableSchema;
+                    }
+                    outputTable.Facets.Schema = LineageSchemaConverter.ConvertToFacet(schema);
+                }
+                
                 _metadatas.Add(key, metadata);
-                _outputTables.Add(key, new LineageOutputTable(metadata.Namespace, metadata.TableName));
+                _outputTables.Add(key, outputTable);
             }
             
             return base.VisitWriteRelation(writeRelation, state);

@@ -10,15 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text.Json;
+
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageVisitorResult
+    internal class EnumUppercaseNamingPolicy : JsonNamingPolicy
     {
-        public IReadOnlyList<LineageInputField> InputFields { get; }
-
-        public LineageVisitorResult(IReadOnlyList<LineageInputField> inputFields)
+        public override string ConvertName(string name)
         {
-            InputFields = inputFields;
+            return name.ToUpper();
         }
     }
 }

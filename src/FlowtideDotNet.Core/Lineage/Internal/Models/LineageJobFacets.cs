@@ -10,27 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageRunProcessingEngineFacet
+    internal class LineageJobFacets
     {
-        public LineageRunProcessingEngineFacet(string version, string name, string openlineageAdapterVersion)
+        public LineageJobTypeFacet? JobType { get; }
+
+        public LineageJobFacets(LineageJobTypeFacet? jobType = default)
         {
-            Version = version;
-            Name = name;
-            OpenlineageAdapterVersion = openlineageAdapterVersion;
+            JobType = jobType;
         }
-
-        public string Version { get; }
-
-        public string Name { get; }
-
-        public string OpenlineageAdapterVersion { get; }
     }
 }

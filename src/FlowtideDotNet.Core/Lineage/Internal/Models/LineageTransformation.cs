@@ -10,11 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
@@ -42,12 +38,16 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
     internal class LineageTransformation : IEquatable<LineageTransformation>
     {
+        [JsonPropertyName("type")]
         public LineageTransformationType Type { get; }
 
+        [JsonPropertyName("subtype")]
         public LineageTransformationSubtype SubType { get; }
 
+        [JsonPropertyName("description")]
         public string Description { get; }
 
+        [JsonPropertyName("masking")]
         public bool Masking { get; }
 
         public LineageTransformation(LineageTransformationType type, LineageTransformationSubtype subType, string description = "", bool masking = false)

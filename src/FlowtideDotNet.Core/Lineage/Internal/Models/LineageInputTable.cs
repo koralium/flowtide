@@ -10,27 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageJob
+    internal class LineageInputTable
     {
+        [JsonPropertyName("namespace")]
         public string Namespace { get; }
 
-        public string Name { get; }
+        [JsonPropertyName("name")]
+        public string TableName { get; }
 
-        public LineageJobFacets Facets { get; }
+        [JsonPropertyName("facets")]
+        public LineageInputFacets Facets { get; }
 
-        public LineageJob(string @namespace, string name, LineageJobFacets facets)
+        public LineageInputTable(string @namespace, string tableName)
         {
             Namespace = @namespace;
-            Name = name;
-            Facets = facets;
+            TableName = tableName;
+            Facets = new LineageInputFacets();
         }
     }
 }

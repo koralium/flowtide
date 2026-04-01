@@ -10,21 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal static class LineageEventCreator
     {
-        public static OpenLineageEvent CreateFromPlan(string streamName, Plan plan, IConnectorManager connectorManager)
+        public static OpenLineageEvent CreateFromPlan(
+            Guid runId,
+            string streamName, 
+            Plan plan, 
+            IConnectorManager connectorManager,
+            bool includeSchema)
         {
-            var inputOutputFinder = new LineageInputOutputFinderVisitor(connectorManager);
+            var inputOutputFinder = new LineageInputOutputFinderVisitor(connectorManager, includeSchema);
 
             for (int i = 0; i < plan.Relations.Count; i++)
             {
@@ -59,7 +60,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 }
             }
 
-            var run = new LineageRun(Guid.NewGuid(), new LineageRunFacets(new LineageRunProcessingEngineFacet("0.15.0", "Flowtide", "1.0.0")));
+            var run = new LineageRun(runId, new LineageRunFacets(new LineageRunProcessingEngineFacet("0.15.0", "Flowtide", "1.0.0")));
             return new OpenLineageEvent(
                 DateTime.UtcNow,
                 "https://github.com/OpenLineage/OpenLineage/blob/v1-0-0/client",

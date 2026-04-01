@@ -10,23 +10,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    internal enum LineageEventType
+    internal class LineageSchemaFacet
     {
-        Start,
-        Running,
-        Complete,
-        Abort,
-        Fail,
-        Other
+        public LineageSchemaFacet(IReadOnlyList<LineageSchemaField> fields)
+        {
+            Fields = fields;
+        }
+
+        [JsonPropertyName("_producer")]
+        public string Producer => "https://github.com/koralium/flowtide";
+
+        [JsonPropertyName("_schemaURL")]
+        public string SchemaURL => "https://openlineage.io/spec/facets/1-1-1/SchemaDatasetFacet.json";
+
+        [JsonPropertyName("fields")]
+        public IReadOnlyList<LineageSchemaField> Fields { get; }
     }
 }

@@ -10,23 +10,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-
-namespace FlowtideDotNet.Core.Lineage.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
-    internal class LineageRunFacets
+    internal class LineageRunProcessingEngineFacet
     {
-        public LineageRunFacets(LineageRunProcessingEngineFacet? processingEngine = default)
+        public LineageRunProcessingEngineFacet(string version, string name, string openlineageAdapterVersion)
         {
-            ProcessingEngine = processingEngine;
+            Version = version;
+            Name = name;
+            OpenlineageAdapterVersion = openlineageAdapterVersion;
         }
 
-        [JsonPropertyName("processing_engine")]
-        public LineageRunProcessingEngineFacet? ProcessingEngine { get; }
+        public string Version { get; }
+
+        public string Name { get; }
+
+        public string OpenlineageAdapterVersion { get; }
     }
 }

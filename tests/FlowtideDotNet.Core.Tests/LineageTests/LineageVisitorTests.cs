@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Lineage.Internal;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -66,12 +67,15 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 }
             };
 
-            var visitor = new LineageVisitor([plan]);
+            var visitor = new LineageVisitor([plan], new Dictionary<string, LineageInputTable>()
+            {
+                { "table", new LineageInputTable("namespace1", "table1") }
+            });
             var result = visitor.HandleWriteRelation(plan);
 
-            var expected = new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
             {
-                ["c1"] = [new LineageInputField("", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace1", "table1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, []);
 
             Assert.Equal(expected, result);
@@ -118,12 +122,15 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 }
             };
 
-            var visitor = new LineageVisitor([plan]);
+            var visitor = new LineageVisitor([plan], new Dictionary<string, LineageInputTable>()
+            {
+                { "table", new LineageInputTable("namespace", "table") }
+            });
             var result = visitor.HandleWriteRelation(plan);
 
-            var expected = new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
             {
-                ["c1"] = [new LineageInputField("", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, []);
 
             Assert.Equal(expected, result);
@@ -181,12 +188,15 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 }
             };
 
-            var visitor = new LineageVisitor([plan]);
+            var visitor = new LineageVisitor([plan], new Dictionary<string, LineageInputTable>()
+            {
+                { "table", new LineageInputTable("namespace", "table") }
+            });
             var result = visitor.HandleWriteRelation(plan);
 
-            var expected = new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
             {
-                ["c1"] = [new LineageInputField("", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)])]
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)])])
             }, []);
 
             Assert.Equal(expected, result);
@@ -243,21 +253,24 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 }
             };
 
-            var visitor = new LineageVisitor([plan]);
+            var visitor = new LineageVisitor([plan], new Dictionary<string, LineageInputTable>()
+            {
+                { "table", new LineageInputTable("namespace", "table") }
+            });
             var result = visitor.HandleWriteRelation(plan);
 
-            var expected = new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
             {
-                ["c1"] = [
-                        new LineageInputField("", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)]),
-                        new LineageInputField("", "table", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)])
-                    ]
+                ["c1"] = new ColumnLineageField([
+                        new LineageInputField("namespace", "table", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)]),
+                        new LineageInputField("namespace", "table", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation)])
+                    ])
             }, []);
 
             Assert.Equal(expected, result);
         }
 
-        private void TestWithSql(string sql, ColumnLineage expected)
+        private void TestWithSql(string sql, Dictionary<string, LineageInputTable> inputTables, ColumnLineage expected)
         {
             SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
             sqlPlanBuilder.Sql(sql);
@@ -280,7 +293,7 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 Assert.Fail("No WriteRelation found in the plan");
             }
 
-            var visitor = new LineageVisitor(plan.Relations);
+            var visitor = new LineageVisitor(plan.Relations, inputTables);
             var result = visitor.HandleWriteRelation(writeRel);
 
             Assert.Equal(expected, result);
@@ -300,9 +313,12 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
 
                 INSERT INTO output
                 SELECT a as c1 FROM input;
-            ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+            ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [new LineageInputField("", "input", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input", new LineageInputTable("namespace", "input") }
+            }, new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, []));
         }
 
@@ -321,12 +337,17 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 );
                 INSERT INTO output
                 SELECT a as c1 FROM input1 t1 JOIN input2 t2 ON t1.a = t2.b;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input1", new LineageInputTable("namespace", "input1") },
+                { "input2", new LineageInputTable("namespace", "input2") }
+            }
+             , new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, [
-                new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
-                new LineageInputField("", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
+                new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
+                new LineageInputField("namespace", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
                 ]));
         }
 
@@ -345,12 +366,16 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 );
                 INSERT INTO output
                 SELECT b as c1 FROM input1 t1 JOIN input2 t2 ON t1.a = t2.b;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [new LineageInputField("", "input2", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input1", new LineageInputTable("namespace", "input1") },
+                { "input2", new LineageInputTable("namespace", "input2") }
+            }, new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input2", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, [
-                new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
-                new LineageInputField("", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
+                new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
+                new LineageInputField("namespace", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
                 ]));
         }
 
@@ -369,12 +394,16 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 );
                 INSERT INTO output
                 SELECT b as c1 FROM input1 t1 JOIN input2 t2 ON t1.a % t2.b;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [new LineageInputField("", "input2", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input1", new LineageInputTable("namespace", "input1") },
+                { "input2", new LineageInputTable("namespace", "input2") }
+            }, new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input2", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, [
-                new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
-                new LineageInputField("", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)])
+                new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]),
+                new LineageInputField("namespace", "input2", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)])
                 ]));
         }
 
@@ -394,9 +423,12 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
 
                 INSERT INTO output
                 SELECT b as c1 FROM testview;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input1", new LineageInputTable("namespace", "input1") }
+            }, new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, []));
         }
 
@@ -416,14 +448,17 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
 
                 INSERT INTO output
                 SELECT SUM(a) OVER (PARTITION BY b ORDER BY c) as c1, b as c2 FROM input1;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [
-                    new LineageInputField("", "input1", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.GroupBy)]),
-                    new LineageInputField("", "input1", "c", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Sort)]),
-                    new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Aggregation)])
-                    ],
-                ["c2"] = [new LineageInputField("", "input1", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])]
+                { "input1", new LineageInputTable("namespace", "input1") }
+            }
+             , new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input1", "b", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.GroupBy)]),
+                    new LineageInputField("namespace", "input1", "c", [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Sort)]),
+                    new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Aggregation)])
+                    ]),
+                ["c2"] = new ColumnLineageField([new LineageInputField("namespace", "input1", "b", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])])
             }, []));
         }
 
@@ -444,12 +479,15 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 SELECT a as c1 FROM input1
                 UNION ALL
                 SELECT a as c1 FROM input2;
-             ", new ColumnLineage(new Dictionary<string, IReadOnlyList<LineageInputField>>()
+             ", new Dictionary<string, LineageInputTable>()
             {
-                ["c1"] = [
-                    new LineageInputField("", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)]),
-                    new LineageInputField("", "input2", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])
-                    ]
+                { "input1", new LineageInputTable("namespace", "input1") },
+                { "input2", new LineageInputTable("namespace", "input2") }
+            }, new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["c1"] = new ColumnLineageField([new LineageInputField("namespace", "input1", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)]),
+                    new LineageInputField("namespace", "input2", "a", [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)])
+                    ])
             }, []));
         }
     }

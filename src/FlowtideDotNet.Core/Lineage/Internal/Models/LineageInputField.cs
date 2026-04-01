@@ -10,23 +10,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Substrait.Type;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal class LineageInputField : IEquatable<LineageInputField>
     {
+        [JsonPropertyName("namespace")]
         public string Namespace { get; }
 
+        [JsonPropertyName("name")]
         public string TableName { get; }
 
+        [JsonPropertyName("field")]
         public string Field { get; }
 
+        [JsonPropertyName("transformations")]
         public IReadOnlyList<LineageTransformation> Transformations { get; }
 
         public LineageInputField(string @namespace, string tableName, string field, IReadOnlyList<LineageTransformation> transformations)

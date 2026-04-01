@@ -10,27 +10,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Core.Lineage.Internal
+namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
-    internal class LineageInputTable
+    internal class ColumnLineageField
     {
-        [JsonPropertyName("namespace")]
-        public string Namespace { get; }
-
-        [JsonPropertyName("name")]
-        public string TableName { get; }
-
-        public LineageInputTable(string @namespace, string tableName)
+        public ColumnLineageField(IReadOnlyList<LineageInputField> inputFields)
         {
-            Namespace = @namespace;
-            TableName = tableName;
+            InputFields = inputFields;
         }
+
+        [JsonPropertyName("inputFields")]
+        public IReadOnlyList<LineageInputField> InputFields { get; }
     }
 }

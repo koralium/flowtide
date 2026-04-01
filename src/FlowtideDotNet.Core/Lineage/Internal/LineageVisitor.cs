@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 
@@ -28,7 +29,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public ColumnLineage HandleWriteRelation(WriteRelation writeRelation)
         {
-            Dictionary<string, IReadOnlyList<LineageInputField>> fields = new Dictionary<string, IReadOnlyList<LineageInputField>>();
+            Dictionary<string, ColumnLineageField> fields = new Dictionary<string, ColumnLineageField>();
             for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
             {
                 var outputFieldName = writeRelation.TableSchema.Names[i];
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                         Field = i
                     }
                 }, [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)]));
-                fields.Add(outputFieldName, result.InputFields);
+                fields.Add(outputFieldName, new ColumnLineageField(result.InputFields));
             }
 
             var datasetFields = LineageDatasetFieldVisitor.GetDatasetFields(this, writeRelation);

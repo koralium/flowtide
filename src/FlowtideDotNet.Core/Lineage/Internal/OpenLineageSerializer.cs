@@ -10,31 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class LineageOutputTable
+    internal class OpenLineageSerializer
     {
-        [JsonPropertyName("namespace")]
-        public string Namespace { get; }
-
-        [JsonPropertyName("name")]
-        public string TableName { get; }
-
-        [JsonPropertyName("facets")]
-        public LineageOutputFacets Facets { get; }
-
-        public LineageOutputTable(string @namespace, string tableName)
+        public static string Serialize(OpenLineageEvent e)
         {
-            Namespace = @namespace;
-            TableName = tableName;
-            Facets = new LineageOutputFacets();
+            return JsonSerializer.Serialize(e, new JsonSerializerOptions()
+            {
+                WriteIndented = true,
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+                Converters =
+                {
+                    new JsonStringEnumConverter(new EnumUppercaseNamingPolicy())
+                }
+            });
         }
     }
 }
