@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         struct HandleDataRowsResult
         {
-            public EventBatchWeighted eventBatchWeighted;
+            public readonly EventBatchWeighted eventBatchWeighted;
 
             public HandleDataRowsResult(EventBatchWeighted eventBatchWeighted)
             {
