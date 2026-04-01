@@ -138,9 +138,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             {
                 if (e is TaskCanceledException || e is OperationCanceledException)
                 {
+                    ExitCheckpointLock();
                     Logger.LogWarning(e, "Error fetching delta, task was cancelled. Pausing for 120 seconds.");
                     await Task.Delay(TimeSpan.FromSeconds(120));
-                    ExitCheckpointLock();
                     yield break;
                 }
                 else if (e is AggregateException aggregateException)
@@ -150,6 +150,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                     if (aggregateException.InnerExceptions.Any(x => x.GetType().Name.Contains("Resync")))
                     {
                         _state.Value.FetchFull = true;
+                        ExitCheckpointLock();
                         yield break;
                     }
                 }
@@ -182,9 +183,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                 {
                     if (e is TaskCanceledException || e is OperationCanceledException)
                     {
+                        ExitCheckpointLock();
                         Logger.LogWarning(e, "Error fetching delta, task was cancelled. Pausing for 120 seconds.");
                         await Task.Delay(TimeSpan.FromSeconds(120));
-                        ExitCheckpointLock();
                         yield break;
                     }
                     else if (e is AggregateException aggregateException)
@@ -194,6 +195,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
                         if (aggregateException.InnerExceptions.Any(x => x.GetType().Name.Contains("Resync")))
                         {
                             _state.Value.FetchFull = true;
+                            ExitCheckpointLock();
                             yield break;
                         }
                     }
@@ -220,7 +222,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
             Debug.Assert(_state?.Value != null);
 
             // Combine cancellation tokens so that we can listen to both the operator cancellation and the enumerator cancellation
-            var combinedCancelToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
+            using var combinedCancelToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, enumeratorCancellationToken);
 
             var iterator = _sharepointGraphListClient.GetDeltaFromList(_listId);
 
