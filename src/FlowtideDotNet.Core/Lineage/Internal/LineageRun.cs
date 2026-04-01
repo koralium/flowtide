@@ -25,12 +25,12 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         public Guid RunId { get; }
 
         [JsonPropertyName("facets")]
-        public LineageRunFacets Facets { get; }
+        public LineageRunFacets? Facets { get; }
 
-        public LineageRun(Guid runId)
+        public LineageRun(Guid runId, LineageRunFacets? facets = default)
         {
             RunId = runId;
-            Facets = new LineageRunFacets();
+            Facets = facets;
         }
     }
 }

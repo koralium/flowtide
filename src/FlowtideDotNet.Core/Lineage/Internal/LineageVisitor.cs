@@ -18,10 +18,12 @@ namespace FlowtideDotNet.Core.Lineage.Internal
     internal class LineageVisitor : RelationVisitor<LineageVisitorResult, LineageVisitorState>
     {
         private readonly IReadOnlyList<Relation> _relations;
+        private readonly IDictionary<string, LineageInputTable> inputTables;
 
-        public LineageVisitor(IReadOnlyList<Relation> relations)
+        public LineageVisitor(IReadOnlyList<Relation> relations, IDictionary<string, LineageInputTable> inputTables)
         {
             this._relations = relations;
+            this.inputTables = inputTables;
         }
 
         public ColumnLineage HandleWriteRelation(WriteRelation writeRelation)
@@ -242,6 +244,11 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public override LineageVisitorResult VisitReadRelation(ReadRelation readRelation, LineageVisitorState state)
         {
+            var key = readRelation.NamedTable.DotSeperated;
+            if (!inputTables.TryGetValue(key, out var inputTable))
+            {
+                return new LineageVisitorResult([]);
+            }
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
                 var emitIndex = 0;
@@ -256,7 +263,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 // We have reached the source, we can return the lineage result
                 var columnName = readRelation.BaseSchema.Names[emitIndex];
                 
-                return new LineageVisitorResult([new LineageInputField("", readRelation.NamedTable.DotSeperated, columnName, state.Transformations)]);
+                return new LineageVisitorResult([new LineageInputField(inputTable.Namespace, inputTable.TableName, columnName, state.Transformations)]);
             }
 
             return new LineageVisitorResult([]);

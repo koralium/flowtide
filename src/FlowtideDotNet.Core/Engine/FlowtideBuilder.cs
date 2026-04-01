@@ -16,6 +16,7 @@ using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
@@ -44,6 +45,7 @@ namespace FlowtideDotNet.Core.Engine
         private string _version = "";
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckFailureRegistered = false;
+        private readonly string _streamName;
 
         public FlowtideBuilder(string streamName)
         {
@@ -51,6 +53,7 @@ namespace FlowtideDotNet.Core.Engine
             _functionsRegister = new FunctionsRegister();
             // Register default functions directly
             BuiltinFunctions.RegisterFunctions(_functionsRegister);
+            this._streamName = streamName;
         }
 
         public IFunctionsRegister FunctionsRegister => _functionsRegister;
@@ -309,6 +312,11 @@ namespace FlowtideDotNet.Core.Engine
                 _getTimestampInterval,
                 _useColumnStore,
                 _taskScheduler);
+
+            if (_connectorManager != null)
+            {
+                var ev = LineageEventCreator.CreateFromPlan(_streamName, _plan, _connectorManager);
+            }
 
             // Set the notification receiver to the function register to allow check functions get access to it.
             _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);
