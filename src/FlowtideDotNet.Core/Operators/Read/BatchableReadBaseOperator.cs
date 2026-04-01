@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         private IObjectState<BatchableReadOperatorState>? _state;
         private readonly string _watermarkName;
         private readonly ReadRelation readRelation;
-        private Func<RowEvent, bool>? _filter;
+        private readonly Func<RowEvent, bool>? _filter;
 
         protected BatchableReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {

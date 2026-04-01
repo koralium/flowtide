@@ -121,16 +121,6 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
             IComparer<RowEvent> comparer,
             string treeName)
         {
-            List<int> insertPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength + 1; i++)
-            {
-                insertPrimaryKeys.Add(i);
-            }
-            List<int> searchPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength; i++)
-            {
-                searchPrimaryKeys.Add(i);
-            }
             var tree = await stateManagerClient.GetOrCreateTree(treeName,
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {

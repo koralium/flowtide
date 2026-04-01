@@ -68,7 +68,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             conn.Open();
             var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
 
-            List<int> pkIndices = new List<int>();
             foreach (var pk in primaryKeys)
             {
                 var pkIndex = readRelation.BaseSchema.Names.FindIndex((s) => s.Equals(pk, StringComparison.OrdinalIgnoreCase));
@@ -76,11 +75,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 {
                     readRelation.BaseSchema.Names.Add(pk);
                     readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                    pkIndices.Add(readRelation.BaseSchema.Names.Count - 1);
-                }
-                else
-                {
-                    pkIndices.Add(pkIndex);
                 }
             }
 

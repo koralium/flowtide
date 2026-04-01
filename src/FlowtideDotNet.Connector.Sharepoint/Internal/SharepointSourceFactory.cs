@@ -44,30 +44,20 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
-            List<int> indices = new List<int>();
-
             var idIndex = readRelation.BaseSchema.Names.FindIndex(x => x.Equals("Id", StringComparison.OrdinalIgnoreCase));
             if (idIndex < 0)
             {
                 readRelation.BaseSchema.Names.Add("Id");
                 readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                idIndex = readRelation.BaseSchema.Names.Count - 1;
             }
-            indices.Add(idIndex);
 
-            return new NormalizationRelation()
-            {
-                Input = readRelation,
-                Filter = readRelation.Filter,
-                KeyIndex = indices,
-                Emit = readRelation.Emit
-            };
+            return readRelation;
         }
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             var listId = tableProvider.GetListId(readRelation.NamedTable.DotSeperated);
-            return new SharepointSource(sharepointSourceOptions, listId, readRelation, dataflowBlockOptions);
+            return new SharepointSource(sharepointSourceOptions, listId, readRelation, functionsRegister, dataflowBlockOptions);
         }
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

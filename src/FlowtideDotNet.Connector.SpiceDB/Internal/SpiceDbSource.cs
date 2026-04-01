@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                     }
                     // If we managed to start watching again, set health to true
                     SetHealth(true);
-                    var cancelTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                    using var cancelTokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(30));
                     if (await watchStream.ResponseStream.MoveNext(cancelTokenSource.Token))
                     {
                         await output.EnterCheckpointLock();

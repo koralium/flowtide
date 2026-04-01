@@ -529,9 +529,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 FullMode = BoundedChannelFullMode.Wait,
                 SingleReader = false
             });
-            lock (_writeTasks)
+            lock (_taskLock)
             {
                 _writeTasks = null;
+                _cancellationTokenSource?.Dispose();
+                _cancellationTokenSource = null;
             }
 
             _lastSnapshotVersion = _checkpointVersion;
@@ -700,9 +702,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             });
             if (_writeTasks != null)
             {
-                lock (_writeTasks)
+                lock (_taskLock)
                 {
                     _writeTasks = null;
+                    _cancellationTokenSource?.Dispose();
+                    _cancellationTokenSource = null;
                 }
             }
             

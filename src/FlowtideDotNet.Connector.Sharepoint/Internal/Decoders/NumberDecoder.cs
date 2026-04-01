@@ -10,7 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using Microsoft.Graph.Models;
 
 namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
@@ -26,34 +27,71 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
             _isInteger = columnInfo.DecimalPlaces == "none";
         }
 
-        protected override ValueTask<FlxValue> DecodeValue(object? item)
+        protected override ValueTask DecodeValue(object? item, Column column)
         {
             if (_isInteger)
             {
                 var intVal = Convert.ToInt64(item);
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(intVal)));
+                column.Add(new Int64Value(intVal));
+                return ValueTask.CompletedTask;
             }
             if (item is int intValue)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(intValue)));
+                column.Add(new Int64Value(intValue));
+                return ValueTask.CompletedTask;
             }
             if (item is float f)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(f)));
+                column.Add(new DoubleValue(f));
+                return ValueTask.CompletedTask;
             }
             if (item is double d)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(d)));
+                column.Add(new DoubleValue(d));
+                return ValueTask.CompletedTask;
             }
             if (item is long l)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(l)));
+                column.Add(new Int64Value(l));
+                return ValueTask.CompletedTask;
             }
             if (item is decimal dec)
             {
-                return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.SingleValue(dec)));
+                column.Add(new DecimalValue(dec));
+                return ValueTask.CompletedTask;
             }
-            return ValueTask.FromResult(FlxValue.FromBytes(FlexBuffer.Null()));
+            column.Add(NullValue.Instance);
+            return ValueTask.CompletedTask;
+        }
+
+        protected override ValueTask<IDataValue> DecodeDataValue(object? item)
+        {
+            if (_isInteger)
+            {
+                var intVal = Convert.ToInt64(item);
+                return ValueTask.FromResult<IDataValue>(new Int64Value(intVal));
+            }
+            if (item is int intValue)
+            {
+                return ValueTask.FromResult<IDataValue>(new Int64Value(intValue));
+            }
+            if (item is float f)
+            {
+                return ValueTask.FromResult<IDataValue>(new DoubleValue(f));
+            }
+            if (item is double d)
+            {
+                return ValueTask.FromResult<IDataValue>(new DoubleValue(d));
+            }
+            if (item is long l)
+            {
+                return ValueTask.FromResult<IDataValue>(new Int64Value(l));
+            }
+            if (item is decimal dec)
+            {
+                return ValueTask.FromResult<IDataValue>(new DecimalValue(dec));
+            }
+            return ValueTask.FromResult<IDataValue>(NullValue.Instance);
         }
     }
 }

@@ -185,7 +185,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             try
             {
                 ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
-                Utf8JsonWriter jsonWriter = new Utf8JsonWriter(bufferWriter);
+                using Utf8JsonWriter jsonWriter = new Utf8JsonWriter(bufferWriter);
                 int rowCount = 0;
 
                 jsonWriter.WriteStartArray();
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                             throw new StarRocksInvalidDataException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
                         }
                     }
-                    _jsonWriter.WriteObject(ref jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
+                    _jsonWriter.WriteObject(in jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
                     rowCount++;
 
                     if (rowCount >= _options.BatchSize)

@@ -30,13 +30,14 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         }
 
         [Benchmark]
-        public void DefaultList()
+        public int DefaultList()
         {
             var list = new List<long>();
             for (int i = 0; i < 1_000_000; i++)
             {
                 list.Add(i);
             }
+            return list.Count;
         }
     }
 }

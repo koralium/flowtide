@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
         private readonly int[] _extraColumnsIndices;
 
         private Task? _deltaLoadTask;
-        private object _deltaLock = new object();
+        private readonly object _deltaLock = new object();
 
         public TextLineFileDataSource(TextLineInternalOptions fileOptions, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {

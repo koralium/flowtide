@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         }
 
         [Benchmark]
-        public void TestInsertPointers()
+        public int TestInsertPointers()
         {
             var bl = new List<byte[]>();
 
@@ -53,6 +53,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             {
                 bl.Add(item);
             }
+            return bl.Count;
         }
 
         [Benchmark]

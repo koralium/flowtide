@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Tests
 {
     public class SqlTests
     {
-        private SqlPlanBuilder builder;
+        private readonly SqlPlanBuilder builder;
         public SqlTests()
         {
             builder = new SqlPlanBuilder();
@@ -1322,6 +1322,91 @@ namespace FlowtideDotNet.Substrait.Tests
             ");
 
             var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new WriteRelation()
+                    {
+                        NamedObject = new NamedTable(){ Names = ["output" ]},
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = ["c1"],
+                            Struct = new Struct()
+                            {
+                                Types = [new AnyType()]
+                            }
+                        },
+                        Input = new ProjectRelation()
+                        {
+                            Emit = [2],
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new NamedTable() { Names = ["testtable"] },
+                                BaseSchema = new NamedStruct()
+                                {
+                                    Names = ["c1", "c2"],
+                                    Struct = new Struct()
+                                    {
+                                        Types = [AnyType.Instance, AnyType.Instance]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    new WriteRelation()
+                    {
+                        NamedObject = new NamedTable(){ Names = ["output" ]},
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = ["c1"],
+                            Struct = new Struct()
+                            {
+                                Types = [new AnyType()]
+                            }
+                        },
+                        Input = new ProjectRelation()
+                        {
+                            Emit = [2],
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new NamedTable() { Names = ["testtable"] },
+                                BaseSchema = new NamedStruct()
+                                {
+                                    Names = ["c1", "c2"],
+                                    Struct = new Struct()
+                                    {
+                                        Types = [AnyType.Instance, AnyType.Instance]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
         }
 
         [Fact]

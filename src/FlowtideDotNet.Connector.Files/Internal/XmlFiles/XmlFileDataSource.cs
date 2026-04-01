@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                     throw new InvalidOperationException($"File {file} not found");
                 }
 
-                var reader = XmlReader.Create(stream, new XmlReaderSettings()
+                using var reader = XmlReader.Create(stream, new XmlReaderSettings()
                 {
                     Async = true
                 });

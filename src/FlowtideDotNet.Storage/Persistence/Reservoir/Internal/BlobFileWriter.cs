@@ -20,26 +20,26 @@ using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 {
-    internal class BlobFileWriter : PagesFile, IBufferWriter<byte>
+    internal class BlobFileWriter : PagesFile, IBufferWriter<byte>, IFileWithSequence
     {
         private const int HeaderSize = 64;
 
         private readonly Action<PagesFile> doneFunc;
         private readonly MemoryPool<byte> _memoryPool;
         private const int InitialSegmentSize = 16 * 1024;
-        private BufferSegment _headerData;
+        private readonly BufferSegment _headerData;
         private BufferSegment _pageIdsSegment;
         private BufferSegment _pageOffsetsSegment;
         private BufferSegment _head;
         private BufferSegment _end;
         private int endIndex = 0;
         private int _writtenBytes = 0;
-        private PrimitiveList<long> _pageIds;
-        private PrimitiveList<int> _pageOffset;
-        private PrimitiveList<uint> _crc32s;
+        private readonly PrimitiveList<long> _pageIds;
+        private readonly PrimitiveList<int> _pageOffset;
+        private readonly PrimitiveList<uint> _crc32s;
         private SequencePosition _advancedPosition;
         private bool disposedValue;
-        private BufferSegment _dataStart;
+        private readonly BufferSegment _dataStart;
         private bool _finished = false;
         private readonly object _lock = new object();
         private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();

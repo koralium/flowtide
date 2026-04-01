@@ -10,15 +10,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Connector.Sharepoint
+using System.Buffers;
+
+namespace FlowtideDotNet.Storage.Persistence.Reservoir
 {
-    public class SharepointSourceOptions : SharepointOptions
+    public interface IFileWithSequence
     {
-        /// <summary>
-        /// Gets or sets the interval between consecutive delta load operations. Default 10 seconds.
-        /// </summary>
-        /// <remarks>Adjust this value to control how frequently incremental updates are performed.
-        /// Setting a shorter interval may increase system responsiveness but causes more API calls to Sharepoint.</remarks>
-        public TimeSpan DeltaLoadInterval { get; set; } = TimeSpan.FromSeconds(10);
+        ReadOnlySequence<byte> WrittenData { get; }
     }
 }

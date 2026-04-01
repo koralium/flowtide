@@ -412,6 +412,10 @@ namespace FlowtideDotNet.Base.Vertices
                 t.ContinueWith((task, state) =>
                 {
                     var taskState = (TaskState)state!;
+                    if (task.IsCanceled && !taskState.ingressOutput.CancellationToken.IsCancellationRequested)
+                    {
+                        taskState.ingressOutput.Fault(new InvalidOperationException($"Task was canceled without cancellation being requested"));
+                    }
                     if (t.IsFaulted)
                     {
                         taskState.ingressOutput.Fault(task.Exception ?? new AggregateException("Error in task without exception"));
