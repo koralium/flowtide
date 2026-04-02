@@ -135,8 +135,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             {
                 var leftSize = mergeJoinRelation.Left.OutputLength;
                 var usedFields = LineageExpressionVisitor.GetFieldReferences(mergeJoinRelation.PostJoinFilter);
-                foreach (var field in usedFields)
+                for (int i = 0; i < usedFields.Count; i++)
                 {
+                    var field = usedFields[i];
                     if (field.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                     {
                         if (structReferenceSegment.Field < leftSize)
@@ -181,8 +182,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             if (joinRelation.Expression != null)
             {
                 var usedFields = LineageExpressionVisitor.GetFieldReferences(joinRelation.Expression);
-                foreach (var field in usedFields)
+                for (int i = 0; i < usedFields.Count; i++)
                 {
+                    var field = usedFields[i];
                     if (field.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                     {
                         if (structReferenceSegment.Field < leftSize)
@@ -221,8 +223,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             if (joinRelation.PostJoinFilter != null)
             {
                 var usedFields = LineageExpressionVisitor.GetFieldReferences(joinRelation.PostJoinFilter);
-                foreach (var field in usedFields)
+                for (int i = 0; i < usedFields.Count; i++)
                 {
+                    var field = usedFields[i];
                     if (field.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                     {
                         if (structReferenceSegment.Field < leftSize)

@@ -13,7 +13,6 @@
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
-using static Substrait.Protobuf.Expression.Types;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {

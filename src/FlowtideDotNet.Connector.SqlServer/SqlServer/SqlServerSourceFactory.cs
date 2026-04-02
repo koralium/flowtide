@@ -165,14 +165,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
         public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
         {
-            if (includeSchema && _tableProvider.TryGetTableInformation(_options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names, out var tableMetadata))
-            {
-                return new TableLineageMetadata("mssql", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
-            }
-            else
-            {
-                return new TableLineageMetadata("mssql", readRelation.NamedTable.DotSeperated, default);
-            }
+            return new TableLineageMetadata(
+                 "mssql",
+                 readRelation.NamedTable.DotSeperated,
+                 includeSchema && _tableProvider.TryGetTableInformation(_options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names, out var tableMetadata)
+                     ? tableMetadata.Schema
+                     : default);
         }
     }
 }
