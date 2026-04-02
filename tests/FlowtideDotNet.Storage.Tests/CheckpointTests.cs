@@ -170,7 +170,6 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
-            var (_, valInitial) = await tree.GetValue(1);
             await stateManager.Compact();
 
             await tree.Upsert(1, "helloOther");
