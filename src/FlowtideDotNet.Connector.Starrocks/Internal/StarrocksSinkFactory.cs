@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics.CodeAnalysis;
@@ -67,6 +68,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             }
 
             return new StarRocksPrimaryKeySink(_options, _options.ExecutionMode, writeRelation, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("starrocks", writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema);
         }
 
         public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)

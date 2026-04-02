@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
@@ -160,6 +161,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             return options;
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata(
+                 "mssql",
+                 readRelation.NamedTable.DotSeperated,
+                 includeSchema && _tableProvider.TryGetTableInformation(_options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names, out var tableMetadata)
+                     ? tableMetadata.Schema
+                     : default);
         }
     }
 }

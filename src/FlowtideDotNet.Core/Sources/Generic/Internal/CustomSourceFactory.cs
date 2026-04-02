@@ -13,8 +13,10 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
+using FlowtideDotNet.Substrait.Sql.Internal;
 using FlowtideDotNet.Substrait.Type;
 using System.Threading.Tasks.Dataflow;
 
@@ -59,6 +61,19 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new GenericReadOperator<T>(dataSourceFunc(readRelation), readRelation, functionsRegister, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema)
+            {
+                var tableProvider = Create();
+                if (tableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+                {
+                    return new TableLineageMetadata("custom_source", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+                }
+            }
+            return new TableLineageMetadata("custom_source", readRelation.NamedTable.DotSeperated, default);
         }
     }
 }

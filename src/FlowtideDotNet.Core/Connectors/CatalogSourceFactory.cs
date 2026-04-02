@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
@@ -39,6 +40,13 @@ namespace FlowtideDotNet.Core.Connectors
             var copy = readRelation.Copy();
             copy.NamedTable.Names = readRelation.NamedTable.Names.Skip(1).ToList();
             return _inner.CreateSource(copy, functionsRegister, dataflowBlockOptions);
+        }
+
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            var copy = readRelation.Copy();
+            copy.NamedTable.Names = readRelation.NamedTable.Names.Skip(1).ToList();
+            return _inner.GetLineageMetadata(copy, includeSchema);
         }
 
         public Relation ModifyPlan(ReadRelation readRelation)

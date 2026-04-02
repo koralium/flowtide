@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using System;
@@ -44,6 +45,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
         public ITableProvider Create()
         {
             return this;
+        }
+
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema && TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+            }
+            return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, default);
         }
 
         public IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)

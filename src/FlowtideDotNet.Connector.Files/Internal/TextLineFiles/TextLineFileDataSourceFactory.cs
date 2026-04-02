@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.Files.Internal.XmlFiles;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
@@ -56,6 +57,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
         public bool CanHandle(ReadRelation readRelation)
         {
             return readRelation.NamedTable.DotSeperated.Equals(_tableName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema && TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+            }
+            return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, default);
         }
 
         public ITableProvider Create()

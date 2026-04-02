@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics.CodeAnalysis;
@@ -35,5 +36,7 @@ namespace FlowtideDotNet.Core.Connectors
         {
             return readRelation;
         }
+
+        public abstract TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema);
     }
 }

@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Options;
@@ -47,6 +48,15 @@ namespace FlowtideDotNet.Core.Sources.Configuration.Internal
         public IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new OptionsMonitorSource<TOptions>(_monitor, readRelation, dataflowBlockOptions);
+        }
+
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema && TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("options", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+            }
+            return new TableLineageMetadata("options", readRelation.NamedTable.DotSeperated, default);
         }
 
         public Relation ModifyPlan(ReadRelation readRelation)
