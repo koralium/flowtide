@@ -393,20 +393,15 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             {
                 var emitIndex = joinRelation.EmitSet ? joinRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
-                if (emitIndex < leftLength)
-                {
-                    return Visit(joinRelation.Left, new LineageVisitorState(new DirectFieldReference()
+                return emitIndex < leftLength 
+                    ? Visit(joinRelation.Left, new LineageVisitorState(new DirectFieldReference()
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
-                    }, state.Transformations));
-                }
-                else
-                {
-                    return Visit(joinRelation.Right, new LineageVisitorState(new DirectFieldReference()
+                    }, state.Transformations))
+                    : Visit(joinRelation.Right, new LineageVisitorState(new DirectFieldReference()
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex - leftLength }
                     }, state.Transformations));
-                }
             }
 
             return new LineageVisitorResult([]);
@@ -441,7 +436,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
                     }, state.Transformations));
 
-                    for (int f = 0; f < <inputResult.InputFields.Count; f++)
+                    for (int f = 0; f < inputResult.InputFields.Count; f++)
                     {
                         var resultField = inputResult.InputFields[f];
                         var key = $"{resultField.Namespace}.{resultField.TableName}.{resultField.Field}";
