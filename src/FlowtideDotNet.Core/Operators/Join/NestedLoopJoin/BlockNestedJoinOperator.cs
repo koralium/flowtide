@@ -275,7 +275,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                 {
                     var rowRef = new ColumnRowReference() { referenceBatch = leftTmpPage.Keys._data, RowIndex = leftIndex };
                     var value = leftTmpPage.Values.Get(leftIndex);
-                    var op = await _leftTree.RMWNoResult(rowRef, value, (input, current, exist) =>
+                    await _leftTree.RMWNoResult(rowRef, value, (input, current, exist) =>
                     {
                         if (exist)
                         {

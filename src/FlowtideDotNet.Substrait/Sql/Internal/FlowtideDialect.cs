@@ -342,7 +342,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
                 var commaFound = parser.ConsumeToken<Comma>();
 
-                var peeked = parser.PeekToken();
                 var rightParen = parser.PeekToken() is RightParen;
 
                 if (!commaFound && !rightParen)

@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 alignedBuffer = new AlignedBuffer(alignedLength, alignment);
             }
 
-            IntPtr bytesRead = pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+            pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
         }
 
         public void Flush()

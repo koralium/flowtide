@@ -175,7 +175,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             var columnNameIndex = result.FieldIndex("column_name");
             var columnKeyIndex = result.FieldIndex("column_key");
-            var dataTypeIndex = result.FieldIndex("data_type");
 
             List<string> columnNames = new List<string>();
             List<string> primaryKeyColumns = new List<string>();

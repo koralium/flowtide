@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     isRowBounded = true;
                     upperBoundRowOffset = -lowerPreceedingRow.Offset;
                 }
-                else if (windowFunction.UpperBound is CurrentRowWindowBound lowerCurrentRow)
+                else if (windowFunction.UpperBound is CurrentRowWindowBound)
                 {
                     isRowBounded = true;
                     upperBoundRowOffset = 0;

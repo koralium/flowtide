@@ -159,10 +159,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + 1);
             var span = AccessSpan;
-            var source = span.Slice(index, _length - index);
-            var dest = span.Slice(index + 1);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
-            //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
             span[index] = item;
             _length++;
         }

@@ -247,7 +247,6 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             ");
             await stream.WaitForUpdate();
 
-            var act = stream.GetActualRowsAsVectors();
             stream.AssertCurrentDataEqual(new List<User>() { new User { FirstName = "Test", LastName = "last1" } }.Select(x => new { x.FirstName, x.LastName }));
 
             // Update user 1
@@ -297,7 +296,6 @@ namespace FlowtideDotNet.Core.Tests.GenericDataTests
             ");
             await stream.WaitForUpdate();
 
-            var act = stream.GetActualRowsAsVectors();
             stream.AssertCurrentDataEqual(new List<User>() { new User { UserKey = 1, FirstName = "Test", LastName = "last1" } }.Select(x => new { x.FirstName, key = x.UserKey.ToString(), x.LastName }));
         }
 

@@ -199,8 +199,6 @@ namespace FlowtideDotNet.Connector.Permify.Tests
 
             await stream.WaitForUpdate();
 
-            var actual = stream.GetActualRowsAsVectors();
-
             // Send an update
             writeRequest = new RelationshipWriteRequest()
             {
@@ -224,8 +222,6 @@ namespace FlowtideDotNet.Connector.Permify.Tests
             await dataClient.WriteRelationshipsAsync(writeRequest);
 
             await stream.WaitForUpdate();
-
-            var actual2 = stream.GetActualRowsAsVectors();
         }
     }
 }
