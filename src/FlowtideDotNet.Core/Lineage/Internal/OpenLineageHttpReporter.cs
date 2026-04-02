@@ -99,8 +99,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 }
 
                 var json = OpenLineageSerializer.Serialize(ev);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                var message = new HttpRequestMessage(HttpMethod.Post, _url) { Content = content };
+                using var content = new StringContent(json, Encoding.UTF8, "application/json");
+                using var message = new HttpRequestMessage(HttpMethod.Post, _url) { Content = content };
                 HttpResponseMessage? response = default;
                 if (_openLineageOptions.OnRequest != null)
                 {
@@ -122,12 +122,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
                     TimeSpan waitTime = TimeSpan.FromSeconds(Math.Min(15, _errorCount));
                     await Task.Delay(waitTime);
-                    _logger.LogError(ex, $"Error writing to OpenLineage destination, waiting: {waitTime.TotalSeconds} seconds before retrying");
+                    _logger.LogError(ex, $"Error writing to OpenLineage destination, status code: '{response.StatusCode}', waiting: {waitTime.TotalSeconds} seconds before retrying");
                 }
                 finally
                 {
-                    message.Dispose();
-                    content.Dispose();
                     if (response != null)
                     {
                         response.Dispose();

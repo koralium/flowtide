@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal class LineageExpressionVisitor : ExpressionVisitor<object?, object?>
     {
-        private List<DirectFieldReference> _usedFields = new List<DirectFieldReference>(); 
+        private readonly List<DirectFieldReference> _usedFields = new List<DirectFieldReference>(); 
 
         public IReadOnlyList<DirectFieldReference> UsedFields => _usedFields;
 

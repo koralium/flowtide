@@ -285,12 +285,14 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     }
                     var windowFunc = consistentPartitionWindowRelation.WindowFunctions[emitIndex - inputLength];
 
-                    foreach(var arg in windowFunc.Arguments)
+                    for (int i = 0; i < windowFunc.Arguments.Count; i++)
                     {
+                        var arg = windowFunc.Arguments[i];
                         var usedFields = LineageExpressionVisitor.GetFieldReferences(arg);
 
-                        foreach(var field in usedFields)
+                        for (int f = 0; f < usedFields.Count; f++)
                         {
+                            var field = usedFields[f];
                             var fieldResult = Visit(consistentPartitionWindowRelation.Input, new LineageVisitorState(field, state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Aggregation))));
 
                             foreach (var inputField in fieldResult.InputFields)
@@ -326,20 +328,15 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             {
                 var emitIndex = mergeJoinRelation.EmitSet ? mergeJoinRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
-                if (emitIndex < leftLength)
-                {
-                    return Visit(mergeJoinRelation.Left, new LineageVisitorState(new DirectFieldReference()
+                return emitIndex < leftLength
+                    ? Visit(mergeJoinRelation.Left, new LineageVisitorState(new DirectFieldReference()
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
-                    }, state.Transformations));
-                }
-                else
-                {
-                    return Visit(mergeJoinRelation.Right, new LineageVisitorState(new DirectFieldReference()
+                    }, state.Transformations))
+                    : Visit(mergeJoinRelation.Right, new LineageVisitorState(new DirectFieldReference()
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex - leftLength }
                     }, state.Transformations));
-                }
             }
 
             return new LineageVisitorResult([]);
@@ -436,15 +433,17 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 var emitIndex = setRelation.EmitSet ? setRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
                 Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
-                foreach (var input in setRelation.Inputs)
+                for (int i = 0; i < setRelation.Inputs.Count; i++)
                 {
+                    var input = setRelation.Inputs[i];
                     var inputResult = Visit(input, new LineageVisitorState(new DirectFieldReference()
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
                     }, state.Transformations));
 
-                    foreach (var resultField in inputResult.InputFields)
+                    for (int f = 0; f < <inputResult.InputFields.Count; f++)
                     {
+                        var resultField = inputResult.InputFields[f];
                         var key = $"{resultField.Namespace}.{resultField.TableName}.{resultField.Field}";
                         if (!inputFields.ContainsKey(key))
                         {
@@ -470,8 +469,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     {
                         ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
                     }, state.Transformations));
-                    foreach (var resultField in inputResult.InputFields)
+                    for (int f = 0; f < inputResult.InputFields.Count; f++)
                     {
+                        var resultField = inputResult.InputFields[f];
                         var key = $"{resultField.Namespace}.{resultField.TableName}.{resultField.Field}";
                         if (!inputFields.ContainsKey(key))
                         {
