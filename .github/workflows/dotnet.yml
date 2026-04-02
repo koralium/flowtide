@@ -30,6 +30,11 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
         restore-keys: |
           ${{ runner.os }}-nuget
+    - name: Npm install UI
+      run: |
+        npm install
+        npm run build
+      working-directory: ./src/FlowtideDotNet.AspNetCore/ClientApp
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
