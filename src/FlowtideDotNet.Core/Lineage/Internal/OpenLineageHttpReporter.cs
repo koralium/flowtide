@@ -146,6 +146,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
                 if (ev.EventType == LineageEventType.Complete)
                 {
+                    _httpClient.Dispose();
                     _cancellationTokenSource.Cancel();
                     _cancellationTokenSource.Dispose();
                     return;
