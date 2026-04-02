@@ -112,7 +112,12 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     response.EnsureSuccessStatusCode();
                     _errorCount = 0;
                 }
-                catch(Exception ex)
+                catch (OperationCanceledException)
+                {
+                    // Respect cancellation requests and do not treat them as transient errors.
+                    throw;
+                }
+                catch (Exception ex)
                 {
                     _errorCount++;
                     lock (_lock)
