@@ -2,11 +2,91 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://koralium.github.io/flowtide/blog</id>
     <title>Flowtide Blog</title>
-    <updated>2025-08-07T00:00:00.000Z</updated>
+    <updated>2026-04-02T00:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://koralium.github.io/flowtide/blog"/>
     <subtitle>Flowtide Blog</subtitle>
     <icon>https://koralium.github.io/flowtide/img/favicon.ico</icon>
+    <entry>
+        <title type="html"><![CDATA[Release 0.15.0]]></title>
+        <id>https://koralium.github.io/flowtide/blog/release-0-15-0</id>
+        <link href="https://koralium.github.io/flowtide/blog/release-0-15-0"/>
+        <updated>2026-04-02T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[Major changes]]></summary>
+        <content type="html"><![CDATA[<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="major-changes">Major changes<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#major-changes" class="hash-link" aria-label="Direct link to Major changes" title="Direct link to Major changes" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="reservoir--new-storage-backend">Reservoir — New Storage Backend<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#reservoir--new-storage-backend" class="hash-link" aria-label="Direct link to Reservoir — New Storage Backend" title="Direct link to Reservoir — New Storage Backend" translate="no">​</a></h3>
+<p>A brand-new storage backend called <strong>Reservoir</strong> has been introduced and is now the <strong>recommended</strong> storage solution for all deployments.
+Reservoir is designed for cloud-native workloads and provides a multi-tier architecture:</p>
+<ul>
+<li class=""><strong>In-Flight Buffer</strong> — volatile RAM layer for Read-Your-Own-Writes consistency.</li>
+<li class=""><strong>Local Disk Cache</strong> — immutable, CRC-verified cache of 64 MB blobs fetched on-demand from remote storage.</li>
+<li class=""><strong>Persistent Storage</strong> — authoritative state in cloud object storage (Azure Blob Storage, local disk, etc.).</li>
+</ul>
+<p>Key design highlights include page packing into large immutable files to minimize cloud API calls, CRC32/CRC64 checksums at page and file level for data integrity, snapshot checkpoints for fast recovery, and automatic compaction of fragmented files.</p>
+<p>Legacy storage backends (FasterKV, temporary file cache, SQL Server) remain available but are no longer recommended for new deployments. FasterKV has been moved to its own NuGet package (<code>FlowtideDotNet.Storage.FasterKV</code>) and is no longer included by default.</p>
+<p>To learn more, visit <a href="https://koralium.github.io/flowtide/docs/statepersistence" target="_blank" rel="noopener noreferrer" class="">State Persistence docs</a>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="starrocks-connector">StarRocks Connector<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#starrocks-connector" class="hash-link" aria-label="Direct link to StarRocks Connector" title="Direct link to StarRocks Connector" translate="no">​</a></h3>
+<p>A new connector for <a href="https://www.starrocks.io/" target="_blank" rel="noopener noreferrer" class="">StarRocks</a> has been added, starting with a <strong>sink operator</strong>. The StarRocks sink writes data using the built-in Stream Load mechanism and requires the target table to have a primary key defined for upsert and delete support.</p>
+<p>Two execution modes are available:</p>
+<ul>
+<li class=""><strong>OnCheckpoint</strong> — data is committed transactionally at checkpoint boundaries.</li>
+<li class=""><strong>OnWatermark</strong> — data is flushed on each watermark for lower latency (at-least-once semantics).</li>
+</ul>
+<p>To learn more, visit <a href="https://koralium.github.io/flowtide/docs/connectors/starrocks" target="_blank" rel="noopener noreferrer" class="">StarRocks Connector docs</a>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="openlineage-support">OpenLineage Support<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#openlineage-support" class="hash-link" aria-label="Direct link to OpenLineage Support" title="Direct link to OpenLineage Support" translate="no">​</a></h3>
+<p>Flowtide now has built-in support for reporting data lineage events to an <a href="https://openlineage.io/" target="_blank" rel="noopener noreferrer" class="">OpenLineage</a>-compatible endpoint over HTTP. When enabled, the reporter automatically sends lineage events as the stream transitions between states (starting, running, completed, or failed). Schema information can optionally be included in the events.</p>
+<p>To learn more, visit <a href="https://koralium.github.io/flowtide/docs/monitoring/openlineage" target="_blank" rel="noopener noreferrer" class="">OpenLineage docs</a>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="insert-overwrite-for-delta-lake">INSERT OVERWRITE for Delta Lake<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#insert-overwrite-for-delta-lake" class="hash-link" aria-label="Direct link to INSERT OVERWRITE for Delta Lake" title="Direct link to INSERT OVERWRITE for Delta Lake" translate="no">​</a></h3>
+<p>The Delta Lake connector now supports <code>INSERT OVERWRITE {tableName}</code> as an alternative to <code>INSERT INTO</code>. This replaces all content in the delta table with the new data from the stream on the initial load. After the initial overwrite, subsequent inserts, updates, and deletes behave normally. The existing data is committed as <code>remove</code> operations in the delta log, so the full table history is preserved.</p>
+<p>Additionally, <strong>column mapping</strong> is now supported when writing to delta tables.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="spicedb-materialize_permission-table-function">SpiceDB <code>materialize_permission</code> Table Function<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#spicedb-materialize_permission-table-function" class="hash-link" aria-label="Direct link to spicedb-materialize_permission-table-function" title="Direct link to spicedb-materialize_permission-table-function" translate="no">​</a></h3>
+<p>The SpiceDB connector has been refactored and now exposes a <code>materialize_permission</code> SQL table function for easily denormalizing permissions directly in your queries. The function automatically fetches the schema from SpiceDB at plan-build time, removing the need for manual schema loading.</p>
+<div class="language-sql codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_QJqH"><pre tabindex="0" class="prism-code language-sql codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token keyword" style="color:#00009f">SELECT</span><span class="token plain"> subject_type</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> subject_id</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> relation</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> resource_type</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> resource_id</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"></span><span class="token keyword" style="color:#00009f">FROM</span><span class="token plain"> spicedb</span><span class="token punctuation" style="color:#393A34">.</span><span class="token plain">materialize_permission</span><span class="token punctuation" style="color:#393A34">(</span><span class="token string" style="color:#e3116c">'document'</span><span class="token punctuation" style="color:#393A34">,</span><span class="token plain"> </span><span class="token string" style="color:#e3116c">'view'</span><span class="token punctuation" style="color:#393A34">)</span><br></span></code></pre></div></div>
+<p>To learn more, visit <a href="https://koralium.github.io/flowtide/docs/connectors/spicedb" target="_blank" rel="noopener noreferrer" class="">SpiceDB Connector docs</a>.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="net-10-support">.NET 10 Support<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#net-10-support" class="hash-link" aria-label="Direct link to .NET 10 Support" title="Direct link to .NET 10 Support" translate="no">​</a></h3>
+<p>Flowtide now targets <strong>.NET 10</strong> in addition to .NET 8, allowing projects on the latest runtime to benefit from the newest performance improvements and language features.</p>
+<h2 class="anchor anchorTargetStickyNavbar_Vzrq" id="minor-changes">Minor changes<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#minor-changes" class="hash-link" aria-label="Direct link to Minor changes" title="Direct link to Minor changes" translate="no">​</a></h2>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="new-sql-functions">New SQL Functions<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#new-sql-functions" class="hash-link" aria-label="Direct link to New SQL Functions" title="Direct link to New SQL Functions" translate="no">​</a></h3>
+<p>Several new scalar and aggregate functions have been added:</p>
+<ul>
+<li class=""><strong><code>datediff</code></strong> — calculates the difference between two dates in a specified date part.</li>
+<li class=""><strong><code>round_calendar</code></strong> — rounds a timestamp to a calendar boundary (e.g., start of hour, day, month).</li>
+<li class=""><strong><code>xxhash64</code></strong> — computes an xxHash64 hash of input values.</li>
+<li class=""><strong><code>log10</code></strong> — computes the base-10 logarithm.</li>
+<li class=""><strong><code>count_distinct</code></strong> — aggregate function that counts distinct values.</li>
+<li class=""><strong><code>avg</code> (window function)</strong> — average is now available as a window function. A bug with using window functions inside recursive CTEs has also been fixed.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="generic-data-sink-fetch-existing-data">Generic Data Sink: Fetch Existing Data<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#generic-data-sink-fetch-existing-data" class="hash-link" aria-label="Direct link to Generic Data Sink: Fetch Existing Data" title="Direct link to Generic Data Sink: Fetch Existing Data" translate="no">​</a></h3>
+<p>The generic data sink now allows fetching existing data from the target on initial startup. This is used to compare against incoming data to avoid duplicates and to produce deletes for data that is no longer present in the stream result.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="sharepoint-source-refactored-to-column-based-data">SharePoint Source Refactored to Column-Based Data<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#sharepoint-source-refactored-to-column-based-data" class="hash-link" aria-label="Direct link to SharePoint Source Refactored to Column-Based Data" title="Direct link to SharePoint Source Refactored to Column-Based Data" translate="no">​</a></h3>
+<p>The SharePoint source has been rebuilt to use column-based data and now supports resync operations.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="jsonelement-support-in-c-object-converter">JsonElement Support in C# Object Converter<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#jsonelement-support-in-c-object-converter" class="hash-link" aria-label="Direct link to JsonElement Support in C# Object Converter" title="Direct link to JsonElement Support in C# Object Converter" translate="no">​</a></h3>
+<p>The C# object converter now supports <code>JsonElement</code> as a type, allowing direct mapping of JSON data when converting objects to columns.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="precompiled-frontend">Precompiled Frontend<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#precompiled-frontend" class="hash-link" aria-label="Direct link to Precompiled Frontend" title="Direct link to Precompiled Frontend" translate="no">​</a></h3>
+<p>The ASP.NET Core monitoring UI now ships with a precompiled frontend. <strong>Node.js is no longer required</strong> to build the project.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="kafka-improvements">Kafka Improvements<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#kafka-improvements" class="hash-link" aria-label="Direct link to Kafka Improvements" title="Direct link to Kafka Improvements" translate="no">​</a></h3>
+<ul>
+<li class="">Tombstone events are now skipped during initial load when loading existing data from Kafka.</li>
+<li class="">The Kafka sink can once again handle deleted rows during initial batch processing.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="delta-lake-source-fixes">Delta Lake Source Fixes<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#delta-lake-source-fixes" class="hash-link" aria-label="Direct link to Delta Lake Source Fixes" title="Direct link to Delta Lake Source Fixes" translate="no">​</a></h3>
+<ul>
+<li class="">The delta lake source can now read tables that only have a checkpoint as the first entry.</li>
+<li class="">A fix ensures correct difference detection in column batch reads.</li>
+</ul>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="memory-optimization-for-window-functions">Memory Optimization for Window Functions<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#memory-optimization-for-window-functions" class="hash-link" aria-label="Direct link to Memory Optimization for Window Functions" title="Direct link to Memory Optimization for Window Functions" translate="no">​</a></h3>
+<p>Memory allocation on the managed heap has been reduced for <code>MIN</code>/<code>MAX</code> window functions, decreasing GC pressure.</p>
+<h3 class="anchor anchorTargetStickyNavbar_Vzrq" id="bug-fixes">Bug Fixes<a href="https://koralium.github.io/flowtide/blog/release-0-15-0#bug-fixes" class="hash-link" aria-label="Direct link to Bug Fixes" title="Direct link to Bug Fixes" translate="no">​</a></h3>
+<ul>
+<li class=""><strong>Union column insert range</strong> — fixed incorrect count calculation when null values are present in the range.</li>
+<li class=""><strong>C# Object Sink</strong> — fixed an exception when removing a row with a non-nullable field.</li>
+<li class=""><strong>SQL case sensitivity</strong> — single identifiers in SQL are no longer case sensitive.</li>
+<li class=""><strong>Surrogate key / upper metadata</strong> — <code>upper</code> and surrogate key <code>int64</code> now return correct types for metadata.</li>
+<li class=""><strong>Plan serialization</strong> — <code>list</code> and <code>map</code> types now serialize correctly to JSON when serializing the plan.</li>
+<li class=""><strong>Delta load task reset</strong> — fixed an issue where the delta load task was not reset when a full load followed a delta load.</li>
+</ul>]]></content>
+        <category label="release" term="release"/>
+    </entry>
     <entry>
         <title type="html"><![CDATA[Release 0.14.0]]></title>
         <id>https://koralium.github.io/flowtide/blog/release-0-14-0</id>
