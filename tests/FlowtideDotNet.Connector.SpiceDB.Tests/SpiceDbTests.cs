@@ -96,11 +96,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestInsertThenDelete)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
-            var schema = await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
+            await schemaServiceClient.ReadSchemaAsync(new ReadSchemaRequest(), metadata);
 
             var stream = new SpiceDbTestStream(nameof(TestInsertThenDelete), spiceDbFixture.GetChannel(), true, false);
             stream.Generate(1000);
