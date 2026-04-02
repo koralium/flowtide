@@ -171,7 +171,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
         {
             GetCatalogSchemaTable(names, out var catalog, out var schema, out var table);
             var client = new StarRocksHttpClient(options);
-            var result = await client.Query($"SELECT column_name, data_type, column_key FROM information_schema.columns WHERE table_name = '{table}' AND table_schema = '{schema}';");
+            var result = await client.Query($"SELECT column_name, column_key FROM information_schema.columns WHERE table_name = '{table}' AND table_schema = '{schema}';");
 
             var columnNameIndex = result.FieldIndex("column_name");
             var columnKeyIndex = result.FieldIndex("column_key");

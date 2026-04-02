@@ -130,7 +130,13 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
                 alignedBuffer = new AlignedBuffer(alignedLength, alignment);
             }
 
-            pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+            IntPtr bytesRead = pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+
+            if(bytesRead.ToInt64() < 0)
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                throw new InvalidOperationException($"Failed to read data. {errorCode}: {strerror(errorCode)}");
+            }
         }
 
         public void Flush()
