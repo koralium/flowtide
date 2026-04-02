@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using static Substrait.Protobuf.Expression.Types;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
@@ -59,15 +60,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                int field = 0;
-                if (aggregateRelation.EmitSet)
-                {
-                    field = aggregateRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    field = structReferenceSegment.Field;
-                }
+                var field = aggregateRelation.EmitSet ? aggregateRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
                 Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
                 // Check if it is from grouping
                 if (field < groupLength)
@@ -139,15 +132,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (filterRelation.EmitSet)
-                {
-                    emitIndex = filterRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = filterRelation.EmitSet ? filterRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
                 return Visit(filterRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
@@ -167,15 +152,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                var emitIndex = 0;
-                if (projectRelation.EmitSet)
-                {
-                    emitIndex = projectRelation.Emit[referenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = referenceSegment.Field;
-                }
+                var emitIndex = projectRelation.EmitSet ? projectRelation.Emit[referenceSegment.Field] : referenceSegment.Field;
 
                 if (emitIndex >= inputLength)
                 {
@@ -225,15 +202,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (bufferRelation.EmitSet)
-                {
-                    emitIndex = bufferRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = bufferRelation.EmitSet ? bufferRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
                 return Visit(bufferRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
@@ -252,15 +221,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             }
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (readRelation.EmitSet)
-                {
-                    emitIndex = readRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = readRelation.EmitSet ? readRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 // We have reached the source, we can return the lineage result
                 var columnName = readRelation.BaseSchema.Names[emitIndex];
                 
@@ -275,15 +237,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
                 var inputLength = consistentPartitionWindowRelation.Input.OutputLength;
-                var emitIndex = 0;
-                if (consistentPartitionWindowRelation.EmitSet)
-                {
-                    emitIndex = consistentPartitionWindowRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = consistentPartitionWindowRelation.EmitSet ? consistentPartitionWindowRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
                 if (emitIndex >= inputLength)
                 {
@@ -371,15 +325,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (mergeJoinRelation.EmitSet)
-                {
-                    emitIndex = mergeJoinRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = mergeJoinRelation.EmitSet ? mergeJoinRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 if (emitIndex < leftLength)
                 {
                     return Visit(mergeJoinRelation.Left, new LineageVisitorState(new DirectFieldReference()
@@ -403,15 +350,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (referenceRelation.EmitSet)
-                {
-                    emitIndex = referenceRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = referenceRelation.EmitSet ? referenceRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 var rel = _relations[referenceRelation.RelationId];
                 return Visit(rel, new LineageVisitorState(new DirectFieldReference()
                 {
@@ -425,15 +365,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (exchangeRelation.EmitSet)
-                {
-                    emitIndex = exchangeRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = exchangeRelation.EmitSet ? exchangeRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 return Visit(exchangeRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
@@ -446,15 +379,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (fetchRelation.EmitSet)
-                {
-                    emitIndex = fetchRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = fetchRelation.EmitSet ? fetchRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 return Visit(fetchRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
@@ -469,15 +395,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (joinRelation.EmitSet)
-                {
-                    emitIndex = joinRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = joinRelation.EmitSet ? joinRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 if (emitIndex < leftLength)
                 {
                     return Visit(joinRelation.Left, new LineageVisitorState(new DirectFieldReference()
@@ -501,15 +420,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (normalizationRelation.EmitSet)
-                {
-                    emitIndex = normalizationRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = normalizationRelation.EmitSet ? normalizationRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 return Visit(normalizationRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
@@ -522,15 +434,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (setRelation.EmitSet)
-                {
-                    emitIndex = setRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = setRelation.EmitSet ? setRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
                 foreach (var input in setRelation.Inputs)
                 {
@@ -557,15 +462,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (iterationRelation.EmitSet)
-                {
-                    emitIndex = iterationRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = iterationRelation.EmitSet ? iterationRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
 
                 Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
                 if (iterationRelation.Input != null)
@@ -615,15 +512,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (sortRelation.EmitSet)
-                {
-                    emitIndex = sortRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = sortRelation.EmitSet ? sortRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 return Visit(sortRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
@@ -657,15 +547,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = 0;
-                if (topNRelation.EmitSet)
-                {
-                    emitIndex = topNRelation.Emit[structReferenceSegment.Field];
-                }
-                else
-                {
-                    emitIndex = structReferenceSegment.Field;
-                }
+                var emitIndex = topNRelation.EmitSet ? topNRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
                 return Visit(topNRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
