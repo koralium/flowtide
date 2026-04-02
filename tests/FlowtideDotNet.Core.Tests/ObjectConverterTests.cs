@@ -685,7 +685,7 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestConvertFuncThrowsException()
         {
-            var ex = Assert.Throws<InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
             {
                 var converter = BatchConverter.GetBatchConverter(typeof(TestClass), new List<string>() { "func" });
             });

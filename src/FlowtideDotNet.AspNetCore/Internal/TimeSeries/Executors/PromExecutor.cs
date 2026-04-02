@@ -25,7 +25,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
 
         public async Task<string> ExecuteToString(string query, long startTimestamp, long endTimestamp, int stepWidth)
         {
-            MemoryStream stream = new MemoryStream();
+            using MemoryStream stream = new MemoryStream();
             await RangeQuery(stream, query, startTimestamp, endTimestamp, stepWidth);
             stream.Position = 0;
             return new StreamReader(stream).ReadToEnd();
@@ -73,11 +73,9 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             await metricSeries.Lock();
             try
             {
-                long endTime;
                 if (!time.HasValue)
                 {
                     time = metricSeries.LastIngestedTime;
-                    endTime = metricSeries.LastIngestedTime;
                 }
                 else
                 {
@@ -89,7 +87,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
                 }
 
                 time = time.Value - (long)(metricSeries.Rate.TotalMilliseconds / 2);
-                endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
+                long endTime = time.Value + (long)(metricSeries.Rate.TotalMilliseconds / 2);
 
 
                 var ast = PromQL.Parser.Parser.ParseExpression(query);
