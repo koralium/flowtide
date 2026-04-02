@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
     {
         public override string ConvertName(string name)
         {
-            return name.ToUpper();
+            return name.ToUpperInvariant();
         }
     }
 }

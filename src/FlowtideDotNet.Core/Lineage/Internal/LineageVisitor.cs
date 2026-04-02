@@ -165,60 +165,60 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             var inputLength = projectRelation.Input.OutputLength;
 
-            if (projectRelation.EmitSet)
+            if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
             {
-                if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment referenceSegment)
+                var emitIndex = 0;
+                if (projectRelation.EmitSet)
                 {
-                    var emitIndex = projectRelation.Emit[referenceSegment.Field];
-                    if (emitIndex >= inputLength)
-                    {
-                        var expr = projectRelation.Expressions[emitIndex - inputLength];
-
-                        if (expr is DirectFieldReference directFieldReference && 
-                            directFieldReference.ReferenceSegment is StructReferenceSegment directStructRefSegment)
-                        {
-                            return Visit(projectRelation.Input, new LineageVisitorState(directFieldReference, state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity))));
-                        }
-
-                        // Column is created from expressions
-                        var usedColumns = LineageExpressionVisitor.GetFieldReferences(projectRelation.Expressions[emitIndex - inputLength]);
-
-                        Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
-                        for (int i = 0; i < usedColumns.Count; i++)
-                        {
-                            var result = Visit(projectRelation.Input, new LineageVisitorState(usedColumns[i], state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation))));
-                            foreach(var field in result.InputFields)
-                            {
-                                var key = $"{field.Namespace}.{field.TableName}.{field.Field}";
-                                if (!inputFields.TryGetValue(key, out var existing))
-                                {
-                                    existing = field;
-                                    inputFields.Add(key, existing);
-                                }
-                            }
-                        }
-                        return new LineageVisitorResult(inputFields.Values.ToList());
-                    }
-                    else
-                    {
-                        // Column is created from direct reference
-                        return Visit(projectRelation.Input, new LineageVisitorState(new DirectFieldReference()
-                        {
-                            ReferenceSegment = new StructReferenceSegment()
-                            {
-                                Field = emitIndex
-                            }
-                        }, state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity))));
-                    }
+                    emitIndex = projectRelation.Emit[referenceSegment.Field];
                 }
-                
-            }
-            else
-            {
+                else
+                {
+                    emitIndex = referenceSegment.Field;
+                }
 
+                if (emitIndex >= inputLength)
+                {
+                    var expr = projectRelation.Expressions[emitIndex - inputLength];
+
+                    if (expr is DirectFieldReference directFieldReference)
+                    {
+                        return Visit(projectRelation.Input, new LineageVisitorState(directFieldReference, state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity))));
+                    }
+
+                    // Column is created from expressions
+                    var usedColumns = LineageExpressionVisitor.GetFieldReferences(projectRelation.Expressions[emitIndex - inputLength]);
+
+                    Dictionary<string, LineageInputField> inputFields = new Dictionary<string, LineageInputField>();
+                    for (int i = 0; i < usedColumns.Count; i++)
+                    {
+                        var result = Visit(projectRelation.Input, new LineageVisitorState(usedColumns[i], state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Transformation))));
+                        foreach (var field in result.InputFields)
+                        {
+                            var key = $"{field.Namespace}.{field.TableName}.{field.Field}";
+                            if (!inputFields.TryGetValue(key, out var existing))
+                            {
+                                existing = field;
+                                inputFields.Add(key, existing);
+                            }
+                        }
+                    }
+                    return new LineageVisitorResult(inputFields.Values.ToList());
+                }
+                else
+                {
+                    // Column is created from direct reference
+                    return Visit(projectRelation.Input, new LineageVisitorState(new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment()
+                        {
+                            Field = emitIndex
+                        }
+                    }, state.AppendTransformation(new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity))));
+                }
             }
 
-            return base.VisitProjectRelation(projectRelation, state);
+            return new LineageVisitorResult([]);
         }
 
         public override LineageVisitorResult VisitBufferRelation(BufferRelation bufferRelation, LineageVisitorState state)
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 return Visit(bufferRelation.Input, new LineageVisitorState(new DirectFieldReference()
                 {
                     ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
-                }, []));
+                }, state.Transformations));
             }
             return new LineageVisitorResult([]);
         }
@@ -330,7 +330,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                             }
                         }
                     }
-                    var windowFunc = consistentPartitionWindowRelation.WindowFunctions[inputLength - emitIndex];
+                    var windowFunc = consistentPartitionWindowRelation.WindowFunctions[emitIndex - inputLength];
 
                     foreach(var arg in windowFunc.Arguments)
                     {

@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         private readonly HttpClient _httpClient;
         private readonly string _url;
         private StreamStateValue _previousState;
+        private int _errorCount;
 
         internal static OpenLineageHttpReporter Create(
             ILoggerFactory? loggerFactory, 
@@ -55,16 +56,18 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             _httpClient = new HttpClient();
             _queue = new LinkedList<OpenLineageEvent>();
             _cancellationTokenSource = new CancellationTokenSource();
-            StartTask();
             this._logger = logger;
             this._ev = ev;
             this._openLineageOptions = openLineageOptions;
+
+            // Start background task
+            StartTask();
         }
 
         [MemberNotNull(nameof(_task))]
         private void StartTask()
         {
-            _task = Task.Factory.StartNew(ReportingLoop)
+            _task = Task.Factory.StartNew(ReportingLoop, TaskCreationOptions.LongRunning)
                 .Unwrap()
                 .ContinueWith((t) =>
                 {
@@ -94,28 +97,48 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     await Task.Delay(TimeSpan.FromMilliseconds(100));
                     continue;
                 }
-                if (ev.EventType == LineageEventType.Complete)
-                {
-                    _cancellationTokenSource.Cancel();
-                    _cancellationTokenSource.Dispose();
-                    return;
-                }
 
                 var json = OpenLineageSerializer.Serialize(ev);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var message = new HttpRequestMessage(HttpMethod.Post, _url) { Content = content };
+                HttpResponseMessage? response = default;
                 if (_openLineageOptions.OnRequest != null)
                 {
                     _openLineageOptions.OnRequest(message);
                 }
                 try
                 {
-                    await _httpClient.SendAsync(message);
+                    response = await _httpClient.SendAsync(message);
+                    response.EnsureSuccessStatusCode();
+                    _errorCount = 0;
                 }
-                catch
+                catch(Exception ex)
                 {
-                    _queue.AddFirst(ev);
-                    throw;
+                    _errorCount++;
+                    lock (_lock)
+                    {
+                        _queue.AddFirst(ev);
+                    }
+
+                    TimeSpan waitTime = TimeSpan.FromSeconds(Math.Min(15, _errorCount));
+                    await Task.Delay(waitTime);
+                    _logger.LogError(ex, $"Error writing to OpenLineage destination, waiting: {waitTime.TotalSeconds} seconds before retrying");
+                }
+                finally
+                {
+                    message.Dispose();
+                    content.Dispose();
+                    if (response != null)
+                    {
+                        response.Dispose();
+                    }
+                }
+
+                if (ev.EventType == LineageEventType.Complete)
+                {
+                    _cancellationTokenSource.Cancel();
+                    _cancellationTokenSource.Dispose();
+                    return;
                 }
             }
         }

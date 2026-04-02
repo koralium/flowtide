@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             if (includeSchema)
             {
                 var tableProvider = Create();
-                if (tableProvider.TryGetTableInformation(readRelation.BaseSchema.Names, out var tableMetadata))
+                if (tableProvider.TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
                 {
                     return new TableLineageMetadata("custom_source", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
                 }

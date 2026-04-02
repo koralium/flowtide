@@ -90,7 +90,7 @@ namespace FlowtideDotNet.DependencyInjection
         /// <remarks>
         /// The <paramref name="configure"/> delegate is invoked immediately to populate an
         /// <see cref="OpenLineageHttpOptions"/> instance. At a minimum, <see cref="OpenLineageHttpOptions.Url"/>
-        /// must be set; otherwise an <see cref="ArgumentException"/> is thrown when the stream starts.
+        /// must be set; otherwise an <see cref="ArgumentException"/> is thrown.
         /// <para>
         /// Example usage:
         /// <code>

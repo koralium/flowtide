@@ -106,8 +106,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 foreach (var rightKey in mergeJoinRelation.RightKeys)
                 {
                     var usedFields = LineageExpressionVisitor.GetFieldReferences(rightKey);
-                    foreach (var field in usedFields)
+                    for (int i = 0; i < usedFields.Count; i++)
                     {
+                        var field = usedFields[i];
                         if (field.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                         {
                             var foundInputs = lineageVisitor.Visit(mergeJoinRelation.Right, new LineageVisitorState(new DirectFieldReference()
@@ -238,7 +239,13 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                         }
                         else
                         {
-                            var foundInputs = lineageVisitor.Visit(joinRelation.Right, new LineageVisitorState(field, [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]));
+                            var foundInputs = lineageVisitor.Visit(joinRelation.Right, new LineageVisitorState(new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = structReferenceSegment.Field - leftSize
+                                }
+                            }, [new LineageTransformation(LineageTransformationType.Indirect, LineageTransformationSubtype.Join)]));
                             foreach (var foundInput in foundInputs.InputFields)
                             {
                                 var key = $"{foundInput.Namespace}.{foundInput.TableName}.{foundInput.Field}";

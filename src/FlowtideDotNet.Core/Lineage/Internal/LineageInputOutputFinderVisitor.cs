@@ -26,10 +26,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
     {
         private readonly IConnectorManager connectorManager;
         private readonly bool includeSchema;
-        private Dictionary<string, TableLineageMetadata> _metadatas = new Dictionary<string, TableLineageMetadata>();
 
-        private Dictionary<string, LineageInputTable> _inputTables = new Dictionary<string, LineageInputTable>();
-        private Dictionary<string, LineageOutputTable> _outputTables = new Dictionary<string, LineageOutputTable>();
+        private readonly Dictionary<string, LineageInputTable> _inputTables = new Dictionary<string, LineageInputTable>();
+        private readonly Dictionary<string, LineageOutputTable> _outputTables = new Dictionary<string, LineageOutputTable>();
 
         public LineageInputOutputFinderVisitor(IConnectorManager connectorManager, bool includeSchema)
         {

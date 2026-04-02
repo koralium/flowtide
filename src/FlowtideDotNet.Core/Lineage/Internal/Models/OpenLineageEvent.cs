@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
 
         public OpenLineageEvent ChangeEventType(LineageEventType eventType)
         {
-            return new OpenLineageEvent(EventTime, Producer, eventType, Run, Job, Inputs, Outputs);
+            return new OpenLineageEvent(DateTime.UtcNow, Producer, eventType, Run, Job, Inputs, Outputs);
         }
     }
 }

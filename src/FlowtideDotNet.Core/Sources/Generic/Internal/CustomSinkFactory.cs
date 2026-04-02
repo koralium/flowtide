@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
         {
-            return new TableLineageMetadata("custom_sink", writeRelation.NamedObject.DotSeperated, default); ;
+            return new TableLineageMetadata("custom_sink", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 }

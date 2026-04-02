@@ -14,7 +14,6 @@ using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    [JsonConverter(typeof(JsonStringEnumConverter))]
     internal enum LineageEventType
     {
         Start,
