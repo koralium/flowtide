@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     // Respect cancellation requests and do not treat them as transient errors.
                     throw;
                 }
-                catch (Exception ex)
+                catch (HttpRequestException ex)
                 {
                     _errorCount++;
                     lock (_lock)
@@ -127,7 +127,14 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
                     TimeSpan waitTime = TimeSpan.FromSeconds(Math.Min(15, _errorCount));
                     await Task.Delay(waitTime);
-                    _logger.LogError(ex, $"Error writing to OpenLineage destination, status code: '{response.StatusCode}', waiting: {waitTime.TotalSeconds} seconds before retrying");
+                    var statusCode = response != null ? response.StatusCode.ToString() : "no response";
+                    _logger.LogError(ex, $"Error writing to OpenLineage destination, status code: '{statusCode}', waiting: {waitTime.TotalSeconds} seconds before retrying");
+                }
+                catch (Exception ex)
+                {
+                    // Unexpected error, do not treat as transient; rethrow after logging.
+                    _logger.LogError(ex, "Unexpected error while writing to OpenLineage destination.");
+                    throw;
                 }
                 finally
                 {
