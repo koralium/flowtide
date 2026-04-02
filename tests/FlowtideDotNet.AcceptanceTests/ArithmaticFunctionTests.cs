@@ -63,7 +63,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money + 3 FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money + 3 }));
         }
 
@@ -73,7 +72,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money + CAST(3 as float) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money + 3 }));
         }
 
@@ -83,7 +81,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money + CAST(3 as decimal) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money + 3 }));
         }
 
@@ -93,7 +90,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT DoubleValue + 3 FROM users");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { v = x.DoubleValue + 3 }));
         }
 
@@ -103,7 +99,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT DoubleValue + CAST(3 as float) FROM users");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { v = x.DoubleValue + 3 }));
         }
 
@@ -113,7 +108,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT DoubleValue + CAST(3 as decimal) FROM users");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x => new { v = (decimal)x.DoubleValue + (decimal)3 }));
         }
 
@@ -177,7 +171,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money - 3 FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money - 3 }));
         }
 
@@ -187,7 +180,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money - CAST(3 as float) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money - 3 }));
         }
 
@@ -197,7 +189,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money - CAST(3 as decimal) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money - 3 }));
         }
 
@@ -270,7 +261,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money * 3 FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money * 3 }));
         }
 
@@ -280,7 +270,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money * CAST(3 as float) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money * 3 }));
         }
 
@@ -290,7 +279,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money * CAST(3 as decimal) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money * 3 }));
         }
 
@@ -363,7 +351,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money / 3 FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money / 3 }));
         }
 
@@ -373,7 +360,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money / CAST(3 as float) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money / 3 }));
         }
 
@@ -383,7 +369,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money / CAST(3 as decimal) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money / 3 }));
         }
 
@@ -492,7 +477,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money % 3 FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money % 3 }));
         }
 
@@ -502,7 +486,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money % CAST(3 as float) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money % 3 }));
         }
 
@@ -512,7 +495,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT Money % CAST(3 as decimal) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money % 3 }));
         }
 
@@ -594,7 +576,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT power(Money, 2) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money == null ? null : (decimal?)Math.Pow((double)x.Money, 2) }));
         }
 
@@ -604,7 +585,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT power(Money, CAST(2 as float)) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money == null ? null : (decimal?)Math.Pow((double)x.Money, 2) }));
         }
 
@@ -614,7 +594,6 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT power(Money, CAST(2 as decimal)) FROM orders");
             await WaitForUpdate();
-            var act = GetActualRows();
             AssertCurrentDataEqual(Orders.Select(x => new { Money = x.Money == null ? null : (decimal?)Math.Pow((double)x.Money, 2) }));
         }
 

@@ -262,7 +262,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 outputWriter.Flush();
 #endif
 
-                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, new EventBatchData(outputColumns)));
+                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, batch));
             }
 #if DEBUG_WRITE
             Debug.Assert(allInput != null);

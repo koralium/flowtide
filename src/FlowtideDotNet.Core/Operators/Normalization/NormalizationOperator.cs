@@ -214,7 +214,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             bool isFound = false;
             IngressData? data;
 
-            var (op, val) = await _tree.RMW(ke, default, (input, current, found) =>
+            var (_, val) = await _tree.RMW(ke, default, (input, current, found) =>
             {
                 if (found)
                 {

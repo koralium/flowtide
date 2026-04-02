@@ -170,19 +170,19 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
-            var (foundInitial, valInitial) = await tree.GetValue(1);
+            var (_, valInitial) = await tree.GetValue(1);
             await stateManager.Compact();
 
             await tree.Upsert(1, "helloOther");
 
-            var (found, val) = await tree.GetValue(1);
+            var (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore
             await stateManager.InitializeAsync();
 
             await tree.Upsert(1, "helloOther");
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Commit data and take only checkpoint without metadata, this is to force written data
@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.InitializeAsync();
 
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
             ;
@@ -231,7 +231,7 @@ namespace FlowtideDotNet.Storage.Tests
 
             await tree.Upsert(1, "helloOther");
 
-            var (found, val) = await tree.GetValue(1);
+            var (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             await tree.Commit();
@@ -243,14 +243,14 @@ namespace FlowtideDotNet.Storage.Tests
             // Restore to latest checkpoint
             await stateManager.InitializeAsync();
             Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore to the previous checkpoint
             await stateManager.InitializeAsync(checkpointVersion: 1);
             Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
 
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
         }

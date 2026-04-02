@@ -653,7 +653,6 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         [Fact]
         public async Task InnerJoinWithCrash()
         {
-            var truck = TpchData.GetShipmodes().First(x => x.Mode == "TRUCK");
             await AddLineItems(new List<LineItem>() { TpchData.GetLineItems().First(x => x.Shipmode == "TRUCK") });
 
             List<StringJoinResult>? actualData = default;
