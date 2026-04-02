@@ -116,7 +116,6 @@ namespace FlowtideDotNet.AspNetCore
 
             if (stream == null)
             {
-                var manifestNames = typeof(ReactEndpoint).Assembly.GetManifestResourceNames();
                 httpContext.Response.StatusCode = 404;
                 httpContext.Response.ContentType = "text/html";
                 byte[] outputBytes = Encoding.UTF8.GetBytes("404 - Not Found");
