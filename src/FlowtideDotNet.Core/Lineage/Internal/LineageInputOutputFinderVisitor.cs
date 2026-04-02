@@ -60,7 +60,6 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 }
 
                 _inputTables.Add(key, inputTable);
-                _metadatas.Add(key, metadata);
             }
             
             return base.VisitReadRelation(readRelation, state);
@@ -87,7 +86,6 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     outputTable.Facets.Schema = LineageSchemaConverter.ConvertToFacet(schema);
                 }
                 
-                _metadatas.Add(key, metadata);
                 _outputTables.Add(key, outputTable);
             }
             
