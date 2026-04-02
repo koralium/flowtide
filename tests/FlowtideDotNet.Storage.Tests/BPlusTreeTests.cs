@@ -233,8 +233,6 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            var printedTree = await _tree.Print();
-
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;

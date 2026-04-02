@@ -198,7 +198,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("nullif must have exactly two arguments");
                 }
-                SubstraitBaseType returnType = new AnyType();
+                SubstraitBaseType returnType;
                 var arguments = new List<Expressions.Expression>();
                 if (argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcExpr)
                 {

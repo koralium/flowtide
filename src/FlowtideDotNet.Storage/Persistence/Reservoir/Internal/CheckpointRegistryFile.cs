@@ -272,7 +272,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     // We have read past the checkpoint registry, we can stop reading
                     // Advance to start of the registry
                     var positionInSequence = registryStart - globalOffset;
-                    globalOffset += (int)positionInSequence;
                     var pos = result.Buffer.GetPosition(positionInSequence);
                     reader.AdvanceTo(pos);
                     break;

@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Storage.FasterKV.Internal
         {
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var result = await _session.ReadAsync(ref key, token: tokenSource.Token);
-            var (status, bytes) = result.Complete();
+            var (_, bytes) = result.Complete();
             if (bytes == null)
             {
                 throw new InvalidOperationException("Could not read from persistent storage");

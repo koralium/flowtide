@@ -392,7 +392,6 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             ");
 
             await stream.WaitForUpdate();
-            var rows = stream.GetActualRowsAsVectors();
 
             await addTupleClient.Write(new ClientWriteRequest()
             {
@@ -501,7 +500,6 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             ");
 
             await stream.WaitForUpdate();
-            var rows = stream.GetActualRowsAsVectors();
 
             await addTupleClient.Write(new ClientWriteRequest()
             {
@@ -1037,7 +1035,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             ");
 
             await stream.WaitForUpdate();
-            var rows = stream.GetActualRowsAsVectors();
+
             stream.AssertCurrentDataEqual(new[]
             {
                 new { user_type = "user", user_id = "1", relation = "can_read", object_type = "role_binding", object_id = "1_1" }
@@ -1252,7 +1250,6 @@ namespace FlowtideDotNet.Connector.OpenFGA.Tests
             ");
 
             await stream.WaitForUpdate();
-            var rows = stream.GetActualRowsAsVectors();
 
             stream.AssertCurrentDataEqual(new[]
             {
