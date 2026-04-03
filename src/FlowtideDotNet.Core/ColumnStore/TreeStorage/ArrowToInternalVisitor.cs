@@ -90,8 +90,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Finish()
         {
+            if (_rootUsageCount == 0)
+            {
+                preAllocatedMemoryManager.Dispose();
+                return;
+            }
             preAllocatedMemoryManager.Initialize(recordBatchMemoryOwner, _rootUsageCount);
-            //batchMemoryManager.AddUsedMemory(new nint(_rootPtr), recordBatchMemoryOwner, _rootUsageCount);
         }
 
         public void Visit(Int64Array array)

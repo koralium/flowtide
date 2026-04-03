@@ -16,10 +16,11 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator
+    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator, IDisposable
     {
         private IMemoryOwner<byte>? _memoryOwner;
         private int _usageCount;
+        private bool disposedValue;
         private readonly IMemoryAllocator _operatorMemoryManager;
         private readonly MemoryHandle _pin;
 
@@ -49,14 +50,7 @@ namespace FlowtideDotNet.Storage.Memory
             var result = Interlocked.Decrement(ref _usageCount);
             if (result == 0)
             {
-                var memoryOwner = _memoryOwner;
-                _memoryOwner = null;
-                if (memoryOwner != null)
-                {
-                    _pin.Dispose();
-                    _operatorMemoryManager.RegisterFreeToMetrics(memoryOwner.Memory.Length);
-                    memoryOwner.Dispose();
-                }
+                Dispose();
             }
         }
 
@@ -100,6 +94,35 @@ namespace FlowtideDotNet.Storage.Memory
                 memory.Dispose();
                 return NativeCreatedMemoryOwnerFactory.Get(ptr, size, this);
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                var memoryOwner = _memoryOwner;
+                _memoryOwner = null;
+                if (memoryOwner != null)
+                {
+                    _pin.Dispose();
+                    _operatorMemoryManager.RegisterFreeToMetrics(memoryOwner.Memory.Length);
+                    memoryOwner.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~PreAllocatedMemoryManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

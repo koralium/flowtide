@@ -427,7 +427,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         private void SerializeDeserializeTest(params IDataValue[] values)
         {
-            using Column column = Column.Create(GlobalMemoryManager.Instance);
+            Column column = Column.Create(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < values.Length; i++)
             {
