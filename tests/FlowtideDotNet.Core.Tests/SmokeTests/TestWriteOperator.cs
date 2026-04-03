@@ -96,9 +96,10 @@ namespace FlowtideDotNet.Core.Tests.SmokeTests
         {
             Debug.Assert(modified != null, nameof(modified));
 
+            StringBuilder keyBuilder = new StringBuilder();
             foreach (var m in modified)
             {
-                StringBuilder keyBuilder = new StringBuilder();
+                keyBuilder.Clear();
                 for (int i = 0; i < primaryKeyIds.Count; i++)
                 {
                     var primaryKeyIndex = primaryKeyIds[i];
