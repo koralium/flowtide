@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void FetchSubProperty()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateFirstElement()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateSecondElement()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new Int64Value(1) },
@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeNonNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
             Random r = new Random(123);
@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeWithNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
             Random r = new Random(123);
@@ -231,8 +231,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeNonNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
-            Column other = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
+            using Column other = new Column(GlobalMemoryManager.Instance);
 
             List<SortedDictionary<string, string>?> otherList = new List<SortedDictionary<string, string>?>();
             List<SortedDictionary<string, string>?> expected = new List<SortedDictionary<string, string>?>();
@@ -307,7 +307,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertRangeWithNullValues()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new MapValue(new Dictionary<IDataValue, IDataValue>()
             {
                 { new StringValue("key"), new StringValue("hello1") },
@@ -324,7 +324,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 { new StringValue("value"), new StringValue("hello3") }
             }));
 
-            Column other = new Column(GlobalMemoryManager.Instance);
+            using Column other = new Column(GlobalMemoryManager.Instance);
 
             // Add so the null happens on the 32 element so it will be a new segment in the bitmap list
             for (int i = 0; i < 32; i++)
@@ -349,7 +349,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void RemoveRangeWithNullInLastBitmapSegment()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             // Add so the null happens on the 32 element so it will be a new segment in the bitmap list
             for (int i = 0; i < 32; i++)
@@ -371,7 +371,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestJsonEncoding()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             column.Add(new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(2)), new KeyValuePair<IDataValue, IDataValue>(new Int64Value(5), new StringValue("hello"))));
 
@@ -389,7 +389,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestCopy()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             Random r = new Random(123);
             for (int i = 0; i < 1000; i++)
@@ -404,7 +404,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column.Add(new MapValue(actual));
             }
 
-            Column copy = column.Copy(GlobalMemoryManager.Instance);
+            using Column copy = column.Copy(GlobalMemoryManager.Instance);
 
             Assert.Equal(1000, copy.Count);
 
@@ -433,7 +433,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddToHash()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new Int64Value(2)), new KeyValuePair<IDataValue, IDataValue>(new Int64Value(5), new StringValue("hello")))
             };
@@ -451,7 +451,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertNullAtStart()
         {
-            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+            using MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
 
             column.InsertAt(0, new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), new StringValue("b"))));
             column.InsertAt(0, NullValue.Instance);

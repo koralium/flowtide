@@ -74,8 +74,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         public ArrowToInternalVisitor(IMemoryOwner<byte> recordBatchMemoryOwner, IMemoryAllocator memoryManager)
         {
             this.recordBatchMemoryOwner = recordBatchMemoryOwner;
-            preAllocatedMemoryManager = new PreAllocatedMemoryManager(memoryManager);
-            _rootPtr = recordBatchMemoryOwner.Memory.Pin().Pointer;
+            var pin = recordBatchMemoryOwner.Memory.Pin();
+            preAllocatedMemoryManager = new PreAllocatedMemoryManager(memoryManager, pin);
+            _rootPtr = pin.Pointer;
         }
 
         private IMemoryOwner<byte> GetMemoryOwner(ArrowBuffer buffer)
@@ -89,8 +90,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void Finish()
         {
+            if (_rootUsageCount == 0)
+            {
+                preAllocatedMemoryManager.Dispose();
+                return;
+            }
             preAllocatedMemoryManager.Initialize(recordBatchMemoryOwner, _rootUsageCount);
-            //batchMemoryManager.AddUsedMemory(new nint(_rootPtr), recordBatchMemoryOwner, _rootUsageCount);
         }
 
         public void Visit(Int64Array array)
