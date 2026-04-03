@@ -47,11 +47,16 @@ namespace FlowtideDotNet.Storage.Memory
         {
             Debug.Assert(_memoryOwner != null);
             var result = Interlocked.Decrement(ref _usageCount);
-            if (result <= 0)
+            if (result == 0)
             {
-                _pin.Dispose();
-                _operatorMemoryManager.RegisterFreeToMetrics(_memoryOwner.Memory.Length);
-                _memoryOwner.Dispose();
+                var memoryOwner = _memoryOwner;
+                _memoryOwner = null;
+                if (memoryOwner != null)
+                {
+                    _pin.Dispose();
+                    _operatorMemoryManager.RegisterFreeToMetrics(memoryOwner.Memory.Length);
+                    memoryOwner.Dispose();
+                }
             }
         }
 
