@@ -21,10 +21,12 @@ namespace FlowtideDotNet.Storage.Memory
         private IMemoryOwner<byte>? _memoryOwner;
         private int _usageCount;
         private readonly IMemoryAllocator _operatorMemoryManager;
+        private readonly MemoryHandle _pin;
 
-        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager)
+        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager, MemoryHandle pin)
         {
             this._operatorMemoryManager = operatorMemoryManager;
+            this._pin = pin;
         }
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
@@ -47,6 +49,7 @@ namespace FlowtideDotNet.Storage.Memory
             var result = Interlocked.Decrement(ref _usageCount);
             if (result <= 0)
             {
+                _pin.Dispose();
                 _operatorMemoryManager.RegisterFreeToMetrics(_memoryOwner.Memory.Length);
                 _memoryOwner.Dispose();
             }

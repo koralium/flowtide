@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private int _length;
         private bool disposedValue;
         private readonly IMemoryAllocator memoryAllocator;
+        private string _allocStack;
 
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
@@ -39,10 +40,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _data = null;
             this.memoryAllocator = memoryAllocator;
+            _allocStack = Environment.StackTrace;
         }
 
         public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
+            _allocStack = Environment.StackTrace;
             _memoryOwner = memory;
             _data = (int*)memory.Memory.Pin().Pointer;
             _dataLength = memory.Memory.Length / 4;
