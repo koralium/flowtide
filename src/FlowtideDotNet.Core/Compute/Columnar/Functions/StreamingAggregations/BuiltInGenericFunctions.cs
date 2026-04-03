@@ -107,10 +107,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             {
                 count = currentState.AsLong;
             }
-            if (weight < 0)
-            {
-
-            }
             var newCount = count + weight;
             state.Update(new Int64Value(newCount));
         }
