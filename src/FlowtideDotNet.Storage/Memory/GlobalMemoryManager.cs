@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,23 +27,24 @@ namespace FlowtideDotNet.Storage.Memory
         private long _freedMemory;
         private long _allocationCount;
         private long _freeCount;
+        private readonly Meter _meter;
 
         private GlobalMemoryManager()
         {
-            var meter = new Meter("flowtide.GlobalMemoryManager");
-            meter.CreateObservableGauge("flowtide.global.memory.allocated_bytes", () =>
+            _meter = new Meter("flowtide.GlobalMemoryManager");
+            _meter.CreateObservableGauge("flowtide.global.memory.allocated_bytes", () =>
             {
                 return new Measurement<long>(_allocatedMemory);
             }, "bytes");
-            meter.CreateObservableGauge("flowtide.global.memory.allocation_count", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.allocation_count", () =>
             {
                 return new Measurement<long>(_allocationCount);
             });
-            meter.CreateObservableGauge("flowtide.global.memory.freed_bytes", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.freed_bytes", () =>
             {
                 return new Measurement<long>(_freedMemory);
             }, "bytes");
-            meter.CreateObservableGauge("flowtide.global.memory.free_count", () =>
+            _meter.CreateObservableGauge("flowtide.global.memory.free_count", () =>
             {
                 return new Measurement<long>(_freeCount);
             });

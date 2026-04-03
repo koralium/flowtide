@@ -60,11 +60,11 @@ namespace AspireSamples.ElasticsearchExample
                     var migrationOperations = ctx.GetMigrationOperations();
 
 
-                    SqlConnection sqlConnection = new SqlConnection(connectionString);
+                    using SqlConnection sqlConnection = new SqlConnection(connectionString);
                     await sqlConnection.OpenAsync();
 
                     // Create database test
-                    SqlCommand sqlCommand = new SqlCommand(@"
+                    using SqlCommand sqlCommand = new SqlCommand(@"
                     IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = N'test')
                     BEGIN
                       CREATE DATABASE test;

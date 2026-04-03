@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
                 var content = new ReadOnlyMemoryContent(request.data);
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                var requestMessage = new HttpRequestMessage(HttpMethod.Put, requestUrl)
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Put, requestUrl)
                 {
                     Content = content
                 };

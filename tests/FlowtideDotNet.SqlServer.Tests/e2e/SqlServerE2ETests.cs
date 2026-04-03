@@ -760,7 +760,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
 
             int batchCount = 0;
-            SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+            using SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
             // 100 events per batch
             int expectedBatchCount = 1000 / 100;
 

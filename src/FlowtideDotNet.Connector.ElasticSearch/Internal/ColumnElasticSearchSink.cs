@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
-            Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
+            using Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
             await foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();
