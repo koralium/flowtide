@@ -300,10 +300,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     long.TryParse(file.Name.Substring(0, dotIndex), out version);
                 }
-                else
-                {
-
-                }
 
                 var isJson = file.Name.EndsWith(".json");
                 var isCheckpoint = file.Name.EndsWith(".checkpoint.parquet");
