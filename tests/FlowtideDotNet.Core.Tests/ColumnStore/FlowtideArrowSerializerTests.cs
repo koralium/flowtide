@@ -191,8 +191,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
@@ -339,8 +339,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
@@ -858,8 +858,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
