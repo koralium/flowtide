@@ -96,8 +96,8 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             await op.SendAsync(new StreamMessage<StreamEventBatch>(new StreamEventBatch(events, 1), 0));
 
             await outputBlock.OutputAvailableAsync();
-            var initWatermarkMessage = await outputBlock.ReceiveAsync();
-            var rowsMessage = await outputBlock.ReceiveAsync();
+            await outputBlock.ReceiveAsync(); // initWatermarkMessage
+            await outputBlock.ReceiveAsync(); // rowsMessage
 
             var fetchData = new ExchangeFetchDataMessage()
             {
@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             // wait for checkpoint to complete
             var timedSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));
             await outputBlock.OutputAvailableAsync();
-            var checkpointMessage = await outputBlock.ReceiveAsync(TimeSpan.FromSeconds(1));
+            await outputBlock.ReceiveAsync(TimeSpan.FromSeconds(1));
 
             // Clear cache to make sure the events are deserialized when reading them
             ClearCache();

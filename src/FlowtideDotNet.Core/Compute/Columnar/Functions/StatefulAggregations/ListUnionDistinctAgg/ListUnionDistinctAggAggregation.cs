@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
                 {
                     if (!firstPage)
                     {
-                        var index = singleton.SearchComparer.FindIndex(in rowReference, page.Keys!);
+                        singleton.SearchComparer.FindIndex(in rowReference, page.Keys!);
                         if (singleton.SearchComparer.noMatch)
                         {
                             break;

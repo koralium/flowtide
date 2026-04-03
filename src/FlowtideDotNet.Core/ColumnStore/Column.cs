@@ -262,7 +262,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
-                    var index = _nullCounter;
                     _nullCounter++;
                 }
                 else

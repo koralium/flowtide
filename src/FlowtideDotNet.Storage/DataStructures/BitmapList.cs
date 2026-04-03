@@ -293,12 +293,11 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             var mod = index % 32;
             int bitIndex = 1 << index;
-            var span = AccessSpan;
             if ((_length / 32) >= _dataLength)
             {
                 EnsureSize(_dataLength + 1);
             }
-            span = AccessSpan;
+            var span = AccessSpan;
             if (mod > 0)
             {
                 var topBitsMask = topBitsSetMask[mod];
@@ -895,7 +894,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                         int left = span[++fromIndex] << (32 - remainder);
                         span[toIndex++] = left | (int)right;
                     }
-                    span[toIndex++] = (int)(span[fromIndex] >> remainder);
+                    span[toIndex] = (int)(span[fromIndex] >> remainder);
                 }
             }
         }

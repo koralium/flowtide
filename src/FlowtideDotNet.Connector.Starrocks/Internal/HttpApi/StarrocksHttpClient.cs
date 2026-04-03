@@ -52,7 +52,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
         public async Task StreamLoad(StarRocksStreamLoadInfo request)
         {
-            var jsonData = Encoding.UTF8.GetString(request.data.Span);
             HttpResponseMessage? response = default;
 
             bool triedCachedRedirect = false;

@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)
         {
-            if (aggregateRelation.Input is ReferenceRelation referenceRelation)
+            if (aggregateRelation.Input is ReferenceRelation)
             {
                 return aggregateRelation;
             }
@@ -646,7 +646,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitFilterRelation(FilterRelation filterRelation, object state)
         {
-            if (filterRelation.Input is ReferenceRelation referenceRelation)
+            if (filterRelation.Input is ReferenceRelation)
             {
                 return filterRelation;
             }
@@ -761,7 +761,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitConsistentPartitionWindowRelation(ConsistentPartitionWindowRelation consistentPartitionWindowRelation, object state)
         {
-            if (consistentPartitionWindowRelation.Input is ReferenceRelation referenceRelation)
+            if (consistentPartitionWindowRelation.Input is ReferenceRelation)
             {
                 return consistentPartitionWindowRelation;
             }

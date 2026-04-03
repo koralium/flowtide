@@ -64,14 +64,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await stream.WaitForUpdate();
 
             var actual = stream.GetActualRowsAsVectors();
+            Assert.Empty(actual);
 
             await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
-
+            stream.AssertCurrentDataEqual(new[] { new { id = 0, name = "Mario" } });
             await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
+            stream.AssertCurrentDataEqual(new[] { new { id = 0, name = "Mino" } });
         }
 
 
