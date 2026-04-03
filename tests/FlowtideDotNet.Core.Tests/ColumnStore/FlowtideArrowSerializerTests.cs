@@ -194,7 +194,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             using MemoryStream memoryStream = new MemoryStream(serializedBytes);
             using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is MapType);
 
@@ -342,7 +342,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             using MemoryStream memoryStream = new MemoryStream(serializedBytes);
             using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].Metadata.TryGetValue("ARROW:extension:name", out var customExtensionName));
             Assert.Equal("flowtide.timestamptz", customExtensionName);
@@ -861,7 +861,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             using MemoryStream memoryStream = new MemoryStream(serializedBytes);
             using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is StructType);
             var structType = (recordBatch.Schema.FieldsList[0].DataType as StructType)!;

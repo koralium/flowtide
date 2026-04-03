@@ -786,9 +786,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             using MemoryStream memoryStream = new MemoryStream();
 
-            using var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true);
-            writer.WriteRecordBatch(recordBatch);
-            writer.Dispose();
+            using( var writer = new ArrowStreamWriter(memoryStream, recordBatch.Schema, true))
+            {
+                writer.WriteRecordBatch(recordBatch);
+            }
             memoryStream.Position = 0;
             using var reader = new ArrowStreamReader(memoryStream, new Apache.Arrow.Memory.NativeMemoryAllocator(), true);
             var deserializedRecordBatch = reader.ReadNextRecordBatch();
