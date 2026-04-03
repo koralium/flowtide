@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.TextLineFiles
                 }
             }
 
-            if (weights.Count >= 0)
+            if (weights.Count > 0)
             {
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
             }
