@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestRead)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);
@@ -1342,7 +1342,7 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             var metadata = new Metadata();
             metadata.Add("Authorization", $"Bearer {nameof(TestInsertDeleteExisting)}");
-            var res = await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
             {
                 Schema = schemaText
             }, metadata);

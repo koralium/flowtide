@@ -80,7 +80,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             header = header.Slice(8);
 
             BinaryPrimitives.WriteInt64LittleEndian(header, registryStartOffset);
-            header = header.Slice(8);
             // Rest of the header is reserved
         }
 

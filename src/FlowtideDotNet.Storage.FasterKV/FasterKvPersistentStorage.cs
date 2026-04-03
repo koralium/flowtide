@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.FasterKV
             using var tokenSource = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var handle = memory.Pin();
             var result = await m_adminSession.UpsertAsync(1, SpanByte.FromPinnedMemory(memory), token: tokenSource.Token);
-            var status = result.Complete();
+            result.Complete();
             handle.Dispose();
 
             var token = await TakeCheckpointAsync(includeIndex);
@@ -273,7 +273,7 @@ namespace FlowtideDotNet.Storage.FasterKV
             var handle = mem.Pin();
             var spanByte = SpanByte.FromPinnedMemory(mem);
             var result = await m_adminSession.UpsertAsync(key, spanByte, token: tokenSource.Token);
-            var status = result.Complete();
+            result.Complete();
             handle.Dispose();
         }
 

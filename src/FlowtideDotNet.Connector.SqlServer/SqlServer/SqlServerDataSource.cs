@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
                 int batchSize = 10000;
-                List<RowEvent> cache = new List<RowEvent>();
+                List<RowEvent> cache;
                 int retryCount = 0;
                 while (true)
                 {

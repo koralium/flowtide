@@ -194,7 +194,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return;
             }
 
-            var typeByte = (byte)value.Type;
             var arrayIndex = CheckArrayExist(in value, _typeIds, _valueColumns);
             
             // Find the first occurence of the same type in the type list

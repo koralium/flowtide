@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
                     isRowBounded = true;
                     lowerBoundRowOffset = -lowerPreceedingRow.Offset;
                 }
-                else if (windowFunction.LowerBound is CurrentRowWindowBound lowerCurrentRow)
+                else if (windowFunction.LowerBound is CurrentRowWindowBound)
                 {
                     isRowBounded = true;
                     lowerBoundRowOffset = 0;
