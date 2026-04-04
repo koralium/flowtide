@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddInt64()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
 
@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddNullThenInt64()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new NullValue());
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertInt64()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
 
             Assert.Equal(1, column.GetValueAt(0, default).AsLong);
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void UpdateValueToNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.InsertAt(0, new Int64Value(1));
             column.UpdateAt(0, new NullValue());
 
@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestColumnAddNullInsertLocation0()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new NullValue());
             column.InsertAt(0, new Int64Value(1));
 
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64ToArrow()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new Int64Value(1));
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(2));
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void Int64NullFirstToArrow()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(NullValue.Instance);
             column.Add(new Int64Value(1));
             column.Add(new Int64Value(2));
@@ -112,7 +112,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringToArrow()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("1"));
             column.Add(NullValue.Instance);
             column.Add(new StringValue("2"));
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void StringToArrowNullFirst()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(NullValue.Instance);
             column.Add(new StringValue("1"));
             column.Add(new StringValue("2"));
@@ -144,8 +144,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void ValidateInsertRangeSetsNullCorrectly()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
-            Column other = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
+            using Column other = new Column(GlobalMemoryManager.Instance);
             for (int i = 0; i < 50; i++)
             {
                 column.Add(NullValue.Instance);
@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestInsertValueInMiddleOfNullColumn()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
             for (int i = 0; i < 50; i++)
             {
                 column.Add(NullValue.Instance);
@@ -178,12 +178,12 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void InsertNullColumnIntoExistingColumn()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 new StringValue("1"),
                 new StringValue("2")
             };
-            Column other = new Column(GlobalMemoryManager.Instance);
+            using Column other = new Column(GlobalMemoryManager.Instance);
             for (int i = 0; i < 50; i++)
             {
                 other.Add(NullValue.Instance);
@@ -203,7 +203,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestAddToHashNull()
         {
-            Column column = new Column(GlobalMemoryManager.Instance)
+            using Column column = new Column(GlobalMemoryManager.Instance)
             {
                 NullValue.Instance,
                 new StringValue("2")

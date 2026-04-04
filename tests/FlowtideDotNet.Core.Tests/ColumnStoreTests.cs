@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestColumnInt64()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 100; i++)
             {
@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Tests
         [Fact]
         public void TestColumnString()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
+            using Column column = new Column(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 100; i++)
             {
