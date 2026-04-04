@@ -77,8 +77,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
                     if (newEmitIndex < 0)
                     {
-                        var schemaNames = _fileOptions.OutputSchema?.Names != null ? string.Join(", ", _fileOptions.OutputSchema.Names) : "unknown";
-                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {schemaNames}");
+                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {string.Join(", ", _fileOptions.OutputSchema.Names)}");
                     }
                     emitList.Add(newEmitIndex);
                 }
@@ -92,8 +91,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
                     if (newEmitIndex < 0)
                     {
-                        var schemaNames = _fileOptions.OutputSchema?.Names != null ? string.Join(", ", _fileOptions.OutputSchema.Names) : "unknown";
-                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {schemaNames}");
+                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {string.Join(", ", _fileOptions.OutputSchema.Names)}");
                     }
                     emitList.Add(newEmitIndex);
                 }
