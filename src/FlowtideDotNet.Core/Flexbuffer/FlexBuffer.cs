@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -718,7 +718,7 @@ namespace FlexBuffers
         {
             if (v1.TypeOfValue != Type.Key || v2.TypeOfValue != Type.Key)
             {
-                throw new Exception($"Stack values are not keys {v1} | {v2}");
+                throw new Exception($"Stack values are not keys {v1.TypeOfValue} | {v2.TypeOfValue}");
             }
             Debug.Assert(_bytes != null);
 

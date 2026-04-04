@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
                     if (newEmitIndex < 0)
                     {
-                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {_fileOptions.OutputSchema}");
+                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {string.Join(", ", _fileOptions.OutputSchema.Names)}");
                     }
                     emitList.Add(newEmitIndex);
                 }
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
 
                     if (newEmitIndex < 0)
                     {
-                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {_fileOptions.OutputSchema}");
+                        throw new InvalidOperationException($"Column name {outputName} not found in output schema {string.Join(", ", _fileOptions.OutputSchema.Names)}");
                     }
                     emitList.Add(newEmitIndex);
                 }
