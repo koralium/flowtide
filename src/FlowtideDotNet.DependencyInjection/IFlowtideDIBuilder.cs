@@ -34,17 +34,23 @@ namespace FlowtideDotNet.DependencyInjection
 
         /// <summary>
         /// Sets the current entry assembly version as the stream version. A new version is created if the assembly version changes.
+        /// Multiple calls to versioning methods (<see cref="AddVersioningFromAssembly"/>, <see cref="AddVersioningFromString(string)"/>, <see cref="AddVersioningFromPlanHash"/>) 
+        /// will combine the version sources, creating a new version if any of them change.
         /// </summary>
         IFlowtideDIBuilder AddVersioningFromAssembly();
 
         /// <summary>
         /// Sets a custom string as the stream version. A new version is created if the string changes.
+        /// Multiple calls to versioning methods (<see cref="AddVersioningFromAssembly"/>, <see cref="AddVersioningFromString(string)"/>, <see cref="AddVersioningFromPlanHash"/>) 
+        /// will combine the version sources, creating a new version if any of them change.
         /// </summary>
         /// <param name="version"></param>
         IFlowtideDIBuilder AddVersioningFromString(string version);
 
         /// <summary>
         /// Sets the plan hash as the stream version. A new version is created if the plan changes.
+        /// Multiple calls to versioning methods (<see cref="AddVersioningFromAssembly"/>, <see cref="AddVersioningFromString(string)"/>, <see cref="AddVersioningFromPlanHash"/>) 
+        /// will combine the version sources, creating a new version if any of them change.
         /// </summary>
         IFlowtideDIBuilder AddVersioningFromPlanHash();
 

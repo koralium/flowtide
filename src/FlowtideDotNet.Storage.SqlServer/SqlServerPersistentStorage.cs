@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Storage.SqlServer
             }
         }
 
-        public async ValueTask CompactAsync()
+        public async ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
 #if DEBUG_WRITE
             _debugWriter!.WriteCall();
@@ -256,6 +256,11 @@ namespace FlowtideDotNet.Storage.SqlServer
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        public void ClearForRestore()
+        {
+            Dispose();
         }
     }
 }

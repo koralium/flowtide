@@ -141,8 +141,6 @@ namespace FlowtideDotNet.AcceptanceTests
         {
             GenerateData();
 
-            var firstUser = Users.First();
-
             await StartStream(@"
             CREATE VIEW test AS
             SELECT UserKey FROM users
@@ -181,8 +179,6 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task TestIntersectAllWithUpdate()
         {
             GenerateData();
-
-            var firstUser = Users.First();
 
             await StartStream(@"
             CREATE VIEW test AS

@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Projects;
 
 namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
@@ -175,25 +176,33 @@ namespace SqlServerToSqlServerAspire.SqlServerToSqlServer
                     var scope = provider.CreateScope();
                     var ctx = scope.ServiceProvider.GetRequiredService<SampleDbContext>();
 
-                    while (true)
+                    try
                     {
-                        token.ThrowIfCancellationRequested();
-
-                        var newUsers = dataGenerator.GenerateUsers(1000);
-                        var newOrders = dataGenerator.GenerateOrders(1000);
-
-                        foreach (var user in newUsers)
+                        while (true)
                         {
-                            ctx.Users.Add(user);
-                        }
+                            token.ThrowIfCancellationRequested();
 
-                        foreach (var order in newOrders)
-                        {
-                            ctx.Orders.Add(order);
-                        }
+                            var newUsers = dataGenerator.GenerateUsers(1000);
+                            var newOrders = dataGenerator.GenerateOrders(1000);
 
-                        await ctx.SaveChangesAsync();
+                            foreach (var user in newUsers)
+                            {
+                                ctx.Users.Add(user);
+                            }
+
+                            foreach (var order in newOrders)
+                            {
+                                ctx.Orders.Add(order);
+                            }
+
+                            await ctx.SaveChangesAsync();
+                        }
                     }
+                    catch(Exception e)
+                    {
+                        logger.LogError(e, $"Error in data insert loop");
+                    }
+                   
                 })
                 .WaitFor(sqldb1)
                 .WaitFor(sqldb2);

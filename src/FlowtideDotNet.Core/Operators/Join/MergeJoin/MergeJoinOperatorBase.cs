@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Join.NestedLoopJoin;

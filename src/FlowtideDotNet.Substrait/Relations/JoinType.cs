@@ -18,9 +18,6 @@ namespace FlowtideDotNet.Substrait.Relations
         Inner = 1,
         Outer = 2,
         Left = 3,
-        Right = 4,
-        Semi = 5,
-        Anti = 6,
-        Single = 7
+        Right = 4
     }
 }

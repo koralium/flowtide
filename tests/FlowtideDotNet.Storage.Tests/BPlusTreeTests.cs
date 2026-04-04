@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -33,13 +32,11 @@ namespace FlowtideDotNet.Storage.Tests
 
         private async Task<IBPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>> Init()
         {
-            var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
-            localStorage.Initialize("./data/temp");
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
@@ -236,8 +233,6 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            var printedTree = await _tree.Print();
-
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
@@ -284,8 +279,6 @@ namespace FlowtideDotNet.Storage.Tests
                     values.Add(val);
                 }
             }
-
-            var printedTree = await _tree.Print();
 
             var sortedOrder = values.OrderBy(x => x).ToList();
 
@@ -338,8 +331,6 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            var printedTree = await _tree.Print();
-
             var sortedOrder = values.OrderBy(x => x).ToList();
 
             int count = 0;
@@ -355,7 +346,7 @@ namespace FlowtideDotNet.Storage.Tests
                     var ex = sortedOrder[count];
                     if (ex != kv.Key)
                     {
-                        v = await _tree.GetValue(sortedOrder[count]);
+                        await _tree.GetValue(sortedOrder[count]);
                     }
                     Assert.Equal(ex, kv.Key);
                     count++;
@@ -382,7 +373,6 @@ namespace FlowtideDotNet.Storage.Tests
                         var e = values.ElementAt(r.Next(values.Count));
                         await _tree.Delete(e);
                         values.Remove(e);
-                        var v = await _tree.GetValue(746493011);
                     }
                 }
                 else
@@ -390,7 +380,6 @@ namespace FlowtideDotNet.Storage.Tests
                     await _tree.Upsert(val, val.ToString());
                     values.Add(val);
                 }
-                var printedTree = await _tree.Print();
                 var sortedOrder = values.OrderBy(x => x).ToList();
                 var it = _tree.CreateIterator();
                 await it.SeekFirst();
@@ -405,7 +394,7 @@ namespace FlowtideDotNet.Storage.Tests
                         var ex = sortedOrder[count];
                         if (ex != kv.Key)
                         {
-                            v = await _tree.GetValue(sortedOrder[count]);
+                            await _tree.GetValue(sortedOrder[count]);
                         }
                         Assert.Equal(ex, kv.Key);
                         count++;

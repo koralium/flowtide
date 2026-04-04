@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
 
             stream.Generate(100);
 
-            var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
+            using var mongoClient = new MongoClient(mongoDBFixture.GetConnectionString());
             var database = mongoClient.GetDatabase("test");
             var collection = database.GetCollection<User>("test");
 

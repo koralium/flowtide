@@ -60,7 +60,6 @@ namespace FlowtideDotNet.Storage.Tree
         {
             int lo = 0;
             int hi = _values.Count - 1;
-            int maxNotFound = hi;
 
             bool found = false;
             while (lo <= hi)
@@ -80,7 +79,6 @@ namespace FlowtideDotNet.Storage.Tree
                 else
                 {
                     hi = i - 1;
-                    maxNotFound = hi;
                 }
             }
             int lowerbound = lo;

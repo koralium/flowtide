@@ -31,6 +31,10 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using System.Buffers;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -64,6 +68,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public IReadOnlyList<Project> Projects => generator.Projects;
 
         public IReadOnlyList<ProjectMember> ProjectMembers => generator.ProjectMembers;
+
+        public IReadOnlyList<Entities.GraphNode> GraphNodes => generator.GraphNodes;
 
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
@@ -123,6 +129,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.GenerateProjectMembers(count);
         }
 
+        public void GenerateGraphNodes(int count = 1000)
+        {
+            generator.GenerateGraphNodes(count);
+        }
+
         public void AddOrUpdateUser(User user)
         {
             generator.AddOrUpdateUser(user);
@@ -156,6 +167,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateProjectMember(ProjectMember projectMember)
         {
             generator.AddOrUpdateProjectMember(projectMember);
+        }
+
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            generator.DeleteGraphNode(graphNode);
         }
 
 
@@ -284,11 +305,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new TestStorage(new Storage.FileCacheOptions()
-            {
-                DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                SegmentSize = 1024L * 1024 * 1024 * 64
-            }, ignoreSameDataCheck, true);
+            return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
         private void OnDataUpdate(EventBatchData actualData)
@@ -322,13 +339,28 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
+        }
+
+        public async Task StopMockIngressAutocompleteDependencies()
+        {
+            await _stream!.CallTrigger("ingress_no_autocomplete_dependencies", default);
+        }
+
+        public async Task MockIngressFailAndRollback(long restoreVersion)
+        {
+            await _stream!.CallTrigger("ingress_fail_and_rollback", restoreVersion);
+        }
+
+        public async Task MockIngressSetDependenciesDone()
+        {
+            await _stream!.CallTrigger("ingress_dependencies_done", default);
         }
 
         public async Task HealthyFor(TimeSpan time)
@@ -339,7 +371,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 if (stopwatch.Elapsed.CompareTo(time) > 0)
                 {
@@ -350,7 +382,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
-            if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            if (graph.State != StreamStateValue.Running || graph.State != StreamStateValue.Running)
             {
                 Assert.Fail("Stream failed");
             }
@@ -460,6 +492,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public Task StartStream()
         {
             return _stream!.StartAsync();
+        }
+
+        public Task DeleteStream()
+        {
+            return _stream!.DeleteAsync();
         }
     }
 }

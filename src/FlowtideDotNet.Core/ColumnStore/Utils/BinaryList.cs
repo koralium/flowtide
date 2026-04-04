@@ -137,7 +137,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="data"></param>
         public void Add(ReadOnlySpan<byte> data)
         {
-            //var currentOffset = _length;
             EnsureCapacity(_length + data.Length);
             data.CopyTo(AccessSpan.Slice(_length));
             _length += data.Length;
@@ -179,7 +178,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="data"></param>
         public void Insert(int index, ReadOnlySpan<byte> data)
         {
-            if (index == _offsets.Count)
+            if (index == Count)
             {
                 Add(data);
                 return;
@@ -207,7 +206,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public void InsertEmpty(in int index)
         {
-            if (index == _offsets.Count)
+            if (index == Count)
             {
                 AddEmpty();
                 return;

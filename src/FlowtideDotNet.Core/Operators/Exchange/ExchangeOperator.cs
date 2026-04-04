@@ -11,17 +11,11 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.PartitionVertices;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
@@ -40,7 +34,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private readonly ExchangeRelation exchangeRelation;
         private readonly IExchangeKindExecutor _executor;
         private Action<string>? _checkpointDone;
+        private Action<string>? _dependenciesDone;
         private IObjectState<ExchangeOperatorState>? _state;
+        private bool _containPullBucket = false;
 
         public ExchangeOperator(ExchangeRelation exchangeRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(CalculateTargetNumber(exchangeRelation), executionDataflowBlockOptions)
         {
@@ -56,6 +52,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                     break;
                 default:
                     throw new NotImplementedException(exchangeRelation.ExchangeKind.Type.ToString());
+            }
+
+            foreach(var target in exchangeRelation.Targets)
+            {
+                if (target.Type == ExchangeTargetType.PullBucket)
+                {
+                    _containPullBucket = true;
+                    break;
+                }
             }
         }
 
@@ -128,6 +133,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _checkpointDone(Name);
             }
+            if (_dependenciesDone != null && !_containPullBucket)
+            {
+                _dependenciesDone(Name);
+            }
         }
 
         internal override Task OnLockingEventPrepare(LockingEventPrepare lockingEventPrepare)
@@ -145,9 +154,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             return _executor.PartitionData(data, time);
         }
 
-        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone)
+        void IStreamEgressVertex.SetCheckpointDoneFunction(Action<string> checkpointDone, Action<string> dependenciesDone)
         {
             _checkpointDone = checkpointDone;
+            _dependenciesDone = dependenciesDone;
         }
 
         private async Task OnCheckpoint()

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Substrait.Exceptions;
+using FlowtideDotNet.Substrait.Modifier;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser;
@@ -121,7 +122,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             {
                 Input = source.Relation,
                 NamedObject = new FlowtideDotNet.Substrait.Type.NamedTable() { Names = insert.InsertOperation.Name.Values.Select(x => x.Value).ToList() },
-                TableSchema = tableSchema
+                TableSchema = tableSchema,
+                Overwrite = insert.InsertOperation.Overwrite
             };
 
             Relation relation = writeRelation;
@@ -212,7 +214,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
 
             var relation = relationData.Relation;
-
+            
             var viewName = createView.Name.ToSql();
 
             if (isBuffered)
@@ -273,8 +275,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("PARTITION_COUNT can only be used on a distributed view");
                 }
-                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, subRelations.Count, relation.OutputLength));
-                subRelations.Add(relation);
+                viewRelations.Add(viewName, new ViewContainer(relationData.EmitData, relation, relation.OutputLength));
             }
 
             return default;
@@ -316,29 +317,34 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var container = new CTEContainer(alias, cteEmitData, cteEmitData.GetNames().Count);
 
                     cteContainers.Add(alias, container);
-                    var p = Visit(with.Query, state)!.Relation;
+                    var p = Visit(with.Query, state);
+
+                    if (p == null)
+                    {
+                        throw new SubstraitParseException($"Could not create a plan for CTE '{alias}'");
+                    }
 
                     // Check if this is recursive CTE
                     if (container.UsageCounter > 0)
                     {
-                        p = new IterationRelation()
+                        p = new RelationData(new IterationRelation()
                         {
-                            LoopPlan = p,
+                            LoopPlan = p.Relation,
                             IterationName = alias
-                        };
+                        }, p.EmitData);
                     }
                     var plan = new Plan()
                     {
                         Relations = new List<Relation>()
                         {
-                            p
+                            p.Relation
                         }
                     };
                     // Remove from containers since it will be added as a view now.
                     cteContainers.Remove(alias);
                     // With queries should be registered as views in the plan
                     // So they can be reused multiple times in the query
-                    sqlPlanBuilder._planModifier.AddPlanAsView(alias, plan);
+                    viewRelations.Add(alias, new ViewContainer(p.EmitData, p.Relation, p.Relation.OutputLength));
                     tablesMetadata.AddTable(alias, cteEmitData.GetNamedStruct());
                 }
             }
@@ -996,23 +1002,50 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static bool IsTableFunction(TableFactor? tableFactor)
             => tableFactor is TableFactor.Table table && table.Args != null;
 
-        private static void GetTableFunctionNameAndArgs(TableFactor tableFactor, out string name, out Sequence<FunctionArg> args)
+        private static void GetTableFunctionNameAndArgs(TableFactor tableFactor, out IReadOnlyList<string> name, out Sequence<FunctionArg> args)
         {
             if (tableFactor is TableFactor.Table table &&
                 table.Args != null)
             {
-                name = string.Join('.', table.Name.Values.Select(x => x.Value));
+                name = table.Name.Values.Select(x => x.Value).ToList();
                 args = table.Args.Arguments;
                 return;
             }
             throw new InvalidOperationException("Table factor is not a table function");
         }
 
+        private RelationData MapTableProviderTableFunction(TableProviderTableFunctionResult tableProviderRelationData)
+        {
+            // Build the dictionary with old reference ids to the new reference ids
+            Dictionary<int, int> oldRefIdToNew = new Dictionary<int, int>();
+            int startId = this.subRelations.Count;
+            for (int i = 0; i < tableProviderRelationData.SubRelations.Count; i++)
+            {
+                oldRefIdToNew.Add(i, startId + i);
+            }
+            var referenceRemapVisitor = new ReferenceRemapVisitor(oldRefIdToNew);
+            // Handle sub relations, must update any references to their new ids
+            for (int i = 0; i < tableProviderRelationData.SubRelations.Count; i++)
+            {
+                var remapped = referenceRemapVisitor.Visit(tableProviderRelationData.SubRelations[i], default);
+                this.subRelations.Add(remapped);
+            }
+            var remappedMain = referenceRemapVisitor.Visit(tableProviderRelationData.MainRelation, default);
+            return new RelationData(remappedMain, tableProviderRelationData.EmitData);
+        }
+
         private RelationData VisitTableFunctionRoot(TableFactor tableFactor)
         {
             GetTableFunctionNameAndArgs(tableFactor, out var name, out var args);
-            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
+
             var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData(), default, default, default), out var tableProviderRelationData))
+            {
+                return MapTableProviderTableFunction(tableProviderRelationData);
+            }
+
+            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(string.Join(".", name));
+            
 
             var tableFunction = tableFunctionMapper(
                 new SqlTableFunctionArgument(args, tableFactor.Alias?.Name.Value, exprVisitor, new EmitData())
@@ -1042,9 +1075,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             GetTableFunctionNameAndArgs(join.Relation, out var name, out var args);
 
-            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(name);
-            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 
+            JoinType? joinType = default;
+            Expression? onCondition = default;
+            if (join.JoinOperator is JoinOperator.LeftOuter leftOuterJoin)
+            {
+                joinType = JoinType.Left;
+                if (leftOuterJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    onCondition = on.Expression;
+                }
+            }
+            else if (join.JoinOperator is JoinOperator.Inner innerJoin)
+            {
+                joinType = JoinType.Inner;
+                if (innerJoin.JoinConstraint is JoinConstraint.On on)
+                {
+                    onCondition = on.Expression;
+                }
+            }
+            else
+            {
+                throw new NotImplementedException($"Join type '{join.JoinOperator!.GetType().Name}' is not yet supported for table function with joins in SQL mode.");
+            }
+
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            // try and fetch table function info from providers
+            if (tablesMetadata.TryHandleTableFunction(name, new TableProviderTableFunctionArguments(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData, parent.Relation, joinType, onCondition), out var tableProviderRelationData))
+            {
+                return MapTableProviderTableFunction(tableProviderRelationData);
+            }
+
+            var tableFunctionMapper = sqlFunctionRegister.GetTableMapper(string.Join(".", name));
+            
             var tableFunction = tableFunctionMapper(
                 new SqlTableFunctionArgument(args, join.Relation?.Alias?.Name.Value, exprVisitor, parent.EmitData)
                 );
@@ -1203,10 +1266,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("Hints are not supported when selecting from views at this point.");
                 }
+
+                if (!viewContainer.RelationId.HasValue)
+                {
+                    viewContainer.RelationId = subRelations.Count;
+                    subRelations.Add(viewContainer.Relation);
+                }
                 return new RelationData(new ReferenceRelation()
                 {
                     ReferenceOutputLength = viewContainer.OutputLength,
-                    RelationId = viewContainer.RelationId
+                    RelationId = viewContainer.RelationId.Value
                 }, emitData);
             }
 
@@ -1468,7 +1537,29 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 Operation = operation
             };
 
-            return new RelationData(setRelation, left.EmitData);
+            var cloned = left.EmitData.Clone();
+            var leftTypesList = cloned.GetTypes();
+            var rightTypesList = right.EmitData.GetTypes();
+
+            if (leftTypesList.Count != rightTypesList.Count)
+            {
+                throw new SubstraitParseException("Set operation inputs must have the same number of columns.");
+            }
+
+            for (int i = 0; i < leftTypesList.Count; i++)
+            {
+                if (leftTypesList[i] is NullType)
+                {
+                    // If the type is null, replace it with the corresponding type from the right relation
+                    var rightType = rightTypesList[i];
+                    if (rightType is not NullType)
+                    {
+                        cloned.UpdateType(i, rightType);
+                    }
+                }
+            }
+
+            return new RelationData(setRelation, cloned);
         }
 
         protected override RelationData? VisitBeginSubStream(BeginSubStream beginSubStream)

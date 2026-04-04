@@ -12,8 +12,17 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents a specialized checkpoint event that signals the dataflow stream to perform a final 
+    /// checkpoint and then shut down gracefully.
+    /// </summary>
     internal class StopStreamCheckpoint : Checkpoint
     {
+        /// <summary>
+        /// Initializes a new instance of the <see cref="StopStreamCheckpoint"/> class.
+        /// </summary>
+        /// <param name="checkpointTime">The time of the checkpoint being finalized.</param>
+        /// <param name="newTime">The time for the newly created checkpoint span.</param>
         public StopStreamCheckpoint(long checkpointTime, long newTime) : base(checkpointTime, newTime)
         {
         }

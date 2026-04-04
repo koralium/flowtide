@@ -1,13 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>$(DefaultNetTargetFramework)</TargetFramework>
+	<TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="OpenFga.Sdk" Version="0.3.1" />
+    <PackageReference Include="OpenFga.Sdk" />
   </ItemGroup>
 
   <ItemGroup>

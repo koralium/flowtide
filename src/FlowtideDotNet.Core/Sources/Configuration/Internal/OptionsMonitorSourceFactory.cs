@@ -10,10 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Options;
@@ -49,6 +50,15 @@ namespace FlowtideDotNet.Core.Sources.Configuration.Internal
             return new OptionsMonitorSource<TOptions>(_monitor, readRelation, dataflowBlockOptions);
         }
 
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema && TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("options", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+            }
+            return new TableLineageMetadata("options", readRelation.NamedTable.DotSeperated, default);
+        }
+
         public Relation ModifyPlan(ReadRelation readRelation)
         {
             if (readRelation.Filter != null)
@@ -77,6 +87,12 @@ namespace FlowtideDotNet.Core.Sources.Configuration.Internal
                 return true;
             }
             tableMetadata = default;
+            return false;
+        }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
             return false;
         }
     }

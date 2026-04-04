@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private decimal? _minValue;
         private decimal? _maxValue;
         private readonly int? _nullCount;
+        private const decimal Epsilon = 0.000000001m;
 
         public DecimalStatisticsComparer(decimal? minValue, decimal? maxValue, int? nullCount)
         {
@@ -40,12 +41,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             }
             var decimalValue = value.AsDecimal;
 
-            if (_minValue != null && _minValue > decimalValue)
+            if (_minValue != null && (_minValue - Epsilon) > decimalValue)
             {
                 return false;
             }
 
-            if (_maxValue != null && _maxValue < decimalValue)
+            if (_maxValue != null && (_maxValue + Epsilon) < decimalValue)
             {
                 return false;
             }

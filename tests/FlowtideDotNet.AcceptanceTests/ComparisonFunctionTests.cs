@@ -237,7 +237,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users u");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x =>
             {
                 return new
@@ -258,7 +257,6 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users u");
             await WaitForUpdate();
 
-            var act = GetActualRows();
             AssertCurrentDataEqual(Users.Select(x =>
             {
                 if (x.Visits.HasValue)
@@ -274,6 +272,40 @@ namespace FlowtideDotNet.AcceptanceTests
                 };
                 
             }));
+        }
+
+        [Fact]
+        public async Task SelectWithDistinctFrom()
+        {
+            GenerateData();
+
+            var firstUserKey = Users[0].UserKey;
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey is distinct from " + firstUserKey.ToString() + @" AS boolval
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { boolval = x.UserKey != firstUserKey }));
+        }
+
+        [Fact]
+        public async Task SelectWithNotDistinctFrom()
+        {
+            GenerateData();
+
+            var firstUserKey = Users[0].UserKey;
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey is not distinct from " + firstUserKey.ToString() + @" AS boolval
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { boolval = x.UserKey == firstUserKey }));
         }
     }
 }

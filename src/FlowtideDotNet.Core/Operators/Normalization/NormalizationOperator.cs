@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.Read;
@@ -214,7 +214,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             bool isFound = false;
             IngressData? data;
 
-            var (op, val) = await _tree.RMW(ke, default, (input, current, found) =>
+            var (_, val) = await _tree.RMW(ke, default, (input, current, found) =>
             {
                 if (found)
                 {

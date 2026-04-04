@@ -80,16 +80,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 tableMetadata = table;
                 return true;
             }
-            var result = GetTableMetadata(path).Result;
-            if (result != null)
+            try
             {
-                tableMetadataLookup.Add(path, result);
-                tableMetadata = result;
-                return true;
+                var result = GetTableMetadata(path).GetAwaiter().GetResult();
+                if (result != null)
+                {
+                    tableMetadataLookup.Add(path, result);
+                    tableMetadata = result;
+                    return true;
+                }
             }
+            catch (HttpRequestException ex)
+            {
+                // 404 is ok to ignore
+                if (ex.StatusCode != System.Net.HttpStatusCode.NotFound)
+                {
+                    throw;
+                }
+            }
+            
+            
             nonExistingTables.Add(path);
 
             tableMetadata = null;
+            return false;
+        }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
             return false;
         }
     }

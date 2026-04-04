@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.FileCache.Internal.Unix;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.Utils;
+using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
@@ -367,8 +368,6 @@ namespace FlowtideDotNet.Storage.FileCache
         {
             long position = 0;
             IFileCacheWriter? segmentWriter = null;
-            var sw = ValueStopwatch.StartNew();
-            var finalTime = sw.GetElapsedTime().TotalMilliseconds;
             if (allocatedPages.TryGetValue(pageKey, out var node))
             {
                 // Check if the current node has enough size
@@ -429,7 +428,7 @@ namespace FlowtideDotNet.Storage.FileCache
             where T : ICacheObject
         {
             var memory = ReadSync(pageKey);
-            return ValueTask.FromResult(serializer.Deserialize(memory, memory.Length));
+            return ValueTask.FromResult(serializer.Deserialize(new ReadOnlySequence<byte>(memory), memory.Length));
         }
 
         public ValueTask<ReadOnlyMemory<byte>> Read(long pageKey)

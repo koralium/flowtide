@@ -37,6 +37,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
         protected ReadRelation ReadRelation { get; }
 
         protected List<string>? PrimaryKeys { get; private set; }
+        protected Dictionary<string, int>? PrimaryKeyToOrdinal { get; private set; }
         protected List<int>? PrimaryKeyOrdinals { get; private set; }
         protected List<Action<SqlDataReader, IColumn>>? ConvertFunctions { get; private set; }
 
@@ -97,6 +98,12 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             else
             {
                 PrimaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, FullTableName);
+            }
+
+            PrimaryKeyToOrdinal = new Dictionary<string, int>();
+            for (int i = 0; i < PrimaryKeys.Count; i++)
+            {
+                PrimaryKeyToOrdinal.Add(PrimaryKeys[i], i);
             }
 
             PrimaryKeyOrdinals = [];
@@ -253,13 +260,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
 
             ExitCheckpointLock();
             linkedCancellation.Dispose();
-        }
-
-        protected override async Task OnCheckpoint(long checkpointTime)
-        {
-            Debug.Assert(State != null);
-            await State.Commit();
-            await base.OnCheckpoint(checkpointTime);
         }
 
         protected void InitializeBatchCollections(out PrimitiveList<int> weights, out PrimitiveList<uint> iterations, out Column[] columns)

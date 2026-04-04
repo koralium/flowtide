@@ -46,5 +46,14 @@ namespace FlowtideDotNet.Substrait.Hints
             code.Add(Optimizations);
             return code.ToHashCode();
         }
+
+        public Hint Clone()
+        {
+            return new Hint
+            {
+                Alias = this.Alias,
+                Optimizations = this.Optimizations.Clone()
+            };
+        }
     }
 }

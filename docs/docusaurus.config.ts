@@ -127,7 +127,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Flowtide.NET. Built with Docusaurus.`,
+      copyright: `Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © ${new Date().getFullYear()} .NET Foundation. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

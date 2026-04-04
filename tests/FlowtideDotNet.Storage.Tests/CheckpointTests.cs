@@ -10,10 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -27,16 +28,14 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestCheckpoint()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistent");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistent"
+                        FileProvider = new MemoryFileProvider()
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -59,14 +58,14 @@ namespace FlowtideDotNet.Storage.Tests
 
             await tree.Upsert(1, "helloOther");
 
-            var (found, val) = await tree.GetValue(1);
+            var (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore
             await stateManager.InitializeAsync();
 
             await tree.Upsert(1, "helloOther");
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Commit data and take only checkpoint without metadata, this is to force written data
@@ -74,25 +73,22 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.InitializeAsync();
 
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
-            ;
         }
 
         [Fact]
         public async Task TestFailureAfterNewRootInBPlusTree()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistentfail");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistentfail"
+                        FileProvider = new MemoryFileProvider()
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -147,16 +143,14 @@ namespace FlowtideDotNet.Storage.Tests
         [Fact]
         public async Task TestCheckpointWithCompactionRestore()
         {
-            var device = Devices.CreateLogDevice("./data/tmp/persistentcompact");
             StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
                 new StateManagerOptions()
                 {
-                    PersistentStorage = new FasterKvPersistentStorage(new FasterKVSettings<long, SpanByte>()
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                     {
-                        LogDevice = device,
-                        CheckpointDir = "./data/tmp/persistentcompact"
+                        FileProvider = new MemoryFileProvider()
                     })
-                }, NullLogger.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
 
             await stateManager.InitializeAsync();
 
@@ -176,20 +170,18 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.CheckpointAsync();
 
-            var (foundInitial, valInitial) = await tree.GetValue(1);
             await stateManager.Compact();
 
             await tree.Upsert(1, "helloOther");
 
-            var (found, val) = await tree.GetValue(1);
+            var (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Restore
             await stateManager.InitializeAsync();
-            (found, val) = await tree.GetValue(1);
 
             await tree.Upsert(1, "helloOther");
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
             Assert.Equal("helloOther", val);
 
             // Commit data and take only checkpoint without metadata, this is to force written data
@@ -197,10 +189,69 @@ namespace FlowtideDotNet.Storage.Tests
 
             await stateManager.InitializeAsync();
 
-            (found, val) = await tree.GetValue(1);
+            (_, val) = await tree.GetValue(1);
 
             Assert.Equal("hello", val);
             ;
+        }
+
+        [Fact]
+        public async Task TestRestoreTwoCheckpointsBack()
+        {
+            StateManager.StateManagerSync stateManager = new StateManager.StateManagerSync<object>(
+                new StateManagerOptions()
+                {
+                    PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                    {
+                        FileProvider = new MemoryFileProvider()
+                    })
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+
+            await stateManager.InitializeAsync();
+            Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);
+
+            var nodeClient = stateManager.GetOrCreateClient("node1");
+            var tree = await nodeClient.GetOrCreateTree("tree", new Tree.BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+            {
+                BucketSize = 8,
+                Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
+                KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
+                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                MemoryAllocator = GlobalMemoryManager.Instance
+            });
+
+            await tree.Upsert(1, "hello");
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
+
+            await tree.Upsert(1, "helloOther");
+
+            var (_, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            await tree.Commit();
+
+            await stateManager.CheckpointAsync();
+
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
+
+            // Restore to latest checkpoint
+            await stateManager.InitializeAsync();
+            Assert.Equal(2, stateManager.LastCompletedCheckpointVersion);
+            (_, val) = await tree.GetValue(1);
+            Assert.Equal("helloOther", val);
+
+            // Restore to the previous checkpoint
+            await stateManager.InitializeAsync(checkpointVersion: 1);
+            Assert.Equal(1, stateManager.LastCompletedCheckpointVersion);
+
+            (_, val) = await tree.GetValue(1);
+
+            Assert.Equal("hello", val);
         }
     }
 }

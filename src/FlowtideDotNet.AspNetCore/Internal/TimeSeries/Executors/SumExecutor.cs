@@ -36,7 +36,6 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             var iterators = series.Select(v => v.GetValues(startTimestamp, endTimestamp, stepWidth).GetAsyncEnumerator()).ToList();
 
             bool[] done = new bool[iterators.Count];
-            long[] lastTimestamps = new long[iterators.Count];
             List<(IAsyncEnumerator<MetricResult>, int)> outputIterators = new List<(IAsyncEnumerator<MetricResult>, int)>();
 
             for (int i = 0; i < iterators.Count; i++)

@@ -1,0 +1,103 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+
+# Year difference
+datediff('YEAR'::str, '2016-12-31T13:30:15'::ts, '2020-01-01T00:00:00'::ts) = 4::i64
+datediff('YEAR'::str, '2020-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -4::i64
+datediff('YEAR'::str, '2016-02-29T00:00:00'::ts, '2017-02-28T00:00:00'::ts) = 1::i64
+datediff('YEAR'::str, '2016-02-29T00:00:00'::ts, '2017-03-01T00:00:00'::ts) = 1::i64
+datediff('YEAR'::str, '2020-03-01T00:00:00'::ts, '2020-02-29T00:00:00'::ts) = 0::i64
+datediff('YEAR'::str, '2005-12-31T23:59:59.9999999'::ts, '2006-01-01T00:00:00.0000000'::ts) = 1::i64
+
+# Quarter difference
+datediff('QUARTER'::str, '2016-12-31T13:30:15'::ts, '2017-03-01T00:00:00'::ts) = 1::i64
+datediff('QUARTER'::str, '2017-03-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('QUARTER'::str, '2016-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 16::i64
+datediff('QUARTER'::str, '2020-01-01T00:00:00'::ts, '2016-01-01T00:00:00'::ts) = -16::i64
+datediff('QUARTER'::str, '2016-01-31T00:00:00'::ts, '2016-03-01T00:00:00'::ts) = 0::i64
+datediff('QUARTER'::str, '2016-03-01T00:00:00'::ts, '2016-01-31T00:00:00'::ts) = 0::i64
+
+# Month difference
+datediff('MONTH'::str, '2016-12-31T13:30:15'::ts, '2017-01-31T00:00:00'::ts) = 1::i64
+datediff('MONTH'::str, '2017-01-31T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('MONTH'::str, '2016-01-31T00:00:00'::ts, '2017-01-31T00:00:00'::ts) = 12::i64
+datediff('MONTH'::str, '2017-01-31T00:00:00'::ts, '2016-01-31T00:00:00'::ts) = -12::i64
+datediff('MONTH'::str, '2016-01-31T00:00:00'::ts, '2016-02-28T00:00:00'::ts) = 1::i64
+datediff('MONTH'::str, '2016-02-28T00:00:00'::ts, '2016-01-31T00:00:00'::ts) = -1::i64
+datediff('MONTH'::str, '2016-02-27T00:00:00'::ts, '2016-02-28T00:00:00'::ts) = 0::i64
+
+# DayOfYear difference
+datediff('DAYOFYEAR'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('DAYOFYEAR'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('DAYOFYEAR'::str, '2016-02-28T00:00:00'::ts, '2016-03-01T00:00:00'::ts) = 2::i64
+datediff('DAYOFYEAR'::str, '2016-03-01T00:00:00'::ts, '2016-02-28T00:00:00'::ts) = -2::i64
+datediff('DAYOFYEAR'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 7305::i64
+datediff('DAYOFYEAR'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -7305::i64
+datediff('DAYOFYEAR'::str, '2016-12-31T00:00:00'::ts, '2016-12-31T23:59:59'::ts) = 0::i64
+datediff('DAYOFYEAR'::str, '2016-12-31T23:59:59'::ts, '2016-12-31T00:00:00'::ts) = 0::i64
+
+# Day difference
+datediff('DAY'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('DAY'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('DAY'::str, '2016-02-28T00:00:00'::ts, '2016-03-01T00:00:00'::ts) = 2::i64
+datediff('DAY'::str, '2016-03-01T00:00:00'::ts, '2016-02-28T00:00:00'::ts) = -2::i64
+datediff('DAY'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 7305::i64
+datediff('DAY'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -7305::i64
+datediff('DAY'::str, '2016-12-31T00:00:00'::ts, '2016-12-31T23:59:59'::ts) = 0::i64
+datediff('DAY'::str, '2016-12-31T23:59:59'::ts, '2016-12-31T00:00:00'::ts) = 0::i64
+
+# Week difference
+datediff('WEEK'::str, '2016-12-31T13:30:15'::ts, '2017-01-07T00:00:00'::ts) = 1::i64
+datediff('WEEK'::str, '2017-01-07T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('WEEK'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 1044::i64
+datediff('WEEK'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -1044::i64
+
+# Weekday difference
+datediff('WEEKDAY'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('WEEKDAY'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -1::i64
+datediff('WEEKDAY'::str, '2016-02-28T00:00:00'::ts, '2016-03-01T00:00:00'::ts) = 2::i64
+datediff('WEEKDAY'::str, '2016-03-01T00:00:00'::ts, '2016-02-28T00:00:00'::ts) = -2::i64
+datediff('WEEKDAY'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 7305::i64
+datediff('WEEKDAY'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -7305::i64
+datediff('WEEKDAY'::str, '2016-12-31T00:00:00'::ts, '2016-12-31T23:59:59'::ts) = 0::i64
+datediff('WEEKDAY'::str, '2016-12-31T23:59:59'::ts, '2016-12-31T00:00:00'::ts) = 0::i64
+
+# Hour difference
+datediff('HOUR'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 11::i64
+datediff('HOUR'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -11::i64
+datediff('HOUR'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 175320::i64
+datediff('HOUR'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -175320::i64
+datediff('HOUR'::str, '2016-12-31T23:00:00'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('HOUR'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T23:00:00'::ts) = -1::i64
+
+# Minute difference
+datediff('MINUTE'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 630::i64
+datediff('MINUTE'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -630::i64
+datediff('MINUTE'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 10519200::i64
+datediff('MINUTE'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -10519200::i64
+datediff('MINUTE'::str, '2016-12-31T23:59:00'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('MINUTE'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T23:59:00'::ts) = -1::i64
+
+# Second difference
+datediff('SECOND'::str, '2016-12-31T13:30:15'::ts, '2017-01-01T00:00:00'::ts) = 37785::i64
+datediff('SECOND'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T13:30:15'::ts) = -37785::i64
+datediff('SECOND'::str, '2000-01-01T00:00:00'::ts, '2020-01-01T00:00:00'::ts) = 631152000::i64
+datediff('SECOND'::str, '2020-01-01T00:00:00'::ts, '2000-01-01T00:00:00'::ts) = -631152000::i64
+datediff('SECOND'::str, '2016-12-31T23:59:59'::ts, '2017-01-01T00:00:00'::ts) = 1::i64
+datediff('SECOND'::str, '2017-01-01T00:00:00'::ts, '2016-12-31T23:59:59'::ts) = -1::i64
+
+# Millisecond difference
+datediff('MILLISECOND'::str, '2016-12-31T13:30:15.500'::ts, '2017-01-01T00:00:00.000'::ts) = 37784500::i64
+datediff('MILLISECOND'::str, '2017-01-01T00:00:00.000'::ts, '2016-12-31T13:30:15.500'::ts) = -37784500::i64
+datediff('MILLISECOND'::str, '2000-01-01T00:00:00.000'::ts, '2020-01-01T00:00:00.000'::ts) = 631152000000::i64
+datediff('MILLISECOND'::str, '2020-01-01T00:00:00.000'::ts, '2000-01-01T00:00:00.000'::ts) = -631152000000::i64
+datediff('MILLISECOND'::str, '2016-12-31T23:59:59.999'::ts, '2017-01-01T00:00:00.000'::ts) = 1::i64
+datediff('MILLISECOND'::str, '2017-01-01T00:00:00.000'::ts, '2016-12-31T23:59:59.999'::ts) = -1::i64
+
+# Microsecond difference
+datediff('MICROSECOND'::str, '2016-12-31T13:30:15.500000'::ts, '2017-01-01T00:00:00.000000'::ts) = 37784500000::i64
+datediff('MICROSECOND'::str, '2017-01-01T00:00:00.000000'::ts, '2016-12-31T13:30:15.500000'::ts) = -37784500000::i64
+datediff('MICROSECOND'::str, '2000-01-01T00:00:00.000000'::ts, '2020-01-01T00:00:00.000000'::ts) = 631152000000000::i64
+datediff('MICROSECOND'::str, '2020-01-01T00:00:00.000000'::ts, '2000-01-01T00:00:00.000000'::ts) = -631152000000000::i64
+datediff('MICROSECOND'::str, '2016-12-31T23:59:59.999999'::ts, '2017-01-01T00:00:00.000000'::ts) = 1::i64
+datediff('MICROSECOND'::str, '2017-01-01T00:00:00.000000'::ts, '2016-12-31T23:59:59.999999'::ts) = -1::i64

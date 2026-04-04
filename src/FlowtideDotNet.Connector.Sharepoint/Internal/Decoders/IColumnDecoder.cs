@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
 
@@ -20,7 +20,9 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
     {
         Task Initialize(string name, string listId, SharepointGraphListClient client, IStateManagerClient stateManagerClient, IDictionary<string, ColumnDefinition> columns);
 
-        ValueTask<FlxValue> Decode(ListItem item);
+        ValueTask Decode(ListItem item, Column column);
+
+        ValueTask<IDataValue> DecodeDataValue(ListItem item);
 
         /// <summary>
         /// Called each time a new batch of data has been found

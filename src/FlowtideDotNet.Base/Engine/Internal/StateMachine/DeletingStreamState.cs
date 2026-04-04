@@ -39,7 +39,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Ignore
         }
 
-        public override void Initialize(StreamStateValue previousState)
+        public override void EgressDependenciesDone(string name)
+        {
+            // Ignore
+        }
+
+        public override Task Initialize(StreamStateValue previousState)
         {
             Debug.Assert(_context != null, nameof(_context));
             _context.CheckForPause();
@@ -48,7 +53,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context.SetStatus(StreamStatus.Deleting);
                 if (_deleteTask != null && !_deleteTask.IsCompleted)
                 {
-                    return;
+                    return Task.CompletedTask;
                 }
                 _deleteTask = Task.Factory.StartNew(async () =>
                 {
@@ -62,11 +67,11 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         // Wait a while before trying to delete again
                         await Task.Delay(TimeSpan.FromMilliseconds(500));
 
-                        Initialize(StreamStateValue.Deleting);
+                        await Initialize(StreamStateValue.Deleting);
                     }
                 });
             }
-
+            return Task.CompletedTask;
         }
 
         private async Task DeleteEntireStream()

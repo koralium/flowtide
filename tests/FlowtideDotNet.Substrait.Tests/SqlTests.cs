@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Tests
 {
     public class SqlTests
     {
-        private SqlPlanBuilder builder;
+        private readonly SqlPlanBuilder builder;
         public SqlTests()
         {
             builder = new SqlPlanBuilder();
@@ -1031,6 +1031,12 @@ namespace FlowtideDotNet.Substrait.Tests
                 tableMetadata = default;
                 return false;
             }
+
+            public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+            {
+                relation = null;
+                return false;
+            }
         }
 
         [Fact]
@@ -1316,6 +1322,91 @@ namespace FlowtideDotNet.Substrait.Tests
             ");
 
             var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new WriteRelation()
+                    {
+                        NamedObject = new NamedTable(){ Names = ["output" ]},
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = ["c1"],
+                            Struct = new Struct()
+                            {
+                                Types = [new AnyType()]
+                            }
+                        },
+                        Input = new ProjectRelation()
+                        {
+                            Emit = [2],
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new NamedTable() { Names = ["testtable"] },
+                                BaseSchema = new NamedStruct()
+                                {
+                                    Names = ["c1", "c2"],
+                                    Struct = new Struct()
+                                    {
+                                        Types = [AnyType.Instance, AnyType.Instance]
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    new WriteRelation()
+                    {
+                        NamedObject = new NamedTable(){ Names = ["output" ]},
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = ["c1"],
+                            Struct = new Struct()
+                            {
+                                Types = [new AnyType()]
+                            }
+                        },
+                        Input = new ProjectRelation()
+                        {
+                            Emit = [2],
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                }
+                            },
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new NamedTable() { Names = ["testtable"] },
+                                BaseSchema = new NamedStruct()
+                                {
+                                    Names = ["c1", "c2"],
+                                    Struct = new Struct()
+                                    {
+                                        Types = [AnyType.Instance, AnyType.Instance]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
         }
 
         [Fact]
@@ -2181,5 +2272,252 @@ namespace FlowtideDotNet.Substrait.Tests
             Assert.Equal(expected, plan);
         }
 
+        [Fact]
+        public void PruneUnusedView()
+        {
+            builder.Sql(@"
+            CREATE TABLE testtable (
+                c1 any
+            );
+            
+            CREATE VIEW testview AS
+            SELECT c1 FROM testtable;
+
+            SELECT c1 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relations.Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){ 1 },
+                        Expressions = new List<Expressions.Expression>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 0
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void IsDistinctFrom()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1 is distinct from c2 FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){2},
+                        Expressions = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsDistinctFrom,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    },
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 1
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1", "c2" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void IsNotDistinctFrom()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                SELECT c1 is not distinct from c2 FROM testtable
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Emit = new List<int>(){2},
+                        Expressions = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.IsNotDistinctFrom,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 0
+                                        }
+                                    },
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 1
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct(){
+                                Names = new List<string>() { "c1", "c2" },
+                                Struct = new Type.Struct()
+                                {
+                                    Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                }
+                            },
+                            NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
+
+        [Fact]
+        public void InsertOverwriteTable()
+        {
+            builder.Sql(@"
+                CREATE TABLE testtable (
+                    c1 any,
+                    c2 any
+                );
+
+                INSERT OVERWRITE output
+                SELECT c1 FROM testtable;
+            ");
+
+            var plan = builder.GetPlan();
+
+            var expected = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new WriteRelation()
+                    {
+                        TableSchema = new NamedStruct()
+                        {
+                            Names = [ "c1"],
+                            Struct = new Struct()
+                            {
+                                Types = new List<SubstraitBaseType>()
+                                {
+                                    new AnyType()
+                                }
+                            }
+                        },
+                        NamedObject = new NamedTable()
+                        {
+                            Names = ["output"]
+                        },
+                        Overwrite = true,
+                        Input = new ProjectRelation()
+                        {
+                            Emit = new List<int>(){2},
+                            Expressions = new List<Expression>()
+                            {
+                                new DirectFieldReference()
+                                {
+                                    ReferenceSegment = new StructReferenceSegment()
+                                    {
+                                        Field = 0
+                                    }
+                                },
+                            },
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new Type.NamedStruct(){
+                                    Names = new List<string>() { "c1", "c2" },
+                                    Struct = new Type.Struct()
+                                    {
+                                        Types = new List<Type.SubstraitBaseType>(){ new AnyType(), new AnyType() }
+                                    }
+                                },
+                                NamedTable = new Type.NamedTable(){Names = new List<string> { "testtable" }}
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, plan);
+        }
     }
 }

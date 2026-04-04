@@ -270,7 +270,6 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
             await _stateClient.Reset(true);
             var nodeId = _stateClient.GetNewPageId();
-            var emptyKeys = _keySerializer.CreateEmpty();
             var emptyValues = _options.ValueSerializer.CreateEmpty();
             _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
             _leftNode = _rightNode;

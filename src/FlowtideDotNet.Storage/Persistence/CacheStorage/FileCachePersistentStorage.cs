@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
 
         public FileCachePersistentStorage(FileCacheOptions fileCacheOptions, bool ignoreDispose = false)
         {
+            // Start at version 1, since version 0 is reserved for empty state
+            _version = 1;
             m_fileCache = new FlowtideDotNet.Storage.FileCache.FileCache(fileCacheOptions, "persitent", GlobalMemoryManager.Instance);
             this._ignoreDispose = ignoreDispose;
         }
@@ -35,7 +37,7 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             _version++;
         }
 
-        public virtual ValueTask CompactAsync()
+        public virtual ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount)
         {
             return ValueTask.CompletedTask;
         }
@@ -92,6 +94,11 @@ namespace FlowtideDotNet.Storage.Persistence.CacheStorage
             m_fileCache.Write(key, new SerializableObject(value));
             m_fileCache.Flush();
             return ValueTask.CompletedTask;
+        }
+
+        public void ClearForRestore()
+        {
+            Dispose();
         }
     }
 }

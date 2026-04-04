@@ -27,16 +27,16 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         {
         }
 
-        public StateManagerMetadata Deserialize(ReadOnlyMemory<byte> bytes, int length)
+        public StateManagerMetadata Deserialize(ReadOnlySequence<byte> bytes, int length)
         {
-            var slice = bytes.Span.Slice(0, length);
+            var slice = bytes.Slice(0, length);
             var reader = new Utf8JsonReader(slice);
             var deserializedValue = JsonSerializer.Deserialize<StateManagerMetadata<T>>(ref reader);
             Debug.Assert(deserializedValue != null);
             return deserializedValue;
         }
 
-        public ICacheObject DeserializeCacheObject(ReadOnlyMemory<byte> bytes, int length)
+        public ICacheObject DeserializeCacheObject(ReadOnlySequence<byte> bytes, int length)
         {
             return Deserialize(bytes, length);
         }

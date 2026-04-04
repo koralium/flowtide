@@ -244,3 +244,12 @@ SELECT
   list(firstName, lastName) as listVal
 FROM my_source_table;
 ```
+
+### Insert overwrite
+
+The delta lake connector supports `INSERT OVERWRITE {tableName}` instead of `INSERT INTO`, which replaces 
+all content in the delta table with the new data from the stream.
+This occurs on the initial load, after which subsequent inserts, updates, and deletes behave normally on the table.
+
+This allows easy full reload of a table with an integration. All the existing data is commited as `remove` 
+operations in the commit log, which means it is still possible to look at history of the table.

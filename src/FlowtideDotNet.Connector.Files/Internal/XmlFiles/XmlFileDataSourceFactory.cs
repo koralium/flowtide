@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using System;
@@ -46,6 +47,15 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
             return this;
         }
 
+        public TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            if (includeSchema && TryGetTableInformation(readRelation.NamedTable.Names, out var tableMetadata))
+            {
+                return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, tableMetadata.Schema);
+            }
+            return new TableLineageMetadata("file", readRelation.NamedTable.DotSeperated, default);
+        }
+
         public IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
         {
             return new XmlFileDataSource(_options, readRelation, dataflowBlockOptions);
@@ -76,6 +86,12 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles
                 return true;
             }
             tableMetadata = default;
+            return false;
+        }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            relation = null;
             return false;
         }
     }

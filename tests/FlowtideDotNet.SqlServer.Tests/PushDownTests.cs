@@ -13,6 +13,7 @@
 using FlowtideDotNet.SqlServer.SqlServer;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 
 namespace FlowtideDotNet.SqlServer.Tests
 {
@@ -50,6 +51,48 @@ namespace FlowtideDotNet.SqlServer.Tests
 
             var result = visitor.Visit(expr, default!)!;
             Assert.Equal("[c1] IN ('a', 17)", result.Content);
+        }
+
+        [Fact]
+        public void TestCastDateTimePushdown()
+        {
+            var expr = new ScalarFunction()
+            {
+                Arguments = new List<Expression>()
+                {
+                    new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment()
+                        {
+                            Field = 0
+                        }
+                    },
+                    new CastExpression()
+                    {
+                        Expression = new StringLiteral()
+                        {
+                            Value = "2024-02-03"
+                        },
+                        Type = new Substrait.Type.TimestampType()
+                    }
+                },
+                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionName = FunctionsComparison.GreaterThan
+            };
+            var visitor = new SqlServerFilterVisitor(new Substrait.Relations.ReadRelation()
+            {
+                NamedTable = new Substrait.Type.NamedTable()
+                {
+                    Names = new List<string>() { "table1" }
+                },
+                BaseSchema = new Substrait.Type.NamedStruct()
+                {
+                    Names = new List<string>() { "c1" }
+                }
+            });
+
+            var result = visitor.Visit(expr, default!)!;
+            Assert.Equal("[c1] > CAST('2024-02-03' AS DATETIME)", result.Content);
         }
     }
 }

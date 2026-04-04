@@ -51,10 +51,16 @@ builder.Services.AddHealthChecks()
 // Create the stream
 builder.Services.AddFlowtideStream("my_stream")
     .AddSqlFileAsPlan("stream.sql")
+    .AddVersioningFromString("1.0")
+    .AddVersioningFromPlanHash()
     .AddConnectors(connectors =>
     {
         connectors.AddSqlServerAsCatalog("db1", () => sqlDb1ConnStr);
         connectors.AddSqlServerAsCatalog("db2", () => sqlDb2ConnStr);
+    })
+    .AddCustomOptions((s, b) =>
+    {
+        //b.SetMinimumTimeBetweenCheckpoint(TimeSpan.FromMinutes(1));
     })
     .AddStorage(storage =>
     {
@@ -63,10 +69,18 @@ builder.Services.AddFlowtideStream("my_stream")
 
         // Set max process memory to reduce ram usage, or increase it for lower latency
         // This is set to 2GB
-        storage.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
+        storage.MaxProcessMemory = 512 * 1024 * 1024;
 
+        //storage.AddFasterKVFileSystemStorage("./fasterkvstate");
+        //storage.AddFileStorageWithCache("./stateData", "./stateData/checkpoints", "./cache");
+
+        //storage.AddFileStorage("./state");
+        storage.AddAzureBlobStorage(builder.Configuration.GetConnectionString("blobs")!, "streams", localCacheDirectory: "./cacheState");
         // Use azure storage for persistence
-        storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", "mydirname");
+        //storage.AddFasterKVAzureStorage(builder.Configuration.GetConnectionString("blobs")!, "mystream", (meta) =>
+        //{
+        //    return $"{meta.StreamName}/{meta.StreamVersion!.Version}";
+        //});
     });
 
 var app = builder.Build();

@@ -67,5 +67,13 @@ namespace FlowtideDotNet.Substrait.Hints
             }
             return code.ToHashCode();
         }
+
+        public HintOptimizations Clone()
+        {
+            return new HintOptimizations
+            {
+                Properties = new Dictionary<string, string>(Properties, StringComparer.OrdinalIgnoreCase)
+            };
+        }
     }
 }

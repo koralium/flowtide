@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILogger logger, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, logger, meter, streamName)
+        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName)
         {
         }
 
@@ -65,6 +65,7 @@ namespace FlowtideDotNet.Storage.StateManager
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
+        private readonly ILoggerFactory m_loggerFactory;
         private readonly ILogger logger;
         private readonly Meter meter;
         private readonly string streamName;
@@ -101,11 +102,14 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long CurrentVersion => m_persistentStorage?.CurrentVersion ?? 0;
 
-        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILogger logger, Meter meter, string streamName)
+        public long LastCompletedCheckpointVersion { get; private set; }
+
+        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
-            this.logger = logger;
+            m_loggerFactory = loggerFactory;
+            this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
             this.streamName = streamName;
         }
@@ -124,7 +128,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
             if (m_persistentStorage != null)
             {
-                m_persistentStorage.Dispose();
+                m_persistentStorage.ClearForRestore();
                 m_persistentStorage = null;
             }
             if (options.PersistentStorage == null)
@@ -221,6 +225,7 @@ namespace FlowtideDotNet.Storage.StateManager
             }
 
             await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
+            LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
         }
 
         public async Task Compact()
@@ -228,7 +233,9 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
 
-            await m_persistentStorage.CompactAsync();
+            ulong changesSinceLastCompaction = m_metadata.PageCommits - m_metadata.PageCommitsAtLastCompaction;
+
+            await m_persistentStorage.CompactAsync(changesSinceLastCompaction, PageCommits);
             m_metadata.PageCommitsAtLastCompaction = m_metadata.PageCommits;
         }
 
@@ -390,7 +397,7 @@ namespace FlowtideDotNet.Storage.StateManager
 
         internal abstract StateManagerMetadata NewMetadata();
 
-        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null)
+        public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
             bool newMetadata = false;
             Setup();
@@ -398,15 +405,18 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, streamVersionInformation)).ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, streamVersionInformation)).ConfigureAwait(false);
 
-            if (m_persistentStorage.TryGetValue(1, out var metadataBytes))
+            // Check that metadata exist, also that the checkpoint version is larger than 0
+            // If zero we revert back to an empty state
+            if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
             {
                 lock (m_lock)
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(metadataBytes.Value, metadataBytes.Value.Length);
+                    m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
                 }
-                await m_persistentStorage.RecoverAsync(m_metadata.CheckpointVersion).ConfigureAwait(false);
+                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
+                LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
             }
             else
             {
@@ -421,6 +431,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     newMetadata = true;
                 }
                 await m_persistentStorage.ResetAsync();
+                LastCompletedCheckpointVersion = 0;
             }
 
             // Reset cached values in the state clients

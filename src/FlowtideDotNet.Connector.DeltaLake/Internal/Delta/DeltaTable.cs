@@ -88,5 +88,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 return false;
             }
         }
+
+        public bool ColumnMappingEnabled
+        {
+            get
+            {
+                if (_metadata.Configuration != null &&
+                    _metadata.Configuration.TryGetValue("delta.columnMapping.mode", out var mode))
+                {
+                    return !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
+                }
+                return false;
+            }
+        }
+
+        public int? MaxColumnId
+        {
+            get
+            {
+                if (_metadata.Configuration != null &&
+                    _metadata.Configuration.TryGetValue("delta.columnMapping.maxColumnId", out var maxColumnIdStr) &&
+                        int.TryParse(maxColumnIdStr, out var maxColumnId))
+                {
+                    return maxColumnId;
+                }
+                return default;
+            }
+            set
+            {
+                if (_metadata.Configuration == null)
+                {
+                    _metadata.Configuration = new Dictionary<string, string>();
+                }
+                if (value.HasValue)
+                {
+                    _metadata.Configuration["delta.columnMapping.maxColumnId"] = value.Value.ToString();
+                }
+                else
+                {
+                    _metadata.Configuration.Remove("delta.columnMapping.maxColumnId");
+                }
+            }
+        }
     }
 }

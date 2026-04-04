@@ -15,14 +15,10 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
-using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
-using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore

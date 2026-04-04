@@ -21,13 +21,11 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
 using System.Collections;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Collections.Generic;
 using System.IO.Hashing;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -196,7 +194,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return;
             }
 
-            var typeByte = (byte)value.Type;
             var arrayIndex = CheckArrayExist(in value, _typeIds, _valueColumns);
             
             // Find the first occurence of the same type in the type list
@@ -639,13 +636,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                                 nextOccurenceOffset = _offsets.Get(nextOccurence);
                             }
                         }
-
-                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, nextNullLocation - currentStart, default);
-                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, nextNullLocation - currentStart, _typeList.Span, valueColumnIndex, nextNullLocation - currentStart);
-                        nextOccurenceOffset += nextNullLocation - currentStart;
+                        var toCopy = nextNullLocation - currentStart;
+                        if (toCopy > count)
+                        {
+                            toCopy = count;
+                        }
+                        valueColumn.InsertRangeFrom(nextOccurenceOffset, other, currentStart, toCopy, default);
+                        _offsets.InsertIncrementalRangeConditionalAdditionOnExisting(currentIndex, nextOccurenceOffset, toCopy, _typeList.Span, valueColumnIndex, toCopy);
+                        nextOccurenceOffset += toCopy;
                         // Type list must be added after so the offset is not incremented
-                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, nextNullLocation - currentStart);
-                        currentIndex += nextNullLocation - currentStart;
+                        _typeList.InsertStaticRange(currentIndex, valueColumnIndex, toCopy);
+                        currentIndex += toCopy;
                     }
 
                     var nextNotNullLocation = validityList.FindNextTrueIndex(nextNullLocation);

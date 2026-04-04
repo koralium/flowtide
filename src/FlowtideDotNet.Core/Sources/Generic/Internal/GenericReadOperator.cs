@@ -31,8 +31,8 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
     {
         private readonly GenericDataSourceAsync<T> _genericDataSource;
         private readonly ReadRelation _readRelation;
-        private BatchConverter _batchConverter;
-        private BatchConverter _lookupBatchConverter;
+        private readonly BatchConverter _batchConverter;
+        private readonly BatchConverter _lookupBatchConverter;
         private string _watermarkName;
         private IObjectState<long>? _lastWatermark;
         private List<int> _primaryKeyIndices;

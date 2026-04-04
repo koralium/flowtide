@@ -155,6 +155,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     var block = Expression.Block(typeof(IDataValue), new[] { tmpVar, resultTmpVar, maxTmpVar }, blockExpressions);
                     return block;
                 });
+
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsDistinctFromImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNotDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsNotDistinctFromImplementation));
         }
 
         private static IDataValue EqualImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)
@@ -448,6 +451,42 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
             result._type = ArrowTypeId.Null;
             return result;
+        }
+
+        private static IDataValue IsDistinctFromImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (DataValueComparer.CompareTo(x, y) == 0)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
+            else
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(true);
+                return result;
+            }
+        }
+
+        private static IDataValue IsNotDistinctFromImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (DataValueComparer.CompareTo(x, y) == 0)
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(true);
+                return result;
+            }
+            else
+            {
+                result._type = ArrowTypeId.Boolean;
+                result._boolValue = new BoolValue(false);
+                return result;
+            }
         }
     }
 }

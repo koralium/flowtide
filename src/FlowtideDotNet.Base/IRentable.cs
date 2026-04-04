@@ -12,10 +12,23 @@
 
 namespace FlowtideDotNet.Base
 {
+    /// <summary>
+    /// Represents an object or resource whose lifetime is managed through reference counting.
+    /// Used heavily to track memory allocations across the stream and return resources to pools.
+    /// </summary>
     public interface IRentable
     {
+        /// <summary>
+        /// Increases the reference count of the rentable resource by the specified amount.
+        /// Call this when the resource is passed to a new scope or consumer that will rely on it.
+        /// </summary>
+        /// <param name="count">The number of additional references to acquire.</param>
         void Rent(int count);
 
+        /// <summary>
+        /// Decreases the reference count of the rentable resource by one.
+        /// When the count reaches zero, the underlying resource may be disposed, freed, or returned to a pool.
+        /// </summary>
         void Return();
     }
 }

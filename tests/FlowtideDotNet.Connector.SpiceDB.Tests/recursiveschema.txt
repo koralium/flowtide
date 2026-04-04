@@ -17,3 +17,12 @@ definition organization {
 
   permission can_view = role_binding->can_view + parent->can_view
 }
+
+definition project {
+  relation role_binding: role_binding
+  relation organization: organization
+  relation all_can_read: user:*
+
+  permission can_view = role_binding->can_view + organization->can_view
+  permission can_view_wildcard = all_can_read + role_binding->can_view + organization->can_view
+}

@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Persistence
         /// Compacts the data, removes old versions of data that are no longer in use
         /// </summary>
         /// <returns></returns>
-        ValueTask CompactAsync();
+        ValueTask CompactAsync(ulong changesSinceLastCompact, ulong pageCount);
 
         /// <summary>
         /// Reset the store to an empty state
@@ -72,5 +72,12 @@ namespace FlowtideDotNet.Storage.Persistence
         /// <param name="key"></param>
         /// <param name="value"></param>
         ValueTask Write(long key, byte[] value);
+
+        /// <summary>
+        /// Clears the current state in preparation for a restore operation.
+        /// </summary>
+        /// <remarks>Call this method before initiating a restore to ensure that any existing data or
+        /// settings are reset. This helps prevent conflicts or inconsistencies during the restore process.</remarks>
+        void ClearForRestore();
     }
 }

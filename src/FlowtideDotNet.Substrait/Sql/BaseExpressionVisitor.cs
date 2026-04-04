@@ -92,7 +92,25 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitLike(like, state);
             }
+            if (expression is Expression.IsDistinctFrom isDistinctFrom)
+            {
+                return VisitIsDistinctFrom(isDistinctFrom, state);
+            }
+            if (expression is Expression.IsNotDistinctFrom isNotDistinctFrom)
+            {
+                return VisitIsNotDistinctFrom(isNotDistinctFrom, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitIsNotDistinctFrom(Expression.IsNotDistinctFrom isNotDistinctFrom, TState state)
+        {
+            throw new NotImplementedException($"The expression '{isNotDistinctFrom.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitIsDistinctFrom(Expression.IsDistinctFrom isDistinctFrom, TState state)
+        {
+            throw new NotImplementedException($"The expression '{isDistinctFrom.GetType().Name}' is not supported in SQL");
         }
 
         protected virtual TReturn VisitLike(Expression.Like like, TState state)

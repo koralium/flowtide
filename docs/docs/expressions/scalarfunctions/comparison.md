@@ -179,3 +179,29 @@ Returns the largest non-null value from a list of input expressions. If all valu
 ```sql
 SELECT greatest(column1, column2, column3) FROM ...
 ```
+
+## Is Distinct From
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_distinct_from)
+
+Returns if two values are not equal to each other. This function takes null values into consideration.
+So `null is distinct from null = false`.
+
+### SQL Usage
+
+```sql
+SELECT column1 is distinct from column2 FROM ...
+```
+
+## Is Not Distinct From
+
+[Substrait definition](https://substrait.io/extensions/functions_comparison/#is_not_distinct_from)
+
+Returns if two values are equal to each other. This function takes null values into consideration.
+So `null is not distinct from null = true`.
+
+### SQL Usage
+
+```sql
+SELECT column1 is not distinct from column2 FROM ...
+```

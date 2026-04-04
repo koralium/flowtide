@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 List<EventBatchWeighted> weightedBatches = new List<EventBatchWeighted>();
 
                 // Get current change tracking version
-                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection);
+                _state.Value.ChangeTrackingVersion = await SqlServerUtils.GetLatestChangeVersion(sqlConnection, readRelation.NamedTable.Names);
 
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 

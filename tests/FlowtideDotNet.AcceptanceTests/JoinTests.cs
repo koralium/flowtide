@@ -1440,7 +1440,6 @@ namespace FlowtideDotNet.AcceptanceTests
             });
             await WaitForUpdate();
 
-            var actualData = GetActualRows();
             AssertCurrentDataEqual(new[] { new { val = 1 } });
         }
     }

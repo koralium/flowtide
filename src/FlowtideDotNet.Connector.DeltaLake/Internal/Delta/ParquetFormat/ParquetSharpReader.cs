@@ -55,9 +55,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 Fields.Add(field);
 
                 string physicalName = field.Name;
-                if (field.Metadata.TryGetValue("delta.columnMapping.physicalName", out var mappingName))
+                if (field.PhysicalName != null)
                 {
-                    physicalName = ((JsonElement)mappingName)!.GetString()!;
+                    physicalName = field.PhysicalName;
                 }
                 if (table.PartitionColumns.Contains(field.Name))
                 {

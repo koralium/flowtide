@@ -27,7 +27,7 @@ Optional:
 To use the *SpiceDB Sink* add the following line to the *ConnectorManager*:
 
 ```csharp
-connectorManager.AddSpiceDbSink("regex pattern for tablename", new SpiceDbSinkOptions
+connectorManager.AddSpiceDbSink("spicedb", new SpiceDbSinkOptions
 {
     Channel = grpcChannel, // Grpc channel used to connect to SpiceDB
     GetMetadata = () =>
@@ -86,7 +86,7 @@ Filter conditions on resource type, relation and subject type will tried to be p
 Example on using the spicedb source:
 
 ```csharp
-connectorManager.AddSpiceDbSource("regex pattern for tablename", new SpiceDbSourceOptions
+connectorManager.AddSpiceDbSource("spicedb", new SpiceDbSourceOptions
 {
     Channel = grpcChannel,
     GetMetadata = () =>
@@ -99,7 +99,68 @@ connectorManager.AddSpiceDbSource("regex pattern for tablename", new SpiceDbSour
 });
 ```
 
-## Materialize/Denormalize Permissions
+The first argument is a plain table name string (case-insensitive). This is the name you use to reference the source table in SQL, for example `FROM spicedb`.
+
+## Materialize/Denormalize Permissions using `materialize_permission`
+
+The easiest way to materialize permissions is to use the `materialize_permission` SQL table function directly in your query.
+It is exposed as `{tablename}.materialize_permission(...)` where `{tablename}` matches the table name used when registering the source.
+The schema is automatically fetched from SpiceDB at query-plan build time, so no manual schema loading is required.
+
+The function signature is:
+
+```
+{tablename}.materialize_permission(
+    resource_type   STRING,   -- required: the resource type to expand (e.g. 'document')
+    relation        STRING,   -- required: the permission or relation to expand (e.g. 'view')
+    recurseAtStopType BOOL,   -- optional (default false): recurse into stop types before halting
+    stopType1       STRING,   -- optional: first stop type
+    stopType2       STRING,   -- optional: additional stop types ...
+)
+```
+
+The function returns rows with the following columns:
+
+| Column                | Description                               |
+|-----------------------|-------------------------------------------|
+| `subject_type`        | The subject type                          |
+| `subject_id`          | The subject identifier                    |
+| `subject_relation`    | The subject relation (if any)             |
+| `relation`            | The expanded relation/permission name     |
+| `resource_type`       | The resource type                         |
+| `resource_id`         | The resource identifier                   |
+
+:::note
+The function can only be used as a standalone `FROM` source; it cannot be placed inside a `JOIN`.
+:::
+
+Example — expand the `view` permission on `document`:
+
+```sql
+INSERT INTO outputtable
+SELECT
+    subject_type,
+    subject_id,
+    relation,
+    resource_type,
+    resource_id
+FROM spicedb.materialize_permission('document', 'view')
+```
+
+Example — expand `can_view` on `file`, stopping at `folder` but recursing into it:
+
+```sql
+INSERT INTO outputtable
+SELECT
+    subject_type,
+    subject_id,
+    relation,
+    resource_type,
+    resource_id
+FROM spicedb.materialize_permission('file', 'can_view', true, 'folder')
+```
+
+## Materialize/Denormalize Permissions using the plan API
 
 It is possible to denormalize the relations in a SpiceDB schema based on a permission in a type.
 This can be useful to add permissions into a search engine or similar where searching should be done based on the users permissions.
@@ -131,3 +192,51 @@ FROM authdata
 ");
 ```
 
+### Stop at types
+
+It is possible to send in an array of type names where the search should end.
+This can be useful in scenarios where say an entire company has access to a resource, it can be better to add the company identifier instead of every single user in the company.
+
+Example:
+
+```csharp
+var modelPlan = SpiceDbToFlowtide.Convert(schemaText, "{type name}", "{relation name}", "{input table name}", false, "company");
+```
+
+The relation name will still be the relation name you are filtering on but instead with the object type company and its identifier.
+
+It is also possible to allow recursions at stop types to create a flat list. This is useful in scenarios such as a folder
+structure:
+
+```
+definition folder {
+  relation user: user
+  relation parent: folder
+
+  permission can_view = user + parent->can_view 
+}
+
+definition file {
+    relation user: user
+    relation folder: folder
+
+    permission can_view = user + folder->can_view
+}
+```
+
+If one would use `folder` as a stop type at a folder structure like this: `/folder1/folder2/folder3/file.txt`.
+
+With the following command:
+
+```csharp
+var modelPlan = SpiceDbToFlowtide.Convert(schemaText, "file", "can_view", "{input table name}", true, "folder");
+```
+
+The result for `file.txt` would become:
+
+```
+/folder1
+/folder1/folder2
+/folder1/folder2/folder3
++ any users that have file access
+```

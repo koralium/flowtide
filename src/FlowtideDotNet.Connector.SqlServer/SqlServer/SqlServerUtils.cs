@@ -589,7 +589,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 stringBuilder.AppendLine($"WHERE {filters}");
             }
 
-            string orderBys = string.Join(", ", primaryKeys);
+            string orderBys = string.Join(", ", primaryKeys.Select(x => $"[{x}]"));
             stringBuilder.AppendLine(" ORDER BY " + orderBys);
             stringBuilder.AppendLine(" OFFSET 0 ROWS FETCH NEXT " + batchSize + " ROWS ONLY");
 
@@ -679,18 +679,6 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             stringBuilder.AppendLine(string.Join(" AND ", pkComparisons));
 
-            List<string> updateNotEquals = new List<string>();
-            for (int i = 1; i < dataTable.Columns.Count; i++)
-            {
-                var col = dataTable.Columns[i];
-                if (primaryKeys.Contains(col.ColumnName))
-                {
-                    continue;
-                }
-
-                updateNotEquals.Add($"src.[{col.ColumnName}] != tgt.[{col.ColumnName}]");
-            }
-
             // Add update statement
             // This statement only updates rows if there is a difference
             // Check that there are columns except primary keys
@@ -767,20 +755,41 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             return await reader.ReadAsync();
         }
 
-        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection)
+        public static async Task<long> GetLatestChangeVersion(SqlConnection sqlConnection, IReadOnlyList<string> table)
         {
-            using var cmd = sqlConnection.CreateCommand();
-            cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
-
-            using var reader = await cmd.ExecuteReaderAsync();
-
-            if (await reader.ReadAsync())
+            var originalDatabase = sqlConnection.Database;
+            var newDb = originalDatabase;
+            if (table.Count == 3)
             {
-                return reader.GetInt64(0);
+                newDb = table[0];
             }
-            else
+            try
             {
-                throw new InvalidOperationException("Could not get change tracking version from sql server.");
+                if (newDb != originalDatabase)
+                {
+                    await sqlConnection.ChangeDatabaseAsync(newDb);
+                }
+
+                using var cmd = sqlConnection.CreateCommand();
+                cmd.CommandText = "SELECT CHANGE_TRACKING_CURRENT_VERSION()";
+
+                using var reader = await cmd.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    return reader.GetInt64(0);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Could not get change tracking version from sql server.");
+                }
+            }
+            finally
+            {
+                if (newDb != originalDatabase)
+                {
+                    await sqlConnection.ChangeDatabaseAsync(originalDatabase);
+                }
             }
         }
 
@@ -1116,7 +1125,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     var val = mapFuncs[i](e);
                     if (val == null)
                     {
-                        val = DBNull.Value;
+                        row[columnNames[i]] = DBNull.Value;
                     }
                     else
                     {
@@ -1734,16 +1743,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             for (int i = 0; i < primaryKeys.Count; i++)
             {
                 string pkName = primaryKeys[i];
-                string pkValue = $"@{pkName}";
+                string pkValue = $"@pk{i}";
 
                 List<string> comparators = new List<string>();
-                comparators.Add("(" + pkName + " > " + pkValue + ")");
+                comparators.Add("([" + pkName + "] > " + pkValue + ")");
 
                 for (int k = i - 1; k >= 0; k--)
                 {
                     string innerPkName = primaryKeys[k];
-                    String innerPkValue = $"@{innerPkName}";
-                    comparators.Add("(" + innerPkName + " = " + innerPkValue + ")");
+                    String innerPkValue = $"@pk{k}";
+                    comparators.Add("([" + innerPkName + "] = " + innerPkValue + ")");
                 }
 
                 if (comparators.Count == 1)

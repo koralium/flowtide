@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>$(DefaultNetTargetFramework)</TargetFramework>
+	<TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
@@ -9,15 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.19.6" />
-	<PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.7.0-rc.1" />
-	<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.7.0" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+	<PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" />
+	<PackageReference Include="OpenTelemetry.Extensions.Hosting" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.ElasticSearch\FlowtideDotNet.Connector.ElasticSearch.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Storage.Azure\FlowtideDotNet.Storage.AzureBlobs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

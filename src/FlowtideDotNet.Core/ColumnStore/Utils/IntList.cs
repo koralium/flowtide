@@ -159,10 +159,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + 1);
             var span = AccessSpan;
-            var source = span.Slice(index, _length - index);
-            var dest = span.Slice(index + 1);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
-            //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
             span[index] = item;
             _length++;
         }
@@ -208,8 +205,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             EnsureCapacity(_length + count);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
-            var source = other.AccessSpan.Slice(start, count);
-            var dest = span.Slice(index);
             AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
             AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, typeCount);
             _length += count;
@@ -234,7 +229,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 var vecIndex = Vector256.Create(0, 1, 2, 3, 4, 5, 6, 7);
                 var vecStride = Vector256.Create(8);
 
-                fixed (int* spanPtr = span)
+                fixed (int* spanPtr = span.Slice(index))
                 {
                     var end = count - 8;
                     for (; i < end; i += 8)

@@ -35,6 +35,19 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task AggregateCountDistinct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    count(DISTINCT UserKey)
+                FROM orders o");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Count = Orders.Select(x => x.UserKey).Distinct().Count() } });
+        }
+
+        [Fact]
         public async Task AggregateCountWithGroup()
         {
             GenerateData();
@@ -382,7 +395,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    userkey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
+                    userKey, min(orderkey) FILTER (WHERE orderkey % 2 = 0)
                 FROM orders
                 GROUP BY userkey
                 ", ignoreSameDataCheck: true);

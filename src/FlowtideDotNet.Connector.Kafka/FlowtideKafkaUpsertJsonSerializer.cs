@@ -12,16 +12,21 @@
 
 using FlowtideDotNet.Connector.Kafka.Internal;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.Kafka
 {
     public class FlowtideKafkaUpsertJsonSerializer : IFlowtideKafkaValueSerializer
     {
         private StreamEventToJsonKafka? _streamEventToJsonKafka;
+        private List<string>? _names;
+        private int _keyIndex;
         public Task Initialize(WriteRelation writeRelation)
         {
+            _names = writeRelation.TableSchema.Names;
             int keyIndex = -1;
             for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
             {
@@ -31,6 +36,7 @@ namespace FlowtideDotNet.Connector.Kafka
                     break;
                 }
             }
+            _keyIndex = keyIndex;
             _streamEventToJsonKafka = new StreamEventToJsonKafka(keyIndex, writeRelation.TableSchema.Names);
             return Task.CompletedTask;
         }
@@ -45,6 +51,30 @@ namespace FlowtideDotNet.Connector.Kafka
 
             using MemoryStream memoryStream = new MemoryStream();
             _streamEventToJsonKafka.Write(memoryStream, streamEvent);
+            return memoryStream.ToArray();
+        }
+
+        public byte[]? Serialize(ColumnRowReference row, bool isDeleted)
+        {
+            Debug.Assert(_names != null);
+            if (isDeleted)
+            {
+                return null;
+            }
+            using MemoryStream memoryStream = new MemoryStream();
+            Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
+            jsonWriter.WriteStartObject();
+            for (int i = 0; i < row.referenceBatch.Columns.Count; i++)
+            {
+                if (i == _keyIndex)
+                {
+                    continue;
+                }
+                jsonWriter.WritePropertyName(_names[i]);
+                row.referenceBatch.Columns[i].WriteToJson(in jsonWriter, row.RowIndex);
+            }
+            jsonWriter.WriteEndObject();
+            jsonWriter.Flush();
             return memoryStream.ToArray();
         }
     }

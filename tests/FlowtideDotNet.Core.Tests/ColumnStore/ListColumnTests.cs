@@ -884,8 +884,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             for (int i = 0; i < 1000; i++)
             {
-                var isNull = r.Next(2) == 0;
-
                 var byteSize = r.Next(20);
                 byte[] data = new byte[byteSize];
                 r.NextBytes(data);

@@ -61,7 +61,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 throw new Exception("Not an IPC message");
             }
-            var length = BinaryPrimitives.ReadInt32LittleEndian(span.Slice(4));
             return GetRootAsMessage(in span, 8);
         }
 

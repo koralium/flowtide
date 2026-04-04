@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -102,7 +102,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                                     {
                                         if (_waitingForFullLoad)
                                         {
-                                            _deltaLoadTask = RunTask(FullLoadTrigger);
+                                            _deltaLoadTask = RunTask(FullLoadTrigger)
+                                              .ContinueWith((t) =>
+                                              {
+                                                  lock (_taskLock)
+                                                  {
+                                                      // Full load just happened, so we reset the flag
+                                                      _waitingForFullLoad = false;
+                                                      _deltaLoadTask = default;
+                                                  }
+                                              });
                                             _waitingForFullLoad = false;
                                         }
                                         else
@@ -136,7 +145,6 @@ namespace FlowtideDotNet.Core.Operators.Read
                         }
                         return Task.CompletedTask;
                     }
-
             }
             return Task.CompletedTask;
         }
@@ -328,6 +336,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             {
                 if (e.BatchData != null)
                 {
+                    e.BatchData.Rent(1);
                     PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(MemoryAllocator);
                     PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
                     PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
@@ -368,6 +377,10 @@ namespace FlowtideDotNet.Core.Operators.Read
                             {
                                 if (exists)
                                 {
+                                    if (CompareRowReference(input, current) == 0)
+                                    {
+                                        return (current, GenericWriteOperation.None);
+                                    }
                                     bool updated = false;
                                     if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
                                     {
@@ -457,6 +470,7 @@ namespace FlowtideDotNet.Core.Operators.Read
 
                     e.BatchData.Weights.Dispose();
                     e.BatchData.Iterations.Dispose();
+                    e.BatchData.Return();
                 }
 
                 if (e.Watermark != null)

@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.SqlServer;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
@@ -67,7 +68,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             conn.Open();
             var primaryKeys = SqlServerUtils.GetPrimaryKeys(conn, fullName).GetAwaiter().GetResult();
 
-            List<int> pkIndices = new List<int>();
             foreach (var pk in primaryKeys)
             {
                 var pkIndex = readRelation.BaseSchema.Names.FindIndex((s) => s.Equals(pk, StringComparison.OrdinalIgnoreCase));
@@ -75,11 +75,6 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 {
                     readRelation.BaseSchema.Names.Add(pk);
                     readRelation.BaseSchema.Struct!.Types.Add(new AnyType() { Nullable = false });
-                    pkIndices.Add(readRelation.BaseSchema.Names.Count - 1);
-                }
-                else
-                {
-                    pkIndices.Add(pkIndex);
                 }
             }
 
@@ -117,6 +112,7 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
                 FullLoadMaxRowCount = _options.FullLoadMaxRowCount,
                 FullReloadInterval = _options.FullReloadInterval,
                 ChangeTrackingInterval = _options.ChangeTrackingInterval,
+                ResiliencePipeline = _options.ResiliencePipeline,
             };
 
             var isChangeTrackingEnabled = await SqlServerUtils.IsChangeTrackingEnabled(connection, fullName);
@@ -165,6 +161,16 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             }
 
             return options;
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata(
+                 "mssql",
+                 readRelation.NamedTable.DotSeperated,
+                 includeSchema && _tableProvider.TryGetTableInformation(_options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names, out var tableMetadata)
+                     ? tableMetadata.Schema
+                     : default);
         }
     }
 }

@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.OpenFGA
             };
 
             var convertedSchema = OpenFgaToZanzibarSchema.Convert(authorizationModel);
-            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(convertedSchema, type, relation, stopTypes.ToHashSet());
+            var zanzibarRelations = ZanzibarSchemaToQueryPlan.GenerateQueryPlan(convertedSchema, type, relation, false, stopTypes.ToHashSet());
 
             var visitor = new ZanzibarToFlowtideVisitor(
                 inputTypeName,

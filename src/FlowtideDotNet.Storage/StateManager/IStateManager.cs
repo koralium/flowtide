@@ -17,9 +17,11 @@ namespace FlowtideDotNet.Storage.StateManager
     public interface IStateManager
     {
         bool Initialized { get; }
-        Task InitializeAsync(StreamVersionInformation? streamVersionInformation);
+        Task InitializeAsync(StreamVersionInformation? streamVersionInformation, long? checkpointVersion = null);
 
         long CurrentVersion { get; }
+
+        long LastCompletedCheckpointVersion { get; }
 
         IStateManagerClient GetOrCreateClient(string name, TagList tagList = default);
 

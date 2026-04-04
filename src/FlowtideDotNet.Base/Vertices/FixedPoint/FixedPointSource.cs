@@ -15,7 +15,7 @@ using FlowtideDotNet.Storage;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.FixedPoint
+namespace FlowtideDotNet.Base.Vertices
 {
     /// <summary>
     /// Represents a source for output from the fixed point computation.
@@ -154,6 +154,16 @@ namespace FlowtideDotNet.Base.Vertices.FixedPoint
 
         public void Resume()
         {
+        }
+
+        public virtual Task BeforeSaveCheckpoint()
+        {
+            return Task.CompletedTask;
+        }
+
+        public virtual Task OnFailure(long rollbackVersion)
+        {
+            return Task.CompletedTask;
         }
     }
 }

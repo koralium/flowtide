@@ -30,8 +30,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
         {
             if (disableChangeStream)
             {
-                _mongoDbContainer = new ContainerBuilder()
-                    .WithImage("mongo:7.0")
+                _mongoDbContainer = new ContainerBuilder("mongo:7.0")
                     // Use a different port since there was some issues when running multiple containers on the same port
                     .WithPortBinding(27018, false)
                     .WithCommand("--bind_ip_all", "--port", "27018")
@@ -40,8 +39,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Tests
             }
             else
             {
-                _mongoDbContainer = new ContainerBuilder()
-                    .WithImage("mongo:7.0")
+                _mongoDbContainer = new ContainerBuilder("mongo:7.0")
                     .WithPortBinding(27017, false)
                     .WithCommand("--replSet", "rs0", "--bind_ip_all", "--port", "27017")
                     .WithWaitStrategy(Wait.ForUnixContainer().UntilMessageIsLogged("Waiting for connections"))

@@ -103,7 +103,8 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
             IndexState? indexState = default;
             Properties? properties = null;
 
-            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState))
+            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState) &&
+                indexState.Mappings != null)
             {
                 properties = indexState.Mappings.Properties ?? new Properties();
             }
@@ -158,7 +159,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
 
             int batchCount = 0;
             using MemoryStream memoryStream = new MemoryStream();
-            Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
+            using Utf8JsonWriter jsonWriter = new Utf8JsonWriter(memoryStream);
             await foreach (var row in rows)
             {
                 cancellationToken.ThrowIfCancellationRequested();

@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set.Structs;
@@ -262,7 +262,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 outputWriter.Flush();
 #endif
 
-                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, new EventBatchData(outputColumns)));
+                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, batch));
             }
 #if DEBUG_WRITE
             Debug.Assert(allInput != null);

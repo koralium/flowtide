@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Comparers
 
         public int CompareTo(in T x, in T y)
         {
-            throw new NotImplementedException();
+            return x.CompareTo(y);
         }
 
         public int CompareTo(in T key, in PrimitiveListKeyContainer<T> keyContainer, in int index)

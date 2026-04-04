@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Collections;
@@ -261,7 +262,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
-                    var index = _nullCounter;
                     _nullCounter++;
                 }
                 else

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.StateManager.Internal;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -130,6 +131,12 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             }
 
             IntPtr bytesRead = pread(fileDescriptor, alignedBuffer.Buffer, (IntPtr)alignedLength, (IntPtr)position);
+
+            if(bytesRead.ToInt64() < 0)
+            {
+                int errorCode = Marshal.GetLastWin32Error();
+                throw new InvalidOperationException($"Failed to read data. {errorCode}: {new System.ComponentModel.Win32Exception(errorCode).Message}");
+            }
         }
 
         public void Flush()
@@ -187,7 +194,7 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
             {
                 ReadIntoAlignedBuffer_NoLock(position, length);
 
-                return serializer.Deserialize(alignedBuffer.Memory, length);
+                return serializer.Deserialize(new ReadOnlySequence<byte>(alignedBuffer.Memory), length);
             }
             throw new NotImplementedException();
         }

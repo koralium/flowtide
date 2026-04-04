@@ -25,6 +25,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public List<Project> Projects { get; private set; }
         public List<ProjectMember> ProjectMembers { get; private set; }
 
+        public List<GraphNode> GraphNodes { get; set; }
+
         public DatasetGenerator(MockDatabase mockDatabase)
         {
             this.mockDatabase = mockDatabase;
@@ -33,6 +35,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Companies = new List<Company>();
             Projects = new List<Project>();
             ProjectMembers = new List<ProjectMember>();
+            GraphNodes = new List<GraphNode>();
 
             Randomizer.Seed = new Random(8675309);
             mockDatabase.GetOrCreateTable<Company>("companies");
@@ -40,6 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockDatabase.GetOrCreateTable<Order>("orders");
             mockDatabase.GetOrCreateTable<Project>("projects");
             mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
         }
 
         public void Generate(int count = 1000, int seed = 8675309)
@@ -150,6 +154,32 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
             mockTable.Delete(new List<Order>() { order });
+        }
+
+        public void AddOrUpdateGraphNode(GraphNode graphNode)
+        {
+            var index = GraphNodes.FindIndex(x => x.Id == graphNode.Id);
+
+            if (index >= 0)
+            {
+                GraphNodes[index] = graphNode;
+            }
+            else
+            {
+                GraphNodes.Add(graphNode);
+            }
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.AddOrUpdate(new List<GraphNode>() { graphNode });
+        }
+
+        public void DeleteGraphNode(GraphNode graphNode)
+        {
+            var index = GraphNodes.FindIndex(x => x.Id == graphNode.Id);
+
+            GraphNodes.RemoveAt(index);
+
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.Delete(new List<GraphNode>() { graphNode });
         }
 
         public void GenerateUsers(int count)
@@ -268,6 +298,30 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ProjectMembers.AddRange(newProjectMembers);
             var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
             mockTable.AddOrUpdate(newProjectMembers);
+        }
+
+        public void GenerateGraphNodes(int count)
+        {
+            var testGraphNodes = new Faker<GraphNode>()
+                .RuleFor(x => x.Id, (f, u) => f.UniqueIndex)
+                .RuleFor(x => x.ParentId, (f, u) =>
+                {
+                    if (GraphNodes.Count == 0)
+                    {
+                        return null;
+                    }
+                    var parentGraphNode = f.PickRandom(GraphNodes);
+                    return parentGraphNode.Id;
+                })
+                .FinishWith((f, g) =>
+                {
+                    GraphNodes.Add(g);
+                });
+
+            var newGraphNodes = testGraphNodes.Generate(count);
+            var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
+            mockTable.AddOrUpdate(newGraphNodes);
+
         }
     }
 }

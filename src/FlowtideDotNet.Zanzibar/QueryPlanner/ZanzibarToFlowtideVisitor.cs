@@ -740,5 +740,31 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 RelationId = relationReference.ReferenceId
             };
         }
+
+        public override Relation VisitZanzibarCopyResourceToSubjectDistinct(ZanzibarCopyResourceToSubjectDistinct copyResourceToSubject, object? state)
+        {
+            var input = copyResourceToSubject.Input.Accept(this, state);
+
+            var projectRel = new ProjectRelation()
+            {
+                Input = input,
+                Emit = new List<int>()
+                {
+                    ObjectTypeColumn,
+                    ObjectIdColumn,
+                    UserRelationColumn,
+                    RelationColumn,
+                    ObjectTypeColumn,
+                    ObjectIdColumn
+                },
+                Expressions = new List<Expression>()
+            };
+
+            return new SetRelation()
+            {
+                Inputs = [projectRel],
+                Operation = SetOperation.UnionDistinct
+            };
+        }
     }
 }

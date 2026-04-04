@@ -35,6 +35,8 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<Company> Companies => flowtideTestStream.Companies;
         public IReadOnlyList<Project> Projects => flowtideTestStream.Projects;
         public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
+
+        public IReadOnlyList<GraphNode> GraphNodes => flowtideTestStream.GraphNodes;
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
@@ -93,6 +95,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.GenerateProjectMembers(count);
         }
 
+        protected void GenerateGraphNodes(int count = 1000)
+        {
+            flowtideTestStream.GenerateGraphNodes(count);
+        }
+
         protected void AddOrUpdateCompany(Company company)
         {
             flowtideTestStream.AddOrUpdateCompany(company);
@@ -106,6 +113,21 @@ namespace FlowtideDotNet.AcceptanceTests
         protected Task Crash()
         {
             return flowtideTestStream.Crash();
+        }
+
+        protected Task StopMockIngressAutocompleteDependencies()
+        {
+            return flowtideTestStream.StopMockIngressAutocompleteDependencies();
+        }
+
+        protected Task MockIngressFailAndRollback(long restoreVersion)
+        {
+            return flowtideTestStream.MockIngressFailAndRollback(restoreVersion);
+        }
+
+        protected Task MockIngressSetDependenciesDone()
+        {
+            return flowtideTestStream.MockIngressSetDependenciesDone();
         }
 
         protected void EgressCrashOnCheckpoint(int times)
@@ -143,12 +165,28 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.DeleteOrder(order);
         }
 
-        public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper)
+        public void AddOrUpdateGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.AddOrUpdateGraphNode(graphNode);
+        }
+
+        public void DeleteGraphNode(Entities.GraphNode graphNode)
+        {
+            flowtideTestStream.DeleteGraphNode(graphNode);
+        }
+
+        public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)
         {
             var baseType = this.GetType();
             var testName = GetTestClassName(testOutputHelper);
-            flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
-            //flowtideTestStream.CachePageCount = 10;
+            if (usePersistentStorage)
+            {
+                flowtideTestStream = new PersistentFlowtideTestStream($"{baseType.Name}/{testName}");
+            }
+            else
+            {
+                flowtideTestStream = new FlowtideTestStream($"{baseType.Name}/{testName}");
+            }
         }
 
         private static string GetTestClassName(ITestOutputHelper output)
@@ -170,6 +208,11 @@ namespace FlowtideDotNet.AcceptanceTests
         public Task InitializeAsync()
         {
             return Task.CompletedTask;
+        }
+
+        public Task DeleteStream()
+        {
+            return flowtideTestStream.DeleteStream();
         }
     }
 }

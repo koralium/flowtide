@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         private static StringValue _keyValue = new StringValue("key");
         private static StringValue _valueValue = new StringValue("value");
 
-        private static MethodInfo _unnestMethod = GetUnnestMethod();
+        private static readonly MethodInfo _unnestMethod = GetUnnestMethod();
         private static MethodInfo GetUnnestMethod()
         {
             var method = typeof(UnnestFunction).GetMethod(nameof(DoUnnest), BindingFlags.Static | BindingFlags.Public);
@@ -64,8 +64,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         public static IEnumerable<EventBatchWeighted> DoUnnest<T>(T value, IMemoryAllocator memoryAllocator)
             where T : IDataValue
         {
-            List<RowEvent> output = new List<RowEvent>();
-
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryAllocator);
             IColumn[] outputColumns = [Column.Create(memoryAllocator)];

@@ -40,14 +40,7 @@ namespace AspireSamples.ElasticsearchExample
             var dataInsert = DataInsertResource.AddDataInsert(builder, "data-insert",
                 async (logger, statusUpdate, resource, token) =>
                 {
-                    var envVariables = await resource.GetEnvironmentVariableValuesAsync();
-
                     int initialCount = 100_000;
-
-                    if (envVariables.TryGetValue("initialCount", out var initialCountStr))
-                    {
-                        initialCount = int.Parse(initialCountStr);
-                    }
 
                     // Initial data insert and table creation
                     var connectionString = await sqldb1.Resource.GetConnectionStringAsync();
@@ -67,11 +60,11 @@ namespace AspireSamples.ElasticsearchExample
                     var migrationOperations = ctx.GetMigrationOperations();
 
 
-                    SqlConnection sqlConnection = new SqlConnection(connectionString);
+                    using SqlConnection sqlConnection = new SqlConnection(connectionString);
                     await sqlConnection.OpenAsync();
 
                     // Create database test
-                    SqlCommand sqlCommand = new SqlCommand(@"
+                    using SqlCommand sqlCommand = new SqlCommand(@"
                     IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = N'test')
                     BEGIN
                       CREATE DATABASE test;

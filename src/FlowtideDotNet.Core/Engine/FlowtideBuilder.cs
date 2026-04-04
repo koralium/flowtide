@@ -12,14 +12,18 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
+using FlowtideDotNet.Base.Utils;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
+using FlowtideDotNet.Core.Lineage;
+using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Engine.FailureStrategies;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
 using System.Security.Cryptography;
@@ -41,8 +45,10 @@ namespace FlowtideDotNet.Core.Engine
         private TaskScheduler? _taskScheduler;
         private bool _useColumnStore = true;
         private string _version = "";
-        private bool _useHashPlanAsVersion = false;
+        private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckFailureRegistered = false;
+        private readonly string _streamName;
+        private OpenLineageHttpOptions? _openLineageHttpOptions;
 
         public FlowtideBuilder(string streamName)
         {
@@ -50,6 +56,7 @@ namespace FlowtideDotNet.Core.Engine
             _functionsRegister = new FunctionsRegister();
             // Register default functions directly
             BuiltinFunctions.RegisterFunctions(_functionsRegister);
+            this._streamName = streamName;
         }
 
         public IFunctionsRegister FunctionsRegister => _functionsRegister;
@@ -204,9 +211,9 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        public FlowtideBuilder SetHashPlanAsVersion()
+        public FlowtideBuilder SetVersionParts(IEnumerable<(string?, bool?)> versionParts)
         {
-            _useHashPlanAsVersion = true;
+            _versionParts = [.. versionParts];
             return this;
         }
 
@@ -230,6 +237,12 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        public FlowtideBuilder WithOpenLineageHttp(OpenLineageHttpOptions options)
+        {
+            _openLineageHttpOptions = options;
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -245,7 +258,7 @@ namespace FlowtideDotNet.Core.Engine
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
-                return Convert.ToBase64String(hashBytes);
+                return Base62.Encode(hashBytes);
             }
         }
 
@@ -262,9 +275,30 @@ namespace FlowtideDotNet.Core.Engine
 
             var hash = ComputePlanHash();
 
-            if (_useHashPlanAsVersion)
+            if (_versionParts?.Count > 0)
             {
-                SetVersion(hash);
+                StringBuilder sb = new();
+                foreach (var (stringVersion, addHashVersion) in _versionParts)
+                {
+                    string? part = null;
+                    if (!string.IsNullOrEmpty(stringVersion))
+                    {
+                        part = stringVersion;
+                    }
+                    else if (addHashVersion ?? false)
+                    {
+                        part = hash;
+                    }
+
+                    if (sb.Length > 0)
+                    {
+                        sb.Append('-');
+                    }
+
+                    sb.Append(part);
+                }
+
+                SetVersion(sb.ToString());
             }
 
             dataflowStreamBuilder.SetVersionInformation(hash, _version);
@@ -287,6 +321,11 @@ namespace FlowtideDotNet.Core.Engine
                 _getTimestampInterval,
                 _useColumnStore,
                 _taskScheduler);
+
+            if (_connectorManager != null && _openLineageHttpOptions != null)
+            {
+                WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageHttpOptions));
+            }
 
             // Set the notification receiver to the function register to allow check functions get access to it.
             _functionsRegister.SetCheckNotificationReceiver(dataflowStreamBuilder.StreamNotificationReceiver);

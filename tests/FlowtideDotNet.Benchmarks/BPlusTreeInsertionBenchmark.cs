@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
@@ -30,12 +29,10 @@ namespace DifferntialCompute.Benchmarks
         [GlobalSetup]
         public void GlobalSetup()
         {
-            var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
-            localStorage.Initialize("./data/temp");
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1_000_000
-            }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
+            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
 
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 

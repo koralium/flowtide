@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.SqlServer.Exceptions;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text;
 
 namespace FlowtideDotNet.Storage.SqlServer.Tests
@@ -33,7 +34,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         {
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}"));
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}", NullLoggerFactory.Instance));
             var pageId = 1;
 
             var session = storage.CreateSession();
@@ -54,7 +55,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         {
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}"));
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(SessionPagesArePersistedOnCommit)}", NullLoggerFactory.Instance));
             var session = storage.CreateSession();
             await Assert.ThrowsAsync<PageNotFoundException>(async () =>
             {
@@ -70,7 +71,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(SessionCommitWaitsForAllWrites)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
             var session = storage.CreateSession();
             var streamKey = await GetStreamKey(name, schema);
 
@@ -108,7 +109,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
 
             var pageId = 2;
 
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(CheckpointWritesStoragePages)}"));
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(CheckpointWritesStoragePages)}", NullLoggerFactory.Instance));
             await storage.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
             await storage.CheckpointAsync([], false);
 
@@ -125,7 +126,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         {
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}"));
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}", NullLoggerFactory.Instance));
 
             var hasPage = storage.TryGetValue(1, out var page);
             Assert.False(hasPage);
@@ -140,7 +141,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var pageId = 2;
-            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}"));
+            await storage.InitializeAsync(new StorageInitializationMetadata($"test_{nameof(StorageTryGetValueReturnsFalseForNonExistingPage)}", NullLoggerFactory.Instance));
             var initialVersion = storage.CurrentVersion;
 
             await storage.Write(1, Encoding.UTF8.GetBytes(pageId.ToString()));
@@ -163,7 +164,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
         public async Task StorageInitializeSetsCurrentVersion(string schema)
         {
             var settings = GetSettings(schema, 1);
-            var metadata = new StorageInitializationMetadata($"test_{nameof(StorageInitializeSetsCurrentVersion)}");
+            var metadata = new StorageInitializationMetadata($"test_{nameof(StorageInitializeSetsCurrentVersion)}", NullLoggerFactory.Instance);
             var storage = new SqlServerPersistentStorage(settings);
 
             await storage.InitializeAsync(metadata);
@@ -194,11 +195,11 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             StorageInitializationMetadata metadata;
             if (!string.IsNullOrWhiteSpace(version))
             {
-                metadata = new StorageInitializationMetadata($"{name}", new("", version));
+                metadata = new StorageInitializationMetadata($"{name}", NullLoggerFactory.Instance, new("", version));
             }
             else
             {
-                metadata = new StorageInitializationMetadata(name);
+                metadata = new StorageInitializationMetadata(name, NullLoggerFactory.Instance);
             }
 
             var storage = new SqlServerPersistentStorage(settings);
@@ -229,7 +230,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var settings = GetSettings(schema);
 
             var name = $"test_{nameof(StorageInitializeRemovesUnsuccessfulPageVersions)}";
-            var metadata = new StorageInitializationMetadata(name);
+            var metadata = new StorageInitializationMetadata(name, NullLoggerFactory.Instance);
             var storage = new SqlServerPersistentStorage(settings);
 
             await storage.InitializeAsync(metadata);
@@ -277,7 +278,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(StorageCompactRemovesOldVersions)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
             var streamKey = await GetStreamKey(name, schema);
 
             var pageId = 2;
@@ -286,7 +287,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             await storage.Write(pageId, Encoding.UTF8.GetBytes(pageId.ToString()));
             await storage.CheckpointAsync([], false);
 
-            await storage.CompactAsync();
+            await storage.CompactAsync(0, 0);
 
             var hasPage = storage.TryGetValue(pageId, out var page);
 
@@ -310,7 +311,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(SessionReadReturnsWrittenData)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
             var session = storage.CreateSession();
 
             var pageId = 2;
@@ -332,7 +333,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(StorageReadReturnsWrittenData)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
 
             var pageId = 2;
             var data = Guid.NewGuid().ToByteArray();
@@ -355,7 +356,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(InitializeWaitsForSessionBackgroundTasksAndResetsCache)}";
-            var initMetadata = new StorageInitializationMetadata(name);
+            var initMetadata = new StorageInitializationMetadata(name, NullLoggerFactory.Instance);
 
             await storage.InitializeAsync(initMetadata);
             var streamKey = await GetStreamKey(name, schema);
@@ -398,7 +399,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(ReadingDeletedPageThrows)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
 
             var session = storage.CreateSession();
 
@@ -421,7 +422,7 @@ namespace FlowtideDotNet.Storage.SqlServer.Tests
             var storage = new SqlServerPersistentStorage(GetSettings(schema));
 
             var name = $"test_{nameof(DeletedAndRestoredPageIsReadable)}";
-            await storage.InitializeAsync(new StorageInitializationMetadata(name));
+            await storage.InitializeAsync(new StorageInitializationMetadata(name, NullLoggerFactory.Instance));
 
             var session = storage.CreateSession();
 

@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.Qdrant.Tests
 
         public async Task InitializeAsync()
         {
-            var builder = new QdrantBuilder();
+            var builder = new QdrantBuilder("qdrant/qdrant:v1.13.4");
             Container = builder.Build();
             await Container.StartAsync();
 

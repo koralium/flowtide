@@ -17,32 +17,25 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
-    internal class ExistingRowComparer
+    public class ExistingRowComparer
     {
         private readonly DataValueContainer _leftContainer;
         private readonly DataValueContainer _rightContainer;
-        private readonly List<KeyValuePair<int, ReferenceSegment?>> leftColumns;
-        private readonly List<KeyValuePair<int, ReferenceSegment?>> rightColumns;
+        private readonly int _columnCount;
 
-        public ExistingRowComparer(List<KeyValuePair<int, ReferenceSegment?>> leftColumns, List<KeyValuePair<int, ReferenceSegment?>> rightColumns)
+        public ExistingRowComparer(int columnCount)
         {
-            this.leftColumns = leftColumns;
-            this.rightColumns = rightColumns;
             _leftContainer = new DataValueContainer();
             _rightContainer = new DataValueContainer();
-
-            if (leftColumns.Count != rightColumns.Count)
-            {
-                throw new ArgumentException("The number of columns in the left and right columns must be the same.");
-            }
+            this._columnCount = columnCount;
         }
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
-            for (int i = 0; i < leftColumns.Count; i++)
+            for (int i = 0; i < _columnCount; i++)
             {
-                x.referenceBatch.Columns[leftColumns[i].Key].GetValueAt(x.RowIndex, _leftContainer, leftColumns[i].Value);
-                y.referenceBatch.Columns[rightColumns[i].Key].GetValueAt(y.RowIndex, _rightContainer, rightColumns[i].Value);
+                x.referenceBatch.Columns[i].GetValueAt(x.RowIndex, _leftContainer, default);
+                y.referenceBatch.Columns[i].GetValueAt(y.RowIndex, _rightContainer, default);
                 int compareVal = DataValueComparer.CompareTo(_leftContainer, _rightContainer);
 
                 if (compareVal != 0)

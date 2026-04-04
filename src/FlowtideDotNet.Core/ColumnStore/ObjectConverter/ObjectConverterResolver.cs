@@ -45,6 +45,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter
                 new ObjectResolver(),
                 new DictionaryResolver(),
                 new ListResolver(),
+                new JsonElementResolver(),
                 new UnionResolver(),
             };
         }

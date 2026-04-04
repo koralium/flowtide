@@ -173,6 +173,23 @@ namespace FlowtideDotNet.SqlServer.SqlServer
             return new FilterResult($"'{stringLiteral.Value}'", false);
         }
 
+        public override FilterResult? VisitCastExpression(CastExpression castExpression, object? state)
+        {
+            var inner = castExpression.Expression.Accept(this, state);
+
+            if (inner == null)
+            {
+                return null;
+            }
+
+            if (castExpression.Type.Type == Substrait.Type.SubstraitType.TimestampTz)
+            {
+                return new FilterResult($"CAST({inner.Content} AS DATETIME)", false);
+            }
+
+            return default;
+        }
+
         private FilterResult? VisitConcatFunction(ScalarFunction concatFunction, object? state)
         {
             List<string> resolved = new List<string>();

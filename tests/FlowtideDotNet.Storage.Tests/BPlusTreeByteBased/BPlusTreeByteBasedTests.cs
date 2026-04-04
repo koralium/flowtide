@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
@@ -27,8 +26,6 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 
         private async Task<IBPlusTree<KeyValuePair<long, long>, string, ListKeyContainerWithSize, ListValueContainer<string>>> Init(string testName)
         {
-            var localStorage = new LocalStorageNamedDeviceFactory(deleteOnClose: true);
-            localStorage.Initialize($"./data/temp/{testName}");
             var stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1000000,
@@ -36,7 +33,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                 {
                     DirectoryPath = $"./data/temp/{testName}",
                 })
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
