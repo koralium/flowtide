@@ -24,6 +24,7 @@
     <Project Path="src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Permify/FlowtideDotNet.Connector.Permify.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.Postgresql/FlowtideDotNet.Connector.Postgresql.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj" />
