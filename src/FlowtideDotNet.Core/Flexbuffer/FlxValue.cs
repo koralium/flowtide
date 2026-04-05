@@ -52,7 +52,7 @@ namespace FlexBuffers
         {
             if (bytes.Length < 3)
             {
-                throw new InvalidOperationException($"Invalid buffer {bytes}");
+                throw new InvalidOperationException($"Invalid buffer length: {bytes.Length}");
             }
 
             var byteWidth = bytes[bytes.Length - 1];
