@@ -155,14 +155,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             _remoteStorage = remoteStorage;
             _maxSizeBytes = maxSizeBytes;
             this._metricValues = metricValues;
-            if (evictionInterval.HasValue)
-            {
-                _evictionInterval = evictionInterval.Value;
-            }
-            else
-            {
-                _evictionInterval = TimeSpan.FromSeconds(5);
-            }
+            _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(5);
             if (timeProvider != null)
             {
                 _timeProvider = timeProvider;
