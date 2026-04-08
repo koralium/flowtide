@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
+        public virtual Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {

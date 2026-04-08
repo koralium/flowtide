@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -151,6 +151,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 else
                 {
                     _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
+                    checkpointRegistryFileReader.Complete();
                 }
             }
             
@@ -239,6 +240,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             _currentCheckpointVersion = lastVersion.Version;
             _checkpointVersion = lastVersion.Version + 1;
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, false);
         }
 
         public async Task RecoverTo(long version, CancellationToken cancellationToken)
@@ -276,6 +278,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             await ReadCheckpointFiles(checkpointVersions);
             _currentCheckpointVersion = version;
             _checkpointVersion = version + 1;
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, false);
         }
 
         private async Task ReadCheckpointFiles(List<CheckpointVersion> checkpointFiles)
@@ -450,12 +453,45 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// <exception cref="InvalidOperationException">Thrown if the checkpoint has not been started before calling this method.</exception>
         public async Task WriteSnapshotCheckpoint()
         {
-            if (_writeTasks == null)
+            if (_writeTasks != null)
             {
-                throw new InvalidOperationException("Checkpoint has not been started.");
+                _channel.Writer.Complete();
+                await Task.WhenAll(_writeTasks);
             }
-            _channel.Writer.Complete();
-            await Task.WhenAll(_writeTasks);
+
+            // Process deleted pages to ensure file statistics are correctly updated
+            // and deleted pages are removed from `_pageFileLocations` before a snapshot.
+            lock (_deletedPagesLock)
+            {
+                if (_deletedPages.Count > 0)
+                {
+                    lock (_modifiedFileIdsLock)
+                    {
+                        foreach (var page in _deletedPages)
+                        {
+                            // In a snapshot, we don't output deleted pages to the checkpoint file
+                            // as they are inherently not in the active UpsertPages dict.
+                            if (_pageFileLocations.TryRemove(page, out var location))
+                            {
+                                if (_fileInformations.TryGetValue(location.FileId, out var fileInfo))
+                                {
+                                    fileInfo.AddNonActivePage();
+                                    fileInfo.AddDeletedSize(location.Size);
+                                    _modifiedFileIds.Add(location.FileId);
+
+                                    // If the file has all pages deleted and it is not a bundled file delete id
+                                    if (fileInfo.PageCount == fileInfo.NonActivePageCount &&
+                                        !IsBundleFile(fileInfo.FileId))
+                                    {
+                                        _deletedFileIds.Add(location.FileId);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _deletedPages.Clear();
+                }
+            }
 
             lock (_checkpointFileLock)
             {
@@ -476,6 +512,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         _fileInformations.TryRemove(deletedFileId, out _);
                     }
                     _deletedFileIds.Clear();
+                    _modifiedFileIds.Clear();
 
                     // Write the file information of all active files
                     foreach (var file in _fileInformations)
@@ -539,6 +576,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _lastSnapshotVersion = _checkpointVersion;
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, false);
 
             lock (_checkpointFileLock)
             {
@@ -566,7 +604,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private bool IsBundleFile(ulong fileId)
         {
-            return (fileId & ~(1UL << 63)) > 0;
+            return (fileId & (1UL << 63)) > 0;
         }
         
         public async Task FinishCheckpoint(MergedBlobFileWriter? mergedFile)
@@ -602,7 +640,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         {
                             _newCheckpoint.AddDeletedPageId(page);
 
-                            if (_pageFileLocations.TryGetValue(page, out var location))
+                            if (_pageFileLocations.TryRemove(page, out var location))
                             {
                                 if (_fileInformations.TryGetValue(location.FileId, out var fileInfo))
                                 {
@@ -621,6 +659,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             }
                         }
                     }
+                    _deletedPages.Clear();
                 }
             }
 
@@ -667,6 +706,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             _fileInformations.TryRemove(deletedFileId, out _);
                         }
                         _deletedFileIds.Clear();
+                        _modifiedFileIds.Clear();
                     }
                 }
 
@@ -713,6 +753,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             _currentCheckpointVersion = _checkpointVersion;
             _checkpointVersion++;
+            Volatile.Write(ref _modifiedSinceLastCheckpoint, false);
 
             lock (_checkpointFileLock)
             {
@@ -790,6 +831,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         _fileInformations.TryRemove(deletedFileId, out _);
                     }
                     _deletedFileIds.Clear();
+                    _modifiedFileIds.Clear();
                 }
             }
 
@@ -1100,5 +1142,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             await DisposeAsync(true);
             GC.SuppressFinalize(this);
         }
+
+        #region Testing Properties
+        // For Testing Only
+        internal HashSet<long> DeletedPages_Test => _deletedPages;
+        internal ConcurrentDictionary<long, PageFileLocation> PageFileLocations_Test => _pageFileLocations;
+        internal bool IsBundleFile_Test(ulong fileId) => IsBundleFile(fileId);
+        internal void ForceSnapshotNext_Test() => _writeSnapshotCheckpoint = true;
+        internal BlobNewCheckpoint NewCheckpoint_Test => _newCheckpoint;
+        internal CheckpointRegistryFile CheckpointRegistryFile_Test => _checkpointRegistryFile;
+        internal bool ModifiedSinceLastCheckpoint_Test => _modifiedSinceLastCheckpoint;
+        internal HashSet<ulong> ModifiedFileIds_Test => _modifiedFileIds;
+        #endregion
     }
 }
