@@ -172,6 +172,37 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
+        public async Task TestRecoverTo_ClearsStalePageLocations()
+        {
+            var provider = new MemoryFileProvider();
+            var allocator = GlobalMemoryManager.Instance;
+            var pool = MemoryPool<byte>.Shared;
+            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+
+            // Write page 501 and checkpoint (version 1)
+            var page1 = new MockPagesFile(allocator, 501);
+            await handler.EnqueueFileAsync(page1);
+            await handler.FinishCheckpoint(null);
+
+            // Write page 502 and checkpoint (version 2)
+            var page2 = new MockPagesFile(allocator, 502);
+            await handler.EnqueueFileAsync(page2);
+            await handler.FinishCheckpoint(null);
+
+            // Both pages should exist before recovery
+            Assert.True(handler.PageFileLocations_Test.ContainsKey(501));
+            Assert.True(handler.PageFileLocations_Test.ContainsKey(502));
+
+            // Recover to version 1 — page 502 should no longer exist
+            await handler.RecoverTo(1, default);
+
+            Assert.True(handler.PageFileLocations_Test.ContainsKey(501),
+                "Page 501 should exist after recovering to version 1");
+            Assert.False(handler.PageFileLocations_Test.ContainsKey(502),
+                "Page 502 should NOT exist after recovering to version 1 — stale entry leaked from version 2");
+        }
+
+        [Fact]
         public async Task Test_PipelineReader_LeaksMemory_Fails()
         {
             var provider = new MockLeakStorageProvider();

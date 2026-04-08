@@ -235,6 +235,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _checkpointRegistryFile.Clear();
             _checkpointRegistryFile.AddCheckpointVersions(checkpointVersions);
 
+            // Clear all in-memory state before replaying checkpoints
+            _pageFileLocations.Clear();
+            _fileInformations.Clear();
+            deletedFilesList.Clear();
+            lock (_deletedPagesLock) { _deletedPages.Clear(); }
+            lock (_modifiedFileIdsLock) { _modifiedFileIds.Clear(); _deletedFileIds.Clear(); }
+
             await ReadCheckpointFiles(checkpointVersions);
             var lastVersion = checkpointVersions[checkpointVersions.Count - 1];
 
@@ -274,6 +281,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 throw new InvalidOperationException($"Checkpoint file with version {version} not found for recovery.");
             }
+
+            // Clear all in-memory state before replaying checkpoints
+            _pageFileLocations.Clear();
+            _fileInformations.Clear();
+            deletedFilesList.Clear();
+            lock (_deletedPagesLock) { _deletedPages.Clear(); }
+            lock (_modifiedFileIdsLock) { _modifiedFileIds.Clear(); _deletedFileIds.Clear(); }
 
             await ReadCheckpointFiles(checkpointVersions);
             _currentCheckpointVersion = version;
@@ -316,23 +330,35 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 {
                     var fileId = (1UL << 63) | (ulong)checkpointFile.Version;
                     var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
-                    var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
-                    ReadCheckpointFile(checkpointFile, checkpointData);
-                    dataFileReader.Complete();
+                    try
+                    {
+                        var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
+                        ReadCheckpointFile(checkpointFile, checkpointData);
+                    }
+                    finally
+                    {
+                        dataFileReader.Complete();
+                    }
                 }
                 else
                 {
                     var fileReader = await _fileProvider.ReadCheckpointFileAsync(new CheckpointId((ulong)checkpointFile.Version, checkpointFile.IsSnapshot));
 
-                    // Read all content of the file
-                    ReadResult readResult;
-                    do
+                    try
                     {
-                        readResult = await fileReader.ReadAsync();
-                        fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-                    } while (!readResult.IsCompleted);
-                    ReadCheckpointFile(checkpointFile, readResult.Buffer);
-                    fileReader.Complete();
+                        // Read all content of the file
+                        ReadResult readResult;
+                        do
+                        {
+                            readResult = await fileReader.ReadAsync();
+                            fileReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                        } while (!readResult.IsCompleted);
+                        ReadCheckpointFile(checkpointFile, readResult.Buffer);
+                    }
+                    finally
+                    {
+                        fileReader.Complete();
+                    }
                 }
                 
             }
@@ -1129,9 +1155,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 _newCheckpoint.Dispose();
                 _checkpointRegistryFile.Dispose();
-
-                disposedValue = true;
-
 
                 disposedValue = true;
             }
