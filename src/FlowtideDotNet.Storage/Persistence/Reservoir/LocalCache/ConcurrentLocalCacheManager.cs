@@ -508,7 +508,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                                     _metricValues.AddPersistentBytesRead(state.Size);
 
                                     var reader = await _remoteStorage.ReadDataFileAsync(state.FileId, state.Size, _cts.Token);
-                                    await _localCache.WriteDataFileAsync(state.FileId, state.ExpectedCrc64, state.Size, false, reader, _cts.Token);
+                                    try
+                                    {
+                                        await _localCache.WriteDataFileAsync(state.FileId, state.ExpectedCrc64, state.Size, false, reader, _cts.Token);
+                                    }
+                                    finally
+                                    {
+                                        await reader.CompleteAsync();
+                                    }
 
                                     state.DownloadTcs.TrySetResult();
                                 }
