@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
     internal class LocalCacheProvider : IReservoirStorageProvider
     {
         private readonly IReservoirStorageProvider _remoteStorage;
-        private LocalCacheManager _localCacheManager;
+        private ConcurrentLocalCacheManager _localCacheManager;
         private LocalCacheMetricValues _metricValues;
         private Meter? _meter;
         private TagList _metricTagList;
@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             long maxCacheSizeBytes)
         {
             _metricValues = new LocalCacheMetricValues();
-            _localCacheManager = new LocalCacheManager(blobPersistentStorage, localCache, remoteStorage, maxCacheSizeBytes, _metricValues);
+            _localCacheManager = new  ConcurrentLocalCacheManager(blobPersistentStorage, localCache, remoteStorage, maxCacheSizeBytes, _metricValues);
             _remoteStorage = remoteStorage;
         }
 
