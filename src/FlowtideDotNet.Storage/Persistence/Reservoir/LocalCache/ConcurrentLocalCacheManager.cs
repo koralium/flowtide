@@ -619,13 +619,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
                     if (state.RentCount == 0)
                     {
-                        if (state.TryMarkEvicted())
+                        if (state.TryMarkEvicted() && state.RentCount == 0 && state.TrySetDeleted())
                         {
-                            if (state.RentCount == 0 && state.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(state);
-                                return true;
-                            }
+                            await HandlePhysicalDeletion(state);
+                            return true;
                         }
                     }
                     else
