@@ -693,7 +693,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     }
                 }
             }
-            catch (OperationCanceledException) { }
+            catch (OperationCanceledException) 
+            { 
+                // Expected if we cancelled
+            }
         }
 
         public async Task RegisterNewFileAsync(ulong fileId, ulong crc64, int fileSize, PipeReader reader)
@@ -718,7 +721,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     Interlocked.Add(ref _currentSize, -state.Size);
                     WakeUpOneSpaceWaiter();
                 }
-                try { await _localCache.DeleteDataFileAsync(fileId); } catch { }
+                try 
+                { 
+                    await _localCache.DeleteDataFileAsync(fileId); 
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Deleting data file after failed write exception.");
+                }
                 throw;
             }
 
@@ -748,12 +758,25 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             }
             catch (OperationCanceledException)
             {
+                // Expected since we canceled
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Eviction task failed during async disposal.");
             }
-            try { await Task.WhenAll(_backgroundTasks.Values).ConfigureAwait(false); } catch { }
+            try 
+            { 
+                await Task.WhenAll(_backgroundTasks.Values).ConfigureAwait(false); 
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected since we canceled
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Background task failed during disposal.");
+            }
+
             _cts.Dispose();
             _downloadSemaphore.Dispose();
         }
@@ -761,8 +784,30 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         public void Dispose()
         {
             _cts.Cancel();
-            try { _evictionTask.Wait(); } catch { }
-            try { Task.WaitAll(_backgroundTasks.Values.ToArray()); } catch { }
+            try 
+            { 
+                _evictionTask.Wait(); 
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected since we canceled
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Eviction task failed during async disposal.");
+            }
+            try 
+            { 
+                Task.WaitAll(_backgroundTasks.Values.ToArray()); 
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected since we canceled
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Background task failed during disposal.");
+            }
 
             _cts.Dispose();
             _downloadSemaphore.Dispose();
