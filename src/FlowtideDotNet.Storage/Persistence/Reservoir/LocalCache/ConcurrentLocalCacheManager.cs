@@ -242,12 +242,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     {
                         rentHeld = false;
                         quickState.TryMarkEvicted();
-                        if (quickState.Return())
+                        if (quickState.Return() && quickState.TrySetDeleted())
                         {
-                            if (quickState.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(quickState);
-                            }
+                            await HandlePhysicalDeletion(quickState);
                         }
                         await quickState.DeletionTask;
                         _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, quickState));
