@@ -742,7 +742,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         public async ValueTask DisposeAsync()
         {
             _cts.Cancel();
-            try { await _evictionTask.ConfigureAwait(false); } catch { }
+            try
+            {
+                await _evictionTask.ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Eviction task failed during async disposal.");
+            }
             try { await Task.WhenAll(_backgroundTasks.Values).ConfigureAwait(false); } catch { }
             _cts.Dispose();
             _downloadSemaphore.Dispose();
