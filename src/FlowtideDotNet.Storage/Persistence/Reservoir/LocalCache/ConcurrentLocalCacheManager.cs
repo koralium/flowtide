@@ -160,14 +160,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             _maxSizeBytes = maxSizeBytes;
             this._metricValues = metricValues;
             _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(5);
-            if (timeProvider != null)
-            {
-                _timeProvider = timeProvider;
-            }
-            else
-            {
-                _timeProvider = TimeProvider.System;
-            }
+            _timeProvider = timeProvider ?? TimeProvider.System;
             
             _downloadSemaphore = new SemaphoreSlim(workerCount, workerCount);
 

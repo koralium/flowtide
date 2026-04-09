@@ -151,7 +151,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 else
                 {
                     _checkpointRegistryFile = await CheckpointRegistryFile.Deserialize(checkpointRegistryFileReader, _memoryAllocator, cancellationToken).ConfigureAwait(false);
-                    checkpointRegistryFileReader.Complete();
                 }
             }
             
@@ -497,20 +496,18 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         {
                             // In a snapshot, we don't output deleted pages to the checkpoint file
                             // as they are inherently not in the active UpsertPages dict.
-                            if (_pageFileLocations.TryRemove(page, out var location))
+                            if (_pageFileLocations.TryRemove(page, out var location) &&
+                                _fileInformations.TryGetValue(location.FileId, out var fileInfo))
                             {
-                                if (_fileInformations.TryGetValue(location.FileId, out var fileInfo))
-                                {
-                                    fileInfo.AddNonActivePage();
-                                    fileInfo.AddDeletedSize(location.Size);
-                                    _modifiedFileIds.Add(location.FileId);
+                                fileInfo.AddNonActivePage();
+                                fileInfo.AddDeletedSize(location.Size);
+                                _modifiedFileIds.Add(location.FileId);
 
-                                    // If the file has all pages deleted and it is not a bundled file delete id
-                                    if (fileInfo.PageCount == fileInfo.NonActivePageCount &&
-                                        !IsBundleFile(fileInfo.FileId))
-                                    {
-                                        _deletedFileIds.Add(location.FileId);
-                                    }
+                                // If the file has all pages deleted and it is not a bundled file delete id
+                                if (fileInfo.PageCount == fileInfo.NonActivePageCount &&
+                                    !IsBundleFile(fileInfo.FileId))
+                                {
+                                    _deletedFileIds.Add(location.FileId);
                                 }
                             }
                         }
