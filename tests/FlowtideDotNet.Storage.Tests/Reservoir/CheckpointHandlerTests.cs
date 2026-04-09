@@ -169,7 +169,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         private class TrackPipeReader : PipeReader
         {
             private readonly PipeReader _inner;
-            private System.Action _onComplete;
+            private readonly System.Action _onComplete;
             public TrackPipeReader(PipeReader inner, System.Action onComplete) { _inner = inner; _onComplete = onComplete; }
             public override void Complete(System.Exception? exception = null) { _onComplete(); _inner.Complete(exception); }
             public override void AdvanceTo(SequencePosition consumed) => _inner.AdvanceTo(consumed);
