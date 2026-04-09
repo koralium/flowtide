@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
     internal class LocalCacheProvider : IReservoirStorageProvider
     {
         private readonly IReservoirStorageProvider _remoteStorage;
-        private ConcurrentLocalCacheManager _localCacheManager;
+        private readonly ConcurrentLocalCacheManager _localCacheManager;
         private LocalCacheMetricValues _metricValues;
         private Meter? _meter;
         private TagList _metricTagList;

@@ -455,7 +455,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var s = CreateStack();
 
-            var (crc32, offset, fileSize) = await CommitAsync(s.Storage, new byte[] { 1, 2, 3 });
+            var (crc32, offset, _) = await CommitAsync(s.Storage, new byte[] { 1, 2, 3 });
             _ = await s.Cclm.ReadMemoryAsync(0, offset, 3, crc32);
             long sizeAfterLegit = s.Cclm.CurrentSize;
             Assert.True(sizeAfterLegit > 0, "baseline must be non-zero or the size assertion is vacuous");

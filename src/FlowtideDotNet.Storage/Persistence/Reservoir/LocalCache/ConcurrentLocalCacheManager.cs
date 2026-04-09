@@ -159,14 +159,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             _remoteStorage = remoteStorage;
             _maxSizeBytes = maxSizeBytes;
             this._metricValues = metricValues;
-            if (evictionInterval.HasValue)
-            {
-                _evictionInterval = evictionInterval.Value;
-            }
-            else
-            {
-                _evictionInterval = TimeSpan.FromSeconds(5);
-            }
+            _evictionInterval = evictionInterval ?? TimeSpan.FromSeconds(5);
             if (timeProvider != null)
             {
                 _timeProvider = timeProvider;
@@ -342,12 +335,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     }
                     finally
                     {
-                        if (rentHeld && quickState.Return())
+                        if (rentHeld && quickState.Return() && quickState.TrySetDeleted())
                         {
-                            if (quickState.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(quickState);
-                            }
+                            await HandlePhysicalDeletion(quickState);
                         }
                     }
                 }
@@ -513,7 +503,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                                     _metricValues.AddPersistentBytesRead(state.Size);
 
                                     var reader = await _remoteStorage.ReadDataFileAsync(state.FileId, state.Size, _cts.Token);
-                                    await _localCache.WriteDataFileAsync(state.FileId, state.ExpectedCrc64, state.Size, false, reader, _cts.Token);
+                                    try
+                                    {
+                                        await _localCache.WriteDataFileAsync(state.FileId, state.ExpectedCrc64, state.Size, false, reader, _cts.Token);
+                                    }
+                                    finally
+                                    {
+                                        await reader.CompleteAsync();
+                                    }
 
                                     state.DownloadTcs.TrySetResult();
                                 }
