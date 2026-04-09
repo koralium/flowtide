@@ -548,6 +548,24 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger);
+            // Reset taking checkpoint
+            Volatile.Write(ref _takingCheckpoint, false);
+
+            _mergedBlobLock.Dispose();
+            _mergedBlobLock = new SemaphoreSlim(1);
+            await _mergedBlobLock.WaitAsync();
+            try
+            {
+                // Create a new merged blob file writer to make sure there is no old data in it, and return the old one so it can be disposed when all readers are done with it
+                _mergedBlobFileWriter.Return();
+                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
+            }
+            finally
+            {
+                _mergedBlobLock.Release();
+            }
+            
+
             _adminSession = new ReservoirPersistentSession(this, _memoryAllocator, _maxFileSize);
             _temporaryPageLocations.Clear();
 

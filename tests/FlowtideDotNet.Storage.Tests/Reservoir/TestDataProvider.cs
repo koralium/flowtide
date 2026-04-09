@@ -1,9 +1,9 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,18 +12,18 @@
 
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
-using System;
-using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
     internal class TestDataProvider : MemoryFileProvider
     {
         private TaskCompletionSource? _writeBlock;
+        private TaskCompletionSource? _readBlock;
+        private Func<ulong, Exception?>? _readExceptionFactory;
+        private Func<ulong, Exception?>? _writeExceptionFactory;
+        private TaskCompletionSource? _deleteBlock;
+        private ulong? _deleteBlockTarget;
         private int _numberOfReadMemory;
         private int _numberOfReadAsync;
         private int _numberOfReadDataFile;
@@ -45,6 +45,31 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _writeBlock = null;
         }
 
+        public void BlockReads()
+        {
+            _readBlock = new TaskCompletionSource();
+        }
+
+        public void UnblockReads()
+        {
+            _readBlock?.SetResult();
+            _readBlock = null;
+        }
+        public void InjectReadException(Func<ulong, Exception?>? factory)
+        {
+            _readExceptionFactory = factory;
+        }
+
+        public void InjectWriteException(Func<ulong, Exception?>? factory)
+        {
+            _writeExceptionFactory = factory;
+        }
+
+        public void InjectDeleteBlocker(ulong? fileId, TaskCompletionSource? block)
+        {
+            _deleteBlockTarget = fileId;
+            _deleteBlock = block;
+        }
         public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadMemory);
@@ -57,20 +82,39 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             return base.ReadAsync(fileId, offset, length, crc32, stateSerializer);
         }
 
-        public override Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
+        public override async Task<PipeReader> ReadDataFileAsync(ulong fileId, int fileSize, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadDataFile);
-            return base.ReadDataFileAsync(fileId, fileSize, cancellationToken);
+
+            if (_readExceptionFactory?.Invoke(fileId) is { } ex)
+                throw ex;
+
+            if (_readBlock != null)
+                await _readBlock.Task;
+
+            return await base.ReadDataFileAsync(fileId, fileSize, cancellationToken);
         }
 
         public override async Task WriteDataFileAsync(ulong fileId, ulong crc64, int size, bool isBundle, PipeReader data, CancellationToken cancellationToken = default)
         {
+            if (_writeExceptionFactory?.Invoke(fileId) is { } ex)
+                throw ex;
+
             if (_writeBlock != null)
             {
                 await _writeBlock.Task;
             }
 
             await base.WriteDataFileAsync(fileId, crc64, size, isBundle, data);
+        }
+
+        public override async Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
+        {
+            if (_deleteBlock != null && (_deleteBlockTarget == null || _deleteBlockTarget.Value == fileId))
+            {
+                await _deleteBlock.Task;
+            }
+            await base.DeleteDataFileAsync(fileId, cancellationToken);
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -57,7 +57,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             }
         }
 
-        public Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
+        public virtual Task DeleteDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
             throw new InvalidOperationException("File not found");
         }
 
-        public Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
+        public virtual Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
