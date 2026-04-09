@@ -397,12 +397,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     }
                     finally
                     {
-                        if (rentHeld && state.Return())
+                        if (rentHeld && state.Return() && state.TrySetDeleted())
                         {
-                            if (state.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(state);
-                            }
+                            await HandlePhysicalDeletion(state);
                         }
                     }
                 }
