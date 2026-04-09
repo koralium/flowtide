@@ -256,12 +256,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     }
                     finally
                     {
-                        if (rentHeld && quickState.Return())
+                        if (rentHeld && quickState.Return() && quickState.TrySetDeleted())
                         {
-                            if (quickState.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(quickState);
-                            }
+                            await HandlePhysicalDeletion(quickState);
                         }
                     }
                 }
@@ -286,12 +283,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             }
             finally
             {
-                if (state.Return())
+                if (state.Return() && state.TrySetDeleted())
                 {
-                    if (state.TrySetDeleted())
-                    {
-                        await HandlePhysicalDeletion(state);
-                    }
+                    await HandlePhysicalDeletion(state);
                 }
             }
         }
@@ -315,12 +309,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     {
                         rentHeld = false;
                         quickState.TryMarkEvicted();
-                        if (quickState.Return())
+                        if (quickState.Return() && quickState.TrySetDeleted())
                         {
-                            if (quickState.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(quickState);
-                            }
+                            await HandlePhysicalDeletion(quickState);
                         }
                         await quickState.DeletionTask;
                         _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, quickState));
@@ -335,12 +326,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                 }
                 else
                 {
-                    if (quickState.Return())
+                    if (quickState.Return() && quickState.TrySetDeleted())
                     {
-                        if (quickState.TrySetDeleted())
-                        {
-                            await HandlePhysicalDeletion(quickState);
-                        }
+                        await HandlePhysicalDeletion(quickState);
                     }
                 }
             }
@@ -357,12 +345,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             }
             finally
             {
-                if (state.Return())
+                if (state.Return() && state.TrySetDeleted())
                 {
-                    if (state.TrySetDeleted())
-                    {
-                        await HandlePhysicalDeletion(state);
-                    }
+                    await HandlePhysicalDeletion(state);
                 }
             }
         }
@@ -431,12 +416,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
                     if (state.IsMarkedForEviction)
                     {
-                        if (state.Return())
+                        if (state.Return() && state.TrySetDeleted())
                         {
-                            if (state.TrySetDeleted())
-                            {
-                                await HandlePhysicalDeletion(state);
-                            }
+                            await HandlePhysicalDeletion(state);
                         }
                         
                         await state.DeletionTask;
@@ -529,12 +511,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
                         if (state.IsMarkedForEviction)
                         {
-                            if (state.Return())
+                            if (state.Return() && state.TrySetDeleted())
                             {
-                                if (state.TrySetDeleted())
-                                {
-                                    await HandlePhysicalDeletion(state);
-                                }
+                                await HandlePhysicalDeletion(state);
                             }
                             await state.DeletionTask;
                             continue;
@@ -562,16 +541,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         {
             if (_fileStates.TryGetValue(fileId, out var state))
             {
-                if (state.TryMarkEvicted())
+                if (state.TryMarkEvicted() &&
+                    state.RentCount == 0 &&
+                    state.TrySetDeleted())
                 {
-                    if (state.RentCount == 0)
-                    {
-                        if (state.TrySetDeleted())
-                        {
-                            await HandlePhysicalDeletion(state);
-                            return;
-                        }
-                    }
+                    await HandlePhysicalDeletion(state);
+                    return;
                 }
                 await state.DeletionTask;
             }
