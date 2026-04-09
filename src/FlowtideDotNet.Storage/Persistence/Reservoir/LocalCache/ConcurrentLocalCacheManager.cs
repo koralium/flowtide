@@ -143,7 +143,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         /// <summary>
         /// Eviction signal, used for testing to trigger eviction loop immediately instead of waiting for the timer, should not be used in production code.
         /// </summary>
-        private TaskCompletionSource? _evictionLoopSingal;
+        private TaskCompletionSource? _evictionLoopSignal;
 
         public long CurrentSize => Interlocked.Read(ref _currentSize);
 
@@ -683,10 +683,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         }
                     }
                     // This check is for testing, so its possible to wait until an eviction loop has passed
-                    if (_evictionLoopSingal != null)
+                    if (_evictionLoopSignal != null)
                     {
-                        _evictionLoopSingal.SetResult();
-                        _evictionLoopSingal = null;
+                        _evictionLoopSignal.SetResult();
+                        _evictionLoopSignal = null;
                     }
                 }
             }
@@ -765,13 +765,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             { 
                 await Task.WhenAll(_backgroundTasks.Values).ConfigureAwait(false); 
             }
-            catch (OperationCanceledException)
-            {
-                // Expected since we canceled
-            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Background task failed during disposal.");
+                if (!(ex is OperationCanceledException || (ex is AggregateException agg && agg.InnerExceptions.All(x => x is OperationCanceledException))))
+                {
+                    _logger.LogWarning(ex, "Background task failed during disposal.");
+                }
             }
 
             _cts.Dispose();
@@ -797,13 +796,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             { 
                 Task.WaitAll(_backgroundTasks.Values.ToArray()); 
             }
-            catch (OperationCanceledException)
-            {
-                // Expected since we canceled
-            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Background task failed during disposal.");
+                if (!(ex is OperationCanceledException || (ex is AggregateException agg && agg.InnerExceptions.All(x => x is OperationCanceledException))))
+                {
+                    _logger.LogWarning(ex, "Background task failed during disposal.");
+                }
             }
 
             _cts.Dispose();
@@ -818,7 +816,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         /// <param name="taskCompletionSource">The task completion source that will be used as the eviction loop signal. Can be null to clear the signal.</param>
         internal void SetEvictionLoopSignal_Test(TaskCompletionSource? taskCompletionSource)
         {
-            _evictionLoopSingal = taskCompletionSource;
+            _evictionLoopSignal = taskCompletionSource;
         }
     }
 }
