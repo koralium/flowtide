@@ -140,8 +140,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         
         private readonly CancellationTokenSource _cts = new();
         private readonly Task _evictionTask;
+        /// <summary>
+        /// Eviction signal, used for testing to trigger eviction loop immediately instead of waiting for the timer, should not be used in production code.
+        /// </summary>
+        private TaskCompletionSource? _evictionLoopSingal;
 
         public long CurrentSize => Interlocked.Read(ref _currentSize);
+
 
         public ConcurrentLocalCacheManager(
             ReservoirPersistentStorage storage,
@@ -705,6 +710,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                             break;
                         }
                     }
+                    // This check is for testing, so its possible to wait until an eviction loop has passed
+                    if (_evictionLoopSingal != null)
+                    {
+                        _evictionLoopSingal.SetResult();
+                        _evictionLoopSingal = null;
+                    }
                 }
             }
             catch (OperationCanceledException) { }
@@ -770,6 +781,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
             _cts.Dispose();
             _downloadSemaphore.Dispose();
+        }
+
+        /// <summary>
+        /// Set a task completion source that will be called after an eviction loop has passed
+        /// </summary>
+        /// <remarks>This method is intended for use in test scenarios to inject or replace the eviction
+        /// loop signal. It should not be used in production code.</remarks>
+        /// <param name="taskCompletionSource">The task completion source that will be used as the eviction loop signal. Can be null to clear the signal.</param>
+        internal void SetEvictionLoopSignal_Test(TaskCompletionSource? taskCompletionSource)
+        {
+            _evictionLoopSingal = taskCompletionSource;
         }
     }
 }

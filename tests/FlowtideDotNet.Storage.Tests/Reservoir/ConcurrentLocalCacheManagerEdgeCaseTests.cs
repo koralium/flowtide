@@ -653,8 +653,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             s.RemoteData.BlockReads();
             var download = s.Cclm.ReadMemoryAsync(0, offset, 1, crc32).AsTask();
 
-            await Task.Delay(50);
-
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             var write = WriteLocalAsync(s.Cclm, 1, new byte[] { 1 });
 
@@ -672,11 +670,8 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             _ = s.Cclm.ReadMemoryAsync(0, offset, 3, crc32).AsTask();
 
-            await Task.Delay(50);
-
             var disposeTask = s.Cclm.DisposeAsync().AsTask();
 
-            await Task.Delay(100);
             Assert.False(disposeTask.IsCompleted, "DisposeAsync finished too early and abandoned background tasks!");
 
             s.LocalData.UnblockWrites();
@@ -718,11 +713,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             var badRead = s.Cclm.ReadMemoryAsync(0, offset, 3, crc32).AsTask();
 
-            await Task.Delay(50);
-
             var freshRead = s.Cclm.ReadMemoryAsync(0, offset, 3, crc32).AsTask();
-
-            await Task.Delay(50);
             
             Assert.False(badRead.IsCompleted);
             Assert.False(freshRead.IsCompleted);
@@ -771,7 +762,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             Assert.Equal(fileSize * 7, s.Cclm.CurrentSize);
 
             fakeTime.Advance(TimeSpan.FromSeconds(6));
-            await Task.Delay(50);
+
             Assert.Equal(fileSize * 7, s.Cclm.CurrentSize);
 
             for (ulong i = 8; i <= 9; i++)
@@ -780,13 +771,11 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             }
             Assert.Equal(fileSize * 9, s.Cclm.CurrentSize);
 
+            TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
+            s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
             fakeTime.Advance(TimeSpan.FromSeconds(6));
-            
-            for (int i = 0; i < 50; i++)
-            {
-                if (s.Cclm.CurrentSize <= maxSize * 0.8) break;
-                await Task.Delay(20);
-            }
+
+            await evictionLoopSignal.Task;
 
             Assert.True(s.Cclm.CurrentSize <= maxSize * 0.8, "Background loop failed to evict files.");
         }

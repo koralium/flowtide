@@ -12,12 +12,7 @@
 
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
-using System;
-using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.Reservoir
 {
@@ -39,8 +34,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
         public int NumberOfReadDataFile => Volatile.Read(ref _numberOfReadDataFile);
 
-        // ── Write blocking ──────────────────────────────────────────────────────
-
         public void BlockWrites()
         {
             _writeBlock = new TaskCompletionSource();
@@ -52,8 +45,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _writeBlock = null;
         }
 
-        // ── Read blocking (gates ReadDataFileAsync) ─────────────────────────────
-
         public void BlockReads()
         {
             _readBlock = new TaskCompletionSource();
@@ -64,14 +55,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _readBlock?.SetResult();
             _readBlock = null;
         }
-
-        // ── Read exception injection ────────────────────────────────────────────
-
-        /// <summary>
-        /// When set, <see cref="ReadDataFileAsync"/> calls the factory for each request.
-        /// If the factory returns a non-null exception that exception is thrown instead of
-        /// actually reading the file. Pass <c>null</c> to remove the injection.
-        /// </summary>
         public void InjectReadException(Func<ulong, Exception?>? factory)
         {
             _readExceptionFactory = factory;
@@ -87,9 +70,6 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _deleteBlockTarget = fileId;
             _deleteBlock = block;
         }
-
-        // ── Overrides ───────────────────────────────────────────────────────────
-
         public override ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
             Interlocked.Increment(ref _numberOfReadMemory);
