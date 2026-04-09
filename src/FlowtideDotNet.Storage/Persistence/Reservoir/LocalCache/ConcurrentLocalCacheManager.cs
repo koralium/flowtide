@@ -446,12 +446,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         if (state.DownloadTcs.Task.IsFaulted || state.DownloadTcs.Task.IsCanceled)
                         {
                             state.TryMarkEvicted();
-                            if (state.Return())
+                            if (state.Return() && state.TrySetDeleted())
                             {
-                                if (state.TrySetDeleted())
-                                {
-                                    await HandlePhysicalDeletion(state);
-                                }
+                                await HandlePhysicalDeletion(state);
                             }
    
                             await state.DeletionTask;
