@@ -13,6 +13,8 @@
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
 using System.IO.Pipelines;
@@ -117,6 +119,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         private readonly IReservoirStorageProvider _localCache;
         private readonly IReservoirStorageProvider _remoteStorage;
         private Meter? _meter;
+        private ILogger _logger;
 
         private readonly ConcurrentDictionary<ulong, CacheFileState> _fileStates = new();
         private readonly ConcurrentQueue<CacheFileState> _lruQueue = new();
@@ -150,6 +153,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             TimeSpan? evictionInterval = default,
             TimeProvider? timeProvider = default)
         {
+            _logger = NullLogger.Instance;
             this.storage = storage;
             _localCache = localCache;
             _remoteStorage = remoteStorage;
@@ -179,6 +183,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public async Task InitializeAsync(StorageInitializationMetadata metadata, Meter meter, StorageProviderContext storageProviderContext, CancellationToken cancellationToken)
         {
+            _logger = metadata.LoggerFactory.CreateLogger<ConcurrentLocalCacheManager>();
             if (_meter == null)
             {
                 _meter = meter;
@@ -695,7 +700,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             {
                 await _localCache.DeleteDataFileAsync(state.FileId);
             }
-            catch { }
+            catch(Exception e)
+            {
+                _logger.LogError(e, $"Failed to delete local cache file with id {state.FileId}, continuing since its not critical to delete immediately but should be cleaned up eventually");
+            }
 
             _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(state.FileId, state));
 
