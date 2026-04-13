@@ -82,6 +82,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _position += buffer.Length;
         }
 
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await _inner.WriteAsync(buffer, offset, count, cancellationToken).ConfigureAwait(false);
+            _position += count;
+        }
+
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await _inner.WriteAsync(buffer, cancellationToken).ConfigureAwait(false);
+            _position += buffer.Length;
+        }
+
         public override Task FlushAsync(CancellationToken cancellationToken)
         {
             return _inner.FlushAsync(cancellationToken);
