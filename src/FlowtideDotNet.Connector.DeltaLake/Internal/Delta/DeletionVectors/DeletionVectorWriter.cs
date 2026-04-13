@@ -38,6 +38,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
                 throw new Exception("Failed to open stream");
             }
 
+            var writeStream = new DeltaWriteStream(stream);
+
             using MemoryStream memoryStream = new MemoryStream();
             using var writer = new BinaryWriter(memoryStream);
 
@@ -46,19 +48,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             var bytes = new byte[4];
             BinaryPrimitives.WriteInt32BigEndian(bytes, (int)memoryStream.Position);
 
-            stream.WriteByte(1);
+            writeStream.WriteByte(1);
             // Write data size
-            stream.Write(bytes);
+            writeStream.Write(bytes);
 
             BinaryPrimitives.WriteInt32LittleEndian(bytes, 1681511377);
-            stream.Write(bytes);
+            writeStream.Write(bytes);
 
             memoryStream.Position = 0;
-            await memoryStream.CopyToAsync(stream);
+            await memoryStream.CopyToAsync(writeStream);
 
-            await stream.FlushAsync();
+            await writeStream.FlushAsync();
 
-            int fileSize = (int)stream.Position;
+            int fileSize = (int)writeStream.Position;
 
             writer.Close();
             stream.Close();
