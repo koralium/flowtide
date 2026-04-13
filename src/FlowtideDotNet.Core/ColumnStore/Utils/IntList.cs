@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool disposedValue;
         private readonly IMemoryAllocator memoryAllocator;
 
-        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+        internal Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
         public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(int)) ?? new Memory<byte>();
 
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int Count => _length;
 
-        private void EnsureCapacity(int length)
+        internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)
             {
@@ -162,6 +162,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
             span[index] = item;
             _length++;
+        }
+
+        internal void IncreaseLength(int count)
+        {
+            _length += count;
+        }
+
+        internal static void MoveIndex(Span<int> span, int index, int moveIndiceCount, int count, int additionOnMoved)
+        {
+            AvxUtils.InPlaceMemCopyWithAddition(span, index, index + moveIndiceCount, count, additionOnMoved);
         }
 
         public void InsertRangeFrom(int index, IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)

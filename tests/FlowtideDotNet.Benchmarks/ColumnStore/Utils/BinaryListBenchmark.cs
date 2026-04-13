@@ -13,6 +13,7 @@
 using BenchmarkDotNet.Attributes;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
 {
@@ -69,5 +70,129 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         }
 
 
+    }
+
+    public class BinaryListInsertFromBenchmark
+    {
+        [Params(10_000, 100_000)]
+        public int BaseCount { get; set; }
+
+        [Params(1000, 10_000)]
+        public int InsertCount { get; set; }
+
+        // Raw data generated once in GlobalSetup
+        private byte[][] _baseData = Array.Empty<byte[]>();
+        private byte[][] _otherData = Array.Empty<byte[]>();
+        private int[] _sortedLookup = Array.Empty<int>();
+        private int[] _insertPositions = Array.Empty<int>();
+
+        // Pre-built BinaryLists recreated before every iteration
+        private BinaryList? _targetList = null;
+        private BinaryList? _sourceList = null;
+
+        [GlobalSetup]
+        public void GlobalSetup()
+        {
+            var rng = new Random(42);
+
+            _baseData = new byte[BaseCount][];
+            for (int i = 0; i < BaseCount; i++)
+            {
+                _baseData[i] = new byte[rng.Next(10, 100)];
+                rng.NextBytes(_baseData[i]);
+            }
+
+            _otherData = new byte[InsertCount][];
+            for (int i = 0; i < InsertCount; i++)
+            {
+                _otherData[i] = new byte[rng.Next(10, 100)];
+                rng.NextBytes(_otherData[i]);
+            }
+
+            var positions = new HashSet<int>();
+            while (positions.Count < InsertCount)
+            {
+                positions.Add(rng.Next(0, BaseCount + 1));
+            }
+            _insertPositions = positions.OrderBy(x => x).ToArray();
+
+            _sortedLookup = new int[InsertCount];
+            for (int i = 0; i < InsertCount; i++)
+            {
+                _sortedLookup[i] = i;
+            }
+        }
+
+        [IterationSetup]
+        public void IterationSetup()
+        {
+            _targetList = new BinaryList(GlobalMemoryManager.Instance);
+            for (int i = 0; i < _baseData.Length; i++)
+            {
+                _targetList.Add(_baseData[i]);
+            }
+
+            _sourceList = new BinaryList(GlobalMemoryManager.Instance);
+            for (int i = 0; i < _otherData.Length; i++)
+            {
+                _sourceList.Add(_otherData[i]);
+            }
+        }
+
+        [IterationCleanup]
+        public void IterationCleanup()
+        {
+            Debug.Assert(_targetList != null && _sourceList != null);
+            _targetList.Dispose();
+            _sourceList.Dispose();
+        }
+
+        [Benchmark(Baseline = true)]
+        public void InsertOneByOne()
+        {
+            Debug.Assert(_targetList != null && _sourceList != null);
+            for (int i = 0; i < _sortedLookup.Length; i++)
+            {
+                int oIdx = _sortedLookup[i];
+                var data = _sourceList.Get(oIdx);
+                _targetList.Insert(_insertPositions[i] + i, data);
+            }
+        }
+
+        [Benchmark]
+        public void InsertFromBatch()
+        {
+            Debug.Assert(_targetList != null && _sourceList != null);
+            _targetList.InsertFrom(_sourceList, _sortedLookup.AsSpan(), _insertPositions.AsSpan());
+        }
+
+        [Benchmark]
+        public void CreateNewMergedList()
+        {
+            Debug.Assert(_targetList != null && _sourceList != null);
+            var merged = new BinaryList(GlobalMemoryManager.Instance);
+
+            int baseIdx = 0;
+            int sourceIdx = 0;
+
+            while (baseIdx < BaseCount || sourceIdx < InsertCount)
+            {
+                // Add all source elements whose insert position equals the current base index
+                while (sourceIdx < InsertCount && _insertPositions[sourceIdx] == baseIdx)
+                {
+                    int oIdx = _sortedLookup[sourceIdx];
+                    merged.Add(_sourceList.Get(oIdx));
+                    sourceIdx++;
+                }
+
+                if (baseIdx < BaseCount)
+                {
+                    merged.Add(_targetList.Get(baseIdx));
+                    baseIdx++;
+                }
+            }
+
+            merged.Dispose();
+        }
     }
 }
