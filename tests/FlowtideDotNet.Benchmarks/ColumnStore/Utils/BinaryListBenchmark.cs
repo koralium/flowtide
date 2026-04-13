@@ -165,5 +165,34 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             Debug.Assert(_targetList != null && _sourceList != null);
             _targetList.InsertFrom(_sourceList, _sortedLookup.AsSpan(), _insertPositions.AsSpan());
         }
+
+        [Benchmark]
+        public void CreateNewMergedList()
+        {
+            Debug.Assert(_targetList != null && _sourceList != null);
+            var merged = new BinaryList(GlobalMemoryManager.Instance);
+
+            int baseIdx = 0;
+            int sourceIdx = 0;
+
+            while (baseIdx < BaseCount || sourceIdx < InsertCount)
+            {
+                // Add all source elements whose insert position equals the current base index
+                while (sourceIdx < InsertCount && _insertPositions[sourceIdx] == baseIdx)
+                {
+                    int oIdx = _sortedLookup[sourceIdx];
+                    merged.Add(_sourceList.Get(oIdx));
+                    sourceIdx++;
+                }
+
+                if (baseIdx < BaseCount)
+                {
+                    merged.Add(_targetList.Get(baseIdx));
+                    baseIdx++;
+                }
+            }
+
+            merged.Dispose();
+        }
     }
 }
