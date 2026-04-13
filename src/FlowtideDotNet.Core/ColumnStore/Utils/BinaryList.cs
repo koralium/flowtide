@@ -376,6 +376,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
         public void InsertFrom(BinaryList other, Span<int> sortedLookup, Span<int> insertPositions)
         {
+            Debug.Assert(other.Count == sortedLookup.Length && sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
 

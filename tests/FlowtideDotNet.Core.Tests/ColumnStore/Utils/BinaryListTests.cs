@@ -346,7 +346,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
         }
 
         [Fact]
-        public void TestInsertFromSingleElementIntoEmptyList()
+        public void TestInsertFromMultipleElementsIntoEmptyList()
         {
             var eA = new byte[] { 10, 11 };
             var eB = new byte[] { 20, 21, 22 };
