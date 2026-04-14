@@ -899,6 +899,107 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
+        public void InsertFrom(BitmapList other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int oIdx = sortedLookup[i];
+                int oIntIdx = oIdx >> 5;
+                int oBitOffset = oIdx & 31;
+
+                bool isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (isSet)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
+        private static void CopyBitsBackward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            int shift = dstStart - srcStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstLastWord; dw >= dstFirstWord; dw--)
+                {
+                    int sw = dw - wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = span[sw] << bitShift;
+                        if (sw > 0)
+                        {
+                            assembled |= (int)((uint)span[sw - 1] >> (32 - bitShift));
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
+                }
+            }
+        }
+
         private void ShiftRightAvx(ref Span<int> span, ref int fromIndex, ref int toIndex, ref int lastIndex, [ConstantExpected] byte remainder, [ConstantExpected] byte bitsMinusRemainder)
         {
             fixed (int* spanPtr = span)
