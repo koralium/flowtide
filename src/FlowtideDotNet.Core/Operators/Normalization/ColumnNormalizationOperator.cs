@@ -164,10 +164,18 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             if (weights.Count > 0)
             {
                 IColumn[] columns = new IColumn[_emitList.Count];
-
+                bool shouldDisposeOffsets = true;
                 for (int i = 0; i < _emitList.Count; i++)
                 {
-                    columns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false);
+                    columns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+                if (shouldDisposeOffsets)
+                {
+                    toEmitOffsets.Dispose();
                 }
 
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
@@ -184,15 +192,23 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     deleteWeights.Add(-1);
                     deleteIterations.Add(0);
                 }
-
+                bool shouldDisposeOffsets = true;
                 IColumn[] deleteColumns = new IColumn[_normalizationRelation.OutputLength];
                 for (int i = 0; i < _keyColumns.Count; i++)
                 {
                     var emitIndex = _emitList.IndexOf(_keyColumns[i]);
                     if (emitIndex >= 0)
                     {
-                        deleteColumns[emitIndex] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, false);
+                        deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
+                        if (offsetUsed)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
                     }
+                }
+                if (shouldDisposeOffsets)
+                {
+                    deleteBatchKeyOffsets.Dispose();
                 }
                 for (int i = 0; i < _otherColumns.Count; i++)
                 {
