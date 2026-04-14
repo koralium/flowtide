@@ -1108,5 +1108,933 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
         }
+
+        [Fact]
+        public void TestInsertFromEmptyLookup()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            list.Add(true);
+            list.Add(false);
+            list.Add(true);
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(false);
+
+            list.InsertFrom(other, Span<int>.Empty, Span<int>.Empty);
+
+            Assert.Equal(3, list.Count);
+            Assert.True(list.Get(0));
+            Assert.False(list.Get(1));
+            Assert.True(list.Get(2));
+        }
+
+        [Fact]
+        public void TestInsertFromSingleElement()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            list.Add(true);
+            list.Add(false);
+            list.Add(true);
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(true);
+            other.Add(false);
+
+            int[] sortedLookup = [0];
+            int[] insertPositions = [1];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            Assert.Equal(4, list.Count);
+            Assert.True(list.Get(0));
+            Assert.True(list.Get(1));
+            Assert.False(list.Get(2));
+            Assert.True(list.Get(3));
+        }
+
+        [Fact]
+        public void TestInsertFromSingleElementFalse()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            list.Add(true);
+            list.Add(true);
+            list.Add(true);
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(false);
+
+            int[] sortedLookup = [0];
+            int[] insertPositions = [1];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            Assert.Equal(4, list.Count);
+            Assert.True(list.Get(0));
+            Assert.False(list.Get(1));
+            Assert.True(list.Get(2));
+            Assert.True(list.Get(3));
+        }
+
+        [Fact]
+        public void TestInsertFromAtBeginning()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                bool val = i % 3 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2];
+            int[] insertPositions = [0, 0, 0];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromAtEnd()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { false, true, false };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2];
+            int[] insertPositions = [10, 10, 10];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromMultiplePositions()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2, 3, 4];
+            int[] insertPositions = [1, 3, 5, 7, 9];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromCrossingWordBoundary()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 3 != 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 5; i++)
+            {
+                bool val = i % 2 == 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = [0, 1, 2, 3, 4];
+            int[] insertPositions = [15, 30, 31, 32, 50];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromIntoEmptyList()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2];
+            int[] insertPositions = [0, 0, 0];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromAllTrue()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 32; i++)
+            {
+                list.Add(false);
+                expected.Add(false);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 4; i++)
+            {
+                other.Add(true);
+                otherList.Add(true);
+            }
+
+            int[] sortedLookup = [0, 1, 2, 3];
+            int[] insertPositions = [0, 10, 20, 30];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromAllFalse()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 32; i++)
+            {
+                list.Add(true);
+                expected.Add(true);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 4; i++)
+            {
+                other.Add(false);
+                otherList.Add(false);
+            }
+
+            int[] sortedLookup = [0, 1, 2, 3];
+            int[] insertPositions = [0, 10, 20, 30];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromConsecutivePositions()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2];
+            int[] insertPositions = [5, 6, 7];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromNonSequentialLookup()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 16; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 2, 4];
+            int[] insertPositions = [3, 8, 12];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromLargeRandom()
+        {
+            for (int seed = 0; seed < 20; seed++)
+            {
+                var list = new BitmapList(GlobalMemoryManager.Instance);
+                var expected = new List<bool>();
+                var r = new Random(seed);
+
+                for (int i = 0; i < 1000; i++)
+                {
+                    bool val = r.Next(0, 2) == 1;
+                    list.Add(val);
+                    expected.Add(val);
+                }
+
+                var other = new BitmapList(GlobalMemoryManager.Instance);
+                var otherList = new List<bool>();
+                for (int i = 0; i < 500; i++)
+                {
+                    bool val = r.Next(0, 2) == 1;
+                    other.Add(val);
+                    otherList.Add(val);
+                }
+
+                int insertCount = r.Next(1, 100);
+                var positions = new SortedSet<int>();
+                while (positions.Count < insertCount)
+                {
+                    positions.Add(r.Next(0, expected.Count + 1));
+                }
+
+                int[] insertPositions = positions.ToArray();
+                int[] sortedLookup = new int[insertCount];
+                for (int i = 0; i < insertCount; i++)
+                {
+                    sortedLookup[i] = r.Next(0, otherList.Count);
+                }
+
+                list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+                for (int i = 0; i < sortedLookup.Length; i++)
+                {
+                    expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+                }
+
+                Assert.Equal(expected.Count, list.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    Assert.Equal(expected[i], list.Get(i));
+                }
+
+                list.Dispose();
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromDuplicateInsertPositions()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 16; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            int[] sortedLookup = [0, 1, 2];
+            int[] insertPositions = [5, 5, 5];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromMultipleWordBoundaries()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 128; i++)
+            {
+                bool val = i % 3 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 10; i++)
+            {
+                bool val = i % 2 != 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+            int[] insertPositions = [0, 14, 31, 32, 48, 63, 64, 80, 96, 112];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromSingleElementListSingleInsert()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            list.Add(true);
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(false);
+
+            int[] sortedLookup = [0];
+            int[] insertPositions = [0];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            Assert.Equal(2, list.Count);
+            Assert.False(list.Get(0));
+            Assert.True(list.Get(1));
+        }
+
+        [Fact]
+        public void TestInsertFromShiftExactly32Bits()
+        {
+            // 32 inserts all at position 0 forces a shift of exactly one full word
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 32; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 32; i++)
+            {
+                bool val = i % 3 == 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = new int[32];
+            int[] insertPositions = new int[32];
+            for (int i = 0; i < 32; i++)
+            {
+                sortedLookup[i] = i;
+                insertPositions[i] = 0;
+            }
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromLargeShiftMoreThan32()
+        {
+            // 50 inserts all at position 0 forces shift > 32 bits (multi-word)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 50; i++)
+            {
+                bool val = i % 3 != 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = new int[50];
+            int[] insertPositions = new int[50];
+            for (int i = 0; i < 50; i++)
+            {
+                sortedLookup[i] = i;
+                insertPositions[i] = 0;
+            }
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromManyInsertsIntoSmallList()
+        {
+            // Other list much larger than self; inserts outnumber original elements
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 5; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 100; i++)
+            {
+                bool val = i % 4 != 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = new int[20];
+            int[] insertPositions = new int[20];
+            for (int i = 0; i < 20; i++)
+            {
+                sortedLookup[i] = i * 5; // [0, 5, 10, ..., 95]
+                insertPositions[i] = Math.Min(i / 4, 4); // clusters at 0,0,0,0,1,1,1,1,...,4
+            }
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromLookupNotStartingFromZero()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool> { true, false, true, false, true, false, true, false, true, false };
+            foreach (var v in otherList)
+            {
+                other.Add(v);
+            }
+
+            // Lookup skips first 3 elements, picks indices 3, 7, 9
+            int[] sortedLookup = [3, 7, 9];
+            int[] insertPositions = [2, 10, 18];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromRepeatedCallsCumulative()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+            var r = new Random(42);
+
+            for (int i = 0; i < 50; i++)
+            {
+                bool val = r.Next(0, 2) == 1;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 200; i++)
+            {
+                bool val = r.Next(0, 2) == 1;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            // Apply InsertFrom multiple times in succession
+            for (int round = 0; round < 5; round++)
+            {
+                int insertCount = r.Next(1, 15);
+                var positions = new SortedSet<int>();
+                while (positions.Count < insertCount)
+                {
+                    positions.Add(r.Next(0, expected.Count + 1));
+                }
+
+                int[] insertPositions = positions.ToArray();
+                int[] sortedLookup = new int[insertCount];
+                for (int i = 0; i < insertCount; i++)
+                {
+                    sortedLookup[i] = r.Next(0, otherList.Count);
+                }
+
+                list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+                for (int i = 0; i < sortedLookup.Length; i++)
+                {
+                    expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+                }
+
+                Assert.Equal(expected.Count, list.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    Assert.Equal(expected[i], list.Get(i));
+                }
+            }
+
+            list.Dispose();
+        }
+
+        [Fact]
+        public void TestInsertFromEveryPosition()
+        {
+            // Insert one element at every position in a 33-element list (crosses word boundary)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 33; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 33; i++)
+            {
+                bool val = i % 3 == 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            int[] sortedLookup = new int[33];
+            int[] insertPositions = new int[33];
+            for (int i = 0; i < 33; i++)
+            {
+                sortedLookup[i] = i;
+                insertPositions[i] = i;
+            }
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromSingleInsertAtWordBoundary31()
+        {
+            // Insert at bit 31 (last bit of first word)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(true);
+
+            int[] sortedLookup = [0];
+            int[] insertPositions = [31];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            expected.Insert(31, true);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromSingleInsertAtWordBoundary32()
+        {
+            // Insert at bit 32 (first bit of second word)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            other.Add(false);
+
+            int[] sortedLookup = [0];
+            int[] insertPositions = [32];
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            expected.Insert(32, false);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestInsertFromAlternatingBitsLargeSpread()
+        {
+            // Large list with alternating bits, inserts spread across many words
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 256; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var otherList = new List<bool>();
+            for (int i = 0; i < 16; i++)
+            {
+                bool val = i % 2 != 0;
+                other.Add(val);
+                otherList.Add(val);
+            }
+
+            // Inserts at positions spread across 8 words: 0, 17, 34, 51, 68, 85, 102, ...
+            int[] sortedLookup = new int[16];
+            int[] insertPositions = new int[16];
+            for (int i = 0; i < 16; i++)
+            {
+                sortedLookup[i] = i;
+                insertPositions[i] = i * 16;
+            }
+
+            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
     }
 }
