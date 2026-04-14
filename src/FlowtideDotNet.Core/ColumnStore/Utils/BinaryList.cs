@@ -366,5 +366,84 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             return new BinaryList(offsetMemoryCopy, _offsets.Count, dataMemoryCopy, memoryAllocator);
         }
+
+        /// <summary>
+        /// Special case insert that allows inserting a range of data from another binary list at specific positions.
+        /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
+        /// </summary>
+        /// <param name="other">The other binary list to insert data from.</param>
+        /// <param name="sortedLookup">A span containing the sorted indices of the elements to insert from the other list.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
+        public void InsertFrom(BinaryList other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            Debug.Assert(other.Count == sortedLookup.Length && sortedLookup.Length == insertPositions.Length);
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int totalNewBytes = other._length;
+
+
+            int oldDataCount = Count;
+            int oldTotalBytes = _length;
+
+            // Ensure we have enough binary data capacity for the new total size after insertion
+            this.EnsureCapacity(oldTotalBytes + totalNewBytes);
+
+            // Ensure the offsets have enough capacity for the new total count after insertion (old count + new count)
+            this._offsets.EnsureCapacity(oldDataCount + otherCount + 1);
+            this._offsets.IncreaseLength(otherCount);
+
+            // Fetch out spans to not have to access properties multiple times in the loop
+            var selfData = this.AccessSpan;
+            var otherData = other.AccessSpan;
+            var selfOffsets = this._offsets.AccessSpan;
+
+            int currentReadRow = oldDataCount;
+            int currentWriteDataPtr = oldTotalBytes + totalNewBytes;
+            int currentReadDataPtr = oldTotalBytes;
+            int runningByteDelta = totalNewBytes;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int rowsToMove = currentReadRow - targetInsertIdx;
+
+                if (rowsToMove > 0)
+                {
+                    int blockStartByteOffset = selfOffsets[targetInsertIdx];
+                    int blockSizeInBytes = currentReadDataPtr - blockStartByteOffset;
+
+                    currentWriteDataPtr -= blockSizeInBytes;
+                    currentReadDataPtr -= blockSizeInBytes;
+
+                    selfData.Slice(currentReadDataPtr, blockSizeInBytes)
+                            .CopyTo(selfData.Slice(currentWriteDataPtr, blockSizeInBytes));
+
+                    IntList.MoveIndex(selfOffsets, targetInsertIdx, i + 1, rowsToMove, runningByteDelta);
+                }
+
+                int oIdx = sortedLookup[i];
+                int oStart = other._offsets.Get(oIdx);
+                int oEnd = other._offsets.Get(oIdx + 1);
+                int oSize = oEnd - oStart;
+
+                // Copy the data
+                currentWriteDataPtr -= oSize;
+                otherData.Slice(oStart, oSize).CopyTo(selfData.Slice(currentWriteDataPtr));
+
+                // Update the running delta
+                runningByteDelta -= oSize;
+
+                // Set the actual offset value for this new item
+                // It sits exactly at the currentWriteDataPtr we just used
+                selfOffsets[targetInsertIdx + i] = currentWriteDataPtr;
+
+                // Move the read tracker to the left of the block we just processed
+                currentReadRow = targetInsertIdx;
+            }
+
+            _length += totalNewBytes;
+            selfOffsets[oldDataCount + otherCount] = oldTotalBytes + totalNewBytes;
+        }
     }
 }
