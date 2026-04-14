@@ -127,10 +127,18 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 _eventsOutCounter.Add(foundOffsets.Count);
 
                 IColumn[] outputColumns = new IColumn[_outputLength];
-
+                bool shouldDisposeOffsets = true;
                 for (int i = 0; i < outputColumns.Length; i++)
                 {
-                    outputColumns[i] = new ColumnWithOffset(inputBatch.Columns[i], foundOffsets, false);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(inputBatch.Columns[i], foundOffsets, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+                if (shouldDisposeOffsets)
+                {
+                    foundOffsets.Dispose();
                 }
 
                 yield return new StreamEventBatch(new EventBatchWeighted(inBatchWeights, inBatchIterations, new EventBatchData(outputColumns)));
