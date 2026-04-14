@@ -991,15 +991,9 @@ namespace FlowtideDotNet.Storage.DataStructures
                     }
                     else
                     {
-                        int mask;
-                        if (lastBitExcl >= 32)
-                        {
-                            mask = ~((1 << firstBit) - 1);
-                        }
-                        else
-                        {
-                            mask = ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
-                        }
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
                         span[dw] = (span[dw] & ~mask) | (assembled & mask);
                     }
                 }
