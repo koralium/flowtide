@@ -53,14 +53,9 @@ namespace FlowtideDotNet.Core.Operators.Filter
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
 
-            PrimitiveList<int> offsets = new PrimitiveList<int>(MemoryAllocator); // [_filterRelation.OutputLength];
+            PrimitiveList<int> offsets = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-            //for (int i = 0; i < offsets.Length; i++)
-            //{
-            //    offsets[i] = new PrimitiveList<int>(MemoryAllocator);
-            //}
 
             var data = msg.Data;
             for (int i = 0; i < data.Count; i++)

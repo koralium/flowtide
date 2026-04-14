@@ -414,16 +414,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                     if (weights.Count > 0)
                     {
                         IColumn[] columns = new IColumn[_emitList.Count];
-                        bool shouldDiposeOffsets = true;
+                        bool shouldDisposeOffsets = true;
                         for (int k = 0; k < _emitList.Count; k++)
                         {
                             columns[k] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
                             if (offsetUsed)
                             {
-                                shouldDiposeOffsets = false;
+                                shouldDisposeOffsets = false;
                             }
                         }
-                        if (shouldDiposeOffsets)
+                        if (shouldDisposeOffsets)
                         {
                             toEmitOffsets.Dispose();
                         }
@@ -449,7 +449,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             deleteWeights.Add(-1);
                             deleteIterations.Add(0);
                         }
-                        bool shouldDiposeOffsets = true;
+                        bool shouldDisposeOffsets = true;
                         IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
                         for (int i = 0; i < _primaryKeyColumns.Count; i++)
                         {
@@ -459,11 +459,11 @@ namespace FlowtideDotNet.Core.Operators.Read
                                 deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
                                 if (offsetUsed)
                                 {
-                                    shouldDiposeOffsets = false;
+                                    shouldDisposeOffsets = false;
                                 }
                             }
                         }
-                        if (shouldDiposeOffsets)
+                        if (shouldDisposeOffsets)
                         {
                             deleteBatchKeyOffsets.Dispose();
                         }
@@ -601,16 +601,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                 if (weights.Count > 0)
                 {
                     IColumn[] columns = new IColumn[_emitList.Count];
-                    bool shouldDiposeOffsets = true;
+                    bool shouldDisposeOffsets = true;
                     for (int k = 0; k < _emitList.Count; k++)
                     {
                         columns[k] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
-                            shouldDiposeOffsets = false;
+                            shouldDisposeOffsets = false;
                         }
                     }
-                    if (shouldDiposeOffsets)
+                    if (shouldDisposeOffsets)
                     {
                         toEmitOffsets.Dispose();
                     }
@@ -643,7 +643,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         deleteWeights.Add(-1);
                         deleteIterations.Add(0);
                     }
-                    bool shouldDiposeOffsets = true;
+                    bool shouldDisposeOffsets = true;
                     IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
                     for (int i = 0; i < _primaryKeyColumns.Count; i++)
                     {
@@ -653,11 +653,11 @@ namespace FlowtideDotNet.Core.Operators.Read
                             deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
                             if (offsetUsed)
                             {
-                                shouldDiposeOffsets = false;
+                                shouldDisposeOffsets = false;
                             }
                         }
                     }
-                    if (shouldDiposeOffsets)
+                    if (shouldDisposeOffsets)
                     {
                         deleteBatchKeyOffsets.Dispose();
                     }
