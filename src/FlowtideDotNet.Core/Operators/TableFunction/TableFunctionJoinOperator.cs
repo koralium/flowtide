@@ -192,12 +192,22 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
             if (foundOffsets.Count > 0)
             {
+                
                 IColumn[] emitColumns = new IColumn[_leftOutputColumns.Count + _rightOutputIndices.Count];
                 if (_leftOutputColumns.Count > 0)
                 {
+                    bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        emitColumns[_leftOutputIndices[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true);
+                        emitColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        if (offsetUsed)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
+                    }
+                    if (shouldDisposeOffsets)
+                    {
+                        foundOffsets.Dispose();
                     }
                 }
                 else
