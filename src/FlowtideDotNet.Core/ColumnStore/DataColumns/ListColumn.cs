@@ -554,5 +554,94 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
+
+        public void InsertFromBatch(ListColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            int batchSize = sortedLookup.Length;
+            if (batchSize == 0) return;
+
+            // We need 3 buffers of size batchSize. 
+            // Total ints = batchSize * 3.
+            int totalBufferNeeded = batchSize * 3;
+
+            // Threshold: 256 items * 3 = 768 ints (approx 3KB). Safe for stack.
+            int[]? pooledArray = null;
+            Span<int> buffer = totalBufferNeeded <= 768
+                ? stackalloc int[totalBufferNeeded]
+                : (pooledArray = ArrayPool<int>.Shared.Rent(totalBufferNeeded));
+
+            try
+            {
+                // Slice the single buffer into our three required spans
+                Span<int> childSortedLookup = buffer.Slice(0, batchSize);
+                Span<int> childInsertPositions = buffer.Slice(batchSize, batchSize);
+                Span<int> cumulativeDeltas = buffer.Slice(batchSize * 2, batchSize);
+
+                // Call the core logic
+                InsertFromBatchInternal(
+                    other,
+                    sortedLookup,
+                    insertPositions,
+                    childSortedLookup,
+                    childInsertPositions,
+                    cumulativeDeltas
+                );
+            }
+            finally
+            {
+                if (pooledArray != null)
+                {
+                    ArrayPool<int>.Shared.Return(pooledArray);
+                }
+            }
+        }
+
+        private void InsertFromBatchInternal(
+            ListColumn other,
+            Span<int> sortedLookup,
+            Span<int> insertPositions,
+            Span<int> childSortedLookup,
+            Span<int> childInsertPositions,
+            Span<int> cumulativeDeltas)
+        {
+            int batchSize = sortedLookup.Length;
+            int initialChildCount = _internalColumn.Count;
+            int runningDelta = 0;
+
+            // 1. PRE-PASS: Map Parent Batch to Child Batch
+            for (int i = 0; i < batchSize; i++)
+            {
+                int parentIdx = sortedLookup[i];
+
+                // Get start/end from the 'other' list's offsets
+                int otherStart = other._offsets.Get(parentIdx);
+                int otherEnd = other._offsets.Get(parentIdx + 1);
+                int listLen = otherEnd - otherStart;
+
+                childSortedLookup[i] = otherStart;
+
+                // Target in OUR child = (Current Offset at target) + (Previous inserts in this batch)
+                int ourTargetBaseOffset = _offsets.Get(insertPositions[i]);
+                childInsertPositions[i] = ourTargetBaseOffset + runningDelta;
+
+                runningDelta += listLen;
+                cumulativeDeltas[i] = runningDelta;
+            }
+
+            // 2. CHILD DATA MERGE
+            // This is the recursive call. If the child is a BinaryList, it uses its AVX logic.
+            // If the child is another ListColumn, it hits this same logic again.
+            //_internalColumn.InsertFromBatch(other._internalColumn, childSortedLookup, childInsertPositions);
+
+            // 3. VALIDITY MERGE
+            //if (_validityList != null && other._validityList != null)
+            //{
+            //    _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+            //}
+
+            // 4. OFFSETS MERGE
+            // This uses your InPlaceMemCopyWithAddition AVX utility.
+            _offsets.InsertFromBatch(other._offsets, sortedLookup, insertPositions, cumulativeDeltas, initialChildCount);
+        }
     }
 }

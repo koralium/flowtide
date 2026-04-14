@@ -338,5 +338,54 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             return new IntList(newMemory, _length, memoryAllocator);
         }
+
+        /// <summary>
+        /// Special case insert from batch, used in listcolumn to quickly insert offsets
+        /// </summary>
+        /// <param name="other"></param>
+        /// <param name="sortedLookup"></param>
+        /// <param name="insertPositions"></param>
+        /// <param name="cumulativeDeltas"></param>
+        /// <param name="internalBase"></param>
+        internal void InsertFromBatch(IntList other, Span<int> sortedLookup, Span<int> insertPositions, Span<int> cumulativeDeltas, int internalBase)
+        {
+            int batchSize = sortedLookup.Length;
+            if (batchSize == 0) return;
+
+            int oldLength = _length;
+
+            EnsureCapacity(oldLength + batchSize);
+
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+
+            int currentReadIdx = oldLength;
+
+            for (int i = batchSize - 1; i >= 0; i--)
+            {
+                int targetIdx = insertPositions[i];
+                int countToMove = currentReadIdx - targetIdx;
+
+                if (countToMove > 0)
+                {
+                    AvxUtils.InPlaceMemCopyWithAddition(
+                        span,
+                        targetIdx,
+                        targetIdx + i + 1,
+                        countToMove,
+                        cumulativeDeltas[i]
+                    );
+                }
+
+                int rebaseShift = (i > 0) ? cumulativeDeltas[i - 1] : 0;
+
+                int oIdx = sortedLookup[i];
+                span[targetIdx + i] = otherSpan[oIdx] + internalBase + rebaseShift;
+
+                currentReadIdx = targetIdx;
+            }
+
+            _length += batchSize;
+        }
     }
 }
