@@ -48,10 +48,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> _tree;
         private int[] _sortedIndices = Array.Empty<int>();
         private int _keyLength;
-
+        List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         public BPlusTreeBulkInserter(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             _tree = tree;
+            _mappings = new List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping>();
         }
 
         public ValueTask StartBatch(K[] keys, V[] values)
@@ -73,9 +74,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, _keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer>(keys,keyComparer));
 
-            // Find leafIds where the keys should be inserted
-
-            return ValueTask.CompletedTask;
+            return _tree.RouteBatchRootAsync(keys, _sortedIndices, _tree.m_keyComparer, _mappings);
         }
+
+
     }
 }
