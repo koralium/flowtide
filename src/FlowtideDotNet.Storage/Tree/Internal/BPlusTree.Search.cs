@@ -111,13 +111,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         internal async ValueTask RouteBatchRootAsync(
             K[] keys, 
+            int batchLength,
             int[] sortedIndices, 
             IBplusTreeComparer<K, TKeyContainer> searchComparer,
             List<LeafBatchMapping> mappings)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
-            int batchLength = keys.Length;
             int depth = m_stateClient.Metadata.Depth;
 
             int safeArenaSize = depth == 0 ? 0 : depth * batchLength;
@@ -172,16 +172,25 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 int targetChildIndex = searchComparer.FindIndex(keys[firstKeyIndex], node.keys);
                 if (targetChildIndex < 0) targetChildIndex = ~targetChildIndex;
 
-                int itemsForThisChild = 1;
+                int itemsForThisChild;
 
-                while (currentOffset + itemsForThisChild < end)
+                if (targetChildIndex == node.keys.Count)
                 {
-                    int nextKeyIndex = sortedIndices[currentOffset + itemsForThisChild];
-                    int nextChildIndex = searchComparer.FindIndex(keys[nextKeyIndex], node.keys);
-                    if (nextChildIndex < 0) nextChildIndex = ~nextChildIndex;
+                    itemsForThisChild = end - currentOffset;
+                }
+                else
+                {
+                    // Normal look-ahead for non-last children
+                    itemsForThisChild = 1;
+                    while (currentOffset + itemsForThisChild < end)
+                    {
+                        int nextKeyIndex = sortedIndices[currentOffset + itemsForThisChild];
+                        int nextChildIndex = searchComparer.FindIndex(keys[nextKeyIndex], node.keys);
+                        if (nextChildIndex < 0) nextChildIndex = ~nextChildIndex;
 
-                    if (nextChildIndex == targetChildIndex) itemsForThisChild++;
-                    else break;
+                        if (nextChildIndex == targetChildIndex) itemsForThisChild++;
+                        else break;
+                    }
                 }
 
                 workspace[workspaceStartIndex + sliceCount] =

@@ -18,10 +18,8 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    public interface IBPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer>
-        where TKeyContainer : IKeyContainer<K>
-        where TValueContainer : IValueContainer<V>
+    internal interface IRowMutator<K, V>
     {
-        ValueTask StartBatch(K[] keys, V[] values, int keyLength);
+        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
     }
 }

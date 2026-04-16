@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         void Insert(int index, K key);
 
+        void InsertBulk(K[] items, Span<int> sortedLookup, Span<int> targetPositions);
+
         void Insert_Internal(int index, K key);
 
         void Update(int index, K key);

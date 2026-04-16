@@ -24,7 +24,7 @@ namespace FlowtideDotNet.Storage.Tests
 {
     public class BPlusTreeBulkInserterTests : IDisposable
     {
-        private readonly BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>> _tree;
+        private readonly BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> _tree;
         private readonly StateManagerSync _stateManager;
 
         public BPlusTreeBulkInserterTests()
@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Storage.Tests
             (_tree, _stateManager) = Init().GetAwaiter().GetResult();
         }
 
-        private static async Task<(BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>, StateManagerSync)> Init()
+        private static async Task<(BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>, StateManagerSync)> Init()
         {
             var stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
@@ -40,30 +40,46 @@ namespace FlowtideDotNet.Storage.Tests
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
             }, NullLoggerFactory.Instance, new Meter("bulk_inserter_test"), "bulk_inserter_test");
             await stateManager.InitializeAsync();
-
+            
             var nodeClient = stateManager.GetOrCreateClient("node1");
-            var tree = await nodeClient.GetOrCreateTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>("tree",
-                new BPlusTreeOptions<long, string, ListKeyContainer<long>, ListValueContainer<string>>()
+            var tree = await nodeClient.GetOrCreateTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>("tree",
+                new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
                 {
-                    BucketSize = 8,
-                    Comparer = new BPlusTreeListComparer<long>(new LongComparer()),
-                    KeySerializer = new KeyListSerializer<long>(new LongSerializer()),
-                    ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                    PageSizeBytes = 100,
+                    UseByteBasedPageSizes = true,
+                    Comparer = new PrimitiveListComparer<long>(),
+                    KeySerializer = new PrimitiveListKeyContainerSerializer<long>(GlobalMemoryManager.Instance),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance),
                     MemoryAllocator = GlobalMemoryManager.Instance
                 });
 
-            return ((BPlusTree<long, string, ListKeyContainer<long>, ListValueContainer<string>>)tree, stateManager);
+            return ((BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>)tree, stateManager);
+        }
+
+        private struct Mutator : IRowMutator<long, long>
+        {
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            {
+                return GenericWriteOperation.Upsert;
+            }
         }
 
         [Fact]
         public async Task StartBatch_OnEmptyTree()
         {
-            var bulkInserter = new BPlusTreeBulkInserter<long, string, ListKeyContainer<long>, ListValueContainer<string>>(_tree);
+            var bulkInserter = new BPlusTreeBulkInserter<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>(_tree);
 
-            var keys = new long[] { 3, 1, 2 };
-            var values = new string[] { "three", "one", "two" };
+            var count = 100;
+            var keys = new long[count];
+            var values = new long[count];
 
-            await bulkInserter.StartBatch(keys, values);
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new Mutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new Mutator());
         }
 
         public void Dispose()
