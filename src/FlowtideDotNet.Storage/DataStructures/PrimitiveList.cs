@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -147,6 +147,57 @@ namespace FlowtideDotNet.Storage.DataStructures
                 span[index + i] = value;
             }
             _length += count;
+        }
+
+        /// <summary>
+        /// Special case insert that allows inserting a subset of elements from another primitive list at specific positions.
+        /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
+        /// The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the other list.
+        /// </summary>
+        /// <param name="other">The other primitive list to insert data from.</param>
+        /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
+        public void InsertFrom(PrimitiveList<T> other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            Debug.Assert(sortedLookup.Length == insertPositions.Length);
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldCount = _length;
+
+            // Ensure we have enough capacity for all elements
+            EnsureCapacity(oldCount + otherCount);
+
+            var selfData = AccessSpan;
+            var otherData = other.AccessSpan;
+
+            int currentReadIdx = oldCount;
+            int currentWriteIdx = oldCount + otherCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int elementsToMove = currentReadIdx - targetInsertIdx;
+
+                if (elementsToMove > 0)
+                {
+                    currentWriteIdx -= elementsToMove;
+                    currentReadIdx -= elementsToMove;
+
+                    selfData.Slice(currentReadIdx, elementsToMove)
+                            .CopyTo(selfData.Slice(currentWriteIdx, elementsToMove));
+                }
+
+                // Place the new element from the other list
+                int oIdx = sortedLookup[i];
+                currentWriteIdx--;
+                selfData[currentWriteIdx] = otherData[oIdx];
+
+                // Move the read tracker to the left of the block we just processed
+                currentReadIdx = targetInsertIdx;
+            }
+
+            _length += otherCount;
         }
 
         public void MoveAtIndex(int index, int count)
