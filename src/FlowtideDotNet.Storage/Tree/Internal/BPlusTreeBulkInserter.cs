@@ -76,16 +76,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _keys = keys;
             _values = values;
             _mappings.Clear();
-            if (keys.Length > _sortedIndices.Length)
+            if (keyLength > _sortedIndices.Length)
             {
-                _sortedIndices = new int[keys.Length];
+                _sortedIndices = new int[keyLength];
             }
-            _keyLength = keys.Length;
+            _keyLength = keyLength;
 
             // Sort the keys and values by keys
             var keyComparer = _tree.m_keyComparer;
 
-            for (int i = 0; i < keys.Length; i++)
+            for (int i = 0; i < keyLength; i++)
             {
                 _sortedIndices[i] = i;
             }
@@ -106,6 +106,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                             as LeafNode<K, V, TKeyContainer, TValueContainer>;
 
                 LeafMutateFromBatch(leaf!, mutator, in map, _tree.m_keyComparer);
+                leaf.Return();
             }
         }
 
