@@ -153,10 +153,12 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// Special case insert that allows inserting a subset of elements from another primitive list at specific positions.
         /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
         /// The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the other list.
+        /// The positions in <paramref name="insertPositions"/> are interpreted relative to the original contents of the current list before any elements are inserted.
+        /// Conceptually, this behaves like inserting the selected elements in order using <c>InsertAt(insertPositions[i] + i, ...)</c>.
         /// </summary>
         /// <param name="other">The other primitive list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
-        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the original current list state, before any inserts from this operation have been applied. Must be in non-decreasing order.</param>
         public void InsertFrom(PrimitiveList<T> other, Span<int> sortedLookup, Span<int> insertPositions)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
