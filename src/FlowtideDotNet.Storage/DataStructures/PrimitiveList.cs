@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="other">The other primitive list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
-        public void InsertFrom(PrimitiveList<T> other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(PrimitiveList<T> other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
