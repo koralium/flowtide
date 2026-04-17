@@ -163,15 +163,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 MultiElementLeaf++;
             }
 
+            var leafCount = leaf.keys.Count;
             int insertCounter = 0;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
                 var key = _keys[keyIndex];
 
+                
                 // check if we are at the end of the leaf
                 // // if so we can just append the remaining keys to the end of the leaf without searching
-                if ((previousIndex + 1) == leaf.keys.Count)
+                if ((previousIndex) == leafCount)
                 {
                     // This means all the remaining keys in the batch are greater than the keys in the leaf, so we can just append them to the end of the leaf without searching
                     var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
@@ -179,10 +181,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Insert the key and value into the leaf at the correct position
                         _insertSortedIndices[insertCounter] = keyIndex;
-                        _insertTargetPositions[insertCounter] = leaf.keys.Count;
+                        _insertTargetPositions[insertCounter] = leafCount;
                         insertCounter++;
                         //leaf.InsertAt(key, _values[keyIndex], leaf.keys.Count);
-                        previousIndex = leaf.keys.Count - 1;
+                        previousIndex = leafCount;
                     }
                     continue;
                 }
