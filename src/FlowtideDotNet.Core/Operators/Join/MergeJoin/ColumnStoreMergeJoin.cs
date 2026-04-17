@@ -245,9 +245,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
                                 if (_leftOutputColumns.Count > 0)
                                 {
+                                    bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _leftOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_leftOutputIndices[l]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, true);
+                                        outputColumns[_leftOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                                        if (offsetUsed)
+                                        {
+                                            shouldDisposeOffsets = false;
+                                        }
+                                    }
+
+                                    if (shouldDisposeOffsets)
+                                    {
+                                        foundOffsets.Dispose();
                                     }
                                 }
                                 else
@@ -325,9 +335,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + rightColumns.Count];
                 if (_leftOutputColumns.Count > 0)
                 {
+                    bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        outputColumns[_leftOutputIndices[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true);
+                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        if (offsetUsed)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
+                    }
+                    if (shouldDisposeOffsets)
+                    {
+                        foundOffsets.Dispose();
                     }
                 }
                 else
@@ -454,9 +473,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                 }
                                 if (_rightOutputColumns.Count > 0)
                                 {
+                                    bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _rightOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_rightOutputIndices[l]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, true);
+                                        outputColumns[_rightOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                                        if (offsetUsed)
+                                        {
+                                            shouldDisposeOffsets = false;
+                                        }
+                                    }
+                                    if (shouldDisposeOffsets)
+                                    {
+                                        foundOffsets.Dispose();
                                     }
                                 }
                                 else
@@ -535,9 +563,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 if (_rightOutputColumns.Count > 0)
                 {
+                    bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _rightOutputColumns.Count; i++)
                     {
-                        outputColumns[_rightOutputIndices[i]] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true);
+                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        if (offsetUsed)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
+                    }
+                    if (shouldDisposeOffsets)
+                    {
+                        foundOffsets.Dispose();
                     }
                 }
                 else
