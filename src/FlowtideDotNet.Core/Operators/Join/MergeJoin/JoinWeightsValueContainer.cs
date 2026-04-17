@@ -96,5 +96,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

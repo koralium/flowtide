@@ -142,5 +142,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

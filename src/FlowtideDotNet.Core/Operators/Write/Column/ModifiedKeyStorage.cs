@@ -140,5 +140,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

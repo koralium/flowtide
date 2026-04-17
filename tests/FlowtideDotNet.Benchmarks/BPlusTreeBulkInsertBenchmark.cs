@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
@@ -35,7 +37,7 @@ namespace DifferntialCompute.Benchmarks
         private SortedDictionary<long, long> _sortedlist = new SortedDictionary<long, long>();
         private Dictionary<long, long> _dictionary = new Dictionary<long, long>();
 
-        [Params(10_000_000)] //, 1_000_000)]
+        [Params(1_000_000)] //, 1_000_000)]
         public int ElementCount { get; set; }
 
         [GlobalSetup]
@@ -122,7 +124,7 @@ namespace DifferntialCompute.Benchmarks
         public async Task BulkInsert_Batched()
         {
             var bulkInserter = new BPlusTreeBulkInserter<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>(_tree);
-            var batchSize = 1000;
+            var batchSize = 1_000;
 
             var keys = new long[batchSize];
             var values = new long[batchSize];
@@ -134,7 +136,7 @@ namespace DifferntialCompute.Benchmarks
 
                 for (int i = 0; i < count; i++)
                 {
-                    keys[i] = offset + i;
+                    keys[i] = r.Next();
                     values[i] = offset + i;
                 }
 

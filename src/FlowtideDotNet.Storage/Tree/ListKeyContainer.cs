@@ -45,6 +45,11 @@ namespace FlowtideDotNet.Storage.Tree
             return _list.BinarySearch(key, comparer);
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
         }

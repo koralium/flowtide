@@ -128,5 +128,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

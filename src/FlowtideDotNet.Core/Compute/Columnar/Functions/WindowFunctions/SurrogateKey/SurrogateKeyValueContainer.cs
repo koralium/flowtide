@@ -54,6 +54,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _column.Dispose();

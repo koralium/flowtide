@@ -76,6 +76,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _weights.Dispose();

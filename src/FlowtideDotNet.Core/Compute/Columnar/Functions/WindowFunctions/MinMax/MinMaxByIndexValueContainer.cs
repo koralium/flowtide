@@ -137,5 +137,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

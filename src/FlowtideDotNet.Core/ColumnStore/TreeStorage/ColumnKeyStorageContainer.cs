@@ -160,5 +160,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

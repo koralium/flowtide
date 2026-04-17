@@ -140,5 +140,10 @@ namespace FlowtideDotNet.Storage.Tree
         {
             _values.InsertFrom(keys, sortedLookup, targetPositions);
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

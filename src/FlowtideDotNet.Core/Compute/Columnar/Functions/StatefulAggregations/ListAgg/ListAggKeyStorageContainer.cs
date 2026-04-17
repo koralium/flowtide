@@ -74,6 +74,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             throw new NotImplementedException();
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _data.Dispose();

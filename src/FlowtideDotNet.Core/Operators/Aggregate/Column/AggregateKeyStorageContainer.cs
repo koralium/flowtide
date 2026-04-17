@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             throw new NotImplementedException();
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _data.Dispose();

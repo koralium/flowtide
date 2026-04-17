@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _sortedIndices = Array.Empty<int>();
         private int[] _insertSortedIndices = Array.Empty<int>();
         private int[] _insertTargetPositions = Array.Empty<int>();
+        private int[] _deletePositions = Array.Empty<int>();
         private int _keyLength;
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
@@ -83,6 +84,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _sortedIndices = new int[keyLength];
                 _insertSortedIndices = new int[keyLength];
                 _insertTargetPositions = new int[keyLength];
+                _deletePositions = new int[keyLength];
             }
             _keyLength = keyLength;
 
@@ -165,6 +167,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var leafCount = leaf.keys.Count;
             int insertCounter = 0;
+            int deleteCounter = 0;
+            int insertOffset = 0;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
@@ -181,9 +185,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Insert the key and value into the leaf at the correct position
                         _insertSortedIndices[insertCounter] = keyIndex;
-                        _insertTargetPositions[insertCounter] = leafCount;
+                        _insertTargetPositions[insertCounter] = leafCount + insertOffset;
                         insertCounter++;
-                        //leaf.InsertAt(key, _values[keyIndex], leaf.keys.Count);
                         previousIndex = leafCount;
                     }
                     continue;
@@ -202,10 +205,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     if (operation == GenericWriteOperation.Upsert)
                     {
                         _insertSortedIndices[insertCounter] = keyIndex;
-                        _insertTargetPositions[insertCounter] = leafIndex;
+                        _insertTargetPositions[insertCounter] = leafIndex + insertOffset;
                         insertCounter++;
-                        // Insert the key and value into the leaf at the correct position
-                        //leaf.InsertAt(key, _values[keyIndex], leafIndex);
                     }
                 }
                 else
@@ -221,22 +222,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     }
                     else if (operation == GenericWriteOperation.Delete)
                     {
-                        // Remove the key and value from the leaf
-                        throw new NotImplementedException();
-                        //leaf.DeleteAt(leafIndex);
+                        // Add the leaf index for deletion
+                        _deletePositions[deleteCounter++] = leafIndex + insertOffset;
+
+                        // Since we are deleting an element, the insert offset needs to be decreased by one, because the leaf will have one less element after the deletion
+                        insertOffset--;
                     }
                 }
             }
 
+            if (deleteCounter > 0)
+            {
+                var deleteSpan = _deletePositions.AsSpan(0, deleteCounter);
+                leaf.keys.DeleteBatch(deleteSpan);
+                leaf.values.DeleteBatch(deleteSpan);
+            }
+
             if (insertCounter > 0)
             {
-                leaf.keys.InsertFrom(_keys, _insertSortedIndices.AsSpan(0, insertCounter), _insertTargetPositions.AsSpan(0, insertCounter));
-                leaf.values.InsertFrom(_values, _insertSortedIndices.AsSpan(0, insertCounter), _insertTargetPositions.AsSpan(0, insertCounter));
+                var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(0, insertCounter);
+                var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
+                leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan);
+                leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
             }
-            //if (leaf.keys is PrimitiveListKeyContainer<K> list)
-            //{
-
-            //}
 
             var byteSize = leaf.ByteSize;
             if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
