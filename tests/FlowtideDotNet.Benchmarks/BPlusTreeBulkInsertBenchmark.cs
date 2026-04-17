@@ -33,8 +33,9 @@ namespace DifferntialCompute.Benchmarks
         private IStateManagerClient _nodeClient = null!;
         private BPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> _tree = null!;
         private SortedDictionary<long, long> _sortedlist = new SortedDictionary<long, long>();
+        private Dictionary<long, long> _dictionary = new Dictionary<long, long>();
 
-        [Params(1_000_000)] //, 1_000_000)]
+        [Params(10_000_000)] //, 1_000_000)]
         public int ElementCount { get; set; }
 
         [GlobalSetup]
@@ -60,7 +61,7 @@ namespace DifferntialCompute.Benchmarks
                 _nodeClient.GetOrCreateTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>("tree",
                     new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
                     {
-                        PageSizeBytes = 4096,
+                        //PageSizeBytes = 4096,
                         UseByteBasedPageSizes = true,
                         Comparer = new PrimitiveListComparer<long>(),
                         KeySerializer = new PrimitiveListKeyContainerSerializer<long>(GlobalMemoryManager.Instance),
@@ -68,41 +69,60 @@ namespace DifferntialCompute.Benchmarks
                         MemoryAllocator = GlobalMemoryManager.Instance
                     }).GetAwaiter().GetResult();
             _tree.Clear();
-            _sortedlist.Clear();
+            _sortedlist = new SortedDictionary<long, long>();
+            _dictionary = new Dictionary<long, long>();
         }
 
-        [Benchmark]
-        public void SortedList()
-        {
-            for (int i = 0; i < ElementCount; i++)
-            {
-                var key = i;//r.Next();
+        //[Benchmark]
+        //public void SortedDictionary()
+        //{
+        //    for (int i = 0; i < ElementCount; i++)
+        //    {
+        //        var key = r.Next();
 
-                if (!_sortedlist.ContainsKey(key))
-                {
-                    _sortedlist.Add(key, i);
-                }
-                else
-                {
-                    _sortedlist[key] = i;
-                }
-            }
-        }
+        //        if (!_sortedlist.ContainsKey(key))
+        //        {
+        //            _sortedlist.Add(key, i);
+        //        }
+        //        else
+        //        {
+        //            _sortedlist[key] = i;
+        //        }
+        //    }
+        //}
 
-        [Benchmark(Baseline = true)]
-        public async Task RMWNoResult_SingleInsert()
-        {
-            for (int i = 0; i < ElementCount; i++)
-            {
-                await _tree.RMWNoResult(i, i, static (input, current, exists) => (input, GenericWriteOperation.Upsert));
-            }
-        }
+        //[Benchmark]
+        //public void HashDictionary()
+        //{
+        //    for (int i = 0; i < ElementCount; i++)
+        //    {
+        //        var key = r.Next();
+
+        //        if (!_dictionary.ContainsKey(key))
+        //        {
+        //            _dictionary.Add(key, i);
+        //        }
+        //        else
+        //        {
+        //            _dictionary[key] = i;
+        //        }
+        //    }
+        //}
+
+        //[Benchmark(Baseline = true)]
+        //public async Task RMWNoResult_SingleInsert()
+        //{
+        //    for (int i = 0; i < ElementCount; i++)
+        //    {
+        //        await _tree.RMWNoResult(r.Next(), i, static (input, current, exists) => (input, GenericWriteOperation.Upsert));
+        //    }
+        //}
 
         [Benchmark]
         public async Task BulkInsert_Batched()
         {
             var bulkInserter = new BPlusTreeBulkInserter<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>(_tree);
-            var batchSize = 1000;
+            var batchSize = 100_000;
 
             var keys = new long[batchSize];
             var values = new long[batchSize];
@@ -110,11 +130,11 @@ namespace DifferntialCompute.Benchmarks
             for (int offset = 0; offset < ElementCount; offset += batchSize)
             {
                 var count = Math.Min(batchSize, ElementCount - offset);
-                
+
 
                 for (int i = 0; i < count; i++)
                 {
-                    keys[i] = offset + i;
+                    keys[i] = r.Next();
                     values[i] = offset + i;
                 }
 

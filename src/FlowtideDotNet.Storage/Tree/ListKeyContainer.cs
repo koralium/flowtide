@@ -69,6 +69,11 @@ namespace FlowtideDotNet.Storage.Tree
             _list.Insert(index, key);
         }
 
+        public void InsertFrom(K[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Insert_Internal(int index, K key)
         {
             _list.Insert(index, key);

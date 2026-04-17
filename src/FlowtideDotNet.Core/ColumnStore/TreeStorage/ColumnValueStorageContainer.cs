@@ -100,6 +100,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             }
         }
 
+        public void InsertFrom(ColumnRowReference[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             for (int i = 0; i < columnCount; i++)

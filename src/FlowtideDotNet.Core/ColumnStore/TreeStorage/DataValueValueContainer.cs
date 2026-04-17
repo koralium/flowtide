@@ -78,6 +78,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             _column.InsertAt(index, value);
         }
 
+        public void InsertFrom(IDataValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             _column.RemoveAt(index);

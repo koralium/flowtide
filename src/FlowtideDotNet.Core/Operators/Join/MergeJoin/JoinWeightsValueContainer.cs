@@ -91,5 +91,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             return (end - start + 1) * 8;
         }
+
+        public void InsertFrom(JoinWeights[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

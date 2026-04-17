@@ -90,6 +90,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
             _weights.InsertAt(index, value.Weight);
         }
 
+        public void InsertFrom(SurrogateKeyValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             _column.RemoveAt(index);

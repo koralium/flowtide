@@ -114,6 +114,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             _length++;
         }
 
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Insert_Internal(int index, ColumnRowReference key)
         {
             for (int i = 0; i < columnCount; i++)

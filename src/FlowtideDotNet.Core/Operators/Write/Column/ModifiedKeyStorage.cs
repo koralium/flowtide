@@ -135,5 +135,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             return _data.GetByteSize(start, end);
         }
+
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

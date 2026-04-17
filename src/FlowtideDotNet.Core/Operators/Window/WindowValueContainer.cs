@@ -122,6 +122,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             _previousValueSent.InsertAt(index, false);
         }
 
+        public void InsertFrom(WindowValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             _weights.RemoveAt(index);

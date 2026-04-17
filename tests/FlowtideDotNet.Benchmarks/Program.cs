@@ -13,11 +13,11 @@
 using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 
-//BPlusTreeBulkInsertBenchmark bPlusTreeBulkInsertBenchmark = new BPlusTreeBulkInsertBenchmark();
-//bPlusTreeBulkInsertBenchmark.ElementCount = 10_000_000;
-//bPlusTreeBulkInsertBenchmark.GlobalSetup();
-//bPlusTreeBulkInsertBenchmark.IterationSetup();
-//await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
+BPlusTreeBulkInsertBenchmark bPlusTreeBulkInsertBenchmark = new BPlusTreeBulkInsertBenchmark();
+bPlusTreeBulkInsertBenchmark.ElementCount = 10_000_000;
+bPlusTreeBulkInsertBenchmark.GlobalSetup();
+bPlusTreeBulkInsertBenchmark.IterationSetup();
+await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
 
 //Console.WriteLine("hello");
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

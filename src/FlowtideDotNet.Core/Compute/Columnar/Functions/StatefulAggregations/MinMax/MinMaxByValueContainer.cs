@@ -96,6 +96,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
             _weights.InsertAt(index, value.Weight);
         }
 
+        public void InsertFrom(MinMaxByValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             _data.RemoveAt(index);

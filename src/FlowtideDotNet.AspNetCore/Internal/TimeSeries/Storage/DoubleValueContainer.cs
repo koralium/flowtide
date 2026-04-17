@@ -74,6 +74,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _list.InsertAt(index, value);
         }
 
+        public void InsertFrom(double[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void RemoveAt(int index)
         {
             _list.RemoveAt(index);

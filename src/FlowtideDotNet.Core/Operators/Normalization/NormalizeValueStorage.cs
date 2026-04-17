@@ -137,5 +137,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         {
             return _data.GetByteSize(start, end);
         }
+
+        public void InsertFrom(ColumnRowReference[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

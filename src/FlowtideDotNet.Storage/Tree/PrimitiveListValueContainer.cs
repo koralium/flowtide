@@ -94,5 +94,10 @@ namespace FlowtideDotNet.Storage.Tree
         {
             return _values.Copy(memoryAllocator);
         }
+
+        public void InsertFrom(T[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            _values.InsertFrom(values, sortedLookup, targetPositions);
+        }
     }
 }

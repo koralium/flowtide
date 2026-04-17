@@ -155,5 +155,10 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         {
             return _data.GetByteSize(start, end);
         }
+
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
