@@ -1479,6 +1479,209 @@ namespace FlowtideDotNet.Storage.Tests
 
         #endregion
 
+        #region Edge Case: Insert-then-delete of non-existent key in one batch
+
+        [Fact]
+        public async Task InsertThenDeleteNonExistentKey_InOneBatch()
+        {
+            // Key does NOT pre-exist. Batch inserts then deletes it.
+            // ToggleMutator: !exists → Upsert, exists → Delete.
+            //
+            // i=0: key=5, not found → Upsert → pending insert
+            // i=1: key=5, dup, prevWasPendingInsert → Delete → cancel pending insert
+            //
+            // Expected: key 5 should NOT exist in tree.
+
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = new long[] { 5, 5 };
+            var values = new long[] { 100, 200 };
+
+            await bulkInserter.ApplyBatch(keys, values, 2, new ToggleMutator());
+
+            var (found, _) = await _tree.GetValue(5);
+            Assert.False(found, "Key 5 should not exist after insert→delete in same batch");
+
+            var all = await ReadAllFromTree();
+            Assert.Empty(all);
+        }
+
+        [Fact]
+        public async Task InsertThenDeleteNonExistentKey_WithOtherKeysAfter()
+        {
+            // Same as above but with other keys following the canceled insert-delete.
+            // This exposes the insertOffset bug: canceling a pending insert should NOT
+            // decrement insertOffset since no element was removed from the leaf.
+            //
+            // keys=[5, 5, 10], sorted: [5, 5, 10]
+            // i=0: key=5, not found → Upsert → pending insert
+            // i=1: key=5, dup → Delete → cancel pending insert
+            // i=2: key=10, not found → Upsert → insert queued
+            //      target position = leafIndex + insertOffset
+            //      BUG: if insertOffset was incorrectly -1, position is shifted wrong
+
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = new long[] { 5, 5, 10 };
+            var values = new long[] { 100, 200, 1000 };
+
+            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator());
+
+            // Key 5 should NOT exist (inserted then deleted)
+            var (found5, _) = await _tree.GetValue(5);
+            Assert.False(found5, "Key 5 should not exist");
+
+            // Key 10 should exist with value 1000
+            var (found10, val10) = await _tree.GetValue(10);
+            Assert.True(found10, "Key 10 should exist");
+            Assert.Equal(1000, val10);
+
+            var all = await ReadAllFromTree();
+            Assert.Single(all);
+        }
+
+        [Fact]
+        public async Task InsertDeleteInsertNonExistentKey_InOneBatch()
+        {
+            // Key does NOT pre-exist. Batch has key 3 times: insert → delete → insert.
+            // ToggleMutator: !exists → Upsert, exists → Delete.
+            //
+            // i=0: key=5, not found → Upsert → pending insert
+            // i=1: key=5, dup, prevWasPendingInsert → Delete → cancel pending insert
+            // i=2: key=5, dup, ??? → should see exists=false → Upsert
+            //
+            // Expected: key 5 should exist with the third value.
+
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = new long[] { 5, 5, 5 };
+            var values = new long[] { 100, 200, 300 };
+
+            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator());
+
+            // Key 5 should exist (insert → delete → insert)
+            var (found, val) = await _tree.GetValue(5);
+            Assert.True(found, "Key 5 should exist after insert→delete→insert");
+            Assert.Equal(300, val);
+
+            var all = await ReadAllFromTree();
+            Assert.Single(all);
+        }
+
+        [Fact]
+        public async Task InsertDeleteInsertNonExistentKey_WithOtherKeys()
+        {
+            // Mix of: key 3 (unique), key 5 (insert→delete→insert), key 10 (unique).
+
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = new long[] { 3, 5, 5, 5, 10 };
+            var values = new long[] { 30, 100, 200, 300, 1000 };
+
+            await bulkInserter.ApplyBatch(keys, values, 5, new ToggleMutator());
+
+            var expected = new SortedDictionary<long, long>
+            {
+                { 3, 30 },
+                { 5, 300 },  // survived insert→delete→insert
+                { 10, 1000 },
+            };
+
+            await AssertTreeContents(expected);
+        }
+
+        [Fact]
+        public async Task LongToggleChain_NonExistentKey_OddCount()
+        {
+            // 9 occurrences of same non-existent key with ToggleMutator.
+            // Odd count → final state is "inserted".
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = Enumerable.Repeat(5L, 9).ToArray();
+            var values = Enumerable.Range(0, 9).Select(i => (long)(i * 100)).ToArray();
+
+            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator());
+
+            var (found, val) = await _tree.GetValue(5);
+            Assert.True(found, "Odd toggle count should leave key inserted");
+            Assert.Equal(800, val); // Last value
+
+            var all = await ReadAllFromTree();
+            Assert.Single(all);
+        }
+
+        [Fact]
+        public async Task LongToggleChain_NonExistentKey_EvenCount()
+        {
+            // 10 occurrences → even count → final state is "not inserted".
+            var bulkInserter = CreateBulkInserter();
+
+            var keys = Enumerable.Repeat(5L, 10).ToArray();
+            var values = Enumerable.Range(0, 10).Select(i => (long)(i * 100)).ToArray();
+
+            await bulkInserter.ApplyBatch(keys, values, 10, new ToggleMutator());
+
+            var (found, _) = await _tree.GetValue(5);
+            Assert.False(found, "Even toggle count should leave key absent");
+
+            var all = await ReadAllFromTree();
+            Assert.Empty(all);
+        }
+
+        [Fact]
+        public async Task LongToggleChain_ExistingKey()
+        {
+            // Key pre-exists. ToggleMutator on existing key: exists=true → Delete.
+            // So the first toggle deletes, the second (exists=false) re-inserts.
+            // Each pair is delete→cancel = no-op.
+            // 6 toggles = 3 no-op pairs → key SURVIVES.
+            var bulkInserter = CreateBulkInserter();
+
+            var setup = new long[] { 5 };
+            await bulkInserter.ApplyBatch(setup, new long[] { 50 }, 1, new UpsertMutator());
+
+            var keys = Enumerable.Repeat(5L, 6).ToArray();
+            var values = Enumerable.Range(0, 6).Select(i => (long)(i * 100)).ToArray();
+
+            await bulkInserter.ApplyBatch(keys, values, 6, new ToggleMutator());
+
+            // Even pairs: delete→cancel, delete→cancel, delete→cancel = key survives
+            var (found, val) = await _tree.GetValue(5);
+            Assert.True(found, "Even toggle pairs on existing key = no-op, key survives");
+            Assert.Equal(500, val); // Last cancel used value at index 5
+        }
+
+        [Fact]
+        public async Task MixedToggleChain_WithSurroundingKeys()
+        {
+            // Batch with unique keys + toggling keys, all interleaved after sorting.
+            var bulkInserter = CreateBulkInserter();
+
+            // Pre-populate key 5
+            await bulkInserter.ApplyBatch(new long[] { 5 }, new long[] { 50 }, 1, new UpsertMutator());
+
+            // Batch: key 1 (new), key 3 (new x3 = insert→delete→insert),
+            //        key 5 (exists x2 = delete→cancel = survives),
+            //        key 8 (new x2 = insert→delete = gone), key 10 (new)
+            var keys   = new long[] { 1,  3, 3, 3,  5, 5,  8, 8,  10 };
+            var values = new long[] { 10, 30, 31, 32, 51, 52, 80, 81, 100 };
+
+            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator());
+
+            var expected = new SortedDictionary<long, long>
+            {
+                { 1, 10 },
+                { 3, 32 },   // insert→delete→insert: survives
+                { 5, 52 },   // exists: delete→cancel (Upsert with value 52)
+                // 8: insert→delete: gone
+                { 10, 100 },
+            };
+
+            await AssertTreeContents(expected);
+        }
+
+        #endregion
+
         public void Dispose()
         {
             _stateManager?.Dispose();

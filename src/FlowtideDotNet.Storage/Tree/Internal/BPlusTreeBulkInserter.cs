@@ -159,6 +159,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int prevSortedKeyIndex = -1;
             bool prevWasPendingInsert = false;
             bool prevWasPendingDelete = false;
+            // Whether the key physically exists in the original leaf (before
+            // deferred modifications). Needed to correctly cancel pending inserts:
+            // if the key was never in the leaf, canceling is a no-op on the leaf.
+            bool prevKeyExistsInLeaf = false;
 
             for (int i = 0; i < mapping.Length; i++)
             {
@@ -187,9 +191,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         {
                             // Cancel the pending insert
                             insertCounter--;
-                            insertOffset--;
                             prevWasPendingInsert = false;
-                            prevWasPendingDelete = true;
+
+                            if (prevKeyExistsInLeaf)
+                            {
+                                insertOffset--;
+                                prevWasPendingDelete = true;
+                            }
+                            else
+                            {
+                                // Key was never in the leaf.
+                                prevWasPendingDelete = false;
+                            }
                         }
                         // None: keep the previous pending insert unchanged
                     }
@@ -208,7 +221,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                             prevWasPendingDelete = false;
                         }
                     }
-                    else
+                    else if (prevKeyExistsInLeaf)
                     {
                         // Key exists in the original leaf and was updated/no-oped.
                         // Process as exists=true with the current leaf value.
@@ -224,6 +237,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                             _deletePositions[deleteCounter++] = previousIndex;
                             insertOffset--;
                             prevWasPendingDelete = true;
+                        }
+                    }
+                    else
+                    {
+                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+
+                        if (operation == GenericWriteOperation.Upsert)
+                        {
+                            _insertSortedIndices[insertCounter] = keyIndex;
+                            _insertTargetPositions[insertCounter] = previousIndex + insertOffset;
+                            insertCounter++;
+                            prevWasPendingInsert = true;
                         }
                     }
 
@@ -251,6 +276,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         prevWasPendingInsert = false;
                     }
                     prevWasPendingDelete = false;
+                    prevKeyExistsInLeaf = false;
                     prevSortedKeyIndex = keyIndex;
                     continue;
                 }
@@ -275,6 +301,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         prevWasPendingInsert = false;
                     }
                     prevWasPendingDelete = false;
+                    prevKeyExistsInLeaf = false;
                 }
                 else
                 {
@@ -304,6 +331,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         prevWasPendingInsert = false;
                         prevWasPendingDelete = false;
                     }
+                    prevKeyExistsInLeaf = true;
                 }
                 prevSortedKeyIndex = keyIndex;
             }
