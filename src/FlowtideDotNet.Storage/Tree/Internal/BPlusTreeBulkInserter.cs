@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             for (int i = 0; i < _requireMergeMappings.Count; i++)
             {
-                var map = _requireSplitMappings[i];
+                var map = _requireMergeMappings[i];
                 var keyIndex = _sortedIndices[map.Offset];
                 var firstKey = _keys[keyIndex];
 
@@ -169,14 +169,48 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int insertCounter = 0;
             int deleteCounter = 0;
             int insertOffset = 0;
+
+            // Track the previous key's state for duplicate detection.
+            // Since keys are sorted, duplicates are always adjacent.
+            int prevSortedKeyIndex = -1;
+            bool prevWasPendingInsert = false;
+
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
                 var key = _keys[keyIndex];
 
-                
+                // Duplicate detection
+                if (prevWasPendingInsert && prevSortedKeyIndex >= 0
+                    && searchComparer.CompareTo(key, _keys[prevSortedKeyIndex]) == 0)
+                {
+                    // The previous duplicate queued a pending insert.
+                    // Process this as an update to that pending insert.
+                    Debug.Assert(insertCounter > 0);
+                    var prevInsertKeyIndex = _insertSortedIndices[insertCounter - 1];
+                    var pendingValue = _values[prevInsertKeyIndex];
+                    var operation = mutator.Process(key, true, in pendingValue, ref _values[keyIndex]);
+
+                    if (operation == GenericWriteOperation.Upsert)
+                    {
+                        // Replace the pending insert's key index so InsertFrom uses the new value
+                        _insertSortedIndices[insertCounter - 1] = keyIndex;
+                    }
+                    else if (operation == GenericWriteOperation.Delete)
+                    {
+                        // Cancel the pending insert
+                        insertCounter--;
+                        insertOffset--;
+                        prevWasPendingInsert = false;
+                    }
+                    // None: keep the previous pending insert unchanged
+
+                    prevSortedKeyIndex = keyIndex;
+                    continue;
+                }
+
                 // check if we are at the end of the leaf
-                // // if so we can just append the remaining keys to the end of the leaf without searching
+                // if so we can just append the remaining keys to the end of the leaf without searching
                 if ((previousIndex) == leafCount)
                 {
                     // This means all the remaining keys in the batch are greater than the keys in the leaf, so we can just append them to the end of the leaf without searching
@@ -188,14 +222,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         _insertTargetPositions[insertCounter] = leafCount + insertOffset;
                         insertCounter++;
                         previousIndex = leafCount;
+                        prevWasPendingInsert = true;
                     }
+                    else
+                    {
+                        prevWasPendingInsert = false;
+                    }
+                    prevSortedKeyIndex = keyIndex;
                     continue;
                 }
 
                 var leafIndex = searchComparer.FindIndex(key, leaf.keys);
-                
-                // Later on all this code can be optimized to only modify the leaf data twice, once for insert and once for delete
-                // But for simplicity we will just do it in place for now, and optimize later
+
                 if (leafIndex < 0)
                 {
                     leafIndex = ~leafIndex;
@@ -207,6 +245,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         _insertSortedIndices[insertCounter] = keyIndex;
                         _insertTargetPositions[insertCounter] = leafIndex + insertOffset;
                         insertCounter++;
+                        prevWasPendingInsert = true;
+                    }
+                    else
+                    {
+                        prevWasPendingInsert = false;
                     }
                 }
                 else
@@ -223,12 +266,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     else if (operation == GenericWriteOperation.Delete)
                     {
                         // Add the leaf index for deletion
-                        _deletePositions[deleteCounter++] = leafIndex + insertOffset;
+                        _deletePositions[deleteCounter++] = leafIndex;
 
                         // Since we are deleting an element, the insert offset needs to be decreased by one, because the leaf will have one less element after the deletion
                         insertOffset--;
                     }
+                    prevWasPendingInsert = false;
                 }
+                prevSortedKeyIndex = keyIndex;
             }
 
             if (deleteCounter > 0)

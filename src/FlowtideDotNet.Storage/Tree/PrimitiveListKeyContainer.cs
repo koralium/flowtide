@@ -143,7 +143,10 @@ namespace FlowtideDotNet.Storage.Tree
 
         public void DeleteBatch(ReadOnlySpan<int> positions)
         {
-            throw new NotImplementedException();
+            for (int i = positions.Length - 1; i >= 0; i--)
+            {
+                _values.RemoveAt(positions[i]);
+            }
         }
     }
 }
