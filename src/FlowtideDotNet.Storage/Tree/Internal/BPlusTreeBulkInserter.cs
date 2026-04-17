@@ -10,13 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -49,14 +45,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _insertSortedIndices = Array.Empty<int>();
         private int[] _insertTargetPositions = Array.Empty<int>();
         private int[] _deletePositions = Array.Empty<int>();
-        private int _keyLength;
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireSplitMappings;
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireMergeMappings;
-        private int singleElementLeaf = 0;
-        private int MultiElementLeaf = 0;
 
         public BPlusTreeBulkInserter(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
@@ -86,7 +79,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
             }
-            _keyLength = keyLength;
 
             // Sort the keys and values by keys
             var keyComparer = _tree.m_keyComparer;
@@ -96,7 +88,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _sortedIndices[i] = i;
             }
 
-            var indicesSpan = _sortedIndices.AsSpan().Slice(0, _keyLength);
+            var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer>(keys,keyComparer));
 
             return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings);
@@ -156,14 +148,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(_values != null && _keys != null);
             int previousIndex = -1;
-            if (mapping.Length == 1)
-            {
-                singleElementLeaf++;
-            }
-            else
-            {
-                MultiElementLeaf++;
-            }
 
             var leafCount = leaf.keys.Count;
             int insertCounter = 0;
@@ -174,36 +158,74 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Since keys are sorted, duplicates are always adjacent.
             int prevSortedKeyIndex = -1;
             bool prevWasPendingInsert = false;
+            bool prevWasPendingDelete = false;
 
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
                 var key = _keys[keyIndex];
 
-                // Duplicate detection
-                if (prevWasPendingInsert && prevSortedKeyIndex >= 0
+                // Detect duplicate: current key equals previous key in sorted order.
+                if (prevSortedKeyIndex >= 0
                     && searchComparer.CompareTo(key, _keys[prevSortedKeyIndex]) == 0)
                 {
-                    // The previous duplicate queued a pending insert.
-                    // Process this as an update to that pending insert.
-                    Debug.Assert(insertCounter > 0);
-                    var prevInsertKeyIndex = _insertSortedIndices[insertCounter - 1];
-                    var pendingValue = _values[prevInsertKeyIndex];
-                    var operation = mutator.Process(key, true, in pendingValue, ref _values[keyIndex]);
+                    if (prevWasPendingInsert)
+                    {
+                        // The previous duplicate queued a pending insert.
+                        // Process this as an update to that pending insert.
+                        Debug.Assert(insertCounter > 0);
+                        var prevInsertKeyIndex = _insertSortedIndices[insertCounter - 1];
+                        var pendingValue = _values[prevInsertKeyIndex];
+                        var operation = mutator.Process(key, true, in pendingValue, ref _values[keyIndex]);
 
-                    if (operation == GenericWriteOperation.Upsert)
-                    {
-                        // Replace the pending insert's key index so InsertFrom uses the new value
-                        _insertSortedIndices[insertCounter - 1] = keyIndex;
+                        if (operation == GenericWriteOperation.Upsert)
+                        {
+                            // Replace the pending insert's key index so InsertFrom uses the new value
+                            _insertSortedIndices[insertCounter - 1] = keyIndex;
+                        }
+                        else if (operation == GenericWriteOperation.Delete)
+                        {
+                            // Cancel the pending insert
+                            insertCounter--;
+                            insertOffset--;
+                            prevWasPendingInsert = false;
+                            prevWasPendingDelete = true;
+                        }
+                        // None: keep the previous pending insert unchanged
                     }
-                    else if (operation == GenericWriteOperation.Delete)
+                    else if (prevWasPendingDelete)
                     {
-                        // Cancel the pending insert
-                        insertCounter--;
-                        insertOffset--;
-                        prevWasPendingInsert = false;
+                        Debug.Assert(deleteCounter > 0);
+                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+
+                        if (operation == GenericWriteOperation.Upsert)
+                        {
+                            deleteCounter--;
+                            insertOffset++;
+
+                            leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
+                            prevWasPendingInsert = false;
+                            prevWasPendingDelete = false;
+                        }
                     }
-                    // None: keep the previous pending insert unchanged
+                    else
+                    {
+                        // Key exists in the original leaf and was updated/no-oped.
+                        // Process as exists=true with the current leaf value.
+                        var existingValue = leaf.values.Get(previousIndex);
+                        var operation = mutator.Process(key, true, in existingValue, ref _values[keyIndex]);
+
+                        if (operation == GenericWriteOperation.Upsert)
+                        {
+                            leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
+                        }
+                        else if (operation == GenericWriteOperation.Delete)
+                        {
+                            _deletePositions[deleteCounter++] = previousIndex;
+                            insertOffset--;
+                            prevWasPendingDelete = true;
+                        }
+                    }
 
                     prevSortedKeyIndex = keyIndex;
                     continue;
@@ -211,7 +233,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 // check if we are at the end of the leaf
                 // if so we can just append the remaining keys to the end of the leaf without searching
-                if ((previousIndex) == leafCount)
+                if (previousIndex == leafCount)
                 {
                     // This means all the remaining keys in the batch are greater than the keys in the leaf, so we can just append them to the end of the leaf without searching
                     var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
@@ -228,6 +250,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         prevWasPendingInsert = false;
                     }
+                    prevWasPendingDelete = false;
                     prevSortedKeyIndex = keyIndex;
                     continue;
                 }
@@ -251,6 +274,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         prevWasPendingInsert = false;
                     }
+                    prevWasPendingDelete = false;
                 }
                 else
                 {
@@ -262,6 +286,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     {
                         // Update the value in the leaf
                         leaf.UpdateValueAt(leafIndex, _values[keyIndex]);
+                        prevWasPendingInsert = false;
+                        prevWasPendingDelete = false;
                     }
                     else if (operation == GenericWriteOperation.Delete)
                     {
@@ -270,8 +296,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                         // Since we are deleting an element, the insert offset needs to be decreased by one, because the leaf will have one less element after the deletion
                         insertOffset--;
+                        prevWasPendingInsert = false;
+                        prevWasPendingDelete = true;
                     }
-                    prevWasPendingInsert = false;
+                    else
+                    {
+                        prevWasPendingInsert = false;
+                        prevWasPendingDelete = false;
+                    }
                 }
                 prevSortedKeyIndex = keyIndex;
             }

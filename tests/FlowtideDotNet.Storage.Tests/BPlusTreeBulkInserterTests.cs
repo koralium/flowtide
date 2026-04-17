@@ -118,6 +118,27 @@ namespace FlowtideDotNet.Storage.Tests
             }
         }
 
+        /// <summary>
+        /// Stateful mutator: deletes a key on first encounter, re-inserts on second.
+        /// Uses a class wrapper to maintain state across calls within a single batch.
+        /// </summary>
+        private class DeleteThenReinsertMutator : IRowMutator<long, long>
+        {
+            private readonly HashSet<long> _deletedInThisBatch = new();
+
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            {
+                if (exists && !_deletedInThisBatch.Contains(key))
+                {
+                    // First encounter: delete the existing key
+                    _deletedInThisBatch.Add(key);
+                    return GenericWriteOperation.Delete;
+                }
+                // Second encounter (or key didn't exist): re-insert
+                return GenericWriteOperation.Upsert;
+            }
+        }
+
         #endregion
 
         #region Helpers
@@ -1369,6 +1390,90 @@ namespace FlowtideDotNet.Storage.Tests
             }
 
             await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await AssertTreeContents(expected);
+        }
+
+        #endregion
+
+        #region Edge Case: Delete-then-reinsert same key in one batch
+
+        [Fact]
+        public async Task DeleteThenReinsertSameKey_InOneBatch()
+        {
+            // EDGE CASE: When a key exists in the leaf and the batch contains the
+            // same key twice, with a mutator that deletes on first encounter and
+            // re-inserts on second, the deferred delete/insert model breaks:
+            //
+            // 1. First occurrence: FindIndex finds key → mutator returns Delete
+            //    → queued for deletion, prevWasPendingInsert = false
+            // 2. Second occurrence: prevWasPendingInsert is false → FindIndex
+            //    still finds the key (delete is deferred) → mutator sees exists=true
+            //    but recognizes it was already "deleted" → returns Upsert
+            //    → UpdateValueAt updates the leaf value in-place (no insert queued)
+            // 3. DeleteBatch runs: removes the key
+            // 4. InsertFrom runs: nothing to insert for this key
+            //
+            // Result: key is gone when it should have been re-inserted with value 999.
+
+            var bulkInserter = CreateBulkInserter();
+
+            // Pre-populate key 5 with value 50
+            var setupKeys = new long[] { 1, 5, 10 };
+            var setupValues = new long[] { 10, 50, 100 };
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator());
+
+            // Verify setup
+            var (foundSetup, valSetup) = await _tree.GetValue(5);
+            Assert.True(foundSetup);
+            Assert.Equal(50, valSetup);
+
+            // Batch with key 5 appearing twice:
+            // - First occurrence: mutator sees exists=true, deletes
+            // - Second occurrence: mutator should re-insert with value 999
+            var keys = new long[] { 5, 5 };
+            var values = new long[] { 0, 999 };
+            var mutator = new DeleteThenReinsertMutator();
+            await bulkInserter.ApplyBatch(keys, values, 2, mutator);
+
+            // Expected: key 5 should exist with value 999
+            // Keys 1 and 10 should be untouched
+            var expected = new SortedDictionary<long, long>
+            {
+                { 1, 10 },
+                { 5, 999 },
+                { 10, 100 },
+            };
+
+            await AssertTreeContents(expected);
+        }
+
+        [Fact]
+        public async Task DeleteThenReinsertSameKey_InOneBatch_MultipleKeys()
+        {
+            // Same edge case but with multiple keys being delete-then-reinserted.
+
+            var bulkInserter = CreateBulkInserter();
+
+            // Pre-populate keys 1-5
+            var setupKeys = new long[] { 1, 2, 3, 4, 5 };
+            var setupValues = new long[] { 10, 20, 30, 40, 50 };
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 5, new UpsertMutator());
+
+            // Delete-then-reinsert keys 2 and 4
+            var keys = new long[] { 2, 2, 4, 4 };
+            var values = new long[] { 0, 222, 0, 444 };
+            var mutator = new DeleteThenReinsertMutator();
+            await bulkInserter.ApplyBatch(keys, values, 4, mutator);
+
+            var expected = new SortedDictionary<long, long>
+            {
+                { 1, 10 },
+                { 2, 222 },
+                { 3, 30 },
+                { 4, 444 },
+                { 5, 50 },
+            };
+
             await AssertTreeContents(expected);
         }
 
