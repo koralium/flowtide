@@ -15,10 +15,10 @@ using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 
 
-ColumnStoreTreeBenchmark columnStore = new ColumnStoreTreeBenchmark();
-columnStore.GlobalSetup();
-columnStore.IterationSetup();
-await columnStore.ColumnarInsertBulkInOrder();
+//ColumnStoreTreeBenchmark columnStore = new ColumnStoreTreeBenchmark();
+//columnStore.GlobalSetup();
+//columnStore.IterationSetup();
+//await columnStore.ColumnarInsertBulkInOrder();
 //BPlusTreeBulkInsertBenchmark bPlusTreeBulkInsertBenchmark = new BPlusTreeBulkInsertBenchmark();
 //bPlusTreeBulkInsertBenchmark.ElementCount = 1_000_000;
 //bPlusTreeBulkInsertBenchmark.GlobalSetup();
@@ -26,4 +26,4 @@ await columnStore.ColumnarInsertBulkInOrder();
 //await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
 
 //Console.WriteLine("hello");
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

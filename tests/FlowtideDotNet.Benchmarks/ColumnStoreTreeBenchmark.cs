@@ -22,6 +22,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
+using SqlParser.Ast;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Benchmarks
@@ -54,9 +55,10 @@ namespace FlowtideDotNet.Benchmarks
 
             nodeClient = stateManager.GetOrCreateClient("node1");
 
+            Random r = new Random(123);
             for (int i = 0; i < 1_000_000; i++)
             {
-                data.Columns[0].Add(new Int64Value(i));
+                data.Columns[0].Add(new StringValue(i.ToString()));
                 rowEvents.Add(RowEvent.Create(1, 0, b =>
                 {
                     b.Add(i);
@@ -93,16 +95,6 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark]
-        public async Task FlxValueInsertInOrder()
-        {
-            Debug.Assert(flxTree != null);
-            for (int i = 0; i < 1_000_000; i++)
-            {
-                await flxTree.Upsert(rowEvents[i], $"hello{i}");
-            }
-        }
-
-        [Benchmark]
         public async Task ColumnarInsertInOrder()
         {
             Debug.Assert(tree != null);
@@ -129,11 +121,13 @@ namespace FlowtideDotNet.Benchmarks
         {
             Debug.Assert(tree != null);
             Debug.Assert(_bulkInserter != null);
-            ColumnRowReference[] keys = new ColumnRowReference[1000];
-            long[] values = new long[1000];
+            int batchSize = 1_000;
+            ColumnRowReference[] keys = new ColumnRowReference[batchSize];
+            long[] values = new long[batchSize];
             for (int i = 0; i < 1_000_000; i++)
             {
-                for(int k = 0; k < keys.Length; k++)
+                var count = Math.Min(batchSize, 1_000_000 - i);
+                for (int k = 0; k < count; k++)
                 {
                     keys[k] = new ColumnRowReference()
                     {
@@ -143,7 +137,7 @@ namespace FlowtideDotNet.Benchmarks
                     values[k] = i;
                     i++;
                 }
-                await _bulkInserter.ApplyBatch(keys, values, keys.Length, new UpsertMutator());
+                await _bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
             }
         }
     }
