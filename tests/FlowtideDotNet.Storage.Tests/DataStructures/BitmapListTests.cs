@@ -2375,7 +2375,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
 
             list.DeleteBatch(targets.AsSpan());
 
-            Assert.Equal(0, list.Count);
+            Assert.Empty(list);
         }
 
         [Fact]
