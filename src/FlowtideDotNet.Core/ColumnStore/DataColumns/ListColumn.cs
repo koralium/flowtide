@@ -555,7 +555,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _internalColumn.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is ListColumn otherList)
             {

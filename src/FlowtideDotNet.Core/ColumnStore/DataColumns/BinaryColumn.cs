@@ -270,7 +270,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_data.DataMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is BinaryColumn binaryColumn)
             {

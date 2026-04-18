@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        public void InsertFrom(IColumn column, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             throw new NotSupportedException();
         }
