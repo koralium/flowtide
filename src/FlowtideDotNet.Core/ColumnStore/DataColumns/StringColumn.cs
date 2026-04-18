@@ -26,8 +26,6 @@ using System.Collections;
 using System.IO.Hashing;
 using System.Text;
 using System.Text.Json;
-using static SqlParser.Ast.FetchDirection;
-using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
