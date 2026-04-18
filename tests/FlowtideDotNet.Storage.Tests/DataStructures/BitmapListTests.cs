@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -2029,6 +2029,500 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             {
                 expected.Insert(insertPositions[i] + i, otherList[sortedLookup[i]]);
             }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchEmptyTargets()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[0];
+            list.DeleteBatch(targets);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchSingleElementAtBeginning()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[] { 0 };
+            list.DeleteBatch(targets);
+            expected.RemoveAt(0);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchSingleElementInMiddle()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[] { 10 };
+            list.DeleteBatch(targets);
+            expected.RemoveAt(10);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchSingleElementAtEnd()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[] { 19 };
+            list.DeleteBatch(targets);
+            expected.RemoveAt(19);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchMultiplePositions()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 20; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            // Delete first, middle, and last
+            int[] targets = [0, 10, 19];
+            list.DeleteBatch(targets.AsSpan());
+
+            // Remove from expected in reverse to keep indices stable
+            expected.RemoveAt(19);
+            expected.RemoveAt(10);
+            expected.RemoveAt(0);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchAtWordBoundary31()
+        {
+            // Delete at bit 31 (last bit of first word)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[] { 31 };
+            list.DeleteBatch(targets);
+            expected.RemoveAt(31);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchAtWordBoundary32()
+        {
+            // Delete at bit 32 (first bit of second word)
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            ReadOnlySpan<int> targets = stackalloc int[] { 32 };
+            list.DeleteBatch(targets);
+            expected.RemoveAt(32);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchCrossingWordBoundary()
+        {
+            // Delete bits on both sides of a word boundary
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            int[] targets = [30, 31, 32, 33];
+            list.DeleteBatch(targets.AsSpan());
+
+            expected.RemoveAt(33);
+            expected.RemoveAt(32);
+            expected.RemoveAt(31);
+            expected.RemoveAt(30);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchAllTrue()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 40; i++)
+            {
+                list.Add(true);
+                expected.Add(true);
+            }
+
+            int[] targets = [5, 15, 25, 35];
+            list.DeleteBatch(targets.AsSpan());
+
+            expected.RemoveAt(35);
+            expected.RemoveAt(25);
+            expected.RemoveAt(15);
+            expected.RemoveAt(5);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchAllFalse()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 40; i++)
+            {
+                list.Add(false);
+                expected.Add(false);
+            }
+
+            int[] targets = [5, 15, 25, 35];
+            list.DeleteBatch(targets.AsSpan());
+
+            expected.RemoveAt(35);
+            expected.RemoveAt(25);
+            expected.RemoveAt(15);
+            expected.RemoveAt(5);
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchConsecutive()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 40; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            // Delete consecutive elements in the middle
+            int[] targets = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+            list.DeleteBatch(targets.AsSpan());
+
+            for (int i = 9; i >= 0; i--)
+            {
+                expected.RemoveAt(10 + i);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchInterleaved()
+        {
+            // Delete every other element
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 40; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            int[] targets = new int[20];
+            for (int i = 0; i < 20; i++)
+            {
+                targets[i] = i * 2;
+            }
+
+            list.DeleteBatch(targets.AsSpan());
+
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                expected.RemoveAt(targets[i]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchAll()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+
+            for (int i = 0; i < 20; i++)
+            {
+                list.Add(i % 2 == 0);
+            }
+
+            int[] targets = new int[20];
+            for (int i = 0; i < 20; i++)
+            {
+                targets[i] = i;
+            }
+
+            list.DeleteBatch(targets.AsSpan());
+
+            Assert.Equal(0, list.Count);
+        }
+
+        [Fact]
+        public void TestDeleteBatchLargeRandom()
+        {
+            for (int seed = 0; seed < 20; seed++)
+            {
+                var list = new BitmapList(GlobalMemoryManager.Instance);
+                var expected = new List<bool>();
+                var r = new Random(seed);
+
+                for (int i = 0; i < 100_000; i++)
+                {
+                    bool val = r.Next(0, 2) == 1;
+                    list.Add(val);
+                    expected.Add(val);
+                }
+
+                // Generate sorted unique delete targets
+                var positions = new SortedSet<int>();
+                while (positions.Count < 10_000)
+                {
+                    positions.Add(r.Next(0, expected.Count));
+                }
+
+                int[] targets = positions.ToArray();
+                list.DeleteBatch(targets.AsSpan());
+
+                for (int i = targets.Length - 1; i >= 0; i--)
+                {
+                    expected.RemoveAt(targets[i]);
+                }
+
+                Assert.Equal(expected.Count, list.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    Assert.Equal(expected[i], list.Get(i));
+                }
+
+                list.Dispose();
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchRepeatedCallsCumulative()
+        {
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+            var r = new Random(42);
+
+            for (int i = 0; i < 500; i++)
+            {
+                bool val = r.Next(0, 2) == 1;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            // Apply DeleteBatch multiple times in succession
+            for (int round = 0; round < 5; round++)
+            {
+                int deleteCount = r.Next(1, 15);
+                var positions = new SortedSet<int>();
+                while (positions.Count < deleteCount && positions.Count < expected.Count)
+                {
+                    positions.Add(r.Next(0, expected.Count));
+                }
+
+                int[] targets = positions.ToArray();
+                list.DeleteBatch(targets.AsSpan());
+
+                for (int i = targets.Length - 1; i >= 0; i--)
+                {
+                    expected.RemoveAt(targets[i]);
+                }
+
+                Assert.Equal(expected.Count, list.Count);
+                for (int i = 0; i < expected.Count; i++)
+                {
+                    Assert.Equal(expected[i], list.Get(i));
+                }
+            }
+
+            list.Dispose();
+        }
+
+        [Fact]
+        public void TestDeleteBatchAlternatingBitsLargeSpread()
+        {
+            // Large list with alternating bits, deletes spread across many words
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 256; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            // Deletes at positions spread across 8 words: 0, 16, 32, 48, ...
+            int[] targets = new int[16];
+            for (int i = 0; i < 16; i++)
+            {
+                targets[i] = i * 16;
+            }
+
+            list.DeleteBatch(targets.AsSpan());
+
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                expected.RemoveAt(targets[i]);
+            }
+
+            Assert.Equal(expected.Count, list.Count);
+            for (int i = 0; i < expected.Count; i++)
+            {
+                Assert.Equal(expected[i], list.Get(i));
+            }
+        }
+
+        [Fact]
+        public void TestDeleteBatchThenAdd()
+        {
+            // Verify list is still usable after batch delete
+            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var expected = new List<bool>();
+
+            for (int i = 0; i < 64; i++)
+            {
+                bool val = i % 2 == 0;
+                list.Add(val);
+                expected.Add(val);
+            }
+
+            int[] targets = [10, 20, 30, 40, 50];
+            list.DeleteBatch(targets.AsSpan());
+
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                expected.RemoveAt(targets[i]);
+            }
+
+            // Add more elements after the delete
+            list.Add(true);
+            list.Add(false);
+            expected.Add(true);
+            expected.Add(false);
 
             Assert.Equal(expected.Count, list.Count);
             for (int i = 0; i < expected.Count; i++)
