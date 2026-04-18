@@ -158,6 +158,26 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
         public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
         {
+            // All columnrowref should come from the same batch, so we can optimize by only looking at the first one to get the batch reference.
+
+            var batchReference = keys[0].referenceBatch;
+
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                var sourceColumn = batchReference.Columns[i];
+
+                //column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
+
+                //for (int j = 0; j < sortedLookup.Length; j++)
+                //{
+                //    int sourceIndex = sortedLookup[j];
+                //    int targetIndex = targetPositions[j];
+                //    sourceColumn.GetValueAt(sourceIndex, _dataValueContainer, default);
+                //    column.InsertAt(targetIndex, _dataValueContainer);
+                //}
+            }
+
             throw new NotImplementedException();
         }
 
