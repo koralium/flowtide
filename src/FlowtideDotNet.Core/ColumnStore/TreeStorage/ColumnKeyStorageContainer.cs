@@ -166,19 +166,9 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 var column = _data.Columns[i];
                 var sourceColumn = batchReference.Columns[i];
-
-                //column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
-
-                //for (int j = 0; j < sortedLookup.Length; j++)
-                //{
-                //    int sourceIndex = sortedLookup[j];
-                //    int targetIndex = targetPositions[j];
-                //    sourceColumn.GetValueAt(sourceIndex, _dataValueContainer, default);
-                //    column.InsertAt(targetIndex, _dataValueContainer);
-                //}
+                column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
             }
-
-            throw new NotImplementedException();
+            _count += sortedLookup.Length;
         }
 
         public void DeleteBatch(ReadOnlySpan<int> positions)

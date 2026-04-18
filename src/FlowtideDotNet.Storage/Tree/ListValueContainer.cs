@@ -73,7 +73,12 @@ namespace FlowtideDotNet.Storage.Tree
 
         public void InsertFrom(V[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
         {
-            throw new NotImplementedException();
+            for (int i = sortedLookup.Length - 1; i >= 0; i--)
+            {
+                int oIdx = sortedLookup[i];
+                var value = values[oIdx];
+                _values.Insert(targetPositions[i], value);
+            }
         }
 
         public void RemoveAt(int index)
