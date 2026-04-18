@@ -724,6 +724,34 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
 
         [MemberNotNull(nameof(_data))]
+        private void WidenToBitWidth(int targetBitWidth)
+        {
+            if (_data != null && targetBitWidth < _data.BitWidth)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetBitWidth), $"Cannot narrow integer column from {_data.BitWidth} bits to {targetBitWidth} bits.");
+            }
+
+            IIntData newData = targetBitWidth switch
+            {
+                8 => new Int8Data(_memoryAllocator),
+                16 => new Int16Data(_memoryAllocator),
+                32 => new Int32Data(_memoryAllocator),
+                64 => new Int64Data(_memoryAllocator),
+                _ => throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}")
+            };
+
+            if (_data != null)
+            {
+                for (int i = 0; i < _data.Count; i++)
+                {
+                    newData.Add(_data.Get(i));
+                }
+                _data.Dispose();
+            }
+            _data = newData;
+        }
+
+        [MemberNotNull(nameof(_data))]
         private void CheckSize(in long value)
         {
             if (_data == null)
@@ -1019,23 +1047,26 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             if (other is IntegerColumn integerColumn)
             {
                 // Check if we need to resize, this also creates an int8 data if it is null
-                CheckSize(0);
                 Debug.Assert(integerColumn._data != null);
-                if (_data.BitWidth == integerColumn._data.BitWidth)
+                if (_data == null || _data.BitWidth != integerColumn._data.BitWidth)
                 {
-                    _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
-                    return;
-                }
-                else
-                {
-                    // Mismatched bitwidth: insert one-by-one with size checks, mirroring InsertRangeFrom
-                    for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                    if (integerColumn._data.BitWidth > (_data?.BitWidth ?? 0))
                     {
-                        var val = integerColumn._data.Get(sortedLookup[i]);
-                        CheckSize(val);
-                        _data.InsertAt(insertPositions[i], val);
+                        // Other is wider
+                        WidenToBitWidth(integerColumn._data.BitWidth);
+                    }
+                    else
+                    {
+                        CheckSize(0);
+                        // This is wider, for now to just inserts
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            _data.InsertAt(insertPositions[i], integerColumn._data.Get(sortedLookup[i]));
+                        }
+                        return;
                     }
                 }
+                _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
                 return;
             }
             throw new NotImplementedException();
