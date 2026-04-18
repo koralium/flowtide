@@ -21,7 +21,6 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.IO.Hashing;
 using System.Text.Json;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
