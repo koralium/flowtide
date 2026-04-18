@@ -376,11 +376,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
         public void InsertFrom(BinaryList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
-            Debug.Assert(other.Count == sortedLookup.Length && sortedLookup.Length == insertPositions.Length);
+            Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
 
-            int totalNewBytes = other._length;
+            // Calculate total bytes only for the elements being inserted
+            int totalNewBytes = 0;
+            for (int i = 0; i < otherCount; i++)
+            {
+                int oIdx = sortedLookup[i];
+                totalNewBytes += other._offsets.Get(oIdx + 1) - other._offsets.Get(oIdx);
+            }
 
 
             int oldDataCount = Count;

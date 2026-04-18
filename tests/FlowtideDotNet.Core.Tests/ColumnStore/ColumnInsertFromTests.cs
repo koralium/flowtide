@@ -792,5 +792,248 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 }
             }
         }
+
+        [Fact]
+        public void InsertFromNullTargetTypedSourceWithNullsInSource()
+        {
+            using var target = CreateNullColumn(2);
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(NullValue.Instance);
+            source.Add(new Int64Value(100));
+            source.Add(NullValue.Instance);
+
+            Span<int> lookup = stackalloc int[] { 0, 1, 2 };
+            Span<int> positions = stackalloc int[] { 0, 1, 1 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(5, target.Count);
+            AssertNullValue(target, 0);
+            AssertNullValue(target, 1);
+            AssertIntValue(target, 2, 100);
+            AssertNullValue(target, 3);
+            AssertNullValue(target, 4);
+        }
+
+        [Fact]
+        public void InsertFromNullTargetTypedSourceNoNullsAnywhere()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+
+            using var source = CreateIntColumn(100, 200);
+
+            Span<int> lookup = stackalloc int[] { 0, 1 };
+            Span<int> positions = stackalloc int[] { 0, 0 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(2, target.Count);
+            AssertIntValue(target, 0, 100);
+            AssertIntValue(target, 1, 200);
+        }
+
+        [Fact]
+        public void InsertFromNullTargetStructSource()
+        {
+            var header = StructHeader.Create("x", "y");
+
+            using var target = CreateNullColumn(1);
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(new StructValue(header, new Int64Value(10), new Int64Value(20)));
+
+            Span<int> lookup = stackalloc int[] { 0 };
+            Span<int> positions = stackalloc int[] { 0 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(2, target.Count);
+            var s0 = target.GetValueAt(0, default).AsStruct;
+            Assert.Equal(10, s0.GetAt(0).AsLong);
+            Assert.Equal(20, s0.GetAt(1).AsLong);
+            AssertNullValue(target, 1);
+        }
+
+        [Fact]
+        public void InsertFromNullTargetUnionSource()
+        {
+            using var target = CreateNullColumn(2);
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(new Int64Value(10));
+            source.Add(new StringValue("hello"));
+
+            Span<int> lookup = stackalloc int[] { 0, 1 };
+            Span<int> positions = stackalloc int[] { 0, 1 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(4, target.Count);
+            AssertIntValue(target, 0, 10);
+            AssertNullValue(target, 1);
+            AssertStringValue(target, 2, "hello");
+            AssertNullValue(target, 3);
+        }
+
+        [Fact]
+        public void InsertFromUnionTargetNullSource()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+            target.Add(new Int64Value(10));
+            target.Add(new StringValue("a"));
+
+            using var source = CreateNullColumn(2);
+
+            Span<int> lookup = stackalloc int[] { 0, 1 };
+            Span<int> positions = stackalloc int[] { 0, 2 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(4, target.Count);
+            AssertNullValue(target, 0);
+            AssertIntValue(target, 1, 10);
+            AssertStringValue(target, 2, "a");
+            AssertNullValue(target, 3);
+        }
+
+        [Fact]
+        public void InsertFromUnionTargetDifferentTypedSource()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+            target.Add(new Int64Value(10));
+            target.Add(new StringValue("a"));
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(new DoubleValue(3.14));
+            source.Add(new DoubleValue(2.72));
+
+            Span<int> lookup = stackalloc int[] { 0, 1 };
+            Span<int> positions = stackalloc int[] { 1, 1 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(4, target.Count);
+            AssertIntValue(target, 0, 10);
+            var v1 = target.GetValueAt(1, default);
+            Assert.Equal(ArrowTypeId.Double, v1.Type);
+            Assert.Equal(3.14, v1.AsDouble);
+            var v2 = target.GetValueAt(2, default);
+            Assert.Equal(ArrowTypeId.Double, v2.Type);
+            Assert.Equal(2.72, v2.AsDouble);
+            AssertStringValue(target, 3, "a");
+        }
+
+        [Fact]
+        public void InsertFromTypeMismatchMultipleInserts()
+        {
+            using var target = CreateIntColumn(1, 2, 3, 4, 5);
+            using var source = CreateStringColumn("a", "b", "c");
+
+            Span<int> lookup = stackalloc int[] { 0, 1, 2 };
+            Span<int> positions = stackalloc int[] { 1, 3, 5 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(8, target.Count);
+            AssertIntValue(target, 0, 1);
+            AssertStringValue(target, 1, "a");
+            AssertIntValue(target, 2, 2);
+            AssertIntValue(target, 3, 3);
+            AssertStringValue(target, 4, "b");
+            AssertIntValue(target, 5, 4);
+            AssertIntValue(target, 6, 5);
+            AssertStringValue(target, 7, "c");
+        }
+
+        [Fact]
+        public void InsertFromNullTargetTypedSourcePartialLookup()
+        {
+            using var target = CreateNullColumn(1);
+            using var source = CreateIntColumn(10, 20, 30, 40, 50);
+
+            Span<int> lookup = stackalloc int[] { 1, 3 };
+            Span<int> positions = stackalloc int[] { 0, 1 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(3, target.Count);
+            AssertIntValue(target, 0, 20);
+            AssertNullValue(target, 1);
+            AssertIntValue(target, 2, 40);
+        }
+
+        [Fact]
+        public void InsertFromTypedTargetNullSourceMultiplePositions()
+        {
+            using var target = CreateIntColumn(10, 20, 30, 40);
+            using var source = CreateNullColumn(5);
+
+            Span<int> lookup = stackalloc int[] { 0, 1, 2 };
+            Span<int> positions = stackalloc int[] { 0, 2, 4 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(7, target.Count);
+            AssertNullValue(target, 0);
+            AssertIntValue(target, 1, 10);
+            AssertIntValue(target, 2, 20);
+            AssertNullValue(target, 3);
+            AssertIntValue(target, 4, 30);
+            AssertIntValue(target, 5, 40);
+            AssertNullValue(target, 6);
+        }
+
+        [Fact]
+        public void InsertFromTypeMismatchBothHaveNulls()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+            target.Add(new Int64Value(1));
+            target.Add(NullValue.Instance);
+            target.Add(new Int64Value(3));
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(NullValue.Instance);
+            source.Add(new StringValue("hello"));
+
+            Span<int> lookup = stackalloc int[] { 0, 1 };
+            Span<int> positions = stackalloc int[] { 1, 2 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(5, target.Count);
+            AssertIntValue(target, 0, 1);
+            AssertNullValue(target, 1);
+            AssertNullValue(target, 2);
+            AssertStringValue(target, 3, "hello");
+            AssertIntValue(target, 4, 3);
+        }
+
+        [Fact]
+        public void InsertFromUnionTargetDifferentTypedSourceWithNulls()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+            target.Add(new Int64Value(10));
+            target.Add(new StringValue("a"));
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(NullValue.Instance);
+            source.Add(new DoubleValue(3.14));
+            source.Add(NullValue.Instance);
+
+            Span<int> lookup = stackalloc int[] { 0, 1, 2 };
+            Span<int> positions = stackalloc int[] { 0, 1, 1 };
+
+            target.InsertFrom(source, lookup, positions);
+
+            Assert.Equal(5, target.Count);
+            AssertNullValue(target, 0);
+            AssertIntValue(target, 1, 10);
+            var v = target.GetValueAt(2, default);
+            Assert.Equal(ArrowTypeId.Double, v.Type);
+            Assert.Equal(3.14, v.AsDouble);
+            AssertNullValue(target, 3);
+            AssertStringValue(target, 4, "a");
+        }
     }
 }
