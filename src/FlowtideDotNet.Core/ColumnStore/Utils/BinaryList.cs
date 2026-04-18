@@ -478,7 +478,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     int blockEnd = selfOffsets[targetIdx];
                     int blockSize = blockEnd - blockStart;
 
-                    if (blockSize > 0)
+                    if (blockSize > 0 && writeDataPtr != blockStart)
                     {
                         selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
                     }
@@ -508,7 +508,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 int blockEnd = selfOffsets[oldCount]; // sentinel offset
                 int blockSize = blockEnd - blockStart;
 
-                if (blockSize > 0)
+                if (blockSize > 0 && writeDataPtr != blockStart)
                 {
                     selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
                 }

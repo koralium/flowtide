@@ -1027,7 +1027,10 @@ namespace FlowtideDotNet.Storage.DataStructures
                 int bitsToMove = targetIdx - currentSourceBit;
                 if (bitsToMove > 0)
                 {
-                    CopyBitsForward(span, currentSourceBit, writeBit, bitsToMove);
+                    if (writeBit != currentSourceBit)
+                    {
+                        CopyBitsForward(span, currentSourceBit, writeBit, bitsToMove);
+                    }
                     writeBit += bitsToMove;
                 }
 
@@ -1037,7 +1040,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             // Copy the remaining block after the last deletion target
             int remainingBits = oldBitCount - currentSourceBit;
-            if (remainingBits > 0)
+            if (remainingBits > 0 && writeBit != currentSourceBit)
             {
                 CopyBitsForward(span, currentSourceBit, writeBit, remainingBits);
             }

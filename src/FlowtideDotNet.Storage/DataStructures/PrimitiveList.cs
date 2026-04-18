@@ -229,8 +229,11 @@ namespace FlowtideDotNet.Storage.DataStructures
                 int elementsToMove = targetIdx - currentSourceIdx;
                 if (elementsToMove > 0)
                 {
-                    selfData.Slice(currentSourceIdx, elementsToMove)
-                            .CopyTo(selfData.Slice(writeIdx, elementsToMove));
+                    if (writeIdx != currentSourceIdx)
+                    {
+                        selfData.Slice(currentSourceIdx, elementsToMove)
+                                .CopyTo(selfData.Slice(writeIdx, elementsToMove));
+                    }
                     writeIdx += elementsToMove;
                 }
 
@@ -240,7 +243,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             // Copy the remaining block after the last deletion target
             int remaining = oldCount - currentSourceIdx;
-            if (remaining > 0)
+            if (remaining > 0 && writeIdx != currentSourceIdx)
             {
                 selfData.Slice(currentSourceIdx, remaining)
                         .CopyTo(selfData.Slice(writeIdx, remaining));
