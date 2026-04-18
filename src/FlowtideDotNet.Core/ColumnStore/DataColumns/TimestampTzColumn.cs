@@ -32,8 +32,6 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using static SqlParser.Ast.FetchDirection;
-using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
