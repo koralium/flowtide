@@ -289,7 +289,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is TimestampTzColumn timestampColumn)
             {

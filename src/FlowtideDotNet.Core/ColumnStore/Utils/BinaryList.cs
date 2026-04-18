@@ -374,7 +374,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="other">The other binary list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the sorted indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
-        public void InsertFrom(BinaryList other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(BinaryList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             Debug.Assert(other.Count == sortedLookup.Length && sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;

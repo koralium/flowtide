@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             _count += sortedLookup.Length;
         }

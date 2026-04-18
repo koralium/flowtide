@@ -1183,7 +1183,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(IColumn column, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             Debug.Assert(_validityList != null);
 

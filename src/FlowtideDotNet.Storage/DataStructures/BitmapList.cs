@@ -899,7 +899,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        public void InsertFrom(BitmapList other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(BitmapList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;

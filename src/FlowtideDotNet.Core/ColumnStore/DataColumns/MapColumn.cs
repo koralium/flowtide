@@ -698,7 +698,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _valueColumn.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is MapColumn otherMap)
             {
