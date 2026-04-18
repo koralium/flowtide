@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -590,6 +590,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _columns[i].AddToHash(index, child, hashAlgorithm);
             }
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is StructColumn otherStruct)
+            {
+                for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                {
+                    int oIdx = sortedLookup[i];
+                    var value = otherStruct.GetValueAt(oIdx, default);
+                    InsertAt(insertPositions[i], value);
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
     }
 }

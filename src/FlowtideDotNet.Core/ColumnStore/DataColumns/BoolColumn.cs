@@ -299,5 +299,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
         }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertFrom(boolColumn._data, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }

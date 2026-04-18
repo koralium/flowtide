@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1181,6 +1181,92 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _dataColumn!.WriteDataToBuffer(ref dataWriter);
+        }
+
+        public void InsertFrom(IColumn column, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            Debug.Assert(_validityList != null);
+
+            if (column is Column other)
+            {
+                int count = sortedLookup.Length;
+                if (count == 0) return;
+
+                if (CompareOtherColumnType(other))
+                {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        // Both columns are null, just add null count
+                        _nullCounter += count;
+                        return;
+                    }
+                    if (_type == ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        Debug.Assert(other._dataColumn != null);
+                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        return;
+                    }
+
+                    // Same non-null, non-union type
+                    // Handle validity list
+                    if (_nullCounter > 0 || other._nullCounter > 0)
+                    {
+                        if (_nullCounter > 0 && other._nullCounter > 0)
+                        {
+                            Debug.Assert(other._validityList != null);
+                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            // Count new nulls from the inserted elements
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (!other._validityList.Get(sortedLookup[i]))
+                                {
+                                    _nullCounter++;
+                                }
+                            }
+                        }
+                        else if (_nullCounter > 0)
+                        {
+                            // This has nulls, other doesn't — insert all as valid
+                            for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                            {
+                                _validityList.InsertAt(insertPositions[i], true);
+                            }
+                        }
+                        else // other has nulls, this doesn't
+                        {
+                            Debug.Assert(other._validityList != null);
+                            CheckNullInitialization();
+                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (!other._validityList.Get(sortedLookup[i]))
+                                {
+                                    _nullCounter++;
+                                }
+                            }
+                        }
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(other._dataColumn != null);
+                    _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                }
+                else
+                {
+                    // Type mismatch — fall back to element-by-element insertion
+                    // InsertAt handles type promotion, null initialization, and union conversion
+                    for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                    {
+                        var value = other.GetValueAt(sortedLookup[i], default);
+                        InsertAt(insertPositions[i], value);
+                    }
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

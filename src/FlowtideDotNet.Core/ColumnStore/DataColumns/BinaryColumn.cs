@@ -25,6 +25,8 @@ using System.Buffers;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
+using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -266,6 +268,18 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             // Write binary data
             dataWriter.WriteArrowBuffer(_data.DataMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is BinaryColumn binaryColumn)
+            {
+                _data.InsertFrom(binaryColumn._data, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
