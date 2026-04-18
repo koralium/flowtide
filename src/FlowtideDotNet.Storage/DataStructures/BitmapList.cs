@@ -949,6 +949,56 @@ namespace FlowtideDotNet.Storage.DataStructures
             _length = newBitCount;
         }
 
+        /// <summary>
+        /// Inserts a constant bit value at scattered insert positions.
+        /// Uses the same backward-sweep algorithm as InsertFrom but writes a fixed value
+        /// instead of reading from another BitmapList.
+        /// </summary>
+        /// <param name="value">The constant bit value to insert (true or false).</param>
+        /// <param name="insertPositions">Sorted insert positions (ascending, in pre-insert coordinate space).</param>
+        public void InsertConstantFrom(bool value, ReadOnlySpan<int> insertPositions)
+        {
+            int otherCount = insertPositions.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (value)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
         private static void CopyBitsBackward(Span<int> span, int srcStart, int dstStart, int count)
         {
             if (count <= 0) return;
