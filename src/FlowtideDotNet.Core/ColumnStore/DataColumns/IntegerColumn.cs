@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -73,6 +73,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             void InsertRangeFrom(int index, IIntData other, int start, int count);
 
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
+
+            void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
         }
 
         private sealed class Int8Data : IIntData
@@ -207,6 +209,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list[index] = (sbyte)value;
                 return index;
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int8Data int8data)
+                {
+                    _list.InsertFrom(int8data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -340,6 +352,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
+            }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int16Data int16Data)
+                {
+                    _list.InsertFrom(int16Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
             }
         }
 
@@ -476,6 +498,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int32Data int32Data)
+                {
+                    _list.InsertFrom(int32Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -609,6 +641,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
+            }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int64Data int64Data)
+                {
+                    _list.InsertFrom(int64Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
             }
         }
 
@@ -970,6 +1012,33 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.Get(index));
             hashAlgorithm.Append(buffer);
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is IntegerColumn integerColumn)
+            {
+                // Check if we need to resize, this also creates an int8 data if it is null
+                CheckSize(0);
+                Debug.Assert(integerColumn._data != null);
+                if (_data.BitWidth == integerColumn._data.BitWidth)
+                {
+                    _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
+                    return;
+                }
+                else
+                {
+                    // Mismatched bitwidth: insert one-by-one with size checks, mirroring InsertRangeFrom
+                    for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                    {
+                        var val = integerColumn._data.Get(sortedLookup[i]);
+                        CheckSize(val);
+                        _data.InsertAt(insertPositions[i], val);
+                    }
+                }
+                return;
+            }
+            throw new NotImplementedException();
         }
     }
 }

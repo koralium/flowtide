@@ -180,5 +180,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
         }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            _count += sortedLookup.Length;
+        }
     }
 }

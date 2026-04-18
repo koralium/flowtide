@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -978,6 +978,115 @@ namespace FlowtideDotNet.Storage.DataStructures
                         if (sw > 0)
                         {
                             assembled |= (int)((uint)span[sw - 1] >> (32 - bitShift));
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Batch delete bits at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained bits in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of bits to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= _length);
+
+            int oldBitCount = _length;
+            var span = AccessSpan;
+
+            int writeBit = 0;
+            int currentSourceBit = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                int bitsToMove = targetIdx - currentSourceBit;
+                if (bitsToMove > 0)
+                {
+                    if (writeBit != currentSourceBit)
+                    {
+                        CopyBitsForward(span, currentSourceBit, writeBit, bitsToMove);
+                    }
+                    writeBit += bitsToMove;
+                }
+
+                // Skip the deleted bit
+                currentSourceBit = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            int remainingBits = oldBitCount - currentSourceBit;
+            if (remainingBits > 0 && writeBit != currentSourceBit)
+            {
+                CopyBitsForward(span, currentSourceBit, writeBit, remainingBits);
+            }
+
+            _length = oldBitCount - deleteCount;
+
+            // Clear any leftover bits in the last word beyond the new length
+            int newWordCount = (_length + 31) >> 5;
+            int trailingBits = _length & 31;
+            if (trailingBits > 0 && newWordCount > 0)
+            {
+                span[newWordCount - 1] &= BitPatternArray[trailingBits - 1];
+            }
+        }
+
+        private static void CopyBitsForward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            Debug.Assert(dstStart <= srcStart);
+
+            int shift = srcStart - dstStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstFirstWord; dw <= dstLastWord; dw++)
+                {
+                    int sw = dw + wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = (int)((uint)span[sw] >> bitShift);
+                        if (sw + 1 < span.Length)
+                        {
+                            assembled |= span[sw + 1] << (32 - bitShift);
                         }
                     }
 

@@ -336,5 +336,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_data != null);
             dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            // Int64 column is not in use right now
+            throw new NotImplementedException();
+        }
     }
 }

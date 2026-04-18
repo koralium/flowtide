@@ -203,6 +203,57 @@ namespace FlowtideDotNet.Storage.DataStructures
         }
 
         /// <summary>
+        /// Batch delete elements at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained data in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= _length);
+
+            int oldCount = _length;
+            var selfData = AccessSpan;
+
+            int writeIdx = 0;
+            int currentSourceIdx = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                int elementsToMove = targetIdx - currentSourceIdx;
+                if (elementsToMove > 0)
+                {
+                    if (writeIdx != currentSourceIdx)
+                    {
+                        selfData.Slice(currentSourceIdx, elementsToMove)
+                                .CopyTo(selfData.Slice(writeIdx, elementsToMove));
+                    }
+                    writeIdx += elementsToMove;
+                }
+
+                // Skip the deleted element
+                currentSourceIdx = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            int remaining = oldCount - currentSourceIdx;
+            if (remaining > 0 && writeIdx != currentSourceIdx)
+            {
+                selfData.Slice(currentSourceIdx, remaining)
+                        .CopyTo(selfData.Slice(writeIdx, remaining));
+            }
+
+            _length = oldCount - deleteCount;
+            CheckSizeReduction();
+        }
+
+        /// <summary>
         /// Special case insert that allows inserting a subset of elements from an array at specific positions.
         /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
         /// The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the array.

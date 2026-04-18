@@ -276,5 +276,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertFrom(decimalColumn._values, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }

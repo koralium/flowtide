@@ -283,5 +283,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
         }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is StringColumn stringColumn)
+            {
+                _binaryList.InsertFrom(stringColumn._binaryList, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
     }
 }
