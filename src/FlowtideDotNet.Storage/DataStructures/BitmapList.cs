@@ -1067,8 +1067,6 @@ namespace FlowtideDotNet.Storage.DataStructures
             int dstFirstWord = dstStart >> 5;
             int dstLastWord = (dstEnd - 1) >> 5;
 
-            int srcLastWordNeeded = (srcStart + count - 1) >> 5;
-
             unchecked
             {
                 for (int dw = dstFirstWord; dw <= dstLastWord; dw++)
