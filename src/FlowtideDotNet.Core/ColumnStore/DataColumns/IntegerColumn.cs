@@ -732,7 +732,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 16 => new Int16Data(_memoryAllocator),
                 32 => new Int32Data(_memoryAllocator),
                 64 => new Int64Data(_memoryAllocator),
-                _ => throw new NotImplementedException($"Unsupported bit width: {targetBitWidth}")
+                _ => throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}")
             };
 
             if (_data != null)
