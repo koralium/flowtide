@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -444,6 +444,91 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             _length += totalNewBytes;
             selfOffsets[oldDataCount + otherCount] = oldTotalBytes + totalNewBytes;
+        }
+
+        /// <summary>
+        /// Batch delete elements at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained data in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= Count);
+
+            int oldCount = Count;
+            var selfData = AccessSpan;
+            var selfOffsets = _offsets.AccessSpan;
+
+            int writeDataPtr = 0;
+            int currentSourceRow = 0;
+            int cumulativeBytesRemoved = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                if (targetIdx > currentSourceRow)
+                {
+                    int blockStart = selfOffsets[currentSourceRow];
+                    int blockEnd = selfOffsets[targetIdx];
+                    int blockSize = blockEnd - blockStart;
+
+                    if (blockSize > 0)
+                    {
+                        selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
+                    }
+
+                    // Write compacted offsets for the retained rows
+                    for (int r = currentSourceRow; r < targetIdx; r++)
+                    {
+                        selfOffsets[r - i] = selfOffsets[r] - cumulativeBytesRemoved;
+                    }
+
+                    writeDataPtr += blockSize;
+                }
+
+                // Account for the bytes of the deleted element
+                int deletedStart = selfOffsets[targetIdx];
+                int deletedEnd = selfOffsets[targetIdx + 1];
+                int deletedSize = deletedEnd - deletedStart;
+                cumulativeBytesRemoved += deletedSize;
+
+                currentSourceRow = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            if (currentSourceRow < oldCount)
+            {
+                int blockStart = selfOffsets[currentSourceRow];
+                int blockEnd = selfOffsets[oldCount]; // sentinel offset
+                int blockSize = blockEnd - blockStart;
+
+                if (blockSize > 0)
+                {
+                    selfData.Slice(blockStart, blockSize).CopyTo(selfData.Slice(writeDataPtr));
+                }
+
+                for (int r = currentSourceRow; r <= oldCount; r++)
+                {
+                    selfOffsets[r - deleteCount] = selfOffsets[r] - cumulativeBytesRemoved;
+                }
+
+                writeDataPtr += blockSize;
+            }
+            else
+            {
+                // All trailing elements were deleted; write the final sentinel offset
+                selfOffsets[oldCount - deleteCount] = writeDataPtr;
+            }
+
+            _length = writeDataPtr;
+            _offsets.RemoveRange(oldCount + 1 - deleteCount, deleteCount);
+            CheckSizeReduction();
         }
     }
 }
