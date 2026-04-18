@@ -124,7 +124,7 @@ namespace DifferntialCompute.Benchmarks
         public async Task BulkInsert_Batched()
         {
             var bulkInserter = new BPlusTreeBulkInserter<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>(_tree);
-            var batchSize = 1_000;
+            var batchSize = 10_000;
 
             var keys = new long[batchSize];
             var values = new long[batchSize];
@@ -136,7 +136,7 @@ namespace DifferntialCompute.Benchmarks
 
                 for (int i = 0; i < count; i++)
                 {
-                    keys[i] = r.Next();
+                    keys[i] = offset + i;
                     values[i] = offset + i;
                 }
 

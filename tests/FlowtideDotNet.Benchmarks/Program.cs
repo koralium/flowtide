@@ -14,7 +14,7 @@ using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 
 //BPlusTreeBulkInsertBenchmark bPlusTreeBulkInsertBenchmark = new BPlusTreeBulkInsertBenchmark();
-//bPlusTreeBulkInsertBenchmark.ElementCount = 10_000_000;
+//bPlusTreeBulkInsertBenchmark.ElementCount = 1_000_000;
 //bPlusTreeBulkInsertBenchmark.GlobalSetup();
 //bPlusTreeBulkInsertBenchmark.IterationSetup();
 //await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();

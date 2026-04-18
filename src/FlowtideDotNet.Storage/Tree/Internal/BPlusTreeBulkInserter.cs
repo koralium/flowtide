@@ -97,13 +97,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask MutateBatch<TMutator>(TMutator mutator)
             where TMutator : IRowMutator<K, V>
         {
-            foreach (var map in _mappings)
+            for (int i = 0; i < _mappings.Count; i++)
             {
-                var leafTask = _tree.m_stateClient.GetValue(map.LeafId);
+                var mapping = _mappings[i];
+                var leafTask = _tree.m_stateClient.GetValue(mapping.LeafId);
                 var leaf = (leafTask.IsCompletedSuccessfully ? leafTask.Result : await leafTask)
                             as LeafNode<K, V, TKeyContainer, TValueContainer>;
 
-                LeafMutateFromBatch(leaf!, mutator, in map, _tree.m_keyComparer);
+                LeafMutateFromBatch(leaf!, mutator, in mapping, _tree.m_keyComparer);
                 leaf.Return();
             }
         }
