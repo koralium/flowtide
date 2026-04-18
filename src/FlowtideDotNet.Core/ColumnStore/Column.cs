@@ -1228,10 +1228,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         else if (_nullCounter > 0)
                         {
                             // This has nulls, other doesn't — insert all as valid
-                            for (int i = sortedLookup.Length - 1; i >= 0; i--)
-                            {
-                                _validityList.InsertAt(insertPositions[i], true);
-                            }
+                            _validityList.InsertConstantFrom(true, insertPositions);
                         }
                         else // other has nulls, this doesn't
                         {
@@ -1254,12 +1251,108 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 else
                 {
-                    // Type mismatch — fall back to element-by-element insertion
-                    // InsertAt handles type promotion, null initialization, and union conversion
-                    for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                    if (_type == ArrowTypeId.Null)
                     {
-                        var value = other.GetValueAt(sortedLookup[i], default);
-                        InsertAt(insertPositions[i], value);
+                        Debug.Assert(_validityList != null);
+                        if (other.Type == ArrowTypeId.Struct)
+                        {
+                            if (column.StructHeader == null)
+                            {
+                                throw new InvalidOperationException("Struct header is null, cannot create struct column.");
+                            }
+                            Debug.Assert(_memoryAllocator != null);
+                            _dataColumn = new StructColumn(column.StructHeader.Value, _memoryAllocator);
+                        }
+                        else
+                        {
+                            _dataColumn = CreateArrayByType(other.Type);
+                        }
+
+                        _type = other.Type;
+
+                        if (_type == ArrowTypeId.Union)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Clear();
+                            _nullCounter = 0;
+                        }
+
+                        // Add null values as undefined values to the array
+                        if (_nullCounter > 0)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Unset(Count - 1);
+                        }
+
+                        // Handle validity bitmap for the inserted elements
+                        if (other._nullCounter > 0 || _nullCounter > 0)
+                        {
+                            if (other._nullCounter > 0)
+                            {
+                                Debug.Assert(other._validityList != null);
+                                _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                                for (int i = 0; i < count; i++)
+                                {
+                                    if (!other._validityList.Get(sortedLookup[i]))
+                                    {
+                                        _nullCounter++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                _validityList.InsertConstantFrom(true, insertPositions);
+                            }
+                        }
+                    }
+                    else if (other.Type == ArrowTypeId.Null)
+                    {
+                        // Other column is null-typed — insert null placeholders
+                        Debug.Assert(_dataColumn != null);
+                        if (_type != ArrowTypeId.Union)
+                        {
+                            CheckNullInitialization();
+                            Debug.Assert(_validityList != null);
+                            _validityList.InsertConstantFrom(false, insertPositions);
+                            _nullCounter += count;
+                        }
+                        // Insert null placeholders into the data column element-by-element
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            _dataColumn.InsertAt(insertPositions[i], in NullValue.Instance);
+                        }
+                        return;
+                    }
+                    else if (_type != ArrowTypeId.Union)
+                    {
+                        // Both are typed but different, convert this to union, then bulk insert
+                        Debug.Assert(_validityList != null);
+                        Debug.Assert(_dataColumn != null);
+
+                        var unionColumn = ConvertToUnion();
+                        _type = ArrowTypeId.Union;
+                        var previousColumn = _dataColumn;
+                        _dataColumn = unionColumn;
+                        previousColumn.Dispose();
+                        _validityList.Clear();
+                        _nullCounter = 0;
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(other._dataColumn != null);
+
+                    if (_type == ArrowTypeId.Union && other._nullCounter > 0)
+                    {
+                        // Fix for null values, validity list should perhaps be passed later to insert from
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            var value = other.GetValueAt(sortedLookup[i], default);
+                            _dataColumn.InsertAt(insertPositions[i], value);
+                        }
+                    }
+                    else
+                    {
+                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
                     }
                 }
             }
