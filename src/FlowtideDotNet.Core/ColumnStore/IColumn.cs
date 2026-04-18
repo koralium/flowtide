@@ -86,5 +86,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal StructHeader? StructHeader { get; }
 
         void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
+
+        void InsertFrom(IColumn column, Span<int> sortedLookup, Span<int> insertPositions);
     }
 }

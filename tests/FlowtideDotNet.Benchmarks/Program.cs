@@ -11,5 +11,13 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Running;
+using DifferntialCompute.Benchmarks;
+using FlowtideDotNet.Benchmarks;
+
+//ColumnInsertFromBenchmark a = new ColumnInsertFromBenchmark();
+//a.InsertCount = 10_000;
+//a.Setup();
+//a.InsertFromBatch();
+
 
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

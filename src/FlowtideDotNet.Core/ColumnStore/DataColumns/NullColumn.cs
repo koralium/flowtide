@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.IO.Hashing;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -179,6 +180,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            _count += sortedLookup.Length;
         }
     }
 }

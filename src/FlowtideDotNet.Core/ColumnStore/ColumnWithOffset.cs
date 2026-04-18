@@ -267,5 +267,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             usedOffset = true;
             return new ColumnWithOffset(column, offsets, includeNullValueAtEnd);
         }
+
+        public void InsertFrom(IColumn column, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            throw new NotSupportedException("Column with offset does not support InsertFrom.");
+        }
     }
 }

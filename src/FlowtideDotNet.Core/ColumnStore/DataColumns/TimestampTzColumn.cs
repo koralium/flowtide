@@ -32,6 +32,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
+using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -287,6 +289,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is TimestampTzColumn timestampColumn)
+            {
+                _values.InsertFrom(timestampColumn._values, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

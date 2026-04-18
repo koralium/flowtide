@@ -30,6 +30,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
+using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -275,6 +277,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertFrom(decimalColumn._values, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
