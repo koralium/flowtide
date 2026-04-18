@@ -300,7 +300,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is BoolColumn boolColumn)
             {

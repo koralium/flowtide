@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             // Int64 column is not in use right now
             throw new NotImplementedException();

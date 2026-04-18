@@ -284,7 +284,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, Span<int> sortedLookup, Span<int> insertPositions)
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
             if (other is StringColumn stringColumn)
             {
