@@ -726,6 +726,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         [MemberNotNull(nameof(_data))]
         private void WidenToBitWidth(int targetBitWidth)
         {
+            if (_data != null && targetBitWidth < _data.BitWidth)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetBitWidth), $"Cannot narrow integer column from {_data.BitWidth} bits to {targetBitWidth} bits.");
+            }
+
             IIntData newData = targetBitWidth switch
             {
                 8 => new Int8Data(_memoryAllocator),
