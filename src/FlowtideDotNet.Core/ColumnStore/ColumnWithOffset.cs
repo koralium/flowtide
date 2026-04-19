@@ -272,5 +272,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException("Column with offset does not support InsertFrom.");
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            throw new NotSupportedException("Column with offset does not support DeleteBatch.");
+        }
     }
 }

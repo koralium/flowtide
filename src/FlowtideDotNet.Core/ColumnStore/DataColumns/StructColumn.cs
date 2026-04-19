@@ -606,5 +606,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
     }
 }

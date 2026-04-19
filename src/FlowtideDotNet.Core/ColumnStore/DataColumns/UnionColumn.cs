@@ -935,5 +935,13 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 InsertAt(insertPositions[i], value);
             }
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
     }
 }
