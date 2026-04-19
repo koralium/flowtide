@@ -177,5 +177,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

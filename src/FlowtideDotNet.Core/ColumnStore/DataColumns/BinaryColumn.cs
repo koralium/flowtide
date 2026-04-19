@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using SqlParser.Ast;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO.Hashing;
@@ -280,6 +281,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 throw new NotImplementedException();
             }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _data.DeleteBatch(targets);
         }
     }
 }
