@@ -1361,5 +1361,37 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotImplementedException();
             }
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            Debug.Assert(_validityList != null);
+
+            if (targets.Length == 0) return;
+
+            if (_nullCounter > 0)
+            {
+                if (_type == ArrowTypeId.Null)
+                {
+                    _nullCounter -= targets.Length;
+                    return;
+                }
+                else
+                {
+                    // Count how many of the targets are null
+                    for (int i = 0; i < targets.Length; i++)
+                    {
+                        if (!_validityList.Get(targets[i]))
+                        {
+                            _nullCounter--;
+                        }
+                    }
+                    _validityList.DeleteBatch(targets);
+                }
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.DeleteBatch(targets);
+            }
+        }
     }
 }

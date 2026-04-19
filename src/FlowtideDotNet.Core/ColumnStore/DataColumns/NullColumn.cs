@@ -185,5 +185,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _count += sortedLookup.Length;
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _count -= targets.Length;
+        }
     }
 }

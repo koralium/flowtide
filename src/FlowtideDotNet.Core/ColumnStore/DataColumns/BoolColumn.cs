@@ -311,5 +311,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotImplementedException();
             }
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _data.DeleteBatch(targets);
+        }
     }
 }

@@ -75,6 +75,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
             void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+
+            void DeleteBatch(ReadOnlySpan<int> targets);
         }
 
         private sealed class Int8Data : IIntData
@@ -219,6 +221,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 throw new NotImplementedException();
             }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -362,6 +369,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     return;
                 }
                 throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
             }
         }
 
@@ -508,6 +520,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 throw new NotImplementedException();
             }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -651,6 +668,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     return;
                 }
                 throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
             }
         }
 
@@ -1070,6 +1092,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return;
             }
             throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            if (_data != null)
+            {
+                _data.DeleteBatch(targets);
+            }
         }
     }
 }

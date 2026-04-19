@@ -342,5 +342,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Int64 column is not in use right now
             throw new NotImplementedException();
         }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            // Int64 column is not in use right now
+            throw new NotImplementedException();
+        }
     }
 }
