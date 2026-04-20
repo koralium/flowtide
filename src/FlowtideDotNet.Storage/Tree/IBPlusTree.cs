@@ -64,5 +64,10 @@ namespace FlowtideDotNet.Storage.Tree
         ValueTask Clear();
 
         long CacheMisses { get; }
+
+        IBplusTreeBulkSearch<K, V, TKeyContainer, TValueContainer, TComparer> CreateBulkSearcher<TComparer>(TComparer comparer)
+            where TComparer : IBplusTreeComparer<K, TKeyContainer>;
+
+        IBPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer> CreateBulkInserter();
     }
 }

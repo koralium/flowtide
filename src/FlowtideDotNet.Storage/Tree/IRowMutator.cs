@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tree
 {
-    internal interface IRowMutator<K, V>
+    public interface IRowMutator<K, V>
     {
         GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
     }

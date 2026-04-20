@@ -207,5 +207,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>(), 0);
             m_stateClient.AddOrUpdate(rootId, root);
         }
+
+        public IBplusTreeBulkSearch<K, V, TKeyContainer, TValueContainer, TComparer> CreateBulkSearcher<TComparer>(TComparer comparer)
+            where TComparer : IBplusTreeComparer<K, TKeyContainer>
+        {
+            return new BPlusTreeBulkSearch<K, V, TKeyContainer, TValueContainer, TComparer>(this, comparer);
+        }
+
+        public IBPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer> CreateBulkInserter()
+        {
+            return new BPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer>(this);
+        }
     }
 }

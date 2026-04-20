@@ -16,13 +16,14 @@ using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    internal readonly struct ExternalKeyComparer<T, TKeyContainer> : IComparer<int>
+    internal readonly struct ExternalKeyComparer<T, TKeyContainer, TComparer> : IComparer<int>
         where TKeyContainer : IKeyContainer<T>
+        where TComparer : IBplusTreeComparer<T, TKeyContainer>
     {
         private readonly T[] _keys;
-        private readonly IBplusTreeComparer<T, TKeyContainer> _comparer;
+        private readonly TComparer _comparer;
 
-        public ExternalKeyComparer(T[] keys, IBplusTreeComparer<T, TKeyContainer> comparer)
+        public ExternalKeyComparer(T[] keys, TComparer comparer)
         {
             _keys = keys;
             _comparer = comparer;
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
     }
 
-    internal class BPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer> 
+    internal class BPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer>
         : IBPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer>
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
@@ -67,6 +68,39 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             await ApplySplitsAndMerges();
         }
 
+
+        public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, TMutator mutator)
+            where TMutator : IRowMutator<K, V>
+        {
+            await StartBatch(keys, values, keyLength, sortedIndices);
+            await MutateBatch(mutator);
+            await ApplySplitsAndMerges();
+        }
+
+        public int[] SortAndGetIndices(K[] keys, int keyLength)
+        {
+            if (keyLength > _sortedIndices.Length)
+            {
+                _sortedIndices = new int[keyLength];
+            }
+            var keyComparer = _tree.m_keyComparer;
+            for (int i = 0; i < keyLength; i++)
+            {
+                _sortedIndices[i] = i;
+            }
+            var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
+            indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys, keyComparer));
+            return _sortedIndices;
+        }
+
+        public ValueTask StartBatch(K[] keys, V[] values, int keyLength, int[] sortedIndices)
+        {
+            _keys = keys;
+            _values = values;
+            _mappings.Clear();
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
+        }
+
         public ValueTask StartBatch(K[] keys, V[] values, int keyLength)
         {
             _keys = keys;
@@ -89,7 +123,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
 
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
-            indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer>(keys,keyComparer));
+            indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys,keyComparer));
 
             return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings);
         }

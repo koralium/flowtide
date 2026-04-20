@@ -56,6 +56,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             throw new NotImplementedException();
         }
 
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
+
         public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)
         {
             int index = -1;

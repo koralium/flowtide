@@ -14,6 +14,11 @@ using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 
+//BPlusTreeBulkSearchBenchmark bPlusTreeBulkSearchBenchmark = new BPlusTreeBulkSearchBenchmark();
+//bPlusTreeBulkSearchBenchmark.TreeSize = 1_000_000;
+//bPlusTreeBulkSearchBenchmark.SearchKeyCount = 1000;
+//bPlusTreeBulkSearchBenchmark.GlobalSetup();
+//await bPlusTreeBulkSearchBenchmark.BulkSearchPreSorted();
 
 //ColumnStoreTreeBenchmark columnStore = new ColumnStoreTreeBenchmark();
 //columnStore.GlobalSetup();

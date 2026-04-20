@@ -29,6 +29,11 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             throw new NotImplementedException();
         }
 
+        public FindBoundriesResult FindBoundries(in long key, in TimestampKeyContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
+
         public int FindIndex(in long key, in TimestampKeyContainer keyContainer)
         {
             return keyContainer.BinarySearch(key, new LongComparer());

@@ -22,6 +22,12 @@ namespace FlowtideDotNet.Storage.Tree
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
     {
-        ValueTask StartBatch(K[] keys, V[] values, int keyLength);
+        int[] SortAndGetIndices(K[] keys, int keyLength);
+
+        ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, TMutator mutator)
+            where TMutator : IRowMutator<K, V>;
+
+        ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, TMutator mutator)
+            where TMutator : IRowMutator<K, V>;
     }
 }
