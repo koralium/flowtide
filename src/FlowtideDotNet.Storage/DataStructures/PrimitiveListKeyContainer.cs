@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             _list.InsertAt(index, key);
         }
 
-        public void InsertFrom(K[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        public void InsertFrom(K[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
             throw new NotImplementedException();
         }

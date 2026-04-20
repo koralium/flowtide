@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Storage.Tree
             _values.Update(index, key);
         }
 
-        public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
             _values.InsertFrom(keys, sortedLookup, targetPositions);
         }

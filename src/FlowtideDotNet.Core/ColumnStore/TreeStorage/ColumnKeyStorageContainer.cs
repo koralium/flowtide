@@ -156,7 +156,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             return _data.GetByteSize(start, end);
         }
 
-        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
             // All columnrowref should come from the same batch, so we can optimize by only looking at the first one to get the batch reference.
 
@@ -166,7 +166,21 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
             {
                 var column = _data.Columns[i];
                 var sourceColumn = batchReference.Columns[i];
-                column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
+
+                if ( sourceColumn is ColumnWithOffset columnWithOffset)
+                {
+                    var offsets = columnWithOffset.Offsets;
+                    for (int j = 0; j < sortedLookup.Length; j++)
+                    {
+                        var key = keys[sortedLookup[j]];
+                        lookupBuffer[j] = offsets[key.RowIndex];
+                    }
+                    column.InsertFrom(columnWithOffset.InnerColumn, lookupBuffer, targetPositions);
+                }
+                else
+                {
+                    column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
+                }
             }
             _count += sortedLookup.Length;
         }

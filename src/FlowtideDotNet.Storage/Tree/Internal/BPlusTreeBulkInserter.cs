@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _insertSortedIndices = Array.Empty<int>();
         private int[] _insertTargetPositions = Array.Empty<int>();
         private int[] _deletePositions = Array.Empty<int>();
+        private int[] _lookupBuffer = Array.Empty<int>();
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
@@ -97,7 +98,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             _keys = keys;
             _values = values;
+            _sortedIndices = sortedIndices;
             _mappings.Clear();
+            if (keyLength > _insertSortedIndices.Length)
+            {
+                _insertSortedIndices = new int[keyLength];
+                _insertTargetPositions = new int[keyLength];
+                _deletePositions = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
+            }
             return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
         }
 
@@ -112,6 +121,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertSortedIndices = new int[keyLength];
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
             }
 
             // Sort the keys and values by keys
@@ -382,7 +392,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(0, insertCounter);
                 var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
-                leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan);
+                var lookupBufferSpan = _lookupBuffer.AsSpan(0, insertCounter);
+                leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan, lookupBufferSpan);
                 leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
             }
 

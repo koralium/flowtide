@@ -94,12 +94,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void InsertFrom(JoinWeights[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
         {
-            throw new NotImplementedException();
+            _values.InsertFrom(values, sortedLookup, targetPositions);
         }
 
         public void DeleteBatch(ReadOnlySpan<int> positions)
         {
-            throw new NotImplementedException();
+            _values.DeleteBatch(positions);
         }
     }
 }

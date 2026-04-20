@@ -107,7 +107,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             _list.InsertAt(index, key);
         }
 
-        public void InsertFrom(long[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        public void InsertFrom(long[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
             throw new NotImplementedException();
         }

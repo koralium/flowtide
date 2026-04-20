@@ -894,8 +894,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            Debug.Assert(_data != null);
-            return new Int64Value(_data.Get(index));
+            try
+            {
+                Debug.Assert(_data != null);
+                return new Int64Value(_data.Get(index));
+            }
+            catch(Exception e)
+            {
+                throw;
+            }
+            
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)

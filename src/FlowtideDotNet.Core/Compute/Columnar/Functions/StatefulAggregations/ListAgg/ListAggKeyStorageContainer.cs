@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
             _data.Columns[_groupingKeyLength].InsertAt(index, key.insertValue);
         }
 
-        public void InsertFrom(ListAggColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        public void InsertFrom(ListAggColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
             throw new NotImplementedException();
         }

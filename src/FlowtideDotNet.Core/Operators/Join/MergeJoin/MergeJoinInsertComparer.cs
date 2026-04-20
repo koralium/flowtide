@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -45,19 +45,62 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public bool SeekNextPageForValue => false;
 
+        private DataValueContainer _yDataValueContainer = new DataValueContainer();
+
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < columnOrder.Count; i++)
+            {
+                var col = columnOrder[i];
+                x.referenceBatch.Columns[col.Key].GetValueAt(x.RowIndex, dataValueContainer, col.Value);
+                y.referenceBatch.Columns[col.Key].GetValueAt(y.RowIndex, _yDataValueContainer, col.Value);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
         public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < columnOrder.Count; i++)
+            {
+                var col = columnOrder[i];
+                key.referenceBatch.Columns[col.Key].GetValueAt(key.RowIndex, dataValueContainer, col.Value);
+                keyContainer._data.Columns[col.Key].GetValueAt(index, _yDataValueContainer, col.Value);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
-        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int length)
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            throw new NotImplementedException();
+            int start = startIndex;
+            int end = endIndex;
+            bool noMatch = false;
+            for (int i = 0; i < columnOrder.Count; i++)
+            {
+                var column = columnOrder[i];
+                key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);
+                var (low, high) = keyContainer._data.Columns[column.Key].SearchBoundries(dataValueContainer, start, end, column.Value);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                else
+                {
+                    start = low;
+                    end = high;
+                }
+            }
+            return new FindBoundriesResult(start, end);
         }
 
         public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)
