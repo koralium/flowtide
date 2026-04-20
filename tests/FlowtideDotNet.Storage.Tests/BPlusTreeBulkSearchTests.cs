@@ -358,5 +358,228 @@ namespace FlowtideDotNet.Storage.Tests
             Assert.Equal(990, foundValues[99]);
             Assert.Equal(1500, foundValues[150]);
         }
+
+        /// <summary>
+        /// A comparer that groups keys by integer division, simulating a prefix comparer.
+        /// Keys with the same (key / divisor) value are treated as equal.
+        /// Used to test carry-over behavior with partial/prefix matching.
+        /// </summary>
+        private class GroupComparer : IBplusTreeComparer<long, PrimitiveListKeyContainer<long>>
+        {
+            private readonly long _divisor;
+
+            public GroupComparer(long divisor) { _divisor = divisor; }
+
+            public bool SeekNextPageForValue => true;
+
+            public int CompareTo(in long x, in long y) =>
+                (x / _divisor).CompareTo(y / _divisor);
+
+            public int CompareTo(in long key, in PrimitiveListKeyContainer<long> keyContainer, in int index) =>
+                (key / _divisor).CompareTo(keyContainer.Get(index) / _divisor);
+
+            public int FindIndex(in long key, in PrimitiveListKeyContainer<long> keyContainer)
+            {
+                long keyGroup = key / _divisor;
+                int lo = 0, hi = keyContainer.Count - 1;
+                int result = -1;
+                while (lo <= hi)
+                {
+                    int mid = lo + ((hi - lo) >> 1);
+                    long midGroup = keyContainer.Get(mid) / _divisor;
+                    int cmp = midGroup.CompareTo(keyGroup);
+                    if (cmp == 0) { result = mid; hi = mid - 1; } // narrow left to find leftmost
+                    else if (cmp < 0) lo = mid + 1;
+                    else hi = mid - 1;
+                }
+                return result >= 0 ? result : ~lo;
+            }
+
+            public FindBoundriesResult FindBoundries(in long key, in PrimitiveListKeyContainer<long> keyContainer, int startIndex, int endIndex)
+            {
+                long keyGroup = key / _divisor;
+
+                // Find lower bound (leftmost match)
+                int lo = startIndex, hi = endIndex;
+                bool found = false;
+                while (lo <= hi)
+                {
+                    int mid = lo + ((hi - lo) >> 1);
+                    long midGroup = keyContainer.Get(mid) / _divisor;
+                    int cmp = midGroup.CompareTo(keyGroup);
+                    if (cmp == 0) { found = true; hi = mid - 1; }
+                    else if (cmp < 0) lo = mid + 1;
+                    else hi = mid - 1;
+                }
+                int lowerBound = lo;
+                if (!found) return new FindBoundriesResult(~lo, ~lo);
+
+                // Quick single-match check
+                if (lowerBound < endIndex)
+                {
+                    if (keyContainer.Get(lowerBound + 1) / _divisor != keyGroup)
+                        return new FindBoundriesResult(lowerBound, lowerBound);
+                }
+                else
+                {
+                    return new FindBoundriesResult(lowerBound, lowerBound);
+                }
+
+                // Find upper bound (rightmost match)
+                lo = lowerBound + 1;
+                hi = endIndex;
+                while (lo <= hi)
+                {
+                    int mid = lo + ((hi - lo) >> 1);
+                    long midGroup = keyContainer.Get(mid) / _divisor;
+                    if (midGroup.CompareTo(keyGroup) <= 0) lo = mid + 1;
+                    else hi = mid - 1;
+                }
+                return new FindBoundriesResult(lowerBound, lo - 1);
+            }
+        }
+
+        [Fact]
+        public async Task CarryOver_KeyAtLastIndex_ContinuesToNextLeaf()
+        {
+            // Insert enough keys to span multiple leaves
+            await InsertRange(0, 100);
+
+            var searcher = _tree.CreateBulkSearcher(new PrimitiveListComparer<long>());
+            var keys = Enumerable.Range(0, 100).Select(i => (long)i).ToArray();
+            await searcher.Start(keys, keys.Length);
+
+            var allResults = await CollectAllResults(searcher);
+            searcher.Dispose();
+
+            // With unique keys across multiple leaves, the last key of each non-last leaf
+            // should have ContinuesToNextLeaf=true and appear in results for 2 leaves.
+            var carryOverKeys = allResults
+                .Where(kvp => kvp.Value.Any(r => r.ContinuesToNextLeaf))
+                .Select(kvp => kvp.Key)
+                .ToList();
+
+            Assert.NotEmpty(carryOverKeys);
+
+            foreach (var keyIdx in carryOverKeys)
+            {
+                // Key should appear in at least 2 leaves (original leaf + carry-over leaf)
+                Assert.True(allResults[keyIdx].Count >= 2,
+                    $"Key {keys[keyIdx]} has ContinuesToNextLeaf but appears in only {allResults[keyIdx].Count} leaf(s)");
+
+                // First result should be Found (the original leaf)
+                Assert.True(allResults[keyIdx][0].Found,
+                    $"Key {keys[keyIdx]} should be found in the first leaf");
+            }
+        }
+
+        [Fact]
+        public async Task CarryOver_IntermediateLeaf_IsVisited()
+        {
+            // Insert enough keys to span at least 4 leaves
+            await InsertRange(0, 100);
+
+            // Phase 1: Identify leaf boundaries by doing a full search
+            var comparer = new PrimitiveListComparer<long>();
+            var scout = _tree.CreateBulkSearcher(comparer);
+            var allKeys = Enumerable.Range(0, 100).Select(i => (long)i).ToArray();
+            await scout.Start(allKeys, allKeys.Length);
+
+            var perLeafResults = new List<List<BulkSearchKeyResult>>();
+            while (await scout.MoveNextLeaf())
+            {
+                perLeafResults.Add(scout.CurrentResults.ToList());
+            }
+            scout.Dispose();
+
+            Assert.True(perLeafResults.Count >= 3, $"Need at least 3 leaves, got {perLeafResults.Count}");
+
+            // Find the last key of leaf 0 (triggers carry-over)
+            var lastResultInLeaf0 = perLeafResults[0].Last();
+            Assert.True(lastResultInLeaf0.ContinuesToNextLeaf, "Last key of leaf 0 should carry over");
+            long carryOverKey = allKeys[lastResultInLeaf0.KeyIndex];
+
+            // Pick a key from leaf 2 (skipping leaf 1 entirely in the mapping)
+            var midResultInLeaf2 = perLeafResults[2][perLeafResults[2].Count / 2];
+            long distantKey = allKeys[midResultInLeaf2.KeyIndex];
+
+            // Phase 2: Search for just the carry-over key and the distant key.
+            // RouteBatchRootAsync will create mappings for leaf0 and leaf2 only (none for leaf1).
+            var searcher = _tree.CreateBulkSearcher(comparer);
+            var testKeys = new long[] { carryOverKey, distantKey };
+            await searcher.Start(testKeys, testKeys.Length);
+
+            int leavesVisited = 0;
+            var testResults = new Dictionary<int, List<BulkSearchKeyResult>>();
+            while (await searcher.MoveNextLeaf())
+            {
+                leavesVisited++;
+                foreach (var result in searcher.CurrentResults)
+                {
+                    if (!testResults.TryGetValue(result.KeyIndex, out var list))
+                    {
+                        list = new List<BulkSearchKeyResult>();
+                        testResults[result.KeyIndex] = list;
+                    }
+                    list.Add(result);
+                }
+            }
+            searcher.Dispose();
+
+            // Should visit 3 leaves: leaf0 (carry-over key found), leaf1 (intermediate carry-over),
+            // leaf2 (distant key found). Without the intermediate leaf fix, only 2 would be visited.
+            Assert.Equal(3, leavesVisited);
+
+            // Both keys should be found
+            Assert.True(
+                testResults.Values.SelectMany(v => v).Any(r => r.Found && testKeys[r.KeyIndex] == carryOverKey),
+                $"Carry-over key {carryOverKey} should be found");
+            Assert.True(
+                testResults.Values.SelectMany(v => v).Any(r => r.Found && testKeys[r.KeyIndex] == distantKey),
+                $"Distant key {distantKey} should be found");
+        }
+
+        [Fact]
+        public async Task CarryOver_GroupComparer_FindsAllMatchesAcrossLeaves()
+        {
+            // Insert 200 unique keys spanning many leaves
+            await InsertRange(0, 200);
+
+            // GroupComparer with divisor 10: treats keys 0-9 as group 0, 10-19 as group 1, etc.
+            // Groups that straddle leaf boundaries require correct carry-over to find all members.
+            var divisor = 10L;
+            var groupComparer = new GroupComparer(divisor);
+            var searcher = _tree.CreateBulkSearcher(groupComparer);
+
+            // Search for one representative key per group (20 groups)
+            var searchKeys = Enumerable.Range(0, 20).Select(g => (long)(g * divisor)).ToArray();
+            await searcher.Start(searchKeys, searchKeys.Length);
+
+            var groupMatchCounts = new Dictionary<long, int>();
+            while (await searcher.MoveNextLeaf())
+            {
+                foreach (var result in searcher.CurrentResults)
+                {
+                    if (result.Found)
+                    {
+                        long group = searchKeys[result.KeyIndex] / divisor;
+                        int matchCount = result.UpperBound - result.LowerBound + 1;
+                        if (!groupMatchCounts.ContainsKey(group))
+                            groupMatchCounts[group] = 0;
+                        groupMatchCounts[group] += matchCount;
+                    }
+                }
+            }
+            searcher.Dispose();
+
+            // Every group should have exactly 10 matches (keys g*10 through g*10+9).
+            // If carry-over is broken (including the ~count carry-over for prefix comparers),
+            // groups straddling leaf boundaries would report fewer than 10.
+            for (int g = 0; g < 20; g++)
+            {
+                Assert.True(groupMatchCounts.ContainsKey(g), $"Group {g} not found in results");
+                Assert.Equal(10, groupMatchCounts[g]);
+            }
+        }
     }
 }
