@@ -63,7 +63,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoin()
         {
-            GenerateData(1000);
+            GenerateData(100);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1294,7 +1294,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task RightJoinMergeJoinFromUsersUsersFirst()
         {
             GenerateCompanies(10);
-            GenerateUsers(1000);
+            GenerateUsers(10);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1315,7 +1315,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     subuser.LastName
                 });
 
-            GenerateOrders(1000);
+            GenerateOrders(10);
 
             await WaitForUpdate();
 

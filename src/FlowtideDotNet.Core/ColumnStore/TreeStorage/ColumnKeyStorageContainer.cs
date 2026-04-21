@@ -192,6 +192,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                 var column = _data.Columns[i];
                 column.DeleteBatch(positions);
             }
+            _count -= positions.Length;
         }
     }
 }
