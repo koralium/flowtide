@@ -268,7 +268,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         iterations.Add(msg.Data.Iterations[keyIndex]);
                         weights.Add(outWeight);
 
-                        if (emitLeftAlways || _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer)
+                        if (_mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer)
                         {
                             pageUpdated = true;
                             if (joinStorageValue.joinWeight == 0)
@@ -298,12 +298,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             }
                             
                             pageValues.Update(k, joinStorageValue);
-                        }
-                        else
-                        {
-                            joinStorageValue.joinWeight += outWeight;
-                            pageValues.Update(k, joinStorageValue);
-                            pageUpdated = true;
                         }
 
                         if (foundOffsets.Count >= MaxRowSize)
@@ -456,7 +450,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         iterations.Add(msg.Data.Iterations[keyIndex]);
                         weights.Add(outWeight);
 
-                        if (emitRightAlways || _mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer)
+                        if (_mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer)
                         {
                             pageUpdated = true;
                             if (joinStorageValue.joinWeight == 0)
@@ -486,12 +480,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             }
                             
                             pageValues.Update(k, joinStorageValue);
-                        }
-                        else
-                        {
-                            joinStorageValue.joinWeight += outWeight;
-                            pageValues.Update(k, joinStorageValue);
-                            pageUpdated = true;
                         }
 
                         if (foundOffsets.Count >= MaxRowSize)
