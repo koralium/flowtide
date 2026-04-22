@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -175,11 +175,12 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         var key = keys[sortedLookup[j]];
                         lookupBuffer[j] = offsets[key.RowIndex];
                     }
-                    column.InsertFrom(columnWithOffset.InnerColumn, lookupBuffer, targetPositions);
+                    ReadOnlySpan<int> lb = lookupBuffer; 
+                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, -1);
                 }
                 else
                 {
-                    column.InsertFrom(sourceColumn, sortedLookup, targetPositions);
+                    column.InsertFrom(sourceColumn, in sortedLookup, in targetPositions, -1);
                 }
             }
             _count += sortedLookup.Length;
@@ -196,3 +197,4 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         }
     }
 }
+
