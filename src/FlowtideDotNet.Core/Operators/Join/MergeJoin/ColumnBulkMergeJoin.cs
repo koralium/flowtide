@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
@@ -78,6 +79,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private int _leftTargetBatchSize = 100;
         private int _rightTargetBatchSize = 100;
+
+        private readonly List<StreamEventBatch> _leftBatches = new List<StreamEventBatch>();
+        private int _leftBatchesCount;
+
+        private readonly List<StreamEventBatch> _rightBatches = new List<StreamEventBatch>();
+        private int _rightBatchesCount;
 
         private const int MaxRowSize = 100;
         private const int MaxAmountOfRows = 10_000;
@@ -182,7 +189,35 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             await _rightTree!.Commit();
         }
 
-        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
+        protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
+        {
+            if (_leftBatchesCount > 0)
+            {
+                var mergedBatch = MergeBatches(_leftBatches, _leftBatchesCount);
+                _leftBatches.Clear();
+                _leftBatchesCount = 0;
+                await foreach (var b in OnRecieveLeft(mergedBatch, 0))
+                {
+                    yield return b;
+                }
+            }
+            if (_rightBatchesCount > 0)
+            {
+                var mergedBatch = MergeBatches(_rightBatches, _rightBatchesCount);
+                _rightBatches.Clear();
+                _rightBatchesCount = 0;
+                await foreach (var b in OnRecieveRight(mergedBatch, 0))
+                {
+                    yield return b;
+                }
+            }
+            await foreach (var b in base.OnWatermark(watermark))
+            {
+                yield return b;
+            }
+        }
+
+        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
 
@@ -215,12 +250,87 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _eventsProcessed.Add(msg.Data.Weights.Count);
             if (targetId == 0)
             {
-                return OnRecieveLeft(msg, time);
+                msg.Rent(1);
+                _leftBatches.Add(msg);
+                _leftBatchesCount += msg.Data.Weights.Count;
+                if (_leftBatchesCount >= _leftTargetBatchSize)
+                {
+                    var mergedBatch = MergeBatches(_leftBatches, _leftBatchesCount);
+                    _leftBatches.Clear();
+                    _leftBatchesCount = 0;
+                    await foreach (var b in OnRecieveLeft(mergedBatch, time))
+                    {
+                        yield return b;
+                    }
+                }
             }
             else
             {
-                return OnRecieveRight(msg, time);
+                msg.Rent(1);
+                _rightBatches.Add(msg);
+                _rightBatchesCount += msg.Data.Weights.Count;
+                if (_rightBatchesCount >= _rightTargetBatchSize)
+                {
+                    var mergedBatch = MergeBatches(_rightBatches, _rightBatchesCount);
+                    _rightBatches.Clear();
+                    _rightBatchesCount = 0;
+                    await foreach (var b in OnRecieveRight(mergedBatch, time))
+                    {
+                        yield return b;
+                    }
+                }
             }
+        }
+
+        private StreamEventBatch MergeBatches(List<StreamEventBatch> batches, int totalCount)
+        {
+            if (batches.Count == 1)
+            {
+                return batches[0];
+            }
+            
+            var memoryManager = MemoryAllocator;
+            
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+            
+            int columnCount = batches[0].Data.EventBatchData.Columns.Count;
+            IColumn[] columns = new IColumn[columnCount];
+            for (int i = 0; i < columnCount; i++)
+            {
+                columns[i] = Column.Create(memoryManager);
+            }
+            int[]? targetPositions = default;
+            foreach (var batch in batches)
+            {
+                weights.AddRangeFrom(batch.Data.Weights, 0, batch.Data.Weights.Count);
+                iterations.AddRangeFrom(batch.Data.Iterations, 0, batch.Data.Iterations.Count);
+                for (int i = 0; i < columnCount; i++)
+                {
+                    if (batch.Data.EventBatchData.Columns[i] is ColumnWithOffset columnWithOffset)
+                    {
+                        if (targetPositions == null || targetPositions.Length < columnWithOffset.Count)
+                        {
+                            targetPositions = new int[columnWithOffset.Count];
+                        }
+                        for (int t = 0; t < columnWithOffset.Count; t++)
+                        {
+                            targetPositions[t] = columns[i].Count;
+                        }
+                        ReadOnlySpan<int> targetSpan = targetPositions.AsSpan(0, columnWithOffset.Count);
+                        columns[i].InsertFrom(columnWithOffset.InnerColumn, columnWithOffset.Offsets.Span, in targetSpan, columnWithOffset.InnerColumn.Count);
+                    }
+                    else
+                    {
+                        columns[i].InsertRangeFrom(columns[i].Count, batch.Data.EventBatchData.Columns[i], 0, batch.Data.Weights.Count);
+                    }
+                }
+                batch.Return();
+            }
+            
+            var newBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            newBatch.Rent(1);
+            return newBatch;
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
