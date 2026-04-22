@@ -1204,7 +1204,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         Debug.Assert(_dataColumn != null);
                         Debug.Assert(other._dataColumn != null);
-                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, -1);
                         return;
                     }
 
@@ -1247,7 +1247,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                     Debug.Assert(_dataColumn != null);
                     Debug.Assert(other._dataColumn != null);
-                    _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                    _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, -1);
                 }
                 else
                 {
@@ -1352,7 +1352,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     else
                     {
-                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, -1);
                     }
                 }
             }
@@ -1395,6 +1395,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
 
 
 

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             // Int64 column is not in use right now
             throw new NotImplementedException();
@@ -350,3 +350,4 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+

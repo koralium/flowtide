@@ -277,11 +277,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, -1);
+                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
             }
             else
             {
@@ -295,3 +295,5 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+

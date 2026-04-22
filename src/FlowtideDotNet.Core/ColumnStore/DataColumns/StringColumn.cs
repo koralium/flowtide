@@ -284,11 +284,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is StringColumn stringColumn)
             {
-                _binaryList.InsertFrom(in stringColumn._binaryList, in sortedLookup, in insertPositions, -1);
+                _binaryList.InsertFrom(in stringColumn._binaryList, in sortedLookup, in insertPositions, lookupNullIndex);
             }
             else
             {

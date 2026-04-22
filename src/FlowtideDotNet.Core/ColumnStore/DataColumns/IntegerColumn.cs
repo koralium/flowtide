@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
-            void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+            void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex);
 
             void DeleteBatch(ReadOnlySpan<int> targets);
         }
@@ -212,11 +212,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return index;
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, -1);
+                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -361,11 +361,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, -1);
+                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -511,11 +511,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, -1);
+                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -660,11 +660,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, -1);
+                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -1064,7 +1064,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is IntegerColumn integerColumn)
             {
@@ -1088,7 +1088,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         return;
                     }
                 }
-                _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
+                _data.InsertFrom(integerColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
                 return;
             }
             throw new NotImplementedException();
@@ -1103,3 +1103,5 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
     }
 }
+
+

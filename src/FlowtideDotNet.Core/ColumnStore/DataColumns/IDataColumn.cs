@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         StructHeader StructHeader { get; }
 
-        void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions);
+        void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
 
         void DeleteBatch(ReadOnlySpan<int> targets);
     }
