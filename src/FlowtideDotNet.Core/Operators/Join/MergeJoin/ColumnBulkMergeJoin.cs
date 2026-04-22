@@ -78,6 +78,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private const int MaxRowSize = 100;
 
+#if DEBUG_WRITE
+        // Debug data
+        private StreamWriter? allInput;
+        private StreamWriter? leftInput;
+        private StreamWriter? rightInput;
+#endif
+
         public ColumnBulkMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
@@ -173,6 +180,33 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
         {
             Debug.Assert(_eventsProcessed != null, nameof(_eventsProcessed));
+
+#if DEBUG_WRITE
+            allInput!.WriteLine("New batch");
+            foreach (var e in msg.Events)
+            {
+                allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
+            }
+            if (targetId == 0)
+            {
+                foreach (var e in msg.Events)
+                {
+                    leftInput!.WriteLine($"{e.Weight} {e.ToJson()}");
+                }
+                leftInput!.Flush();
+            }
+            else
+            {
+                foreach (var e in msg.Events)
+                {
+                    rightInput!.WriteLine($"{e.Weight} {e.ToJson()}");
+                }
+                rightInput!.Flush();
+            }
+            
+            allInput!.Flush();
+#endif
+
             _eventsProcessed.Add(msg.Data.Weights.Count);
             if (targetId == 0)
             {
@@ -610,6 +644,24 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             Logger.InitializingMergeJoinOperator(StreamName, Name);
+
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+            {
+                var dir = Directory.CreateDirectory("debugwrite");
+            }
+            if (allInput != null)
+            {
+                allInput.WriteLine("Restart");
+            }
+            else
+            {
+                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.all.txt");
+                leftInput = File.CreateText($"debugwrite/{StreamName}-{Name}.left.txt");
+                rightInput = File.CreateText($"debugwrite/{StreamName}-{Name}.right.txt");
+            }
+#endif
+
             if (_eventsCounter == null)
             {
                 _eventsCounter = Metrics.CreateCounter<long>("events");
