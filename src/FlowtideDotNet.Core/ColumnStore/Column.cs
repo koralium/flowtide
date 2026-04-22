@@ -1215,7 +1215,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         if (_nullCounter > 0 && other._nullCounter > 0)
                         {
                             Debug.Assert(other._validityList != null);
-                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, -1);
                             // Count new nulls from the inserted elements
                             for (int i = 0; i < count; i++)
                             {
@@ -1234,7 +1234,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             Debug.Assert(other._validityList != null);
                             CheckNullInitialization();
-                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, -1);
                             for (int i = 0; i < count; i++)
                             {
                                 if (!other._validityList.Get(sortedLookup[i]))
@@ -1290,7 +1290,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                             if (other._nullCounter > 0)
                             {
                                 Debug.Assert(other._validityList != null);
-                                _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                                _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, -1);
                                 for (int i = 0; i < count; i++)
                                 {
                                     if (!other._validityList.Get(sortedLookup[i]))
@@ -1395,3 +1395,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+
+

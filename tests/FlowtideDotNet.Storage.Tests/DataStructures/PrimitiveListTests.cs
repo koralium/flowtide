@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 1, 3, 5 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(8, list.Count);
             Assert.Equal(0, list[0]);
@@ -101,7 +101,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0, 0 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(6, list.Count);
             Assert.Equal(100, list[0]);
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 3, 3 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(5, list.Count);
             Assert.Equal(0, list[0]);
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 1, 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 1, 2 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(5, list.Count);
             Assert.Equal(0, list[0]);
@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 1 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, list.Count);
             Assert.Equal(1, list[0]);
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = ReadOnlySpan<int>.Empty;
             ReadOnlySpan<int> insertPositions = ReadOnlySpan<int>.Empty;
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(2, list.Count);
             Assert.Equal(1, list[0]);
@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = i + 1; 
             }
 
-            list.InsertFrom(in other, sortedLookup.AsSpan(), insertPositions.AsSpan(), -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             Assert.Equal(2_000, list.Count);
             for (int i = 0; i < 2_000; i++)
@@ -255,7 +255,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 1, 3 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 2, 4 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(6, list.Count);
             Assert.Equal(0, list[0]);
@@ -280,7 +280,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0, 0 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, list.Count);
             Assert.Equal(10, list[0]);
@@ -305,7 +305,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
             ReadOnlySpan<int> insertPositions = stackalloc int[] { 2, 2, 2 };
 
-            list.InsertFrom(in other, sortedLookup, insertPositions, -1);
+            list.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(8, list.Count);
             Assert.Equal(0, list[0]);
@@ -665,3 +665,4 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         }
     }
 }
+

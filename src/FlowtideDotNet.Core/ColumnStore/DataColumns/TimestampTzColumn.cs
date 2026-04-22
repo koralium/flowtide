@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (other is TimestampTzColumn timestampColumn)
             {
-                _values.InsertFrom(in timestampColumn._values, sortedLookup, insertPositions, -1);
+                _values.InsertFrom(in timestampColumn._values, in sortedLookup, in insertPositions, -1);
             }
             else
             {
@@ -307,3 +307,5 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
     }
 }
+
+

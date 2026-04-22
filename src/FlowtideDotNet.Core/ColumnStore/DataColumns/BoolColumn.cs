@@ -304,7 +304,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is BoolColumn boolColumn)
             {
-                _data.InsertFrom(boolColumn._data, sortedLookup, insertPositions);
+                _data.InsertFrom(in boolColumn._data, in sortedLookup, in insertPositions, -1);
             }
             else
             {
@@ -318,3 +318,6 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+
+

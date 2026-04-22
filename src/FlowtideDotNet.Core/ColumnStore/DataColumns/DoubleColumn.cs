@@ -275,7 +275,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DoubleColumn doubleColumn)
             {
-                _data.InsertFrom(in doubleColumn._data, sortedLookup, insertPositions, -1);
+                _data.InsertFrom(in doubleColumn._data, in sortedLookup, in insertPositions, -1);
             }
             else
             {
@@ -289,3 +289,5 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+

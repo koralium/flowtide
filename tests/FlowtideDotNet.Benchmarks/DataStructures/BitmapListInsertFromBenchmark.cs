@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         public void InsertFromBatch()
         {
             Debug.Assert(_targetList != null && _sourceList != null);
-            _targetList.InsertFrom(_sourceList, _sortedLookup.AsSpan(), _insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = _sortedLookup; ReadOnlySpan<int> ip = _insertPositions; _targetList.InsertFrom(in _sourceList!, in sl, in ip, -1);
         }
 
         [Benchmark]
@@ -138,3 +138,4 @@ namespace FlowtideDotNet.Benchmarks.DataStructures
         }
     }
 }
+
