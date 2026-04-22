@@ -76,7 +76,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
         private readonly DataValueContainer _dataValueContainer;
 
+        private int _leftTargetBatchSize = 100;
+        private int _rightTargetBatchSize = 100;
+
         private const int MaxRowSize = 100;
+        private const int MaxAmountOfRows = 10_000;
+        private const int MinRowSize = 1;
 
 #if DEBUG_WRITE
         // Debug data
@@ -261,9 +266,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             await _rightSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitLeftAlways = _mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer;
-
+            int leafTransitionsCount = 0;
             while (await _rightSearcher.MoveNextLeaf())
             {
+                leafTransitionsCount++;
                 var leafNode = _rightSearcher.CurrentLeaf;
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
@@ -399,6 +405,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 
             await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            float leafHitRatio = (float)_leftInserter.LeafHitCount / keyLength;
+            if (leafHitRatio > 0.05f)
+            {
+                _leftTargetBatchSize = Math.Min(_leftTargetBatchSize * 2, MaxAmountOfRows);
+            }
+            else
+            {
+                _leftTargetBatchSize = Math.Max(_leftTargetBatchSize / 2, MinRowSize);
+            }
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
@@ -582,6 +597,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 
             await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            float leafHitRatio = (float)_rightInserter.LeafHitCount / keyLength;
+            if (leafHitRatio > 0.05f)
+            {
+                _rightTargetBatchSize = Math.Min(_rightTargetBatchSize * 2, MaxAmountOfRows);
+            }
+            else
+            {
+                _rightTargetBatchSize = Math.Max(_rightTargetBatchSize / 2, MinRowSize);
+            }
         }
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)

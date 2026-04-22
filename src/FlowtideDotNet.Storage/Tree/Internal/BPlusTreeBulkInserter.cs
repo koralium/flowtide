@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireSplitMappings;
         List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireMergeMappings;
 
+        public int LeafHitCount => _mappings.Count;
+
         public BPlusTreeBulkInserter(BPlusTree<K, V, TKeyContainer, TValueContainer> tree)
         {
             _tree = tree;
