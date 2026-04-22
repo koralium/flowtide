@@ -163,7 +163,9 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
         public void InsertFromBatch()
         {
             Debug.Assert(_targetList != null && _sourceList != null);
-            _targetList.InsertFrom(_sourceList, _sortedLookup.AsSpan(), _insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = _sortedLookup.AsSpan();
+            ReadOnlySpan<int> ip = _insertPositions.AsSpan();
+            _targetList.InsertFrom(_sourceList, in sl, in ip, -1);
         }
 
         [Benchmark]
