@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (other is TimestampTzColumn timestampColumn)
             {
-                _values.InsertFrom(timestampColumn._values, sortedLookup, insertPositions);
+                _values.InsertFrom(in timestampColumn._values, sortedLookup, insertPositions, -1);
             }
             else
             {

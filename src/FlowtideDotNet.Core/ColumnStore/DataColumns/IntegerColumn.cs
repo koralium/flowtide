@@ -216,7 +216,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertFrom(int8data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, -1);
                     return;
                 }
                 throw new NotImplementedException();
@@ -365,7 +365,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertFrom(int16Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, -1);
                     return;
                 }
                 throw new NotImplementedException();
@@ -515,7 +515,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertFrom(int32Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, -1);
                     return;
                 }
                 throw new NotImplementedException();
@@ -664,7 +664,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertFrom(int64Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, -1);
                     return;
                 }
                 throw new NotImplementedException();
@@ -894,16 +894,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            try
-            {
-                Debug.Assert(_data != null);
-                return new Int64Value(_data.Get(index));
-            }
-            catch(Exception e)
-            {
-                throw;
-            }
-            
+            Debug.Assert(_data != null);
+            return new Int64Value(_data.Get(index));
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)

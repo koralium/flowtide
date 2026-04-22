@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Benchmarks.ColumnStore.Utils
             Debug.Assert(_targetList != null && _sourceList != null);
             ReadOnlySpan<int> sl = _sortedLookup.AsSpan();
             ReadOnlySpan<int> ip = _insertPositions.AsSpan();
-            _targetList.InsertFrom(_sourceList, in sl, in ip, -1);
+            _targetList.InsertFrom(in _sourceList!, in sl, in ip, -1);
         }
 
         [Benchmark]

@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="other">The other primitive list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
-        public void InsertFrom(PrimitiveList<T> other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(ref readonly PrimitiveList<T> other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
@@ -193,7 +193,14 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Place the new element from the other list
                 int oIdx = sortedLookup[i];
                 currentWriteIdx--;
-                selfData[currentWriteIdx] = otherData[oIdx];
+                if (oIdx == lookupNullIndex)
+                {
+                    selfData[currentWriteIdx] = default;
+                }
+                else
+                {
+                    selfData[currentWriteIdx] = otherData[oIdx];
+                }
 
                 // Move the read tracker to the left of the block we just processed
                 currentReadIdx = targetInsertIdx;

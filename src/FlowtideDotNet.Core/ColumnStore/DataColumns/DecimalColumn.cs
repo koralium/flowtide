@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -281,7 +281,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertFrom(decimalColumn._values, sortedLookup, insertPositions);
+                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, -1);
             }
             else
             {

@@ -288,7 +288,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (other is StringColumn stringColumn)
             {
-                _binaryList.InsertFrom(stringColumn._binaryList, sortedLookup, insertPositions, -1);
+                _binaryList.InsertFrom(in stringColumn._binaryList, in sortedLookup, in insertPositions, -1);
             }
             else
             {
