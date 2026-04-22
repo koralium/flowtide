@@ -77,8 +77,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
         private readonly DataValueContainer _dataValueContainer;
 
-        private int _leftTargetBatchSize = 100;
-        private int _rightTargetBatchSize = 100;
+        private int _leftTargetBatchSize = 1;
+        private int _rightTargetBatchSize = 1;
 
         private readonly List<StreamEventBatch> _leftBatches = new List<StreamEventBatch>();
         private int _leftBatchesCount;
