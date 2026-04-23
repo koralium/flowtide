@@ -25,16 +25,26 @@ builder.Services.AddOptions<FlowtidePauseOptions>()
 
 var sqlText = @"
 CREATE TABLE testtable (
-  val any
+  val any,
+val1 any,
+val2 any,
+val3 any,
+val4 any,
+val5 any
 );
 
 CREATE TABLE other (
-  val any
+  val any,
+val1 any,
+val2 any,
+val3 any,
+val4 any,
+val5 any
 );
 
 INSERT INTO output
-SELECT t.val, o.val FROM testtable t
-LEFT JOIN other o
+SELECT t.val, o.val, t.val1, t.val2, t.val3, t.val4, t.val5, o.val1, o.val2, o.val3, o.val4, o.val5 FROM testtable t
+INNER JOIN other o
 ON t.val = o.val;
 ";
 
