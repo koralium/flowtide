@@ -58,6 +58,14 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     MergeUnionChildren(other);
                 }
+                if (this.Children != null && other.Children != null)
+                {
+                    var minChildCount = Math.Min(this.Children.Count, other.Children.Count);
+                    for (int i = 0; i < minChildCount; i++)
+                    {
+                        this.Children[i].Merge(other.Children[i]);
+                    }
+                }
                 return;
             }
 
