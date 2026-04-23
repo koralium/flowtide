@@ -81,9 +81,39 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             for (int i = 0; i < columnSizeInfo.Children.Count; i++)
             {
                 // Add children
-
+                var child = columnSizeInfo.Children[i];
+                var childDataColumn = CreateColumnFromSizeInfo(child);
+                var newIndex = (sbyte)_valueColumns.Count;
+                _valueColumns.Add(childDataColumn);
+                _typeIds[(int)child.DataType] = newIndex;
             }
+        }
 
+        private IDataColumn CreateColumnFromSizeInfo(ColumnSizeInfo columnSizeInfo)
+        {
+            switch (columnSizeInfo.DataType)
+            {
+                case ArrowTypeId.Int64:
+                    return new IntegerColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.String:
+                    return new StringColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Boolean:
+                    return new BoolColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Double:
+                    return new DoubleColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.List:
+                    return new ListColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Binary:
+                    return new BinaryColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Map:
+                    return new MapColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Decimal128:
+                    return new DecimalColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Timestamp:
+                    return new TimestampTzColumn(_memoryAllocator, columnSizeInfo);
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)

@@ -147,6 +147,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 case ArrowTypeId.Timestamp:
                     _dataColumn = new TimestampTzColumn(memoryAllocator, columnSizeInfo);
                     break;
+                case ArrowTypeId.Union:
+                    _dataColumn = new UnionColumn(memoryAllocator, columnSizeInfo);
+                    break;
             }
         }
 
