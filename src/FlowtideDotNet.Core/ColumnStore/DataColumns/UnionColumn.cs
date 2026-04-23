@@ -68,6 +68,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public UnionColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
+            if (columnSizeInfo.Children == null)
+            {
+                throw new ArgumentException("ColumnSizeInfo for UnionColumn must have children");
+            }
             _memoryAllocator = memoryAllocator;
             _typeIds = new sbyte[35]; //35 types exist
             _typeList = new TypeList(memoryAllocator, columnSizeInfo.TotalRows);
@@ -77,6 +81,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             for (int i = 0; i < columnSizeInfo.Children.Count; i++)
             {
                 // Add children
+
             }
 
         }
