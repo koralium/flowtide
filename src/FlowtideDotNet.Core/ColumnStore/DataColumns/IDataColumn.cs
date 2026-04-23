@@ -103,5 +103,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions);
 
         void DeleteBatch(ReadOnlySpan<int> targets);
+
+        ColumnSizeInfo GetColumnSizeInfo();
     }
 }

@@ -300,5 +300,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _binaryList.DeleteBatch(targets);
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.String,
+                TotalRows = Count,
+                TotalVariableBytes = _binaryList.DataMemory.Length
+            };
+        }
     }
 }

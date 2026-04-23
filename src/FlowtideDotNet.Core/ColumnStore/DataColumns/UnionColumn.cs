@@ -943,5 +943,26 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 RemoveAt(targets[i]);
             }
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            List<ColumnSizeInfo> children = new List<ColumnSizeInfo>();
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    var columnSizeInfo = _valueColumns[i].GetColumnSizeInfo();
+                    children.Add(columnSizeInfo);
+                }
+            }
+    
+            return new ColumnSizeInfo
+            {
+                DataType = ArrowTypeId.Union,
+                TotalRows = Count,
+                Children = children
+            };
+        }
     }
 }

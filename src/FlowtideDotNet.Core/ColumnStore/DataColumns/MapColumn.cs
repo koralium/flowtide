@@ -720,5 +720,19 @@ namespace FlowtideDotNet.Core.ColumnStore
                 RemoveAt(targets[i]);
             }
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Map,
+                TotalRows = Count,
+                Children = new List<ColumnSizeInfo>()
+                {
+                    _keyColumn.GetColumnSizeInfo(),
+                    _valueColumn.GetColumnSizeInfo()
+                }
+            };
+        }
     }
 }

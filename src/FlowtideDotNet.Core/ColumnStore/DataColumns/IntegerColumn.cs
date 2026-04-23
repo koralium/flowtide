@@ -1101,5 +1101,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _data.DeleteBatch(targets);
             }
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Int64,
+                TotalRows = Count,
+                BitWidth = _data?.BitWidth ?? 8
+            };
+        }
     }
 }

@@ -293,5 +293,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _values.DeleteBatch(targets);
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Decimal128,
+                TotalRows = Count
+            };
+        }
     }
 }

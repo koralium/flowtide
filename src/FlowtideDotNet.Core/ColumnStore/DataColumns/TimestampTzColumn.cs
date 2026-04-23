@@ -305,5 +305,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _values.DeleteBatch(targets);
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Timestamp,
+                TotalRows = Count,
+            };
+        }
     }
 }
