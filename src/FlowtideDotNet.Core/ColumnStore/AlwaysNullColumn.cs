@@ -182,6 +182,14 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException();
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Null
+            };
+        }
     }
 }
 

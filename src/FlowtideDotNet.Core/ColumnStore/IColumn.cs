@@ -90,6 +90,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
 
         void DeleteBatch(ReadOnlySpan<int> targets);
+
+        ColumnSizeInfo GetColumnSizeInfo();
     }
 }
 

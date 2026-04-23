@@ -88,6 +88,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list = new PrimitiveList<sbyte>(memoryAllocator);
             }
 
+            public Int8Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<sbyte>(memoryAllocator, initialCapacity);
+            }
+
             public Int8Data(PrimitiveList<sbyte> list)
             {
                 _list = list;
@@ -237,6 +242,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list = new PrimitiveList<short>(memoryAllocator);
             }
 
+            public Int16Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<short>(memoryAllocator, initialCapacity);
+            }
+
             public Int16Data(PrimitiveList<short> list)
             {
                 _list = list;
@@ -383,6 +393,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
 
             public Int32Data(IMemoryAllocator memoryAllocator)
+            {
+                _list = new PrimitiveList<int>(memoryAllocator);
+            }
+
+            public Int32Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
                 _list = new PrimitiveList<int>(memoryAllocator);
             }
@@ -536,6 +551,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list = new PrimitiveList<long>(memoryAllocator);
             }
 
+            public Int64Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<long>(memoryAllocator, initialCapacity);
+            }
+
             public Int64Data(PrimitiveList<long> list)
             {
                 _list = list;
@@ -682,6 +702,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IntegerColumn(IMemoryAllocator memoryAllocator)
         {
             this._memoryAllocator = memoryAllocator;
+        }
+
+        public IntegerColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            this._memoryAllocator = memoryAllocator;
+            switch (columnSizeInfo.BitWidth)
+            {
+                case 8:
+                    _data = new Int8Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 16:
+                    _data = new Int16Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 32:
+                    _data = new Int32Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 64:
+                    _data = new Int64Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
@@ -1100,6 +1142,16 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _data.DeleteBatch(targets);
             }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Int64,
+                TotalRows = Count,
+                BitWidth = _data?.BitWidth ?? 8
+            };
         }
     }
 }
