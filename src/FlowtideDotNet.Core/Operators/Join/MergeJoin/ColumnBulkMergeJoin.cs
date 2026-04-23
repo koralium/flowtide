@@ -82,13 +82,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private readonly List<StreamEventBatch> _leftBatches = new List<StreamEventBatch>();
         private int _leftBatchesCount;
+        private int _leftBatchSize = 0;
 
         private readonly List<StreamEventBatch> _rightBatches = new List<StreamEventBatch>();
         private int _rightBatchesCount;
+        private int _rightBatchSize = 0;
 
         private const int MaxRowSize = 100;
         private const int MaxAmountOfRows = 10_000;
         private const int MinRowSize = 1;
+        // 32 kb max of buffer
+        private const int MaxByteSize = 32 * 1024;
 
 #if DEBUG_WRITE
         // Debug data
@@ -253,11 +257,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 msg.Rent(1);
                 _leftBatches.Add(msg);
                 _leftBatchesCount += msg.Data.Weights.Count;
-                if (_leftBatchesCount >= _leftTargetBatchSize)
+                _leftBatchSize += msg.Data.EventBatchData.GetByteSize();
+                if (_leftBatchesCount >= _leftTargetBatchSize || _leftBatchSize >= MaxByteSize)
                 {
                     var mergedBatch = MergeBatches(_leftBatches, _leftBatchesCount);
                     _leftBatches.Clear();
                     _leftBatchesCount = 0;
+                    _leftBatchSize = 0;
                     await foreach (var b in OnRecieveLeft(mergedBatch, time))
                     {
                         yield return b;
@@ -269,11 +275,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 msg.Rent(1);
                 _rightBatches.Add(msg);
                 _rightBatchesCount += msg.Data.Weights.Count;
-                if (_rightBatchesCount >= _rightTargetBatchSize)
+                _rightBatchSize += msg.Data.EventBatchData.GetByteSize();
+                if (_rightBatchesCount >= _rightTargetBatchSize || _rightBatchSize >= MaxByteSize)
                 {
                     var mergedBatch = MergeBatches(_rightBatches, _rightBatchesCount);
                     _rightBatches.Clear();
                     _rightBatchesCount = 0;
+                    _rightBatchSize = 0;
                     await foreach (var b in OnRecieveRight(mergedBatch, time))
                     {
                         yield return b;
@@ -296,15 +304,23 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             
             int columnCount = batches[0].Data.EventBatchData.Columns.Count;
             IColumn[] columns = new IColumn[columnCount];
-            for (int i = 0; i < columnCount; i++)
-            {
-                columns[i] = Column.Create(memoryManager);
-            }
+            //for (int i = 0; i < columnCount; i++)
+            //{
+                
+            //}
             int[]? targetPositions = default;
 
             for (int i = 0; i < columnCount; i++)
             {
-                foreach(var batch in batches)
+                var sizeInfo = batches[0].Data.EventBatchData.Columns[i].GetColumnSizeInfo();
+                for (int b = 1; b < batches.Count; b++)
+                {
+                    var otherSizeInfo = batches[b].Data.EventBatchData.Columns[i].GetColumnSizeInfo();
+                    sizeInfo.Merge(otherSizeInfo);
+                }
+                columns[i] = new Column(memoryManager, sizeInfo);
+
+                foreach (var batch in batches)
                 {
                     if (batch.Data.EventBatchData.Columns[i] is ColumnWithOffset columnWithOffset)
                     {
