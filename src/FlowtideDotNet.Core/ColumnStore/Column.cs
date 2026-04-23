@@ -113,29 +113,37 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 case ArrowTypeId.Binary:
                     _dataColumn = new BinaryColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Binary;
                     break;
                 case ArrowTypeId.Boolean:
                     _dataColumn = new BoolColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Boolean;
                     break;
                 case ArrowTypeId.Decimal128:
                     _dataColumn = new DecimalColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Decimal128;
                     break;
                 case ArrowTypeId.Double:
                     _dataColumn = new DoubleColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Double;
                     break;
                 case ArrowTypeId.Int64:
                     _dataColumn = new IntegerColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Int64;
                     break;
                 case ArrowTypeId.List:
                     _dataColumn = new ListColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.List;
                     break;
                 case ArrowTypeId.Map:
                     _dataColumn = new MapColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Map;
                     break;
                 case ArrowTypeId.Null:
                     break;
                 case ArrowTypeId.String:
                     _dataColumn = new StringColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.String;
                     break;
                 case ArrowTypeId.Struct:
                     if (!columnSizeInfo.StructHeader.HasValue)
@@ -143,12 +151,15 @@ namespace FlowtideDotNet.Core.ColumnStore
                         throw new ArgumentException("Struct column size info must have struct header");
                     }
                     _dataColumn = new StructColumn(columnSizeInfo.StructHeader.Value, memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Struct;
                     break;
                 case ArrowTypeId.Timestamp:
                     _dataColumn = new TimestampTzColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Timestamp;
                     break;
                 case ArrowTypeId.Union:
                     _dataColumn = new UnionColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Union;
                     break;
             }
         }

@@ -76,12 +76,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _typeIds = new sbyte[35]; //35 types exist
             _typeList = new TypeList(memoryAllocator, columnSizeInfo.TotalRows);
             _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows);
-            _valueColumns = new List<IDataColumn>();
+            _valueColumns = new List<IDataColumn>()
+            {
+                new NullColumn()
+            };
 
             for (int i = 0; i < columnSizeInfo.Children.Count; i++)
             {
                 // Add children
                 var child = columnSizeInfo.Children[i];
+                if (child.DataType == ArrowTypeId.Null)
+                {
+                    continue;
+                }
                 var childDataColumn = CreateColumnFromSizeInfo(child);
                 var newIndex = (sbyte)_valueColumns.Count;
                 _valueColumns.Add(childDataColumn);
@@ -111,6 +118,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     return new DecimalColumn(_memoryAllocator, columnSizeInfo);
                 case ArrowTypeId.Timestamp:
                     return new TimestampTzColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Null:
+                    return new NullColumn();
                 default:
                     throw new NotImplementedException();
             }
