@@ -301,11 +301,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 columns[i] = Column.Create(memoryManager);
             }
             int[]? targetPositions = default;
-            foreach (var batch in batches)
+
+            for (int i = 0; i < columnCount; i++)
             {
-                weights.AddRangeFrom(batch.Data.Weights, 0, batch.Data.Weights.Count);
-                iterations.AddRangeFrom(batch.Data.Iterations, 0, batch.Data.Iterations.Count);
-                for (int i = 0; i < columnCount; i++)
+                foreach(var batch in batches)
                 {
                     if (batch.Data.EventBatchData.Columns[i] is ColumnWithOffset columnWithOffset)
                     {
@@ -325,6 +324,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         columns[i].InsertRangeFrom(columns[i].Count, batch.Data.EventBatchData.Columns[i], 0, batch.Data.Weights.Count);
                     }
                 }
+            }
+            foreach (var batch in batches)
+            {
+                weights.AddRangeFrom(batch.Data.Weights, 0, batch.Data.Weights.Count);
+                iterations.AddRangeFrom(batch.Data.Iterations, 0, batch.Data.Iterations.Count);
                 batch.Return();
             }
             
