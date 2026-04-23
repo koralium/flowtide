@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Relations;
 using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
@@ -102,6 +103,51 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _memoryAllocator = memoryAllocator;
             _validityList = BitmapListFactory.Get(memoryAllocator);
+        }
+
+        public Column(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _memoryAllocator = memoryAllocator;
+            _validityList = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
+            switch (columnSizeInfo.DataType)
+            {
+                case ArrowTypeId.Binary:
+                    _dataColumn = new BinaryColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Boolean:
+                    _dataColumn = new BoolColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Decimal128:
+                    _dataColumn = new DecimalColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Double:
+                    _dataColumn = new DoubleColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Int64:
+                    _dataColumn = new IntegerColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.List:
+                    _dataColumn = new ListColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Map:
+                    _dataColumn = new MapColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Null:
+                    break;
+                case ArrowTypeId.String:
+                    _dataColumn = new StringColumn(memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Struct:
+                    if (!columnSizeInfo.StructHeader.HasValue)
+                    {
+                        throw new ArgumentException("Struct column size info must have struct header");
+                    }
+                    _dataColumn = new StructColumn(columnSizeInfo.StructHeader.Value, memoryAllocator, columnSizeInfo);
+                    break;
+                case ArrowTypeId.Timestamp:
+                    _dataColumn = new TimestampTzColumn(memoryAllocator, columnSizeInfo);
+                    break;
+            }
         }
 
         internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)

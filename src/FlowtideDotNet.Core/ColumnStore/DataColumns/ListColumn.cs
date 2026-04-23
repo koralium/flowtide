@@ -47,6 +47,17 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets.Add(0);
         }
 
+        public ListColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != 1)
+            {
+                throw new ArgumentException("Column size info did not contain child information");
+            }
+            _internalColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
+            _offsets.Add(0);
+        }
+
         public ListColumn(Column internalColumn, IMemoryOwner<byte> offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)
         {
             _offsets = new IntList(offsetMemory, offsetCount, memoryAllocator);

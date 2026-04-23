@@ -66,6 +66,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             };
         }
 
+        public UnionColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _memoryAllocator = memoryAllocator;
+            _typeIds = new sbyte[35]; //35 types exist
+            _typeList = new TypeList(memoryAllocator, columnSizeInfo.TotalRows);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows);
+            _valueColumns = new List<IDataColumn>();
+
+            for (int i = 0; i < columnSizeInfo.Children.Count; i++)
+            {
+                // Add children
+            }
+
+        }
+
         internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)
         {
             _memoryAllocator = memoryAllocator;

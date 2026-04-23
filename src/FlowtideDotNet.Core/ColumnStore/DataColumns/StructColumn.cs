@@ -42,6 +42,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _count = 0;
         }
 
+        public StructColumn(StructHeader structHeader, IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != structHeader.Count)
+            {
+                throw new ArgumentException("Column size info does not match struct header.");
+            }
+            _header = structHeader;
+            _columns = new Column[structHeader.Count];
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var childSizeInfo = columnSizeInfo.Children[i];
+                _columns[i] = new Column(memoryAllocator, childSizeInfo);
+            }
+            _count = 0;
+        }
+
         internal StructColumn(StructHeader header, Column[] columns, int count)
         {
             _header = header;

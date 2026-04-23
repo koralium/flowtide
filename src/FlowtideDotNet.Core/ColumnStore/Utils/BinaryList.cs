@@ -68,6 +68,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        public BinaryList(IMemoryAllocator memoryAllocator, int initialRowCapacity, int initialDataCapacity)
+        {
+            _memoryAllocator = memoryAllocator;
+            _offsets = new IntList(memoryAllocator, initialRowCapacity + 1);
+            _memoryOwner = _memoryAllocator.Allocate(initialDataCapacity, 64);
+            _data = _memoryOwner.Memory.Pin().Pointer;
+            _dataLength = initialDataCapacity;
+        }
+
         /// <summary>
         /// Create a binary list from existing memory.
         /// If any changes are made to the list that exceeds the current memory, a new memory block will be allocated that is used only for the list.

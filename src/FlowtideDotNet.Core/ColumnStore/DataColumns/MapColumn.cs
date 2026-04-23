@@ -57,6 +57,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             _offsets.Add(0);
         }
 
+        public MapColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != 2)
+            {
+                throw new ArgumentException("Column size info did not contain child information");
+            }
+            _keyColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
+            _valueColumn = new Column(memoryAllocator, columnSizeInfo.Children[1]);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
+            _offsets.Add(0);
+        }
+
         internal MapColumn(Column keyColumn, Column valueColumn, IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryAllocator memoryAllocator)
         {
             _keyColumn = keyColumn;

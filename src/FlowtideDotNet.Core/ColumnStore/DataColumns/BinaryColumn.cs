@@ -41,6 +41,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = new BinaryList(memoryAllocator);
         }
 
+        public BinaryColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _data = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
+        }
+
         public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _data = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
