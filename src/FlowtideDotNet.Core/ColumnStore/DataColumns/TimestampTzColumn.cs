@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             _values = new PrimitiveList<TimestampTzValue>(memoryAllocator);
         }
 
+        public TimestampTzColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _values = new PrimitiveList<TimestampTzValue>(memoryAllocator, columnSizeInfo.TotalRows);
+        }
+
         public TimestampTzColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<TimestampTzValue>(memory, length, memoryAllocator);
@@ -304,6 +309,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
             _values.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Timestamp,
+                TotalRows = Count,
+            };
         }
     }
 }

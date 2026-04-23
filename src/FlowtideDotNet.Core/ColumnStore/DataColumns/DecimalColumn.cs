@@ -49,6 +49,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _values = new PrimitiveList<decimal>(memoryAllocator);
         }
 
+        public DecimalColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _values = new PrimitiveList<decimal>(memoryAllocator, columnSizeInfo.TotalRows);
+        }
+
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
@@ -292,6 +297,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
             _values.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Decimal128,
+                TotalRows = Count
+            };
         }
     }
 }

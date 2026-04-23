@@ -190,5 +190,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             _count -= targets.Length;
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Null,
+                TotalRows = _count,
+            };
+        }
     }
 }

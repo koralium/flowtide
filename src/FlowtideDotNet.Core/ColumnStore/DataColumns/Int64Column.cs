@@ -348,5 +348,14 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Int64 column is not in use right now
             throw new NotImplementedException();
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Int64,
+                TotalRows = Count
+            };
+        }
     }
 }
