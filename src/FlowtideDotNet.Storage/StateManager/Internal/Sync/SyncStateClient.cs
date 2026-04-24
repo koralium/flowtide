@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly int m_bplusTreePageSize;
         private readonly int m_bplusTreePageSizeBytes;
         private readonly IMemoryAllocator memoryAllocator;
-        private readonly Dictionary<long, int> m_modified;
+        private Dictionary<long, int> m_modified;
         private readonly object m_lock = new object();
         private readonly FlowtideDotNet.Storage.FileCache.IFileCache m_fileCache;
         private readonly ConcurrentDictionary<long, int> m_fileCacheVersion;
@@ -53,6 +53,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         private long newPages;
         private long cacheMisses;
+
+        private Dictionary<long, int> m_committing;
+        private readonly ConcurrentDictionary<long, byte[]> m_committing_preserialized;
+        private Task? m_commitTask;
+        private long m_committingNewPages;
+        private StateClientMetadata<TMetadata>? m_committingMetadata;
 
         public long CacheMisses => cacheMisses;
 
@@ -84,6 +90,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.memoryAllocator = memoryAllocator;
             m_fileCache = fileCacheFactory.Create(name, memoryAllocator);
             m_modified = new Dictionary<long, int>();
+            m_committing = new Dictionary<long, int>();
+            m_committing_preserialized = new ConcurrentDictionary<long, byte[]>();
             m_fileCacheVersion = new ConcurrentDictionary<long, int>();
             if (!string.IsNullOrEmpty(name))
             {
@@ -125,6 +133,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_modified[key] = 0;
                 }
+                m_fileCacheVersion.Remove(key, out _);
 
                 var modLookup = key % _lookupTable.Length;
                 if (_lookupTable[modLookup].Key == key)
@@ -154,7 +163,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
 
-            foreach (var kv in m_modified)
+            if (m_commitTask != null)
+            {
+                await m_commitTask;
+            }
+
+            lock (m_lock)
+            {
+                var temp = m_modified;
+                m_modified = m_committing;
+                m_committing = temp;
+                m_committing_preserialized.Clear();
+
+                m_committingMetadata = new StateClientMetadata<TMetadata>()
+                {
+                    CommitedOnce = metadata.CommitedOnce,
+                    Metadata = metadata.Metadata
+                };
+
+                m_committingNewPages = newPages;
+                newPages = 0;
+            }
+
+            m_commitTask = Task.Run(CommitBackground);
+        }
+
+        private async Task CommitBackground()
+        {
+            foreach (var kv in m_committing)
             {
                 if (kv.Value == -1)
                 {
@@ -162,84 +198,143 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await session.Delete(kv.Key);
 
                     // Remove a page from the new pages counter
-                    Interlocked.Decrement(ref newPages);
+                    Interlocked.Decrement(ref m_committingNewPages);
 
                     m_fileCache.Free(kv.Key);
                     continue;
                 }
-                if (stateManager.TryGetValueFromCache<V>(kv.Key, out var val))
-                {
-                    // Write to persistence
-                    await session.Write(kv.Key, new SerializableObject(val, options.ValueSerializer));
 
-                    if (!useReadCache)
-                    {
-                        m_fileCache.Free(kv.Key);
-                    }
-                    else
-                    {
-                        // Remove it from file cache version and file cache
-                        // This is required since the data can have been modified since it was written to the cache.
-                        m_fileCacheVersion.Remove(kv.Key, out _);
-                        m_fileCache.Free(kv.Key);
-                    }
-                    val.Return();
+                if (m_committing_preserialized.TryGetValue(kv.Key, out var preserializedBytes))
+                {
+                    await session.Write(kv.Key, new SerializableObject(preserializedBytes));
                     continue;
                 }
+
+
+                bool loadedFromCache = false;
+                lock (m_lock)
                 {
-                    var bytes = await m_fileCache.Read(kv.Key);
+                    if (m_committing_preserialized.TryGetValue(kv.Key, out preserializedBytes))
+                    {
+                        // Was preserialized just now
+                    }
+                    else if (stateManager.TryGetValueFromCache<V>(kv.Key, out var cacheVal))
+                    {
+                        // Found in cache, preserialize it inside the lock
+                        var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+                        options.ValueSerializer!.Serialize(bufferWriter, cacheVal);
+                        preserializedBytes = bufferWriter.WrittenSpan.ToArray();
+                        m_committing_preserialized.TryAdd(kv.Key, preserializedBytes);
+                        
+                        loadedFromCache = true;
+                    }
+                }
+
+                if (preserializedBytes != null)
+                {
+                    await session.Write(kv.Key, new SerializableObject(preserializedBytes));
+
+                    if (loadedFromCache)
+                    {
+                        if (useReadCache)
+                        {
+                            lock (m_lock)
+                            {
+                                if (!m_modified.ContainsKey(kv.Key))
+                                {
+                                    m_fileCacheVersion.Remove(kv.Key, out _);
+                                    m_fileCache.Free(kv.Key);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            m_fileCache.Free(kv.Key);
+                        }
+                    }
+                    continue;
+                }
+
+                if (!loadedFromCache)
+                {
+                    var readOnlyBytes = await m_fileCache.Read(kv.Key);
+                    var bytes = readOnlyBytes.ToArray();
 
                     // Write to persistence
                     await session.Write(kv.Key, new SerializableObject(bytes));
 
-                    if (!useReadCache)
+                    if (useReadCache)
                     {
-                        // Free the data from temporary storage
-                        m_fileCache.Free(kv.Key);
-                    }
-                    else
-                    {
-                        // Set version to -2 which marks that it is a read only version
-                        m_fileCacheVersion[kv.Key] = -2;
+                        lock(m_lock)
+                        {
+                            // Set version to -2 which marks that it is a read only version
+                            if (!m_modified.ContainsKey(kv.Key))
+                            {
+                                m_fileCacheVersion[kv.Key] = -2;
+                            }
+                        }
                     }
                 }
             }
 
             // Checkpoint the serializer
-            await options.ValueSerializer.CheckpointAsync(this, metadata);
+            await options.ValueSerializer!.CheckpointAsync(this, m_committingMetadata!);
 
-            var modifiedPagesCount = m_modified.Count;
+            var modifiedPagesCount = m_committing.Count;
             Debug.Assert(stateManager.m_metadata != null);
             // Add modified page count to the page commits counter
             Interlocked.Add(ref stateManager.m_metadata.PageCommits, (ulong)modifiedPagesCount);
             // Modify active pages
-            Interlocked.Add(ref stateManager.m_metadata.PageCount, newPages);
-            newPages = 0;
+            Interlocked.Add(ref stateManager.m_metadata.PageCount, m_committingNewPages);
+            m_committingNewPages = 0;
 
-            if (!useReadCache)
+            lock (m_lock)
             {
-                m_fileCache.FreeAll(m_modified.Keys);
-                m_fileCacheVersion.Clear();
+                if (!useReadCache)
+                {
+                    foreach (var key in m_committing.Keys)
+                    {
+                        if (!m_modified.ContainsKey(key))
+                        {
+                            m_fileCache.Free(key);
+                            m_fileCacheVersion.Remove(key, out _);
+                        }
+                    }
+                }
+                m_committing.Clear();
+                m_committing_preserialized.Clear();
             }
-            m_modified.Clear();
 
-            await WriteMetadata();
+            await WriteMetadata(m_committingMetadata!);
             await session.Commit();
         }
 
-        private async Task WriteMetadata()
+        public override async Task WaitForCommitAsync()
         {
-            if (!metadata.CommitedOnce || (metadata.Metadata != null && metadata.Metadata.Updated))
+            if (m_commitTask != null)
+            {
+                await m_commitTask;
+            }
+        }
+
+        private async Task WriteMetadata(StateClientMetadata<TMetadata> committingMetadata)
+        {
+            if (!committingMetadata.CommitedOnce || (committingMetadata.Metadata != null && committingMetadata.Metadata.Updated))
             {
                 var previousCommitedOnce = metadata.CommitedOnce;
                 try
                 {
-                    metadata.CommitedOnce = true;
-                    var bytes = StateClientMetadataSerializer.Serialize(metadata);
+                    committingMetadata.CommitedOnce = true;
+                    var bytes = StateClientMetadataSerializer.Serialize(committingMetadata);
                     await session.Write(metadataId, new SerializableObject(bytes));
-                    if (metadata.Metadata != null)
+                    
+                    lock (m_lock)
                     {
-                        metadata.Metadata.Updated = false;
+                        if (committingMetadata.Metadata != null)
+                        {
+                            committingMetadata.Metadata.Updated = false;
+                        }
+                        metadata.CommitedOnce = true;
                     }
                 }
                 catch (Exception)
@@ -255,6 +350,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             lock (m_lock)
             {
                 m_modified[key] = -1;
+                // We keep it in m_committing if it's there so the commit background task can serialize its OLD version
                 m_fileCacheVersion.Remove(key, out _);
                 m_fileCache.Free(key);
                 stateManager.DeleteFromCache(key);
@@ -272,6 +368,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_lock)
             {
+                bool needsPreserialize = false;
+                if (m_committing.ContainsKey(key) && !m_committing_preserialized.ContainsKey(key))
+                {
+                    needsPreserialize = true;
+                }
+
                 var modLookup = key % _lookupTable.Length;
 
                 if (_lookupTable[modLookup].Key == key)
@@ -281,6 +383,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         if (!node.ValueRef.removed)
                         {
+                            if (needsPreserialize)
+                            {
+                                var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+                                options.ValueSerializer!.Serialize(bufferWriter, (V)node.ValueRef.value);
+                                m_committing_preserialized.TryAdd(key, bufferWriter.WrittenSpan.ToArray());
+                            }
+
                             if (!node.ValueRef.value.TryRent())
                             {
                                 throw new InvalidOperationException("Could not rent value from cache");
@@ -293,6 +402,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                 if (stateManager.TryGetCacheValueFromCache(key, out var cacheVal))
                 {
+                    if (needsPreserialize)
+                    {
+                        var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+                        options.ValueSerializer!.Serialize(bufferWriter, (V)cacheVal.ValueRef.value);
+                        m_committing_preserialized.TryAdd(key, bufferWriter.WrittenSpan.ToArray());
+                    }
+
                     _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
                     return ValueTask.FromResult<V?>((V)cacheVal.ValueRef.value);
                 }
@@ -311,19 +427,50 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             Debug.Assert(options.ValueSerializer != null);
             var sw = ValueStopwatch.StartNew();
-            var value = await m_fileCache.Read<V>(key, options.ValueSerializer);
-            if (!value.TryRent())
+
+            bool needsPreserialize = false;
+            lock (m_lock)
+            {
+                if (m_committing.ContainsKey(key) && !m_committing_preserialized.ContainsKey(key))
+                {
+                    needsPreserialize = true;
+                }
+            }
+
+            if (needsPreserialize)
+            {
+                var readOnlyBytes = await m_fileCache.Read(key);
+                var bytes = readOnlyBytes.ToArray();
+                m_committing_preserialized.TryAdd(key, bytes);
+                
+                var value = options.ValueSerializer.Deserialize(new System.Buffers.ReadOnlySequence<byte>(bytes), bytes.Length);
+                if (!value.TryRent())
+                {
+                    throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                }
+                stateManager.AddOrUpdate(key, value, this);
+
+                if (m_temporaryReadMsHistogram != null)
+                {
+                    m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
+                }
+
+                return value;
+            }
+
+            var value2 = await m_fileCache.Read<V>(key, options.ValueSerializer);
+            if (!value2.TryRent())
             {
                 throw new InvalidOperationException("Could not rent value when fetched from storage.");
             }
-            stateManager.AddOrUpdate(key, value, this);
+            stateManager.AddOrUpdate(key, value2, this);
 
             if (m_temporaryReadMsHistogram != null)
             {
                 m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             }
 
-            return value;
+            return value2;
         }
 
         private async ValueTask<V?> GetValue_Persistent(long key)
@@ -378,6 +525,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public override async ValueTask Reset(bool clearMetadata)
         {
+            if (m_commitTask != null)
+            {
+                await m_commitTask;
+            }
+
             lock (m_lock)
             {
                 foreach (var kv in m_modified)
@@ -393,6 +545,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_fileCache.FreeAll(m_modified.Keys);
                 m_modified.Clear();
                 m_fileCacheVersion.Clear();
+                m_committing.Clear();
+                m_committing_preserialized.Clear();
             }
             if (clearMetadata || !metadata.CommitedOnce)
             {
@@ -416,6 +570,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 lock (m_lock)
                 {
                     isModified = m_modified.TryGetValue(value.Item1.ValueRef.key, out val);
+                    if (!isModified && m_committing.TryGetValue(value.Item1.ValueRef.key, out var commitVal))
+                    {
+                        isModified = true;
+                        val = commitVal;
+                    }
                     if (_lookupTable[modLookup].Key == value.Item1.ValueRef.key)
                     {
                         _lookupTable[modLookup] = new CacheValue { Key = -1, Value = null };

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -215,6 +215,12 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
+
+            foreach (var stateClient in _stateClients.Values)
+            {
+                await stateClient.WaitForCommitAsync();
+            }
+
             byte[] bytes;
             lock (m_lock)
             {
@@ -399,6 +405,11 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
+            foreach (var stateClient in _stateClients.Values)
+            {
+                await stateClient.WaitForCommitAsync();
+            }
+
             bool newMetadata = false;
             Setup();
             Debug.Assert(m_lruTable != null);
