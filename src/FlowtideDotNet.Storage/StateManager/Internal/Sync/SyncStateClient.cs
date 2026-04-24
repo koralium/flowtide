@@ -236,20 +236,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     if (loadedFromCache)
                     {
-                        if (useReadCache)
+                        lock (m_lock)
                         {
-                            lock (m_lock)
+                            if (!m_modified.ContainsKey(kv.Key))
                             {
-                                if (!m_modified.ContainsKey(kv.Key))
-                                {
-                                    m_fileCacheVersion.Remove(kv.Key, out _);
-                                    m_fileCache.Free(kv.Key);
-                                }
+                                m_fileCacheVersion.Remove(kv.Key, out _);
+                                m_fileCache.Free(kv.Key);
                             }
-                        }
-                        else
-                        {
-                            m_fileCache.Free(kv.Key);
                         }
                     }
                     continue;
@@ -263,14 +256,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     // Write to persistence
                     await session.Write(kv.Key, new SerializableObject(bytes));
 
-                    if (useReadCache)
+                    lock(m_lock)
                     {
-                        lock(m_lock)
+                        if (!m_modified.ContainsKey(kv.Key))
                         {
-                            // Set version to -2 which marks that it is a read only version
-                            if (!m_modified.ContainsKey(kv.Key))
+                            if (useReadCache)
                             {
+                                // Set version to -2 which marks that it is a read only version
                                 m_fileCacheVersion[kv.Key] = -2;
+                            }
+                            else
+                            {
+                                m_fileCacheVersion.Remove(kv.Key, out _);
+                                m_fileCache.Free(kv.Key);
                             }
                         }
                     }
@@ -352,7 +350,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_modified[key] = -1;
                 // We keep it in m_committing if it's there so the commit background task can serialize its OLD version
                 m_fileCacheVersion.Remove(key, out _);
-                m_fileCache.Free(key);
+                if (!m_committing.ContainsKey(key))
+                {
+                    m_fileCache.Free(key);
+                }
                 stateManager.DeleteFromCache(key);
             }
         }
@@ -446,7 +447,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var value = options.ValueSerializer.Deserialize(new System.Buffers.ReadOnlySequence<byte>(bytes), bytes.Length);
                 if (!value.TryRent())
                 {
-                    throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                    throw new InvalidOperationException($"Could not rent value when fetched from storage (needsPreserialize). Type: {value?.GetType().Name}, RentCount: {value?.RentCount}");
                 }
                 stateManager.AddOrUpdate(key, value, this);
 
@@ -461,7 +462,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var value2 = await m_fileCache.Read<V>(key, options.ValueSerializer);
             if (!value2.TryRent())
             {
-                throw new InvalidOperationException("Could not rent value when fetched from storage.");
+                throw new InvalidOperationException($"Could not rent value when fetched from storage. Type: {value2?.GetType().Name}, RentCount: {value2?.RentCount}");
             }
             stateManager.AddOrUpdate(key, value2, this);
 
