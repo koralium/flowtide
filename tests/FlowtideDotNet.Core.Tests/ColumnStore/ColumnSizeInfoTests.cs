@@ -236,16 +236,16 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
 
         [Fact]
-        public void MergeTypeIntoNullPromotesToUnion()
+        public void MergeTypeIntoNullChangesToIncomingType()
         {
             var a = new ColumnSizeInfo { DataType = ArrowTypeId.Null, TotalRows = 5 };
             var b = new ColumnSizeInfo { DataType = ArrowTypeId.Int64, TotalRows = 3 };
 
             a.Merge(b);
 
-            Assert.Equal(ArrowTypeId.Union, a.DataType);
+            Assert.Equal(ArrowTypeId.Int64, a.DataType);
             Assert.Equal(8, a.TotalRows);
-            Assert.NotNull(a.Children);
+            Assert.Null(a.Children);
         }
 
         [Fact]
@@ -256,7 +256,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             a.Merge(b);
 
-            Assert.Equal(ArrowTypeId.Union, a.DataType);
+            Assert.Equal(ArrowTypeId.Int64, a.DataType);
             Assert.Equal(8, a.TotalRows);
         }
 
