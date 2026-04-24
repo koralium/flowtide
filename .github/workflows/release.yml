@@ -75,5 +75,9 @@ jobs:
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj
     - name: Package Starrocks
       run: dotnet pack -c Release -o . src/FlowtideDotNet.Connector.Starrocks/FlowtideDotNet.Connector.StarRocks.csproj
+    - name: Package fasterkv
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj
+    - name: Package Azure Blobs
+      run: dotnet pack -c Release -o . src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj
     - name: Publish
       run: dotnet nuget push *.nupkg -k ${{ secrets.NUGET_KEY }} -s https://api.nuget.org/v3/index.json

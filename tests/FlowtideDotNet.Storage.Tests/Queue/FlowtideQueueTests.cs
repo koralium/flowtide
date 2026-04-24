@@ -10,23 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Queue;
-using FlowtideDotNet.Storage.Queue.Internal;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Storage.Tree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.Metrics;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Storage.Tests.Queue
 {
@@ -38,12 +31,11 @@ namespace FlowtideDotNet.Storage.Tests.Queue
             {
                 CachePageCount = cachePageCount,
                 MinCachePageCount = 0,
-                PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>(path, deleteOnClose)
+                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions()
                 {
-                    PageSize = 16 * 1024 * 1024,
-                    MemorySize = 32 * 1024 * 1024
+                    FileProvider = new MemoryFileProvider()
                 })
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var stateManagerClient = stateManager.GetOrCreateClient("test");

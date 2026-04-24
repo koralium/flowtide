@@ -12,7 +12,7 @@
 
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Base.Vertices.Egress.Internal
+namespace FlowtideDotNet.Base.Vertices.Internal
 {
     internal interface IEgressImplementation : ITargetBlock<IStreamEvent>
     {

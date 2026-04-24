@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,6 +21,7 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Relations;
 using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
@@ -102,6 +103,65 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _memoryAllocator = memoryAllocator;
             _validityList = BitmapListFactory.Get(memoryAllocator);
+        }
+
+        public Column(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _memoryAllocator = memoryAllocator;
+            _validityList = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
+            switch (columnSizeInfo.DataType)
+            {
+                case ArrowTypeId.Binary:
+                    _dataColumn = new BinaryColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Binary;
+                    break;
+                case ArrowTypeId.Boolean:
+                    _dataColumn = new BoolColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Boolean;
+                    break;
+                case ArrowTypeId.Decimal128:
+                    _dataColumn = new DecimalColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Decimal128;
+                    break;
+                case ArrowTypeId.Double:
+                    _dataColumn = new DoubleColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Double;
+                    break;
+                case ArrowTypeId.Int64:
+                    _dataColumn = new IntegerColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Int64;
+                    break;
+                case ArrowTypeId.List:
+                    _dataColumn = new ListColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.List;
+                    break;
+                case ArrowTypeId.Map:
+                    _dataColumn = new MapColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Map;
+                    break;
+                case ArrowTypeId.Null:
+                    break;
+                case ArrowTypeId.String:
+                    _dataColumn = new StringColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.String;
+                    break;
+                case ArrowTypeId.Struct:
+                    if (!columnSizeInfo.StructHeader.HasValue)
+                    {
+                        throw new ArgumentException("Struct column size info must have struct header");
+                    }
+                    _dataColumn = new StructColumn(columnSizeInfo.StructHeader.Value, memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Struct;
+                    break;
+                case ArrowTypeId.Timestamp:
+                    _dataColumn = new TimestampTzColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Timestamp;
+                    break;
+                case ArrowTypeId.Union:
+                    _dataColumn = new UnionColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.Union;
+                    break;
+            }
         }
 
         internal Column(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
@@ -262,7 +322,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 // Check if the current buffer is a null buffer
                 if (_type == ArrowTypeId.Null)
                 {
-                    var index = _nullCounter;
                     _nullCounter++;
                 }
                 else
@@ -1182,6 +1241,230 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _dataColumn!.WriteDataToBuffer(ref dataWriter);
+        }
+
+        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            Debug.Assert(_validityList != null);
+
+            if (column is Column other)
+            {
+                int count = sortedLookup.Length;
+                if (count == 0) return;
+
+                if (CompareOtherColumnType(other))
+                {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        // Both columns are null, just add null count
+                        _nullCounter += count;
+                        return;
+                    }
+                    if (_type == ArrowTypeId.Union)
+                    {
+                        Debug.Assert(_dataColumn != null);
+                        Debug.Assert(other._dataColumn != null);
+                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        return;
+                    }
+
+                    // Same non-null, non-union type
+                    // Handle validity list
+                    if (_nullCounter > 0 || other._nullCounter > 0)
+                    {
+                        if (_nullCounter > 0 && other._nullCounter > 0)
+                        {
+                            Debug.Assert(other._validityList != null);
+                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            // Count new nulls from the inserted elements
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (!other._validityList.Get(sortedLookup[i]))
+                                {
+                                    _nullCounter++;
+                                }
+                            }
+                        }
+                        else if (_nullCounter > 0)
+                        {
+                            // This has nulls, other doesn't — insert all as valid
+                            _validityList.InsertConstantFrom(true, insertPositions);
+                        }
+                        else // other has nulls, this doesn't
+                        {
+                            Debug.Assert(other._validityList != null);
+                            CheckNullInitialization();
+                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                            for (int i = 0; i < count; i++)
+                            {
+                                if (!other._validityList.Get(sortedLookup[i]))
+                                {
+                                    _nullCounter++;
+                                }
+                            }
+                        }
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(other._dataColumn != null);
+                    _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                }
+                else
+                {
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        Debug.Assert(_validityList != null);
+                        if (other.Type == ArrowTypeId.Struct)
+                        {
+                            if (column.StructHeader == null)
+                            {
+                                throw new InvalidOperationException("Struct header is null, cannot create struct column.");
+                            }
+                            Debug.Assert(_memoryAllocator != null);
+                            _dataColumn = new StructColumn(column.StructHeader.Value, _memoryAllocator);
+                        }
+                        else
+                        {
+                            _dataColumn = CreateArrayByType(other.Type);
+                        }
+
+                        _type = other.Type;
+
+                        if (_type == ArrowTypeId.Union)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Clear();
+                            _nullCounter = 0;
+                        }
+
+                        // Add null values as undefined values to the array
+                        if (_nullCounter > 0)
+                        {
+                            _dataColumn.InsertNullRange(0, _nullCounter);
+                            _validityList.Unset(Count - 1);
+                        }
+
+                        // Handle validity bitmap for the inserted elements
+                        if (other._nullCounter > 0 || _nullCounter > 0)
+                        {
+                            if (other._nullCounter > 0)
+                            {
+                                Debug.Assert(other._validityList != null);
+                                _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
+                                for (int i = 0; i < count; i++)
+                                {
+                                    if (!other._validityList.Get(sortedLookup[i]))
+                                    {
+                                        _nullCounter++;
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                _validityList.InsertConstantFrom(true, insertPositions);
+                            }
+                        }
+                    }
+                    else if (other.Type == ArrowTypeId.Null)
+                    {
+                        // Other column is null-typed — insert null placeholders
+                        Debug.Assert(_dataColumn != null);
+                        if (_type != ArrowTypeId.Union)
+                        {
+                            CheckNullInitialization();
+                            Debug.Assert(_validityList != null);
+                            _validityList.InsertConstantFrom(false, insertPositions);
+                            _nullCounter += count;
+                        }
+                        // Insert null placeholders into the data column element-by-element
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            _dataColumn.InsertAt(insertPositions[i], in NullValue.Instance);
+                        }
+                        return;
+                    }
+                    else if (_type != ArrowTypeId.Union)
+                    {
+                        // Both are typed but different, convert this to union, then bulk insert
+                        Debug.Assert(_validityList != null);
+                        Debug.Assert(_dataColumn != null);
+
+                        var unionColumn = ConvertToUnion();
+                        _type = ArrowTypeId.Union;
+                        var previousColumn = _dataColumn;
+                        _dataColumn = unionColumn;
+                        previousColumn.Dispose();
+                        _validityList.Clear();
+                        _nullCounter = 0;
+                    }
+
+                    Debug.Assert(_dataColumn != null);
+                    Debug.Assert(other._dataColumn != null);
+
+                    if (_type == ArrowTypeId.Union && other._nullCounter > 0)
+                    {
+                        // Fix for null values, validity list should perhaps be passed later to insert from
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            var value = other.GetValueAt(sortedLookup[i], default);
+                            _dataColumn.InsertAt(insertPositions[i], value);
+                        }
+                    }
+                    else
+                    {
+                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                    }
+                }
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            Debug.Assert(_validityList != null);
+
+            if (targets.Length == 0) return;
+
+            if (_nullCounter > 0)
+            {
+                if (_type == ArrowTypeId.Null)
+                {
+                    _nullCounter -= targets.Length;
+                    return;
+                }
+                else
+                {
+                    // Count how many of the targets are null
+                    for (int i = 0; i < targets.Length; i++)
+                    {
+                        if (!_validityList.Get(targets[i]))
+                        {
+                            _nullCounter--;
+                        }
+                    }
+                    _validityList.DeleteBatch(targets);
+                }
+            }
+            if (_dataColumn != null)
+            {
+                _dataColumn.DeleteBatch(targets);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            if (_dataColumn == null)
+            {
+                return new ColumnSizeInfo
+                {
+                    DataType = ArrowTypeId.Null,
+                    TotalRows = Count,
+                };
+            }
+            return _dataColumn.GetColumnSizeInfo();
         }
     }
 }

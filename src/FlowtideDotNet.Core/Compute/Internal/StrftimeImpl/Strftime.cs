@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Core.Compute.Internal.StrftimeImpl
         /// <param name="culture">the CurrentCulture to be used when formatting</param>
         private static String SpecifierEvaluator(String specifier, IEnumerable<String> flags, int? width, String directive, object source, CultureInfo culture)
         {
-            var result = specifier;
+            string result;
             directive = PreProcessDirective(directive, flags, width);
 
             if (OffsetFormats.ContainsKey(directive) && source is DateTimeOffset dateTimeOffset1)

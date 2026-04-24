@@ -760,7 +760,7 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
 
 
             int batchCount = 0;
-            SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
+            using SemaphoreSlim waitSemaphore = new SemaphoreSlim(0);
             // 100 events per batch
             int expectedBatchCount = 1000 / 100;
 
@@ -795,8 +795,6 @@ namespace FlowtideDotNet.SqlServer.Tests.e2e
             ");
 
             await waitSemaphore.WaitAsync(TimeSpan.FromSeconds(30));
-
-            var expectedDate = new DateTimeOffset(new DateTime(2024, 1, 3), TimeSpan.FromHours(1));
 
             var result = await _fixture.ExecuteReader("SELECT count(*) from [test-db].[dbo].[testdest7]", (reader) =>
             {

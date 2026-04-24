@@ -77,16 +77,6 @@ namespace FlowtideDotNet.Core.Compute.Internal.StatefulAggregations
 
         private static async Task<ListAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            List<int> insertPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength + 1; i++)
-            {
-                insertPrimaryKeys.Add(i);
-            }
-            List<int> searchPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength; i++)
-            {
-                searchPrimaryKeys.Add(i);
-            }
             var tree = await stateManagerClient.GetOrCreateTree("listaggtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<RowEvent, int, ListKeyContainer<RowEvent>, ListValueContainer<int>>()
                 {

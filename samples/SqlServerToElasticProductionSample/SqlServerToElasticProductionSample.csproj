@@ -18,6 +18,7 @@
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.ElasticSearch\FlowtideDotNet.Connector.ElasticSearch.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Storage.Azure\FlowtideDotNet.Storage.AzureBlobs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

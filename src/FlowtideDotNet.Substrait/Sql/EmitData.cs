@@ -169,6 +169,12 @@ namespace FlowtideDotNet.Substrait.Sql
             _types[index] = type;
         }
 
+        public void AddSourceColumn(string name, SubstraitBaseType type)
+        {
+            var index = _names.Count;
+            Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(name) })), index, name, type);
+        }
+
         public void Add(Expression expr, int index, string name, SubstraitBaseType type)
         {
             if (expr is Expression.CompoundIdentifier compound)
@@ -177,6 +183,16 @@ namespace FlowtideDotNet.Substrait.Sql
                 if (!compundIdentifiers.ContainsKey(k))
                 {
                     compundIdentifiers.Add(string.Join(".", compound.Idents.Select(x => x.Value)), compound);
+                }
+            }
+            else if (expr is Expression.Identifier identifier)
+            {
+                compound = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident]));
+                expr = compound;
+                var k = identifier.Ident.Value;
+                if (!compundIdentifiers.ContainsKey(k))
+                {
+                    compundIdentifiers.Add(k, compound);
                 }
             }
 
@@ -224,6 +240,11 @@ namespace FlowtideDotNet.Substrait.Sql
                 name = GetName(emitInfo.Index[0]);
                 type = _types[emitInfo.Index[0]];
                 return true;
+            }
+
+            if (expression is Expression.Identifier identifier)
+            {
+                expression = new Expression.CompoundIdentifier(new Sequence<Ident>([identifier.Ident]));
             }
 
             // If it is a compound identifier, we can try to look for it with case insensitive lookup

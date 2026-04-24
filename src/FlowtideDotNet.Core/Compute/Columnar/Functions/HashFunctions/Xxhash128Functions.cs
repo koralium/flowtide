@@ -32,7 +32,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
                     var hashInstanceExpr = Expression.Constant(new XxHash128());
                     var destinationExpr = Expression.Constant(new byte[16]);
                     var utf8DestinationExpr = Expression.Constant(new byte[36]);
-                    var outputExpr = Expression.Constant(new DataValueContainer());
 
                     List<Expression> hashExpressions = new List<Expression>();
                     for (int i = 0; i < func.Arguments.Count; i++)

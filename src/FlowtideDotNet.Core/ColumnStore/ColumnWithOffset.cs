@@ -23,7 +23,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
-    internal class ColumnWithOffset : IColumn
+    internal sealed class ColumnWithOffset : IColumn
     {
         private readonly IColumn innerColumn;
         private readonly PrimitiveList<int> offsets;
@@ -109,17 +109,17 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
-            var offset = offsets[index];
+            var offset = offsets.Get(index);
             if (includeNullValueAtEnd && offset == innerColumn.Count)
             {
                 return NullValue.Instance;
             }
-            return innerColumn.GetValueAt(offset, child);
+            return innerColumn.GetValueAt(offset, child); 
         }
 
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
-            var offset = offsets[index];
+            var offset = offsets.Get(index);
             if (includeNullValueAtEnd && offset == innerColumn.Count)
             {
                 dataValueContainer._type = ArrowTypeId.Null;
@@ -228,6 +228,61 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();
+        }
+
+        public static ColumnWithOffset CreateFlattened(
+            IColumn column, 
+            PrimitiveList<int> offsets, 
+            bool includeNullValueAtEnd, 
+            IMemoryAllocator memoryAllocator,
+            out bool usedOffset)
+        {
+            if (column is ColumnWithOffset columnWithOffset)
+            {
+                PrimitiveList<int> newOffsets = new PrimitiveList<int>(memoryAllocator);
+                var otherOffsets = columnWithOffset.offsets;
+                for (int i = 0; i < offsets.Count; i++)
+                {
+                    var offset = offsets.Get(i);
+                    if (includeNullValueAtEnd && offset == column.Count)
+                    {
+                        newOffsets.Add(columnWithOffset.innerColumn.Count);
+                    }
+                    else
+                    {
+                        var otherOffset = otherOffsets.Get(offset);
+                        if (columnWithOffset.includeNullValueAtEnd && otherOffset == columnWithOffset.innerColumn.Count)
+                        {
+                            newOffsets.Add(columnWithOffset.innerColumn.Count);
+                        }
+                        else
+                        {
+                            newOffsets.Add(otherOffset);
+                        }
+                    }
+                }
+                usedOffset = false;
+                return new ColumnWithOffset(columnWithOffset.innerColumn, newOffsets, includeNullValueAtEnd);
+            }
+            usedOffset = true;
+            return new ColumnWithOffset(column, offsets, includeNullValueAtEnd);
+        }
+
+        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            throw new NotSupportedException("Column with offset does not support InsertFrom.");
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            throw new NotSupportedException("Column with offset does not support DeleteBatch.");
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            // Give the inner size, this is not an exact number, but it gives a good estimate of the size of the data,
+            // without needing to calculate the exact size of the offsets which is more expensive.
+            return innerColumn.GetColumnSizeInfo();
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -38,6 +38,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i] = Column.Create(memoryAllocator);
+            }
+            _count = 0;
+        }
+
+        public StructColumn(StructHeader structHeader, IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != structHeader.Count)
+            {
+                throw new ArgumentException("Column size info does not match struct header.");
+            }
+            _header = structHeader;
+            _columns = new Column[structHeader.Count];
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var childSizeInfo = columnSizeInfo.Children[i];
+                _columns[i] = new Column(memoryAllocator, childSizeInfo);
             }
             _count = 0;
         }
@@ -590,6 +606,48 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _columns[i].AddToHash(index, child, hashAlgorithm);
             }
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is StructColumn otherStruct)
+            {
+                for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                {
+                    int oIdx = sortedLookup[i];
+                    var value = otherStruct.GetValueAt(oIdx, default);
+                    InsertAt(insertPositions[i], value);
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            List<ColumnSizeInfo> childrenSizeInfo = new List<ColumnSizeInfo>();
+
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                var childSizeInfo = _columns[i].GetColumnSizeInfo();
+                childrenSizeInfo.Add(childSizeInfo);
+            }
+
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Struct,
+                StructHeader = _header,
+                Children = childrenSizeInfo,
+                TotalRows = Count,
+            };
         }
     }
 }

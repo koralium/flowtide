@@ -180,5 +180,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
         }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            _count += sortedLookup.Length;
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _count -= targets.Length;
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Null,
+                TotalRows = _count,
+            };
+        }
     }
 }

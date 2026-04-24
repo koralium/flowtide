@@ -13,11 +13,6 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Vertices;
-using FlowtideDotNet.Base.Vertices.Egress;
-using FlowtideDotNet.Base.Vertices.Ingress;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
-using FlowtideDotNet.Base.Vertices.PartitionVertices;
-using FlowtideDotNet.Base.Vertices.Unary;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;

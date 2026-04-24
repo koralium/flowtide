@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Connector.SqlServer.SqlServer;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Read;
@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                 Dictionary<string, object> primaryKeyValues = new Dictionary<string, object>();
 
                 int batchSize = 10000;
-                List<RowEvent> cache = new List<RowEvent>();
+                List<RowEvent> cache;
                 int retryCount = 0;
                 while (true)
                 {

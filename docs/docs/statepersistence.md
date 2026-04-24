@@ -4,21 +4,207 @@ sidebar_position: 2
 
 # State Persistence
 
-:::info
-
-The settings in this page does not cover when setting up Flowtide using Dependency Injection.
-These settings can be applied when setting up a stream using *FlowtideBuilder* class.
-
-:::
-
 All Flowtide streams require a persistent storage solution to function.
 It is responsible for persisting the data at checkpoint intervals to ensure the stream can continue to operate in case of a failure.
 
-At this time there are two different implementations for the persistent storage solution, FasterKV backed, and a temporary file cache solution.
+The recommended storage backend is the **Reservoir** storage system. It is designed for cloud-native deployments and provides a multi-tier architecture with an in-flight buffer, local disk cache, and persistent object storage (such as Azure Blob Storage). For details on the internal architecture, see [Reservoir Storage System](./internal/reservoir).
 
-## FasterKV storage
+Legacy storage backends (FasterKV, temporary file cache, SQL Server) are still available but are not recommended for new deployments.
 
-FasterKV is persistent key value store built by Microsoft. It is the only storage solution available for Flowtide that will persist data between runs.
+## Reservoir Storage
+
+Reservoir storage packs pages into large immutable files (default 64 MB), uses CRC32/CRC64 checksums for data integrity, and maintains a local disk cache for near-SSD read latency while the authoritative state lives in cloud object storage.
+
+### Azure Blob Storage
+
+Store persistent state in Azure Blob Storage. This is the recommended configuration for production deployments.
+
+Install the `FlowtideDotNet.Storage.Azure` NuGet package and use one of the `AddAzureBlobStorage` extension methods.
+
+**Connection string:**
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    // ...
+    .AddStorage(s =>
+    {
+        s.AddAzureBlobStorage(
+            connectionString: "DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;EndpointSuffix=core.windows.net",
+            containerName: "flowtide-state",
+            directoryPath: "mystream",
+            localCacheDirectory: "/cache/flowtide"
+        );
+    });
+```
+
+**Token credential (e.g. Managed Identity / DefaultAzureCredential):**
+
+```csharp
+s.AddAzureBlobStorage(
+    storageUri: new Uri("https://myaccount.blob.core.windows.net"),
+    containerName: "flowtide-state",
+    tokenCredential: new DefaultAzureCredential(),
+    directoryPath: "mystream"
+);
+```
+
+**SAS credential:**
+
+```csharp
+s.AddAzureBlobStorage(
+    storageUri: new Uri("https://myaccount.blob.core.windows.net"),
+    containerName: "flowtide-state",
+    sasCredential: new AzureSasCredential("sv=..."),
+    directoryPath: "mystream"
+);
+```
+
+**Shared key credential:**
+
+```csharp
+s.AddAzureBlobStorage(
+    storageUri: new Uri("https://myaccount.blob.core.windows.net"),
+    containerName: "flowtide-state",
+    sharedKeyCredential: new StorageSharedKeyCredential("myaccount", "key"),
+    directoryPath: "mystream"
+);
+```
+
+**Options delegate (full control):**
+
+For advanced scenarios — including supplying a custom `BlobContainerClient` via `ClientFactory` — use the options delegate overload:
+
+```csharp
+s.AddAzureBlobStorage(opt =>
+{
+    opt.ConnectionString = "...";
+    opt.ContainerName = "flowtide-state";
+    opt.DirectoryPath = "mystream";
+    opt.LocalCacheDirectory = "/cache/flowtide";
+
+    // Or provide a fully custom client:
+    // opt.ClientFactory = () => new BlobContainerClient(...);
+});
+```
+
+#### Azure Blob Storage Options
+
+| Property              | Default            | Description |
+| --------------------- | ------------------ | ----------- |
+| `ConnectionString`    | —                  | Azure Storage connection string. |
+| `ServiceUri`          | —                  | Blob service endpoint URI (used with credential options). |
+| `ContainerName`       | —                  | Name of the blob container. |
+| `DirectoryPath`       | `null`             | Sub-directory within the container. |
+| `LocalCacheDirectory` | System temp folder | Local directory for the disk cache. |
+| `TokenCredential`     | —                  | Azure token credential (e.g. `DefaultAzureCredential`). |
+| `SasCredential`       | —                  | SAS credential for authentication. |
+| `SharedKeyCredential` | —                  | Shared key credential for authentication. |
+| `ClientFactory`       | —                  | Factory function that returns a custom `BlobContainerClient`. Takes priority over all other authentication options. |
+
+`AddAzureBlobStorage` returns an `IReservoirBuilder` for further tuning — see [Reservoir Builder Options](#reservoir-builder-options) below.
+
+### Local File Storage
+
+Store persistent state to a local directory. Useful for single-node deployments or when cloud storage is not needed.
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    // ...
+    .AddStorage(s =>
+    {
+        s.AddFileStorage("/persistence/flowtide");
+    });
+```
+
+`AddFileStorage` returns an `IReservoirBuilder` for further tuning — see [Reservoir Builder Options](#reservoir-builder-options) below.
+
+### Temporary Development Storage
+
+For development and testing, use temporary storage that is automatically cleaned up when the application exits.
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    // ...
+    .AddStorage(s =>
+    {
+        s.AddTemporaryStorage();
+
+        // Or specify a custom directory
+        // s.AddTemporaryStorage("/tmp/flowtide-dev");
+    });
+```
+
+:::warning
+
+Temporary storage is not suitable for production. All data is deleted when the application exits.
+
+:::
+
+### Reservoir Builder Options
+
+All reservoir storage providers (`AddAzureBlobStorage`, `AddFileStorage`, `AddTemporaryStorage`) return an `IReservoirBuilder` that exposes shared tuning options:
+
+```csharp
+builder.Services.AddFlowtideStream("yourstream")
+    // ...
+    .AddStorage(s =>
+    {
+        var reservoir = s.AddAzureBlobStorage(
+            connectionString: "...",
+            containerName: "flowtide-state"
+        );
+
+        reservoir.SetMaxDataFileSize(64 * 1024 * 1024);
+        reservoir.SetCacheSize(10L * 1024 * 1024 * 1024);
+        reservoir.SetSnapshotCheckpointInterval(20);
+        reservoir.OldStreamVersionsRetention(-1);
+    });
+```
+
+| Method                          | Default       | Description |
+| ------------------------------- | ------------- | ----------- |
+| `SetMaxDataFileSize(int)`       | 64 MB         | Maximum size, in bytes, of each data file uploaded to storage. Larger values reduce API call count at the cost of larger individual uploads. |
+| `SetCacheSize(long)`            | 10 GB         | Maximum total size, in bytes, of the local disk cache. LRU eviction kicks in at 80% capacity. |
+| `SetSnapshotCheckpointInterval(int)` | 20       | Number of incremental checkpoints between full snapshot checkpoints. Lower values speed up recovery at the cost of more writes. |
+| `OldStreamVersionsRetention(int)` | -1 (keep all) | Number of previous stream versions to retain. Only applies when versioning is explicitly configured on the stream builder via `AddVersioningFromPlanHash()`, `AddVersioningFromString()`, or `AddVersioningFromAssembly()`. Without versioning, the stream uses a single default version and this setting has no effect. The current version is always preserved; this setting controls how many *previous* versions are kept alongside it. A value of 0 deletes all old versions immediately, 1 keeps one previous version, and -1 retains all versions indefinitely. |
+| `SetCache(IReservoirStorageProvider)` | Provider-specific | Set a custom cache storage provider. |
+| `DisableCache()`                | Cache enabled | Disable the local disk cache entirely. Not recommended for cloud storage providers. |
+
+### Using FlowtideBuilder (without Dependency Injection)
+
+When configuring a stream directly with `FlowtideBuilder`, create a `ReservoirPersistentStorage` instance and pass it through `StateManagerOptions`:
+
+```csharp
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+
+var reservoirBuilder = new ReservoirBuilder();
+reservoirBuilder.SetStorage(new LocalDiskProvider("/persistence/flowtide"));
+// Optionally set cache, snapshot interval, max file size, etc.
+// reservoirBuilder.SetSnapshotCheckpointInterval(10);
+
+builder.WithStateOptions(new StateManagerOptions()
+{
+    PersistentStorage = new ReservoirPersistentStorage(reservoirBuilder),
+    TemporaryStorageOptions = new FileCacheOptions()
+    {
+        DirectoryPath = "./temp"
+    }
+});
+```
+
+---
+
+## FasterKV storage (Legacy)
+
+:::warning
+
+FasterKV storage is a legacy option. Consider using [Reservoir Storage](#reservoir-storage) for new deployments.
+
+:::
+
+FasterKV is a persistent key value store built by Microsoft.
 FasterKV is highly configurable, and how you configure it will affect the performance of your stream.
 
 To configure your stream to use FasterKV storage, add the following to the builder:
@@ -108,7 +294,13 @@ builder.WithStateOptions(() => new StateManagerOptions()
 })
 ```
 
-## Temporary file cache storage
+## Temporary file cache storage (Legacy)
+
+:::warning
+
+This is a legacy option. Consider using [Temporary Development Storage](#temporary-development-storage) for new projects.
+
+:::
 
 This storage solution is useful when developing or running unit tests on a stream.
 All data will be cleared between each run, but it will be persisted to local disk to reduce RAM usage and allow you to run streams with alot of data.
@@ -136,7 +328,7 @@ builder
 | DirectoryPath | ./data/tempFiles      | Path where the files will be stored |
 
 
-## SQL server storage
+## SQL Server storage (Experimental)
 
 :::warning
 
@@ -175,9 +367,11 @@ builder.Services.AddFlowtideStream("yourstream")
     });
 ```
 
-## Storage solution
+## Storage Architecture
 
-The stream storage is built on a three tier architecture, there is the in memory cache, the local disk modified page cache, and the persistent data.
+When using **FasterKV** or **file cache** storage, the stream storage is built on a three-tier architecture: the in-memory cache, the local disk modified page cache, and the persistent data.
+
+When using **Reservoir** storage, the architecture expands to five tiers: RAM pages (LRU), disk spillover, an in-flight buffer, a local disk cache, and persistent cloud storage. See [Reservoir Storage System](./internal/reservoir) for details.
 
 A data page is fetched using the following logic:
 

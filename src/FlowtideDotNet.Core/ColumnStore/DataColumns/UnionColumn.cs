@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -64,6 +64,65 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 new NullColumn()
             };
+        }
+
+        public UnionColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null)
+            {
+                throw new ArgumentException("ColumnSizeInfo for UnionColumn must have children");
+            }
+            _memoryAllocator = memoryAllocator;
+            _typeIds = new sbyte[35]; //35 types exist
+            _typeList = new TypeList(memoryAllocator, columnSizeInfo.TotalRows);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows);
+            _valueColumns = new List<IDataColumn>()
+            {
+                new NullColumn()
+            };
+
+            for (int i = 0; i < columnSizeInfo.Children.Count; i++)
+            {
+                // Add children
+                var child = columnSizeInfo.Children[i];
+                if (child.DataType == ArrowTypeId.Null)
+                {
+                    continue;
+                }
+                var childDataColumn = CreateColumnFromSizeInfo(child);
+                var newIndex = (sbyte)_valueColumns.Count;
+                _valueColumns.Add(childDataColumn);
+                _typeIds[(int)child.DataType] = newIndex;
+            }
+        }
+
+        private IDataColumn CreateColumnFromSizeInfo(ColumnSizeInfo columnSizeInfo)
+        {
+            switch (columnSizeInfo.DataType)
+            {
+                case ArrowTypeId.Int64:
+                    return new IntegerColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.String:
+                    return new StringColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Boolean:
+                    return new BoolColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Double:
+                    return new DoubleColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.List:
+                    return new ListColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Binary:
+                    return new BinaryColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Map:
+                    return new MapColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Decimal128:
+                    return new DecimalColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Timestamp:
+                    return new TimestampTzColumn(_memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.Null:
+                    return new NullColumn();
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         internal UnionColumn(List<IDataColumn> columns, IMemoryOwner<byte> typeListMemory, IMemoryOwner<byte> offsetMemory, int count, IMemoryAllocator memoryAllocator)
@@ -194,7 +253,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return;
             }
 
-            var typeByte = (byte)value.Type;
             var arrayIndex = CheckArrayExist(in value, _typeIds, _valueColumns);
             
             // Find the first occurence of the same type in the type list
@@ -925,6 +983,45 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     _valueColumns[i].WriteDataToBuffer(ref dataWriter);
                 }
             }
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            for (int i = sortedLookup.Length - 1; i >= 0; i--)
+            {
+                int oIdx = sortedLookup[i];
+                var value = other.GetValueAt(oIdx, default);
+                InsertAt(insertPositions[i], value);
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            List<ColumnSizeInfo> children = new List<ColumnSizeInfo>();
+
+            for (int i = 0; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    var columnSizeInfo = _valueColumns[i].GetColumnSizeInfo();
+                    children.Add(columnSizeInfo);
+                }
+            }
+    
+            return new ColumnSizeInfo
+            {
+                DataType = ArrowTypeId.Union,
+                TotalRows = Count,
+                Children = children
+            };
         }
     }
 }

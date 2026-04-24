@@ -12,7 +12,7 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -275,7 +275,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                 {
                     var rowRef = new ColumnRowReference() { referenceBatch = leftTmpPage.Keys._data, RowIndex = leftIndex };
                     var value = leftTmpPage.Values.Get(leftIndex);
-                    var op = await _leftTree.RMWNoResult(rowRef, value, (input, current, exist) =>
+                    await _leftTree.RMWNoResult(rowRef, value, (input, current, exist) =>
                     {
                         if (exist)
                         {

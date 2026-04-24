@@ -52,7 +52,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
         public async Task StreamLoad(StarRocksStreamLoadInfo request)
         {
-            var jsonData = Encoding.UTF8.GetString(request.data.Span);
             HttpResponseMessage? response = default;
 
             bool triedCachedRedirect = false;
@@ -83,7 +82,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
                 var content = new ReadOnlyMemoryContent(request.data);
                 content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                var requestMessage = new HttpRequestMessage(HttpMethod.Put, requestUrl)
+                using var requestMessage = new HttpRequestMessage(HttpMethod.Put, requestUrl)
                 {
                     Content = content
                 };

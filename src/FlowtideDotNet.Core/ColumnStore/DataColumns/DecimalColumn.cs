@@ -49,6 +49,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _values = new PrimitiveList<decimal>(memoryAllocator);
         }
 
+        public DecimalColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _values = new PrimitiveList<decimal>(memoryAllocator, columnSizeInfo.TotalRows);
+        }
+
         public DecimalColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _values = new PrimitiveList<decimal>(memory, length, memoryAllocator);
@@ -275,6 +280,32 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is DecimalColumn decimalColumn)
+            {
+                _values.InsertFrom(decimalColumn._values, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _values.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Decimal128,
+                TotalRows = Count
+            };
         }
     }
 }

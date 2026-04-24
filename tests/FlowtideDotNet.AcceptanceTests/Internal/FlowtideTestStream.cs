@@ -31,6 +31,10 @@ using Microsoft.Extensions.Logging.Debug;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using Serilog;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using System.Buffers;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -301,11 +305,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected virtual IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
         {
-            return new TestStorage(new Storage.FileCacheOptions()
-            {
-                DirectoryPath = $"./data/tempFiles/{testName}/persist",
-                SegmentSize = 1024L * 1024 * 1024 * 64
-            }, ignoreSameDataCheck, true);
+            return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
         private void OnDataUpdate(EventBatchData actualData)
@@ -339,7 +339,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             var graph = _stream.GetDiagnosticsGraph();
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 graph = _stream.GetDiagnosticsGraph();
                 await scheduler!.Tick();
@@ -371,7 +371,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            while (_stream.State == Base.Engine.Internal.StateMachine.StreamStateValue.Running && graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Failure)
+            while (_stream.State == StreamStateValue.Running && graph.State != StreamStateValue.Failure)
             {
                 if (stopwatch.Elapsed.CompareTo(time) > 0)
                 {
@@ -382,7 +382,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 await Task.Delay(TimeSpan.FromMilliseconds(10));
                 CheckForErrors();
             }
-            if (graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running || graph.State != Base.Engine.Internal.StateMachine.StreamStateValue.Running)
+            if (graph.State != StreamStateValue.Running || graph.State != StreamStateValue.Running)
             {
                 Assert.Fail("Stream failed");
             }

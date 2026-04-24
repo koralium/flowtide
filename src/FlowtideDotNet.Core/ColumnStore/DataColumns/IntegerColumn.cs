@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -73,6 +73,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             void InsertRangeFrom(int index, IIntData other, int start, int count);
 
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
+
+            void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+
+            void DeleteBatch(ReadOnlySpan<int> targets);
         }
 
         private sealed class Int8Data : IIntData
@@ -82,6 +86,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public Int8Data(IMemoryAllocator memoryAllocator)
             {
                 _list = new PrimitiveList<sbyte>(memoryAllocator);
+            }
+
+            public Int8Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<sbyte>(memoryAllocator, initialCapacity);
             }
 
             public Int8Data(PrimitiveList<sbyte> list)
@@ -207,6 +216,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list[index] = (sbyte)value;
                 return index;
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int8Data int8data)
+                {
+                    _list.InsertFrom(int8data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -216,6 +240,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public Int16Data(IMemoryAllocator memoryAllocator)
             {
                 _list = new PrimitiveList<short>(memoryAllocator);
+            }
+
+            public Int16Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<short>(memoryAllocator, initialCapacity);
             }
 
             public Int16Data(PrimitiveList<short> list)
@@ -341,6 +370,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int16Data int16Data)
+                {
+                    _list.InsertFrom(int16Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private sealed class Int32Data : IIntData
@@ -349,6 +393,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
 
             public Int32Data(IMemoryAllocator memoryAllocator)
+            {
+                _list = new PrimitiveList<int>(memoryAllocator);
+            }
+
+            public Int32Data(IMemoryAllocator memoryAllocator, int initialCapacity)
             {
                 _list = new PrimitiveList<int>(memoryAllocator);
             }
@@ -476,6 +525,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int32Data int32Data)
+                {
+                    _list.InsertFrom(int32Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -485,6 +549,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public Int64Data(IMemoryAllocator memoryAllocator)
             {
                 _list = new PrimitiveList<long>(memoryAllocator);
+            }
+
+            public Int64Data(IMemoryAllocator memoryAllocator, int initialCapacity)
+            {
+                _list = new PrimitiveList<long>(memoryAllocator, initialCapacity);
             }
 
             public Int64Data(PrimitiveList<long> list)
@@ -610,6 +679,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 var valueBuffer = new ArrowBuffer(_list.SlicedMemory);
                 return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
             }
+
+            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            {
+                if (other is Int64Data int64Data)
+                {
+                    _list.InsertFrom(int64Data._list, sortedLookup, targetPositions);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            public void DeleteBatch(ReadOnlySpan<int> targets)
+            {
+                _list.DeleteBatch(targets);
+            }
         }
 
         private IIntData? _data;
@@ -618,6 +702,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public IntegerColumn(IMemoryAllocator memoryAllocator)
         {
             this._memoryAllocator = memoryAllocator;
+        }
+
+        public IntegerColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            this._memoryAllocator = memoryAllocator;
+            switch (columnSizeInfo.BitWidth)
+            {
+                case 8:
+                    _data = new Int8Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 16:
+                    _data = new Int16Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 32:
+                    _data = new Int32Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                case 64:
+                    _data = new Int64Data(memoryAllocator, columnSizeInfo.TotalRows);
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         public IntegerColumn(IMemoryAllocator memoryAllocator, IMemoryOwner<byte> memory, int length, int bitWidth)
@@ -669,6 +775,34 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 newData = new Int64Data(_memoryAllocator);
             }
+
+            if (_data != null)
+            {
+                for (int i = 0; i < _data.Count; i++)
+                {
+                    newData.Add(_data.Get(i));
+                }
+                _data.Dispose();
+            }
+            _data = newData;
+        }
+
+        [MemberNotNull(nameof(_data))]
+        private void WidenToBitWidth(int targetBitWidth)
+        {
+            if (_data != null && targetBitWidth < _data.BitWidth)
+            {
+                throw new ArgumentOutOfRangeException(nameof(targetBitWidth), $"Cannot narrow integer column from {_data.BitWidth} bits to {targetBitWidth} bits.");
+            }
+
+            IIntData newData = targetBitWidth switch
+            {
+                8 => new Int8Data(_memoryAllocator),
+                16 => new Int16Data(_memoryAllocator),
+                32 => new Int32Data(_memoryAllocator),
+                64 => new Int64Data(_memoryAllocator),
+                _ => throw new ArgumentOutOfRangeException(nameof(targetBitWidth), targetBitWidth, $"Unsupported bit width: {targetBitWidth}")
+            };
 
             if (_data != null)
             {
@@ -970,6 +1104,54 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(buffer, _data.Get(index));
             hashAlgorithm.Append(buffer);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is IntegerColumn integerColumn)
+            {
+                // Check if we need to resize, this also creates an int8 data if it is null
+                Debug.Assert(integerColumn._data != null);
+                if (_data == null || _data.BitWidth != integerColumn._data.BitWidth)
+                {
+                    if (integerColumn._data.BitWidth > (_data?.BitWidth ?? 0))
+                    {
+                        // Other is wider
+                        WidenToBitWidth(integerColumn._data.BitWidth);
+                    }
+                    else
+                    {
+                        CheckSize(0);
+                        // This is wider, for now to just inserts
+                        for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                        {
+                            _data.InsertAt(insertPositions[i], integerColumn._data.Get(sortedLookup[i]));
+                        }
+                        return;
+                    }
+                }
+                _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            if (_data != null)
+            {
+                _data.DeleteBatch(targets);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Int64,
+                TotalRows = Count,
+                BitWidth = _data?.BitWidth ?? 8
+            };
         }
     }
 }

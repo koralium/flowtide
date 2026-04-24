@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Persistence;
 
@@ -34,19 +33,7 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         public long MaxProcessMemory { get; set; } = -1;
 
-        [Obsolete]
-        public IDevice? LogDevice { get; set; }
-
         public IPersistentStorage? PersistentStorage { get; set; }
-
-        [Obsolete]
-        public string? CheckpointDir { get; set; }
-
-        [Obsolete]
-        public ICheckpointManager? CheckpointManager { get; set; }
-
-        [Obsolete]
-        public INamedDeviceFactory? TemporaryStorageFactory { get; set; }
 
         /// <summary>
         /// Used if file cache factory is not set, with the default file cache
@@ -54,9 +41,6 @@ namespace FlowtideDotNet.Storage.StateManager
         public FileCacheOptions? TemporaryStorageOptions { get; set; }
 
         public IFileCacheFactory? FileCacheFactory { get; set; }
-
-        [Obsolete]
-        public bool RemoveOutdatedCheckpoints { get; set; } = true;
 
         public StateSerializeOptions SerializeOptions { get; set; } = new StateSerializeOptions();
 

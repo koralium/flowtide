@@ -23,8 +23,6 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
     {
         public override IDataValue VisitArgument([NotNull] FuncTestCaseParser.ArgumentContext context)
         {
-            var listArg = context.listArg();
-            var ch = context.children;
             return base.VisitArgument(context);
         }
 

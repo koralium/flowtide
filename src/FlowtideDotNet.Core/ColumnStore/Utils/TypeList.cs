@@ -34,6 +34,13 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             _memoryAllocator = memoryAllocator;
         }
 
+        public TypeList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            _data = null;
+            _memoryAllocator = memoryAllocator;
+            EnsureCapacity(initialCapacity);
+        }
+
         public TypeList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;

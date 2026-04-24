@@ -36,8 +36,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 return null;
             }
 
-            List<DeltaBaseAction> actions = new List<DeltaBaseAction>();
-
             DeltaMetadataAction? metadata = null;
             DeltaProtocolAction? protocol = null;
             Dictionary<DeltaFileKey, DeltaAddAction> addFiles = new Dictionary<DeltaFileKey, DeltaAddAction>();
@@ -83,14 +81,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     if (action.Protocol != null)
                     {
                         protocol = action.Protocol;
-                    }
-                    // Remove action will not exist here since its a first entry checkpoint
-
-                    var genericAction = ToGenericAction(action);
-                    
-                    if (genericAction != null)
-                    {
-                        actions.Add(genericAction);
                     }
                 }
                 currentVersion = entry.Version;
@@ -160,13 +150,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                         if (action.Protocol != null)
                         {
                             protocol = action.Protocol;
-                        }
-
-                        var genericAction = ToGenericAction(action);
-
-                        if (genericAction != null)
-                        {
-                            actions.Add(genericAction);
                         }
 
                         line = await textReader.ReadLineAsync();
@@ -316,10 +299,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (dotIndex >= 0)
                 {
                     long.TryParse(file.Name.Substring(0, dotIndex), out version);
-                }
-                else
-                {
-
                 }
 
                 var isJson = file.Name.EndsWith(".json");

@@ -10,7 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlexBuffers;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.StateManager;
 using Microsoft.Graph.Models;
 
@@ -22,18 +22,6 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
 
         protected string? ColumnName { get; private set; }
 
-        public virtual ValueTask<FlxValue> Decode(ListItem item)
-        {
-            object? value = null;
-            item.Fields?.AdditionalData?.TryGetValue(ColumnName, out value);
-            return DecodeValue(value);
-        }
-
-        protected virtual ValueTask<FlxValue> DecodeValue(object? item)
-        {
-            throw new NotImplementedException();
-        }
-
         public virtual Task Initialize(string name, string listId, SharepointGraphListClient client, IStateManagerClient stateManagerClient, IDictionary<string, ColumnDefinition> columns)
         {
             ColumnName = name;
@@ -43,6 +31,30 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal.Decoders
         public virtual Task OnNewBatch()
         {
             return Task.CompletedTask;
+        }
+
+        public ValueTask Decode(ListItem item, Column column)
+        {
+            object? value = null;
+            item.Fields?.AdditionalData?.TryGetValue(ColumnName, out value);
+            return DecodeValue(value, column);
+        }
+
+        protected virtual ValueTask DecodeValue(object? item, Column column)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ValueTask<IDataValue> DecodeDataValue(ListItem item)
+        {
+            object? value = null;
+            item.Fields?.AdditionalData?.TryGetValue(ColumnName, out value);
+            return DecodeDataValue(value);
+        }
+
+        protected virtual ValueTask<IDataValue> DecodeDataValue(object? item)
+        {
+            throw new NotImplementedException();
         }
     }
 }

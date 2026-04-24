@@ -16,15 +16,18 @@ using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
-    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator
+    public unsafe class PreAllocatedMemoryManager : IMemoryAllocator, IDisposable
     {
         private IMemoryOwner<byte>? _memoryOwner;
         private int _usageCount;
+        private bool disposedValue;
         private readonly IMemoryAllocator _operatorMemoryManager;
+        private readonly MemoryHandle _pin;
 
-        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager)
+        public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager, MemoryHandle pin)
         {
             this._operatorMemoryManager = operatorMemoryManager;
+            this._pin = pin;
         }
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
@@ -45,10 +48,9 @@ namespace FlowtideDotNet.Storage.Memory
         {
             Debug.Assert(_memoryOwner != null);
             var result = Interlocked.Decrement(ref _usageCount);
-            if (result <= 0)
+            if (result == 0)
             {
-                _operatorMemoryManager.RegisterFreeToMetrics(_memoryOwner.Memory.Length);
-                _memoryOwner.Dispose();
+                Dispose();
             }
         }
 
@@ -92,6 +94,35 @@ namespace FlowtideDotNet.Storage.Memory
                 memory.Dispose();
                 return NativeCreatedMemoryOwnerFactory.Get(ptr, size, (nuint)alignment, this);
             }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                var memoryOwner = _memoryOwner;
+                _memoryOwner = null;
+                if (memoryOwner != null)
+                {
+                    _pin.Dispose();
+                    _operatorMemoryManager.RegisterFreeToMetrics(memoryOwner.Memory.Length);
+                    memoryOwner.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~PreAllocatedMemoryManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.Ingress;
+using FlowtideDotNet.Base.Vertices;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Base.Engine.Internal.StateMachine

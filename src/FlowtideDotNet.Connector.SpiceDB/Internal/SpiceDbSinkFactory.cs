@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
@@ -71,6 +72,26 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                 throw new NotSupportedException("SpiceDB sink does not support overwrite.");
             }
             return new ColumnSpiceDbSink(spiceDbSinkOptions, spiceDbSinkOptions.ExecutionMode, writeRelation, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("spicedb", "relationships", new NamedStruct()
+            {
+                Names = ["subject_type", "subject_id", "subject_relation", "relation", "resource_type", "resource_id"],
+                Struct = new Struct()
+                {
+                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                    {
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType(),
+                        new StringType()
+                    }
+                }
+            });
         }
     }
 }

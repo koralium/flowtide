@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Connector.Kafka.Tests
             Assert.Equal("key", msg1.Message.Key);
             Assert.Equal("{\"firstName\":\"testFirst\",\"lastName\":\"testLast\"}", msg1.Message.Value);
 
-            var msg2 = consumer.Consume();
+            consumer.Consume();
             var msg3 = consumer.Consume();
             Assert.Equal("key2", msg3.Message.Key);
             Assert.Null(msg3.Message.Value);

@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FASTER.core;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
-using FlowtideDotNet.Storage.Persistence.FasterStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
 {
     public class AppendTreeTests : IDisposable
     {
+        private MemoryFileProvider _provider = new MemoryFileProvider();
         StateManager.StateManagerSync? stateManager;
 
         public void Dispose()
@@ -34,13 +35,16 @@ namespace FlowtideDotNet.Storage.Tests.Append
             }
         }
 
-        private async Task<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateTree(int bucketSize = 8, string path = "./data/temp", bool deleteOnClose = true, int cachePageCount = 1000000)
+        private async Task<IAppendTree<long, long, ListKeyContainer<long>, ListValueContainer<long>>> CreateTree(int bucketSize = 8, int cachePageCount = 1000000)
         {
             stateManager = new StateManager.StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = cachePageCount,
-                PersistentStorage = new FasterKvPersistentStorage(meta => new FasterKVSettings<long, SpanByte>(path, deleteOnClose))
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+                PersistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    FileProvider = _provider,
+                })
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
@@ -183,12 +187,7 @@ namespace FlowtideDotNet.Storage.Tests.Append
         [Fact]
         public async Task TestCommit()
         {
-            if (Directory.Exists("./data/temp/testcommit"))
-            {
-                Directory.Delete("./data/temp/testcommit", true);
-            }
-
-            var tree = await CreateTree(1, "./data/temp/testcommit", false);
+            var tree = await CreateTree(1);
 
             await tree.Append(1, 1);
             await tree.Append(2, 2);
@@ -196,9 +195,10 @@ namespace FlowtideDotNet.Storage.Tests.Append
             await tree.Commit();
             await stateManager!.CheckpointAsync();
             stateManager!.Dispose();
-            tree = await CreateTree(1, "./data/temp/testcommit", false);
+            tree = await CreateTree(1);
 
-            var graph = KrokiUrlBuilder.ToKrokiUrl(await tree.Print());
+            var printed = await tree.Print();
+            var graph = KrokiUrlBuilder.ToKrokiUrl(printed);
 
             // Check the graph
             Assert.Equal(

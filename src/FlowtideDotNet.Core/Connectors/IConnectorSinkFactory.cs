@@ -10,8 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
@@ -36,5 +37,7 @@ namespace FlowtideDotNet.Core.Connectors
         /// <param name="functionsRegister"></param>
         /// <returns></returns>
         IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions);
+
+        TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema);
     }
 }

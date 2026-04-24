@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
@@ -45,6 +46,11 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             }
 
             return new GenericWriteOperator<T>(dataSinkFunc(writeRelation), executionMode, writeRelation, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("custom_sink", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 }

@@ -93,7 +93,6 @@ namespace FlowtideDotNet.AcceptanceTests
             var firstUserChar = Users[0].FirstName!.Substring(0, 1);
             var secondUserChar = Users[0].FirstName!.Substring(0, 1);
             var set = $"[{firstUserChar}{secondUserChar}]";
-            var userName = Users[0].FirstName;
             await StartStream(@"
             INSERT INTO output
             SELECT firstName FROM users WHERE firstName LIKE '" + set + @"%';

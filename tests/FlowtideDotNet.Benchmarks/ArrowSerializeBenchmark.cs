@@ -186,8 +186,8 @@ namespace FlowtideDotNet.Benchmarks
         public void ArrowDeserialize()
         {
             Debug.Assert(_toDeserialize != null);
-            var stream = new MemoryStream(_toDeserialize);
-            var reader = new ArrowStreamReader(stream);
+            using var stream = new MemoryStream(_toDeserialize);
+            using var reader = new ArrowStreamReader(stream);
             var batch = reader.ReadNextRecordBatch();
             batch.Dispose();
         }
@@ -209,7 +209,7 @@ namespace FlowtideDotNet.Benchmarks
             Debug.Assert(_eventBatchData != null);
             _memoryStream.SetLength(0);
             var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
-            var batchWriter = new ArrowStreamWriter(_memoryStream, recordBatch.Schema, true);
+            using var batchWriter = new ArrowStreamWriter(_memoryStream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
         }
 
@@ -424,7 +424,7 @@ namespace FlowtideDotNet.Benchmarks
             // A new memory stream was created for each batch
             using var stream = new MemoryStream();
             var recordBatch = EventArrowSerializer.BatchToArrow(_eventBatchData, _eventBatchData.Count);
-            var batchWriter = new ArrowStreamWriter(stream, recordBatch.Schema, true);
+            using var batchWriter = new ArrowStreamWriter(stream, recordBatch.Schema, true);
             batchWriter.WriteRecordBatch(recordBatch);
 
             // Bytes from the memory stream to return from the serialize method
@@ -444,7 +444,7 @@ namespace FlowtideDotNet.Benchmarks
             // The stream is then passed to the decompression function
             var stream = new ZLibStream(memoryStream, CompressionMode.Decompress);
             // The stream is then passed to the binary reader
-            var reader = new BinaryReader(stream);
+            using var reader = new BinaryReader(stream);
 
             var arrowReader = new ArrowStreamReader(reader.BaseStream);
 

@@ -10,9 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Base.Vertices.Egress;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 
@@ -34,6 +35,11 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                 throw new NotSupportedException("OpenFGA sink does not support overwrite.");
             }
             return new FlowtideOpenFgaSink(options, writeRelation, options.ExecutionMode, dataflowBlockOptions);
+        }
+
+        public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new TableLineageMetadata("openfga", writeRelation.NamedObject.DotSeperated, default);
         }
     }
 }

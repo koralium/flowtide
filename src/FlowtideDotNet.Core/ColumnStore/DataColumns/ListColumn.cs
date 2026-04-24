@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -44,6 +44,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             _internalColumn = Column.Create(memoryAllocator);
             _offsets = new IntList(memoryAllocator);
+            _offsets.Add(0);
+        }
+
+        public ListColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            if (columnSizeInfo.Children == null || columnSizeInfo.Children.Count != 1)
+            {
+                throw new ArgumentException("Column size info did not contain child information");
+            }
+            _internalColumn = new Column(memoryAllocator, columnSizeInfo.Children[0]);
+            _offsets = new IntList(memoryAllocator, columnSizeInfo.TotalRows + 1);
             _offsets.Add(0);
         }
 
@@ -553,6 +564,42 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_offsets.Memory.Span);
 
             _internalColumn.WriteDataToBuffer(ref dataWriter);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is ListColumn otherList)
+            {
+                for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                {
+                    int oIdx = sortedLookup[i];
+                    var value = otherList.GetValueAt(oIdx, default);
+                    InsertAt(insertPositions[i], value);
+                }
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            for (int i = targets.Length - 1; i >= 0; i--)
+            {
+                RemoveAt(targets[i]);
+            }
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.List,
+                TotalRows = Count,
+                Children = new List<ColumnSizeInfo>()
+                 {
+                     _internalColumn.GetColumnSizeInfo()
+                 }
+            };
         }
     }
 }

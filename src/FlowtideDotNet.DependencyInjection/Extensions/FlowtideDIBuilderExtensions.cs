@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.DependencyInjection.Internal;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
@@ -80,6 +81,39 @@ namespace FlowtideDotNet.DependencyInjection
             {
                 builder.WithCheckActivityLogger();
             });
+        }
+
+        /// <summary>
+        /// Adds OpenLineage HTTP reporting to the Flowtide stream, enabling lineage events
+        /// to be sent to an OpenLineage-compatible endpoint.
+        /// </summary>
+        /// <remarks>
+        /// The <paramref name="configure"/> delegate is invoked immediately to populate an
+        /// <see cref="OpenLineageHttpOptions"/> instance. At a minimum, <see cref="OpenLineageHttpOptions.Url"/>
+        /// must be set; otherwise an <see cref="ArgumentException"/> is thrown.
+        /// <para>
+        /// Example usage:
+        /// <code>
+        /// builder.AddOpenLineageHttp(opt =>
+        /// {
+        ///     opt.Url = "http://localhost:8080/openapi/openlineage/api/v1/lineage";
+        ///     opt.IncludeSchema = true;
+        /// });
+        /// </code>
+        /// </para>
+        /// </remarks>
+        /// <param name="builder">The <see cref="IFlowtideDIBuilder"/> to configure.</param>
+        /// <param name="configure">A delegate used to configure the <see cref="OpenLineageHttpOptions"/>.</param>
+        /// <returns>The same <see cref="IFlowtideDIBuilder"/> instance for chaining.</returns>
+        public static IFlowtideDIBuilder AddOpenLineageHttp(this IFlowtideDIBuilder builder, Action<OpenLineageHttpOptions> configure)
+        {
+            var options = new OpenLineageHttpOptions();
+            configure(options);
+            builder.AddCustomOptions((p, b) =>
+            {
+                b.WithOpenLineageHttp(options);
+            });
+            return builder;
         }
     }
 }

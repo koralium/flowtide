@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- Microsoft basic packages -->
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.27.0" />
     <PackageVersion Include="System.Linq.AsyncEnumerable" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="10.0.2" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
@@ -12,14 +13,15 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
     <PackageVersion Include="System.IO.Hashing" Version="10.0.2" />
     <PackageVersion Include="System.IO.Pipelines" Version="10.0.2" />
+	<PackageVersion Include="Microsoft.Extensions.Options" Version="10.0.2" />
     <!-- Microsoft clients -->
     <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.4" />
     <PackageVersion Include="Microsoft.Graph" Version="5.58.0" />
-    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.0" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.57.1" />
     <!-- Grpc -->
     <PackageVersion Include="Grpc.Tools" Version="2.76.0" />
     <PackageVersion Include="Grpc.Net.Client" Version="2.76.0" />
-    <PackageVersion Include="Google.Protobuf" Version="3.33.5" />
+    <PackageVersion Include="Google.Protobuf" Version="3.34.0" />
     <!-- Polly -->
     <PackageVersion Include="Polly.Core" Version="8.6.4" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.5.2" />
@@ -43,9 +45,9 @@
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="ParquetSharp" Version="18.1.0" />
     <PackageVersion Include="Stowage" Version="2.0.1" />
-    <PackageVersion Include="Confluent.Kafka" Version="2.13.1" />
+    <PackageVersion Include="Confluent.Kafka" Version="2.13.2" />
     <PackageVersion Include="CsvHelper" Version="33.1.0" />
-    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.0" />
+    <PackageVersion Include="Elastic.Clients.Elasticsearch" Version="9.3.2" />
     <PackageVersion Include="PromQL.Parser" Version="3.2.0" />
     <PackageVersion Include="Antlr4.Runtime.Standard" Version="4.13.1" />
     <!-- Deprecated only for .net 8 -->
@@ -56,11 +58,12 @@
     <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.2" />
     <!-- Microsoft test packages -->
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.13.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.0.2" />
     <PackageVersion Include="xunit" Version="2.7.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
     <PackageVersion Include="xunit.v3" Version="2.0.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.24" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.25" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
     <!-- Testcontainers -->
     <PackageVersion Include="Testcontainers" Version="4.10.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.10.0" />
@@ -84,13 +87,13 @@
     <PackageVersion Include="NSubstitute" Version="5.3.0" />
     <PackageVersion Include="NSubstitute.Analyzers.CSharp" Version="1.0.17" />
     <!-- Sample packages -->
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.1.1" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.1.2" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
-    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.1" />
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Microsoft.Data.SqlClient" Version="13.1.2" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.13" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.0" />
     <PackageVersion Include="Spectre.Console.Cli" Version="0.49.1" />

@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.Unary;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
@@ -53,14 +53,9 @@ namespace FlowtideDotNet.Core.Operators.Filter
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
 
-            PrimitiveList<int>[] offsets = new PrimitiveList<int>[_filterRelation.OutputLength];
+            PrimitiveList<int> offsets = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-            for (int i = 0; i < offsets.Length; i++)
-            {
-                offsets[i] = new PrimitiveList<int>(MemoryAllocator);
-            }
 
             var data = msg.Data;
             for (int i = 0; i < data.Count; i++)
@@ -69,20 +64,26 @@ namespace FlowtideDotNet.Core.Operators.Filter
                 {
                     weights.Add(data.Weights[i]);
                     iterations.Add(data.Iterations[i]);
-                    for (int j = 0; j < offsets.Length; j++)
-                    {
-                        offsets[j].Add(i);
-                    }
+                    offsets.Add(i);
                 }
             }
 
             if (_filterRelation.EmitSet)
             {
+                bool shouldDisposeOffset = true;
                 var outputColumns = new IColumn[_filterRelation.OutputLength];
                 for (int i = 0; i < _filterRelation.Emit.Count; i++)
                 {
                     var emitIndex = _filterRelation.Emit[i];
-                    outputColumns[i] = new ColumnWithOffset(data.EventBatchData.Columns[emitIndex], offsets[i], false);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[emitIndex], offsets, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffset = false;
+                    }
+                }
+                if (shouldDisposeOffset)
+                {
+                    offsets.Dispose();
                 }
 
                 var outputData = new EventBatchData(outputColumns);
@@ -90,10 +91,19 @@ namespace FlowtideDotNet.Core.Operators.Filter
             }
             else
             {
+                bool shouldDisposeOffset = true;
                 var outputColumns = new IColumn[_filterRelation.OutputLength];
                 for (int i = 0; i < data.EventBatchData.Columns.Count; i++)
                 {
-                    outputColumns[i] = new ColumnWithOffset(data.EventBatchData.Columns[i], offsets[i], false);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[i], offsets, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffset = false;
+                    }
+                }
+                if (shouldDisposeOffset)
+                {
+                    offsets.Dispose();
                 }
                 var outputData = new EventBatchData(outputColumns);
                 return new SingleAsyncEnumerable<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(weights, iterations, outputData)));

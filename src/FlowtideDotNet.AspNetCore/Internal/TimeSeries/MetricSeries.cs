@@ -58,7 +58,7 @@ namespace FlowtideDotNet.AspNetCore.TimeSeries
             {
                 MinCachePageCount = 0,
                 CachePageCount = 1000,
-            }, NullLogger.Instance, new System.Diagnostics.Metrics.Meter(string.Empty), string.Empty);
+            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter(string.Empty), string.Empty);
 
             await _stateManager.InitializeAsync();
 

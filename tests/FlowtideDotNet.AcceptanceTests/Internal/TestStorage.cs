@@ -18,9 +18,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 {
     class TestStorage : FileCachePersistentStorage
     {
-        private HashSet<long> _writtenKeys = new HashSet<long>();
-        private Dictionary<long, byte[]> _writtenValues = new Dictionary<long, byte[]>();
-        private Dictionary<long, byte[]> _lastCheckpointValues = new Dictionary<long, byte[]>();
+        private readonly HashSet<long> _writtenKeys = new HashSet<long>();
+        private readonly Dictionary<long, byte[]> _writtenValues = new Dictionary<long, byte[]>();
+        private readonly Dictionary<long, byte[]> _lastCheckpointValues = new Dictionary<long, byte[]>();
         private readonly List<TestStorageSession> _sessions = new List<TestStorageSession>();
         private readonly bool _ignoreSameDataCheck;
         public TestStorage(FileCacheOptions fileCacheOptions, bool ignoreSameDataCheck, bool ignoreDispose = false) : base(fileCacheOptions, ignoreDispose)

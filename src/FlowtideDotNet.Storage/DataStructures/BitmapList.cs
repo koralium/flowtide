@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -151,6 +151,12 @@ namespace FlowtideDotNet.Storage.DataStructures
             this.memoryAllocator = memoryAllocator;
         }
 
+        public BitmapList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            this.memoryAllocator = memoryAllocator;
+            EnsureSize((initialCapacity + 31) / 32);
+        }
+
         public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memoryOwner;
@@ -293,12 +299,11 @@ namespace FlowtideDotNet.Storage.DataStructures
 
             var mod = index % 32;
             int bitIndex = 1 << index;
-            var span = AccessSpan;
             if ((_length / 32) >= _dataLength)
             {
                 EnsureSize(_dataLength + 1);
             }
-            span = AccessSpan;
+            var span = AccessSpan;
             if (mod > 0)
             {
                 var topBitsMask = topBitsSetMask[mod];
@@ -895,7 +900,267 @@ namespace FlowtideDotNet.Storage.DataStructures
                         int left = span[++fromIndex] << (32 - remainder);
                         span[toIndex++] = left | (int)right;
                     }
-                    span[toIndex++] = (int)(span[fromIndex] >> remainder);
+                    span[toIndex] = (int)(span[fromIndex] >> remainder);
+                }
+            }
+        }
+
+        public void InsertFrom(BitmapList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+            var otherSpan = other.AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int oIdx = sortedLookup[i];
+                int oIntIdx = oIdx >> 5;
+                int oBitOffset = oIdx & 31;
+
+                bool isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (isSet)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
+        /// <summary>
+        /// Inserts a constant bit value at scattered insert positions.
+        /// Uses the same backward-sweep algorithm as InsertFrom but writes a fixed value
+        /// instead of reading from another BitmapList.
+        /// </summary>
+        /// <param name="value">The constant bit value to insert (true or false).</param>
+        /// <param name="insertPositions">Sorted insert positions (ascending, in pre-insert coordinate space).</param>
+        public void InsertConstantFrom(bool value, ReadOnlySpan<int> insertPositions)
+        {
+            int otherCount = insertPositions.Length;
+            if (otherCount == 0) return;
+
+            int oldBitCount = _length;
+            int newBitCount = oldBitCount + otherCount;
+
+            EnsureSize((newBitCount + 31) / 32);
+            var span = AccessSpan;
+
+            int currentReadBit = oldBitCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int bitsToMove = currentReadBit - targetInsertIdx;
+
+                if (bitsToMove > 0)
+                {
+                    int dstBitStart = targetInsertIdx + i + 1;
+                    CopyBitsBackward(span, targetInsertIdx, dstBitStart, bitsToMove);
+                }
+
+                int writeBitIdx = targetInsertIdx + i;
+                int wIntIdx = writeBitIdx >> 5;
+                int wBitOffset = writeBitIdx & 31;
+
+                if (value)
+                {
+                    span[wIntIdx] |= (1 << wBitOffset);
+                }
+                else
+                {
+                    span[wIntIdx] &= ~(1 << wBitOffset);
+                }
+
+                currentReadBit = targetInsertIdx;
+            }
+
+            _length = newBitCount;
+        }
+
+        private static void CopyBitsBackward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            int shift = dstStart - srcStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstLastWord; dw >= dstFirstWord; dw--)
+                {
+                    int sw = dw - wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = span[sw] << bitShift;
+                        if (sw > 0)
+                        {
+                            assembled |= (int)((uint)span[sw - 1] >> (32 - bitShift));
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Batch delete bits at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained bits in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of bits to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= _length);
+
+            int oldBitCount = _length;
+            var span = AccessSpan;
+
+            int writeBit = 0;
+            int currentSourceBit = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                int bitsToMove = targetIdx - currentSourceBit;
+                if (bitsToMove > 0)
+                {
+                    if (writeBit != currentSourceBit)
+                    {
+                        CopyBitsForward(span, currentSourceBit, writeBit, bitsToMove);
+                    }
+                    writeBit += bitsToMove;
+                }
+
+                // Skip the deleted bit
+                currentSourceBit = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            int remainingBits = oldBitCount - currentSourceBit;
+            if (remainingBits > 0 && writeBit != currentSourceBit)
+            {
+                CopyBitsForward(span, currentSourceBit, writeBit, remainingBits);
+            }
+
+            _length = oldBitCount - deleteCount;
+
+            // Clear any leftover bits in the last word beyond the new length
+            int newWordCount = (_length + 31) >> 5;
+            int trailingBits = _length & 31;
+            if (trailingBits > 0 && newWordCount > 0)
+            {
+                span[newWordCount - 1] &= BitPatternArray[trailingBits - 1];
+            }
+        }
+
+        private static void CopyBitsForward(Span<int> span, int srcStart, int dstStart, int count)
+        {
+            if (count <= 0) return;
+
+            Debug.Assert(dstStart <= srcStart);
+
+            int shift = srcStart - dstStart;
+            int wordShift = shift >> 5;
+            int bitShift = shift & 31;
+
+            int dstEnd = dstStart + count;
+            int dstFirstWord = dstStart >> 5;
+            int dstLastWord = (dstEnd - 1) >> 5;
+
+            unchecked
+            {
+                for (int dw = dstFirstWord; dw <= dstLastWord; dw++)
+                {
+                    int sw = dw + wordShift;
+
+                    int assembled;
+                    if (bitShift == 0)
+                    {
+                        assembled = span[sw];
+                    }
+                    else
+                    {
+                        assembled = (int)((uint)span[sw] >> bitShift);
+                        if (sw + 1 < span.Length)
+                        {
+                            assembled |= span[sw + 1] << (32 - bitShift);
+                        }
+                    }
+
+                    int wordStart = dw << 5;
+                    int firstBit = dstStart > wordStart ? dstStart - wordStart : 0;
+                    int lastBitExcl = dstEnd < wordStart + 32 ? dstEnd - wordStart : 32;
+
+                    if (firstBit == 0 && lastBitExcl == 32)
+                    {
+                        span[dw] = assembled;
+                    }
+                    else
+                    {
+                        int mask = lastBitExcl >= 32
+                            ? ~((1 << firstBit) - 1)
+                            : ((1 << lastBitExcl) - 1) & ~((1 << firstBit) - 1);
+                        span[dw] = (span[dw] & ~mask) | (assembled & mask);
+                    }
                 }
             }
         }

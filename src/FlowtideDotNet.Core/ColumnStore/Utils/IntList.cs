@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool disposedValue;
         private readonly IMemoryAllocator memoryAllocator;
 
-        private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
+        internal Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
         public Memory<byte> Memory => _memoryOwner?.Memory.Slice(0, _length * sizeof(int)) ?? new Memory<byte>();
 
@@ -39,6 +39,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             _data = null;
             this.memoryAllocator = memoryAllocator;
+        }
+
+        public IntList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            this.memoryAllocator = memoryAllocator;
+            _memoryOwner = memoryAllocator.Allocate(initialCapacity * sizeof(int), 64);
+            _dataLength = initialCapacity;
+            _data = (int*)_memoryOwner.Memory.Pin().Pointer;
         }
 
         public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
@@ -54,7 +62,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int Count => _length;
 
-        private void EnsureCapacity(int length)
+        internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)
             {
@@ -159,12 +167,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             EnsureCapacity(_length + 1);
             var span = AccessSpan;
-            var source = span.Slice(index, _length - index);
-            var dest = span.Slice(index + 1);
             AvxUtils.InPlaceMemCopyWithAddition(span, index, index + 1, _length - index, additionOnMoved);
-            //AvxUtils.MemCpyWithAdd(source, dest, additionOnMoved);
             span[index] = item;
             _length++;
+        }
+
+        internal void IncreaseLength(int count)
+        {
+            _length += count;
+        }
+
+        internal static void MoveIndex(Span<int> span, int index, int moveIndiceCount, int count, int additionOnMoved)
+        {
+            AvxUtils.InPlaceMemCopyWithAddition(span, index, index + moveIndiceCount, count, additionOnMoved);
         }
 
         public void InsertRangeFrom(int index, IntList other, int start, int count, int additionOnMovedExisting, int additionOnCopied)
@@ -208,8 +223,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             EnsureCapacity(_length + count);
             var span = AccessSpan;
             var sourceSpan = other.AccessSpan;
-            var source = other.AccessSpan.Slice(start, count);
-            var dest = span.Slice(index);
             AvxUtils.InPlaceMemCopyAdditionByType(span, thisTypeIds, index, index + count, _length - index, thisToAdd, typeCount);
             AvxUtils.MemCopyAdditionByType(sourceSpan, span, otherTypeIds, start, index, count, otherToAdd, typeCount);
             _length += count;

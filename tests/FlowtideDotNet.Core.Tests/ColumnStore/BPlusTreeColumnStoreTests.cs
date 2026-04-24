@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             {
                 CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, new NullLogger<StateManagerSync>(), new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");
@@ -64,6 +64,18 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             }
 
             var printedTree = await tree.Print();
+            var expected = @"digraph g {
+splines=line
+node [shape = none,height=.1];
+node4[label = <<table border=""0"" cellborder=""1"" cellspacing=""0""><tr><td port=""f0""></td><td>{1}</td><td port=""f1""></td></tr></table>>];
+node3[label = <<table border=""0"" cellborder=""1"" cellspacing=""0""><tr><td>{0}</td><td>{1}</td><td port=""f0"" rowspan=""2""></td></tr><tr><td>0</td><td>1</td></tr></table>>];
+""node4"":f0 -> ""node3""
+node5[label = <<table border=""0"" cellborder=""1"" cellspacing=""0""><tr><td>{2}</td><td>{3}</td><td port=""f0"" rowspan=""2""></td></tr><tr><td>2</td><td>3</td></tr></table>>];
+""node4"":f1 -> ""node5""
+""node3"":f1 -> ""node5"" [constraint=false];
+}
+";
+            Assert.Equal(expected, printedTree);
         }
     }
 }

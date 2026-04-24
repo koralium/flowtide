@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Metrics;
-using FlowtideDotNet.Base.Vertices.MultipleInput;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Set.Structs;
@@ -245,10 +245,19 @@ namespace FlowtideDotNet.Core.Operators.Set
 
             if (outputWeights.Count > 0)
             {
+                bool shouldDisposeOffsets = true;
                 IColumn[] outputColumns = new IColumn[_emit.Length];
                 for (int i = 0; i < _emit.Length; i++)
                 {
-                    outputColumns[i] = new ColumnWithOffset(msg.Data.EventBatchData.Columns[_emit[i]], foundOffsets, false);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emit[i]], foundOffsets, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+                if (shouldDisposeOffsets)
+                {
+                    foundOffsets.Dispose();
                 }
                 var batch = new EventBatchData(outputColumns);
                 _eventsProcessed.Add(outputWeights.Count);
@@ -262,7 +271,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 outputWriter.Flush();
 #endif
 
-                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, new EventBatchData(outputColumns)));
+                yield return new StreamEventBatch(new EventBatchWeighted(outputWeights, iterations, batch));
             }
 #if DEBUG_WRITE
             Debug.Assert(allInput != null);

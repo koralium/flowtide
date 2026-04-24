@@ -191,10 +191,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is MapType);
 
@@ -232,8 +232,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
 
@@ -339,10 +339,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].Metadata.TryGetValue("ARROW:extension:name", out var customExtensionName));
             Assert.Equal("flowtide.timestamptz", customExtensionName);
@@ -406,8 +406,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
             var recordBatch = reader.ReadNextRecordBatch();
             Assert.NotNull(recordBatch);
@@ -434,7 +434,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 column.Add(values[i]);
             }
 
-            var batch = new EventBatchData([column]);
+            using var batch = new EventBatchData([column]);
 
             var serializer = new EventBatchSerializer();
             var bufferWriter = new ArrayBufferWriter<byte>();
@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(serializedBytes));
 
             EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
-            var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
+            using var deserializedBatch = batchDeserializer.DeserializeBatch(ref reader).EventBatch;
 
             Assert.Equal(batch, deserializedBatch, new EventBatchDataComparer());
         }
@@ -652,7 +652,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         class BatchCompressor : IBatchCompressor
         {
-            Compressor compressor;
+            private readonly Compressor compressor;
             public BatchCompressor(Compressor compressor)
             {
                 this.compressor = compressor;
@@ -732,8 +732,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             File.WriteAllBytes("compressed.arrow", serializedBytes);
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream, new CompressionCodecFactory());
             var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.Equal(2000, recordBatch.Length);
@@ -813,8 +813,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         [Fact]
         public void TestSerializeDataColumnOnly()
         {
-            ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
-            StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
+            using ListColumn listColumn = new ListColumn(GlobalMemoryManager.Instance);
+            using StringColumn stringColumn = new StringColumn(GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 10; i++)
             {
@@ -830,8 +830,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var sequenceReader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenMemory));
             var deserializeResult = batchDeserializer.DeserializeDataColumns(ref sequenceReader);
-            var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
-            var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
+            using var deserializedColumn = deserializeResult.DataColumns[0] as ListColumn;
+            using var deserializedStringColumn = deserializeResult.DataColumns[1] as StringColumn;
 
             Assert.NotNull(deserializedColumn);
             Assert.NotNull(deserializedStringColumn);
@@ -858,10 +858,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var serializedBytes = bufferWriter.WrittenSpan.ToArray();
 
-            MemoryStream memoryStream = new MemoryStream(serializedBytes);
-            ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
+            using MemoryStream memoryStream = new MemoryStream(serializedBytes);
+            using ArrowStreamReader reader = new ArrowStreamReader(memoryStream);
 
-            var recordBatch = reader.ReadNextRecordBatch();
+            using var recordBatch = reader.ReadNextRecordBatch();
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is StructType);
             var structType = (recordBatch.Schema.FieldsList[0].DataType as StructType)!;

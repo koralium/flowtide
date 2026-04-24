@@ -99,5 +99,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// Returns the header of a struct (column names).
         /// </summary>
         StructHeader StructHeader { get; }
+
+        void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions);
+
+        void DeleteBatch(ReadOnlySpan<int> targets);
+
+        ColumnSizeInfo GetColumnSizeInfo();
     }
 }

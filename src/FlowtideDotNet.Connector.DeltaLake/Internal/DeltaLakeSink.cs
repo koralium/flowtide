@@ -214,7 +214,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 schema = table.Schema;
                 nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
-                deletionVectorEnabled = table.DeleteVectorEnabled;
 
                 actions.Add(new DeltaAction()
                 {
@@ -341,12 +340,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     deleteWriter.NewBatch();
                 }
 
-                // Write max 100k rows per file for now, a user must call optimize in another framework to increase the file size
-                if (writer.WrittenCount >= 100_000)
+                // Roll files based on approximate size in bytes; WrittenBytes vs MaxFileSizeBytes is an estimate due to Parquet encoding/compression
+                if (writer.WrittenBytes >= _options.MaxFileSizeBytes)
                 {
                     await WriteNewFile(writer, actions, currentTime, schema);
                 }
-                if (cdcWriter != null && cdcWriter.WrittenCount >= 100_000)
+                if (cdcWriter != null && cdcWriter.WrittenBytes >= _options.MaxFileSizeBytes)
                 {
                     await WriteNewCdcFile(cdcWriter, actions, currentTime);
                 }

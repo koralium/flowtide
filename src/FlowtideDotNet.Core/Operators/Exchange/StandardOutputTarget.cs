@@ -65,14 +65,24 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             Debug.Assert(_currentBatch != null);
             Debug.Assert(_weights != null);
             Debug.Assert(_iterations != null);
+            Debug.Assert(_memoryAllocator != null);
 
             if (_weights.Count > 0)
             {
                 IColumn[] outputColumns = new IColumn[_columnCount];
 
+                bool shouldDisposeOffsets = true;
                 for (int i = 0; i < _columnCount; i++)
                 {
-                    outputColumns[i] = new ColumnWithOffset(_currentBatch.EventBatchData.Columns[i], _offsets, false);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(_currentBatch.EventBatchData.Columns[i], _offsets, false, _memoryAllocator, out var usedOffset);
+                    if (usedOffset)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+                if (shouldDisposeOffsets)
+                {
+                    _offsets.Dispose();
                 }
 
                 var batch = new EventBatchWeighted(_weights, _iterations, new EventBatchData(outputColumns));

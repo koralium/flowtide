@@ -19,6 +19,8 @@ namespace FlowtideDotNet.Core.Connectors
     {
         private readonly string _regexPattern;
 
+        protected string RegexPattern => _regexPattern;
+
         protected RegexConnectorSourceFactory(string regexPattern)
         {
             if (regexPattern == "*")

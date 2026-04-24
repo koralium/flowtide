@@ -33,21 +33,24 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT map('a', t.val) FROM testtable t
+SELECT map('a', t.val, 'b', o.val) as data FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val;
 ";
 
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
+.AddVersioningFromString("1.0.3")
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));
-    connectorManager.AddConsoleSink("*");
+    connectorManager.AddBlackholeSink("*");
 })
 .AddStorage(b =>
 {
-    b.AddTemporaryDevelopmentStorage();
+    b.AddFileStorage("./stateData")
+    .OldStreamVersionsRetention(0);
+
     b.MaxProcessMemory = 2L * 1024 * 1024 * 1024;
     b.MinPageCount = 0;
 });

@@ -321,7 +321,7 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
             });
             stream.Generate();
 
-            var ex = await Assert.ThrowsAsync<FlowtideElasticsearchResponseException>(async () =>
+            await Assert.ThrowsAsync<FlowtideElasticsearchResponseException>(async () =>
             {
                 await stream.StartStream(@"
                     INSERT INTO testindex

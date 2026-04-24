@@ -172,5 +172,23 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException();
         }
+
+        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            throw new NotSupportedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            throw new NotSupportedException();
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Null
+            };
+        }
     }
 }

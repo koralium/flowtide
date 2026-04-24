@@ -112,5 +112,26 @@ namespace FlowtideDotNet.Core.Connectors
             tableMetadata = default;
             return false;
         }
+
+        public bool TryHandleTableFunction(IReadOnlyList<string> tableName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+        {
+            if (tableName.Count > 1 && tableName[0] == catalogName)
+            {
+                if (_resolvedTableProviders == null)
+                {
+                    _resolvedTableProviders = GetTableProviders().ToList();
+                }
+                for (int i = 0; i < _resolvedTableProviders.Count; i++)
+                {
+                    var nameWithoutCatalog = tableName.Skip(1).ToList();
+                    if (_resolvedTableProviders[i].TryHandleTableFunction(nameWithoutCatalog, sqlTableFunction, out relation))
+                    {
+                        return true;
+                    }
+                }
+            }
+            relation = null;
+            return false;
+        }
     }
 }

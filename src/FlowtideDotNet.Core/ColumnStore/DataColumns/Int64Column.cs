@@ -336,5 +336,26 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_data != null);
             dataWriter.WriteArrowBuffer(_data.SlicedMemory.Span);
         }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            // Int64 column is not in use right now
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            // Int64 column is not in use right now
+            throw new NotImplementedException();
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Int64,
+                TotalRows = Count
+            };
+        }
     }
 }

@@ -45,6 +45,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList = new BinaryList(memoryAllocator);
         }
 
+        public StringColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _binaryList = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
+        }
+
         public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
             _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
@@ -282,6 +287,33 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is StringColumn stringColumn)
+            {
+                _binaryList.InsertFrom(stringColumn._binaryList, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _binaryList.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.String,
+                TotalRows = Count,
+                TotalVariableBytes = _binaryList.DataMemory.Length
+            };
         }
     }
 }

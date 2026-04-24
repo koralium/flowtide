@@ -46,16 +46,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
     {
         private static async Task<ColumnListUnionDistinctAggAggregationSingleton> Initialize(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
-            List<int> insertPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength + 1; i++)
-            {
-                insertPrimaryKeys.Add(i);
-            }
-            List<int> searchPrimaryKeys = new List<int>();
-            for (int i = 0; i < groupingLength; i++)
-            {
-                searchPrimaryKeys.Add(i);
-            }
             var tree = await stateManagerClient.GetOrCreateTree("listuniondistinctaggtree",
                 new BPlusTreeOptions<ListAggColumnRowReference, int, ListAggKeyStorageContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -173,7 +163,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
                 {
                     if (!firstPage)
                     {
-                        var index = singleton.SearchComparer.FindIndex(in rowReference, page.Keys!);
+                        singleton.SearchComparer.FindIndex(in rowReference, page.Keys!);
                         if (singleton.SearchComparer.noMatch)
                         {
                             break;

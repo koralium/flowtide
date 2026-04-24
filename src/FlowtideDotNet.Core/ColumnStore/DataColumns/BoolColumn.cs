@@ -38,6 +38,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             _data = BitmapListFactory.Get(memoryAllocator);
         }
 
+        public BoolColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _data = new BitmapList(memoryAllocator, columnSizeInfo.TotalRows);
+        }
+
         public BoolColumn(IMemoryOwner<byte> memory, int count, IMemoryAllocator memoryAllocator)
         {
             _data = BitmapListFactory.Get(memory, count, memoryAllocator);
@@ -298,6 +303,32 @@ namespace FlowtideDotNet.Core.ColumnStore
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             dataWriter.WriteArrowBuffer(_data.MemorySlice.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is BoolColumn boolColumn)
+            {
+                _data.InsertFrom(boolColumn._data, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _data.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.Boolean,
+                TotalRows = Count
+            };
         }
     }
 }

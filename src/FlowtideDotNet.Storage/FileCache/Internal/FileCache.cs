@@ -368,8 +368,6 @@ namespace FlowtideDotNet.Storage.FileCache
         {
             long position = 0;
             IFileCacheWriter? segmentWriter = null;
-            var sw = ValueStopwatch.StartNew();
-            var finalTime = sw.GetElapsedTime().TotalMilliseconds;
             if (allocatedPages.TryGetValue(pageKey, out var node))
             {
                 // Check if the current node has enough size

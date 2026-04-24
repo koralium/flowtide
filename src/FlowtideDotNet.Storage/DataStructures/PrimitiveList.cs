@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -34,6 +34,12 @@ namespace FlowtideDotNet.Storage.DataStructures
             _memoryAllocator = memoryAllocator;
         }
 
+        public PrimitiveList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            _memoryAllocator = memoryAllocator;
+            EnsureCapacity(initialCapacity);
+        }
+
         public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;
@@ -57,7 +63,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             _memoryAllocator = memoryAllocator;
         }
 
-        private void EnsureCapacity(int length)
+        internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)
             {
@@ -147,6 +153,110 @@ namespace FlowtideDotNet.Storage.DataStructures
                 span[index + i] = value;
             }
             _length += count;
+        }
+
+        /// <summary>
+        /// Special case insert that allows inserting a subset of elements from another primitive list at specific positions.
+        /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
+        /// The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the other list.
+        /// The positions in <paramref name="insertPositions"/> are interpreted relative to the original contents of the current list before any elements are inserted.
+        /// Conceptually, this behaves like inserting the selected elements in order using <c>InsertAt(insertPositions[i] + i, ...)</c>.
+        /// </summary>
+        /// <param name="other">The other primitive list to insert data from.</param>
+        /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
+        public void InsertFrom(PrimitiveList<T> other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            Debug.Assert(sortedLookup.Length == insertPositions.Length);
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldCount = _length;
+
+            // Ensure we have enough capacity for all elements
+            EnsureCapacity(oldCount + otherCount);
+
+            var selfData = AccessSpan;
+            var otherData = other.AccessSpan;
+
+            int currentReadIdx = oldCount;
+            int currentWriteIdx = oldCount + otherCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int elementsToMove = currentReadIdx - targetInsertIdx;
+
+                if (elementsToMove > 0)
+                {
+                    currentWriteIdx -= elementsToMove;
+                    currentReadIdx -= elementsToMove;
+
+                    selfData.Slice(currentReadIdx, elementsToMove)
+                            .CopyTo(selfData.Slice(currentWriteIdx, elementsToMove));
+                }
+
+                // Place the new element from the other list
+                int oIdx = sortedLookup[i];
+                currentWriteIdx--;
+                selfData[currentWriteIdx] = otherData[oIdx];
+
+                // Move the read tracker to the left of the block we just processed
+                currentReadIdx = targetInsertIdx;
+            }
+
+            _length += otherCount;
+        }
+
+        /// <summary>
+        /// Batch delete elements at the specified sorted indices.
+        /// This is more efficient than calling RemoveAt repeatedly because it processes
+        /// contiguous blocks of retained data in a single left-to-right sweep.
+        /// </summary>
+        /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            int deleteCount = targets.Length;
+            if (deleteCount == 0) return;
+
+            Debug.Assert(deleteCount <= _length);
+
+            int oldCount = _length;
+            var selfData = AccessSpan;
+
+            int writeIdx = 0;
+            int currentSourceIdx = 0;
+
+            for (int i = 0; i < deleteCount; i++)
+            {
+                int targetIdx = targets[i];
+
+                // Copy the retained block before this deletion target
+                int elementsToMove = targetIdx - currentSourceIdx;
+                if (elementsToMove > 0)
+                {
+                    if (writeIdx != currentSourceIdx)
+                    {
+                        selfData.Slice(currentSourceIdx, elementsToMove)
+                                .CopyTo(selfData.Slice(writeIdx, elementsToMove));
+                    }
+                    writeIdx += elementsToMove;
+                }
+
+                // Skip the deleted element
+                currentSourceIdx = targetIdx + 1;
+            }
+
+            // Copy the remaining block after the last deletion target
+            int remaining = oldCount - currentSourceIdx;
+            if (remaining > 0 && writeIdx != currentSourceIdx)
+            {
+                selfData.Slice(currentSourceIdx, remaining)
+                        .CopyTo(selfData.Slice(writeIdx, remaining));
+            }
+
+            _length = oldCount - deleteCount;
+            CheckSizeReduction();
         }
 
         public void MoveAtIndex(int index, int count)
@@ -275,6 +385,17 @@ namespace FlowtideDotNet.Storage.DataStructures
             slicedMem.Span.CopyTo(newMemory.Memory.Span);
 
             return new PrimitiveList<T>(newMemory, _length, memoryAllocator);
+        }
+
+        public int BinarySearch<TComp>(TComp value)
+            where TComp : IComparable<T>
+        {
+            return AccessSpan.Slice(0, _length).BinarySearch(value);
+        }
+
+        public void SetLength(int newLength)
+        {
+            _length = newLength;
         }
     }
 }

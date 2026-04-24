@@ -13,7 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Utils;
-using FlowtideDotNet.Base.Vertices.FixedPoint;
+using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
@@ -96,10 +96,19 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             if (offsetsEgress.Count > 0)
             {
                 IColumn[] egressColumns = new IColumn[data.Data.EventBatchData.Columns.Count];
-
+                bool shouldDisposeOffsets = true;
                 for (int i = 0; i < data.Data.EventBatchData.Columns.Count; i++)
                 {
-                    egressColumns[i] = new ColumnWithOffset(data.Data.EventBatchData.Columns[i], offsetsEgress, false);
+                    egressColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsEgress, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+
+                if (shouldDisposeOffsets)
+                {
+                    offsetsEgress.Dispose();
                 }
 
                 var egressBatch = new EventBatchWeighted(weightsEgress, iterationsEgress, new EventBatchData(egressColumns));
@@ -114,10 +123,19 @@ namespace FlowtideDotNet.Core.Operators.Iteration
             if (offsetsLoop.Count > 0)
             {
                 IColumn[] loopColumns = new IColumn[data.Data.EventBatchData.Columns.Count];
-
+                bool shouldDisposeOffsets = true;
                 for (int i = 0; i < data.Data.EventBatchData.Columns.Count; i++)
                 {
-                    loopColumns[i] = new ColumnWithOffset(data.Data.EventBatchData.Columns[i], offsetsLoop, false);
+                    loopColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsLoop, false, MemoryAllocator, out var offsetUsed);
+                    if (offsetUsed)
+                    {
+                        shouldDisposeOffsets = false;
+                    }
+                }
+
+                if (shouldDisposeOffsets)
+                {
+                    offsetsLoop.Dispose();
                 }
 
                 var loopBatch = new EventBatchWeighted(weightsLoop, iterationsLoop, new EventBatchData(loopColumns));

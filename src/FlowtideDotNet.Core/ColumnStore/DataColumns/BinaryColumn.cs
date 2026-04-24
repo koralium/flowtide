@@ -21,10 +21,13 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using SqlParser.Ast;
 using System.Buffers;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Text.Json;
+using static SqlParser.Ast.FetchDirection;
+using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -36,6 +39,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public BinaryColumn(IMemoryAllocator memoryAllocator)
         {
             _data = new BinaryList(memoryAllocator);
+        }
+
+        public BinaryColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _data = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
         }
 
         public BinaryColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
@@ -266,6 +274,33 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             // Write binary data
             dataWriter.WriteArrowBuffer(_data.DataMemory.Span);
+        }
+
+        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            if (other is BinaryColumn binaryColumn)
+            {
+                _data.InsertFrom(binaryColumn._data, sortedLookup, insertPositions);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets)
+        {
+            _data.DeleteBatch(targets);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                TotalRows = Count,
+                DataType = ArrowTypeId.Binary,
+                TotalVariableBytes = _data.DataMemory.Length,
+            };
         }
     }
 }

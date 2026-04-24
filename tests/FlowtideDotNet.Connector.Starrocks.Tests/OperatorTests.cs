@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
 
             var op = await SendOneRowAndSendCheckpoint(client);
 
-            var ex = await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
+            await Assert.ThrowsAsync<StarRocksTransactionException>(async () =>
             {
                 await op.Completion;
             });

@@ -16,9 +16,6 @@
 
 	<PackageReference Include="Fody" PrivateAssets="all" />
 	<PackageReference Include="InlineIL.Fody" PrivateAssets="all" />
-	<PackageReference Include="System.Linq.Async">
-      <ExcludeAssets>compile</ExcludeAssets>
-	</PackageReference>
   </ItemGroup>
 
   <ItemGroup>
