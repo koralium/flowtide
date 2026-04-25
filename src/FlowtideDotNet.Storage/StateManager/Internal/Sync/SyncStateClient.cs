@@ -59,6 +59,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private Task? m_commitTask;
         private long m_committingNewPages;
         private StateClientMetadata<TMetadata>? m_committingMetadata;
+        private bool m_committingMetadataWasUpdated;
 
         public long CacheMisses => cacheMisses;
 
@@ -175,6 +176,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_committing = temp;
                 m_committing_preserialized.Clear();
 
+                m_committingMetadataWasUpdated = metadata.Metadata != null && metadata.Metadata.Updated;
                 m_committingMetadata = new StateClientMetadata<TMetadata>()
                 {
                     CommitedOnce = metadata.CommitedOnce,
@@ -210,24 +212,38 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     continue;
                 }
 
-
                 bool loadedFromCache = false;
+
+                // Check if foreground JIT-preserialized this key while we were processing other keys
                 lock (m_lock)
                 {
-                    if (m_committing_preserialized.TryGetValue(kv.Key, out preserializedBytes))
+                    m_committing_preserialized.TryGetValue(kv.Key, out preserializedBytes);
+                }
+
+                // If not preserialized, try to serialize from LRU cache using proper value locking.
+                // Uses the same EnterWriteLock + lock(node) pattern as Evict to get a consistent
+                // snapshot without holding m_lock (which would block all foreground operations).
+                if (preserializedBytes == null && stateManager.TryGetCacheValueFromCache(kv.Key, out var cacheNode))
+                {
+                    cacheNode.ValueRef.value.EnterWriteLock();
+                    try
                     {
-                        // Was preserialized just now
+                        lock (cacheNode)
+                        {
+                            if (!cacheNode.ValueRef.removed)
+                            {
+                                var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+                                options.ValueSerializer!.Serialize(bufferWriter, (V)cacheNode.ValueRef.value);
+                                preserializedBytes = bufferWriter.WrittenSpan.ToArray();
+                                m_committing_preserialized.TryAdd(kv.Key, preserializedBytes);
+                            }
+                        }
                     }
-                    else if (stateManager.TryGetValueFromCache<V>(kv.Key, out var cacheVal))
+                    finally
                     {
-                        // Found in cache, preserialize it inside the lock
-                        var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
-                        options.ValueSerializer!.Serialize(bufferWriter, cacheVal);
-                        preserializedBytes = bufferWriter.WrittenSpan.ToArray();
-                        m_committing_preserialized.TryAdd(kv.Key, preserializedBytes);
-                        
-                        loadedFromCache = true;
+                        cacheNode.ValueRef.value.ExitWriteLock();
                     }
+                    loadedFromCache = true;
                 }
 
                 if (preserializedBytes != null)
@@ -265,11 +281,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                                 // Set version to -2 which marks that it is a read only version
                                 m_fileCacheVersion[kv.Key] = -2;
                             }
-                            else
-                            {
-                                m_fileCacheVersion.Remove(kv.Key, out _);
-                                m_fileCache.Free(kv.Key);
-                            }
+                            // For !useReadCache, defer Free to post-commit block to avoid
+                            // TOCTOU race with GetValue_FromCache on the foreground thread.
                         }
                     }
                 }
@@ -288,15 +301,24 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             lock (m_lock)
             {
-                if (!useReadCache)
+                foreach (var kv in m_committing)
                 {
-                    foreach (var key in m_committing.Keys)
+                    if (m_modified.ContainsKey(kv.Key))
                     {
-                        if (!m_modified.ContainsKey(key))
-                        {
-                            m_fileCache.Free(key);
-                            m_fileCacheVersion.Remove(key, out _);
-                        }
+                        continue;
+                    }
+
+                    if (kv.Value == -1)
+                    {
+                        // Deleted key — file cache was already freed inline (line 205),
+                        // just clean up version tracking
+                        m_fileCacheVersion.Remove(kv.Key, out _);
+                    }
+                    else if (!useReadCache)
+                    {
+                        // Free file cache entry — deferred from inline to avoid TOCTOU race
+                        m_fileCacheVersion.Remove(kv.Key, out _);
+                        m_fileCache.Free(kv.Key);
                     }
                 }
                 m_committing.Clear();
@@ -317,7 +339,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async Task WriteMetadata(StateClientMetadata<TMetadata> committingMetadata)
         {
-            if (!committingMetadata.CommitedOnce || (committingMetadata.Metadata != null && committingMetadata.Metadata.Updated))
+            if (!committingMetadata.CommitedOnce || m_committingMetadataWasUpdated)
             {
                 var previousCommitedOnce = metadata.CommitedOnce;
                 try
@@ -328,7 +350,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     
                     lock (m_lock)
                     {
-                        if (committingMetadata.Metadata != null)
+                        // Only clear Updated if the metadata reference has not been replaced
+                        // by the foreground thread (e.g. via UpdateRoot creating a new object).
+                        // If it was replaced, the new object already has Updated = true and
+                        // will be persisted in the next commit cycle.
+                        if (committingMetadata.Metadata != null && 
+                            ReferenceEquals(metadata.Metadata, committingMetadata.Metadata))
                         {
                             committingMetadata.Metadata.Updated = false;
                         }
@@ -405,9 +432,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     if (needsPreserialize)
                     {
-                        var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
-                        options.ValueSerializer!.Serialize(bufferWriter, (V)cacheVal.ValueRef.value);
-                        m_committing_preserialized.TryAdd(key, bufferWriter.WrittenSpan.ToArray());
+                        // Lock the node to prevent concurrent serialization with Evict,
+                        // which also takes lock(node) before serializing.
+                        lock (cacheVal)
+                        {
+                            if (!cacheVal.ValueRef.removed)
+                            {
+                                var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+                                options.ValueSerializer!.Serialize(bufferWriter, (V)cacheVal.ValueRef.value);
+                                m_committing_preserialized.TryAdd(key, bufferWriter.WrittenSpan.ToArray());
+                            }
+                        }
                     }
 
                     _lookupTable[modLookup] = new CacheValue { Key = key, Value = cacheVal };
@@ -440,10 +475,40 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (needsPreserialize)
             {
-                var readOnlyBytes = await m_fileCache.Read(key);
-                var bytes = readOnlyBytes.ToArray();
-                m_committing_preserialized.TryAdd(key, bytes);
-                
+                // Re-check: the background may have already preserialized this key
+                // (from the LRU cache) between our initial check and now.
+                // If so, use the preserialized bytes and skip the file cache read.
+                byte[]? alreadyPreserialized = null;
+                lock (m_lock)
+                {
+                    if (m_committing_preserialized.TryGetValue(key, out var existing) && existing.Length > 0)
+                    {
+                        alreadyPreserialized = existing;
+                    }
+                }
+
+                byte[] bytes;
+                if (alreadyPreserialized != null)
+                {
+                    bytes = alreadyPreserialized;
+                }
+                else
+                {
+                    // Try to read from file cache; may fail if the loadedFromCache
+                    // inline cleanup freed the segment after our initial lock release.
+                    try
+                    {
+                        var readOnlyBytes = await m_fileCache.Read(key);
+                        bytes = readOnlyBytes.ToArray();
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // Segment was freed — value must already be in persistent storage
+                        return await GetValue_Persistent(key);
+                    }
+                    m_committing_preserialized.TryAdd(key, bytes);
+                }
+
                 var value = options.ValueSerializer.Deserialize(new System.Buffers.ReadOnlySequence<byte>(bytes), bytes.Length);
                 if (!value.TryRent())
                 {
@@ -459,19 +524,35 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 return value;
             }
 
-            var value2 = await m_fileCache.Read<V>(key, options.ValueSerializer);
-            if (!value2.TryRent())
+            // Read from file cache. The background task may free the segment between
+            // the m_fileCacheVersion check in GetValue and this read. Handle gracefully.
+            V? readValue = default;
+            try
             {
-                throw new InvalidOperationException($"Could not rent value when fetched from storage. Type: {value2?.GetType().Name}, RentCount: {value2?.RentCount}");
+                readValue = await m_fileCache.Read<V>(key, options.ValueSerializer);
             }
-            stateManager.AddOrUpdate(key, value2, this);
+            catch (InvalidOperationException)
+            {
+                // Segment was freed by background commit — clean up and fall through to persistent storage
+                lock (m_lock)
+                {
+                    m_fileCacheVersion.Remove(key, out _);
+                }
+                return await GetValue_Persistent(key);
+            }
+
+            if (!readValue!.TryRent())
+            {
+                throw new InvalidOperationException($"Could not rent value when fetched from storage. Type: {readValue?.GetType().Name}, RentCount: {readValue?.RentCount}");
+            }
+            stateManager.AddOrUpdate(key, readValue, this);
 
             if (m_temporaryReadMsHistogram != null)
             {
                 m_temporaryReadMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
             }
 
-            return value2;
+            return readValue;
         }
 
         private async ValueTask<V?> GetValue_Persistent(long key)
@@ -536,7 +617,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 foreach (var kv in m_modified)
                 {
                     stateManager.DeleteFromCache(kv.Key);
-                    m_fileCache.Free(kv.Key);
                 }
                 for (int i = 0; i < _lookupTable.Length; i++)
                 {
@@ -611,6 +691,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
                 value.Item1.ValueRef.value.EnterWriteLock();
                 var sw = ValueStopwatch.StartNew();
+                bool written = false;
                 try
                 {
                     // Must lock the linked list value here since it can be deleted and disposed
@@ -620,6 +701,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         if (!value.Item1.ValueRef.removed)
                         {
                             m_fileCache.Write(value.Item1.ValueRef.key, new SerializableObject(value.Item1.ValueRef.value, options.ValueSerializer));
+                            written = true;
                         }
                     }
                 }
@@ -632,7 +714,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     m_temporaryWriteMsHistogram.Record((float)sw.GetElapsedTime().TotalMilliseconds, tagList);
                 }
 
-                m_fileCacheVersion[value.Item1.ValueRef.key] = val;
+                if (written)
+                {
+                    m_fileCacheVersion[value.Item1.ValueRef.key] = val;
+                }
             }
             m_fileCache.Flush();
 
