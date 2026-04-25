@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
 using FlowtideDotNet.Storage.Serializers;
@@ -88,10 +89,10 @@ namespace FlowtideDotNet.Storage.Tests
                 PersistentStorage = persist,
                 CachePageCount = 0,
                 UseReadCache = true,
-                FileCacheOptions = new FileCacheOptions()
+                FileCacheFactory = new DefaultFileCacheFactory(new FileCacheOptions()
                 {
                     DirectoryPath = "./testJitPreserializationDuringCommit_cache"
-                }
+                })
             };
             var manager = new StateManagerSync<StateManagerMetadata>(a, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp"), "test");
             await manager.InitializeAsync();
@@ -156,10 +157,10 @@ namespace FlowtideDotNet.Storage.Tests
                 PersistentStorage = persist,
                 CachePageCount = 0,
                 UseReadCache = false,
-                FileCacheOptions = new FileCacheOptions()
+                FileCacheFactory = new DefaultFileCacheFactory(new FileCacheOptions()
                 {
                     DirectoryPath = "./TestWithoutReadCache_cache"
-                }
+                })
             };
             var manager = new StateManagerSync<StateManagerMetadata>(a, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("tmp"), "test");
             await manager.InitializeAsync();
