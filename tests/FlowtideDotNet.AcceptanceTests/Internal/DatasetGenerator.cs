@@ -347,7 +347,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     s.BatchID = 1;
                     s.PostingDate = f.Date.Between(DateTime.Parse("2015-07-06"), DateTime.Parse("2015-07-06").AddDays(count - 1));
                     s.Symbol = f.Finance.Account();
-                    s.Key = s.Symbol + s.PostingDate.ToString();
+                    s.Key = s.Symbol + s.PostingDate;
                     s.IssueType = f.PickRandom(new string[] { "Common", "Preferred", "Bond", "ETF", "Mutual Fund" });
                     s.Status = f.PickRandom(new string[] { "Active", "Inactive", "Delisted" });
                     s.Name = f.Company.CompanyName();
