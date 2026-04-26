@@ -25,7 +25,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public Dictionary<string, MockTable> Tables { get; set; }
 
-        public MockTable GetOrCreateTable<T>(string tableName)
+        public MockTable GetOrCreateTable<T>(string tableName, bool immutable = false)
         {
             if (!Tables.TryGetValue(tableName, out var mockTable))
             {
@@ -41,7 +41,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                         keyIndices.Add(i);
                     }
                 }
-                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types, typeof(T));
+                mockTable = new MockTable(tableMembers.Select(x => x.Name).ToList(), keyIndices, types, typeof(T), immutable);
                 Tables.Add(tableName, mockTable);
             }
             return mockTable;

@@ -12,6 +12,7 @@
 
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -27,6 +28,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public List<GraphNode> GraphNodes { get; set; }
 
+        public List<DailyMarket> DailyMarkets { get; private set; }
+
+        public List<Security> Securities { get; private set; }
+
         public DatasetGenerator(MockDatabase mockDatabase)
         {
             this.mockDatabase = mockDatabase;
@@ -36,6 +41,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Projects = new List<Project>();
             ProjectMembers = new List<ProjectMember>();
             GraphNodes = new List<GraphNode>();
+
+            DailyMarkets = new List<DailyMarket>();
+            Securities = new List<Security>();
 
             Randomizer.Seed = new Random(8675309);
             mockDatabase.GetOrCreateTable<Company>("companies");
@@ -322,6 +330,80 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var mockTable = mockDatabase.GetOrCreateTable<GraphNode>("graphnodes");
             mockTable.AddOrUpdate(newGraphNodes);
 
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketDays)
+        {
+            GenerateSecurities(securityCount);
+            GenerateDailyMarkets(dailyMarketDays);
+        }
+
+        public void GenerateSecurities(int count)
+        {
+            var testSecurity = new Faker<Security>()
+                .StrictMode(false)
+                .Rules((f, s) =>
+                {
+                    s.BatchID = 1;
+                    s.PostingDate = f.Date.Between(DateTime.Parse("2015-07-06"), DateTime.Parse("2015-07-06").AddDays(count - 1));
+                    s.Symbol = f.Finance.Account();
+                    s.Key = s.Symbol + s.PostingDate.ToString();
+                    s.IssueType = f.PickRandom(new string[] { "Common", "Preferred", "Bond", "ETF", "Mutual Fund" });
+                    s.Status = f.PickRandom(new string[] { "Active", "Inactive", "Delisted" });
+                    s.Name = f.Company.CompanyName();
+                    s.ExID = f.Address.CountryCode();
+                    s.ShOut = f.Random.Number(1000, 1000000).ToString();
+                    s.FirstTradeDate = f.Date.Past(20).ToString("yyyyMMdd");
+                    s.FirstTradeExchg = f.Date.Past(20).ToString("yyyyMMdd");
+                    s.Dividend = f.Finance.Amount(0, 5).ToString("F2");
+                    s.CoNameOrCIK = f.Company.CompanyName();
+                });
+
+            var newSecurities = testSecurity.Generate(count);
+            Securities.AddRange(newSecurities);
+            var mockTable = mockDatabase.GetOrCreateTable<Security>("securities");
+            mockTable.AddOrUpdate(newSecurities);
+        }
+
+        private int _dailyMarketBatch = 1;
+        private DateTime? _dailyMarketLastDay;
+
+        public void GenerateDailyMarkets(int numberOfDays)
+        {
+            if (_dailyMarketLastDay == null)
+            {
+                _dailyMarketLastDay = DateTime.Parse("2015-07-06");
+            }
+            else
+            {
+                _dailyMarketLastDay = _dailyMarketLastDay.Value.AddDays(1);
+            }
+
+            List<DailyMarket> generated = new List<DailyMarket>();
+            var faker = new Faker();
+            for (int day = 0; day < numberOfDays; day++)
+            {
+                for (int securityIndex = 0; securityIndex < Securities.Count; securityIndex++)
+                {
+                    var dailyMarket = new DailyMarket()
+                    {
+                        BatchID = _dailyMarketBatch,
+                        DM_S_SYMB = Securities[securityIndex].Symbol,
+                        DM_DATE = _dailyMarketLastDay.Value.AddDays(day),
+                        DM_CLOSE = (double)faker.Finance.Amount(),
+                        DM_HIGH = (double)faker.Finance.Amount(),
+                        DM_LOW = (double)faker.Finance.Amount(),
+                        DM_VOL = faker.Random.Number(1, 5)
+                    };
+                    dailyMarket.Key = $"{dailyMarket.DM_DATE:yyyyMMdd}-{dailyMarket.DM_S_SYMB}";
+                    generated.Add(dailyMarket);
+                }
+            }
+            _dailyMarketLastDay = _dailyMarketLastDay.Value.AddDays(numberOfDays - 1);
+            DailyMarkets.AddRange(generated);
+            var mockTable = mockDatabase.GetOrCreateTable<DailyMarket>("dailymarkets", true);
+            mockTable.AddOrUpdate(generated);
+            _dailyMarketBatch++;
         }
     }
 }
