@@ -35,6 +35,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
 using System.Buffers;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -70,6 +71,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public IReadOnlyList<ProjectMember> ProjectMembers => generator.ProjectMembers;
 
         public IReadOnlyList<Entities.GraphNode> GraphNodes => generator.GraphNodes;
+
+        public IReadOnlyList<Security> Securities => generator.Securities;
+
+        public IReadOnlyList<DailyMarket> DailyMarkets => generator.DailyMarkets;
 
         public IFunctionsRegister FunctionsRegister => flowtideBuilder.FunctionsRegister;
 
@@ -177,6 +182,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void DeleteGraphNode(Entities.GraphNode graphNode)
         {
             generator.DeleteGraphNode(graphNode);
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketDays)
+        {
+            generator.GenerateTpcDi(securityCount, dailyMarketDays);
+        }
+
+        public void GenerateDailyMarkets(int dailyMarketDays)
+        {
+            generator.GenerateDailyMarkets(dailyMarketDays);
         }
 
 
