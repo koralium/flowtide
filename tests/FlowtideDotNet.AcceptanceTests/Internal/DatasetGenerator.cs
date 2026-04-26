@@ -370,14 +370,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void GenerateDailyMarkets(int numberOfDays)
         {
-            if (_dailyMarketLastDay == null)
-            {
-                _dailyMarketLastDay = DateTime.Parse("2015-07-06");
-            }
-            else
-            {
-                _dailyMarketLastDay = _dailyMarketLastDay.Value.AddDays(1);
-            }
+            _dailyMarketLastDay = _dailyMarketLastDay == null
+                ? DateTime.Parse("2015-07-06")
+                : _dailyMarketLastDay.Value.AddDays(1);
 
             List<DailyMarket> generated = new List<DailyMarket>();
             var faker = new Faker();
