@@ -1143,7 +1143,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     _cancellationTokenSource.Cancel();
                 }
 
-                _channel.Writer.Complete();
+                _channel.Writer.TryComplete();
 
                 if (_writeTasks != null)
                 {
