@@ -57,6 +57,15 @@ namespace FlowtideDotNet.Storage.DataStructures
             _memoryAllocator = memoryAllocator;
         }
 
+        /// <summary>
+        /// UNSAFE: Gets the raw pointer to do operations without boundary checks
+        /// </summary>
+        /// <returns></returns>
+        internal T* GetPointer_Unsafe()
+        {
+            return (T*)_data;
+        }
+
         internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)

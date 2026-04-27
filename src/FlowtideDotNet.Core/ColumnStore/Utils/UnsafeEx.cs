@@ -34,7 +34,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Cle(int first, int second)
+        {
+            Ldarg_0();
+            Ldarg_1();
+            IL.Emit.Cgt();
+            IL.Emit.Ldc_I4_0();
+            IL.Emit.Ceq();
+            Ret();
+            throw IL.Unreachable();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Clt(long first, long second)
+        {
+            Ldarg_0();
+            Ldarg_1();
+            IL.Emit.Clt();
+            Ret();
+            throw IL.Unreachable();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Clt(int first, int second)
         {
             Ldarg_0();
             Ldarg_1();
@@ -68,6 +92,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         [EditorBrowsable(EditorBrowsableState.Never)]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Cge(long first, long second)
+        {
+            Ldarg_0();
+            Ldarg_1();
+            IL.Emit.Clt();
+            IL.Emit.Ldc_I4_0();
+            IL.Emit.Ceq();
+            Ret();
+            throw IL.Unreachable();
+        }
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Cge(int first, int second)
         {
             Ldarg_0();
             Ldarg_1();

@@ -669,5 +669,50 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             return (lowerbound, upperbound);
         }
+
+        public unsafe static (int, int) SearchBoundriesAsc(in int* list, in int value, int start, in int end)
+        {
+            if (end < start)
+            {
+                return (~start, ~start);
+            }
+            var arr = list + start;
+            var size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                // Hack since cmov is not available so far from what has been benchmarked.
+                // Clt returns 0 or 1, so we can multiply by the result to get the correct index.
+                arr += (middle * UnsafeEx.Clt(arr[middle], value));
+            }
+
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Clt(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Clt(*arr, value);
+
+            start = (int)(arr - list);
+            int lowIndex = start;
+            if (start > end || *arr != value)
+            {
+                return (~start, ~start);
+            }
+
+            if (start == end || arr[1] != value)
+            {
+                return (start, start);
+            }
+
+            size = end - start + 1;
+            while (size > 2)
+            {
+                var middle = size >> 1;
+                size = (size + 1) >> 1;
+                arr += middle * UnsafeEx.Cle(arr[middle], value);
+            }
+            arr += UnsafeEx.Cgt(size, 1) & UnsafeEx.Cle(*arr, value);
+            arr += UnsafeEx.Cgt(size, 0) & UnsafeEx.Cle(*arr, value);
+
+            return (lowIndex, (int)(arr - list) - 1);
+        }
     }
 }

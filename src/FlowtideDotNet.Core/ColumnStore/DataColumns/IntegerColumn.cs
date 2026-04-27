@@ -450,7 +450,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list.InsertStaticRange(index, 0, count);
             }
 
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
+            public unsafe (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             {
                 if (desc)
                 {
@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32Comparer.Instance);
+                    return BoundarySearch.SearchBoundriesAsc(_list.GetPointer_Unsafe(), (int)dataValue, start, in end);
                 }
             }
 
