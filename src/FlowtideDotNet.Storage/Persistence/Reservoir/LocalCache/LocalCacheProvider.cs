@@ -84,11 +84,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             return _remoteStorage.DeleteCheckpointFileAsync(checkpointVersion);
         }
 
-        /// <summary>
-        /// Used for testing
-        /// </summary>
-        /// <param name="fileId"></param>
-        /// <returns></returns>
         internal Task EvictDataFileAsync(ulong fileId, CancellationToken cancellationToken = default)
         {
             return _localCacheManager.EvictDataFileAsync(fileId);

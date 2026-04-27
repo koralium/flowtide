@@ -56,9 +56,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// </summary>
         private ConcurrentDictionary<long, PageWriteLocation> _temporaryPageLocations = new ConcurrentDictionary<long, PageWriteLocation>();
 
-        /// <summary>
-        /// Used for testing
-        /// </summary>
         internal LocalCacheProvider? CacheProvider { get; }
 
         public ReservoirPersistentStorage(ReservoirBuilder reservoirBuilder)
@@ -547,7 +544,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
-            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger);
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             // Reset taking checkpoint
             Volatile.Write(ref _takingCheckpoint, false);
 
@@ -616,7 +613,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 await _checkpointHandler.DisposeAsync();
             }
             var checkpointHandlerLogger = _loggerFactory.CreateLogger("ReservoirCheckpointHandler");
-            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger);
+            _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             _temporaryPageLocations.Clear();
             lock (_sessionsLock)
             {

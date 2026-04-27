@@ -773,7 +773,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
             s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
-            fakeTime.Advance(TimeSpan.FromSeconds(6));
+            fakeTime.Advance(TimeSpan.FromSeconds(20));
 
             await evictionLoopSignal.Task;
 

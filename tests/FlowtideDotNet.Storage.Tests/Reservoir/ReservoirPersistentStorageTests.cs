@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -262,6 +262,60 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 var data = await session.Read(100);
                 // Checkpoint 2 is corrupt so we should recover from checkpoint 1
                 Assert.Equal(new byte[] { 1 }, data.ToArray()); // Value before second override
+            }
+        }
+
+        [Fact]
+        public async Task TestRecoverFromFaultyFirstCheckpointWithCache()
+        {
+            var provider = new TestDataProvider();
+            var cacheProvider = new TestDataProvider();
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() 
+                { 
+                    FileProvider = provider,
+                    CacheProvider = cacheProvider
+                });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+
+                var session = persistentStorage.CreateSession();
+
+                // Write version 1
+                await session.Write(100, new SerializableObject(new byte[] { 1 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1 }, false); // Version 1
+
+                // Write version 2
+                await session.Write(200, new SerializableObject(new byte[] { 2 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 2 }, false); // Version 2
+
+                // Write version 3
+                await session.Write(300, new SerializableObject(new byte[] { 3 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 3 }, false); // Version 2
+
+                var firstDataFile = (await provider.ListDataFilesAboveVersionAsync(0)).First();
+
+                Assert.True((firstDataFile & (1UL << 63)) > 0);
+                Assert.True(cacheProvider.TryGetFileData(firstDataFile, out var fileData));
+
+                byte[] newData = new byte[fileData.Length];
+                Array.Copy(fileData, newData, newData.Length);
+                // Modify a byte to cause CRC64 mismatch on the cache
+                newData[newData.Length / 2] ^= 0xFF;
+                cacheProvider.SetFileData(firstDataFile, newData);
+
+                await persistentStorage.RecoverAsync(2);
+
+                var v2 = await session.Read(200);
+                Assert.Equal(new byte[] { 2 }, v2);
+
+                var ex = await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+                {
+                    await session.Read(300);
+                });
+                Assert.Equal("Key 300 not found in persistent storage.", ex.Message);
             }
         }
     }
