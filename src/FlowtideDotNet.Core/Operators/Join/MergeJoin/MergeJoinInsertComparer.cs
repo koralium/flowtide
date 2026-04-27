@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public bool SeekNextPageForValue => false;
 
-        private DataValueContainer _yDataValueContainer = new DataValueContainer();
+        private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
