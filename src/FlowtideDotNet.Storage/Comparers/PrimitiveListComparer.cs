@@ -119,11 +119,6 @@ namespace FlowtideDotNet.Storage.Comparers
                 }
             }
             int upperbound = lo - 1;
-            if (!found)
-            {
-                upperbound = ~upperbound;
-            }
-
             return new FindBoundriesResult(lowerbound, upperbound);
         }
     }

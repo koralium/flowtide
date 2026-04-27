@@ -75,50 +75,50 @@ namespace DifferntialCompute.Benchmarks
             _dictionary = new Dictionary<long, long>();
         }
 
-        //[Benchmark]
-        //public void SortedDictionary()
-        //{
-        //    for (int i = 0; i < ElementCount; i++)
-        //    {
-        //        var key = r.Next();
+        [Benchmark]
+        public void SortedDictionary()
+        {
+            for (int i = 0; i < ElementCount; i++)
+            {
+                var key = r.Next();
 
-        //        if (!_sortedlist.ContainsKey(key))
-        //        {
-        //            _sortedlist.Add(key, i);
-        //        }
-        //        else
-        //        {
-        //            _sortedlist[key] = i;
-        //        }
-        //    }
-        //}
+                if (!_sortedlist.ContainsKey(key))
+                {
+                    _sortedlist.Add(key, i);
+                }
+                else
+                {
+                    _sortedlist[key] = i;
+                }
+            }
+        }
 
-        //[Benchmark]
-        //public void HashDictionary()
-        //{
-        //    for (int i = 0; i < ElementCount; i++)
-        //    {
-        //        var key = i;
+        [Benchmark]
+        public void HashDictionary()
+        {
+            for (int i = 0; i < ElementCount; i++)
+            {
+                var key = i;
 
-        //        if (!_dictionary.ContainsKey(key))
-        //        {
-        //            _dictionary.Add(key, i);
-        //        }
-        //        else
-        //        {
-        //            _dictionary[key] = i;
-        //        }
-        //    }
-        //}
+                if (!_dictionary.ContainsKey(key))
+                {
+                    _dictionary.Add(key, i);
+                }
+                else
+                {
+                    _dictionary[key] = i;
+                }
+            }
+        }
 
-        //[Benchmark(Baseline = true)]
-        //public async Task RMWNoResult_SingleInsert()
-        //{
-        //    for (int i = 0; i < ElementCount; i++)
-        //    {
-        //        await _tree.RMWNoResult(r.Next(), i, static (input, current, exists) => (input, GenericWriteOperation.Upsert));
-        //    }
-        //}
+        [Benchmark(Baseline = true)]
+        public async Task RMWNoResult_SingleInsert()
+        {
+            for (int i = 0; i < ElementCount; i++)
+            {
+                await _tree.RMWNoResult(r.Next(), i, static (input, current, exists) => (input, GenericWriteOperation.Upsert));
+            }
+        }
 
         [Benchmark]
         public async Task BulkInsert_Batched()
