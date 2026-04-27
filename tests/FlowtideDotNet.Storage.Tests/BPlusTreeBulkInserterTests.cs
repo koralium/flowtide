@@ -461,6 +461,44 @@ namespace FlowtideDotNet.Storage.Tests
             var all = await ReadAllFromTree();
             Assert.Equal(expected.Count, all.Count);
         }
+        [Fact]
+        public async Task DuplicateKeysInBatchPreserveOrder()
+        {
+            // When duplicates appear in a batch, they should be processed in the original sequence
+            // to ensure standard upsert semantics where the chronologically last occurrence wins.
+            
+            var bulkInserter = CreateBulkInserter();
+            var count = 10000;
+            var keys = new long[count];
+            var values = new long[count];
+            
+            int targetKeyCount = 0;
+            var rng = new Random(1234);
+
+            for (int i = 0; i < count; i++)
+            {
+                if (i % 2 == 0)
+                {
+                    keys[i] = 42;
+                    values[i] = targetKeyCount++;
+                }
+                else
+                {
+                    do
+                    {
+                        keys[i] = rng.Next(0, 100);
+                    } while (keys[i] == 42);
+
+                    values[i] = -1;
+                }
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+
+            var (found, val) = await _tree.GetValue(42);
+            Assert.True(found);
+            Assert.Equal(targetKeyCount - 1, val); 
+        }
 
         #endregion
 

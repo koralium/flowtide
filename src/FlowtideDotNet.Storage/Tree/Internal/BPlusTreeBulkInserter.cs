@@ -32,7 +32,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Compare(int x, int y)
         {
-            return _comparer.CompareTo(_keys[x], _keys[y]);
+            var cmp = _comparer.CompareTo(_keys[x], _keys[y]);
+            if (cmp == 0)
+            {
+                return x.CompareTo(y);
+            }
+            return cmp;
         }
     }
 
