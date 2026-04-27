@@ -346,23 +346,20 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             dataFileReader.Complete();
                         }
                     }
-                    catch(FlowtideChecksumMismatchException)
+                    catch (Exception e) when ((e is FlowtideChecksumMismatchException or InvalidOperationException) && cacheProvider != null)
                     {
-                        if (cacheProvider != null)
+                        // If we got a checksum error, and we have a cache, try and evict it from cache and try again
+                        // If this fails again, we fail the stream
+                        await cacheProvider.EvictDataFileAsync(fileId);
+                        var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
+                        try
                         {
-                            // If we got a checksum error, and we have a cache, try and evict it from cache and try again
-                            // If this fails again, we fail the stream
-                            await cacheProvider.EvictDataFileAsync(fileId);
-                            var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
-                            try
-                            {
-                                var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
-                                ReadCheckpointFile(checkpointFile, checkpointData);
-                            }
-                            finally
-                            {
-                                dataFileReader.Complete();
-                            }
+                            var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
+                            ReadCheckpointFile(checkpointFile, checkpointData);
+                        }
+                        finally
+                        {
+                            dataFileReader.Complete();
                         }
                     }
                     

@@ -318,5 +318,56 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 Assert.Equal("Key 300 not found in persistent storage.", ex.Message);
             }
         }
+
+        [Fact]
+        public async Task TestRecoverFromCheckpointWithCacheEmptyFile()
+        {
+            var provider = new TestDataProvider();
+            var cacheProvider = new TestDataProvider();
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+                {
+                    FileProvider = provider,
+                    CacheProvider = cacheProvider
+                });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+
+                var session = persistentStorage.CreateSession();
+
+                // Write version 1
+                await session.Write(100, new SerializableObject(new byte[] { 1 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1 }, false); // Version 1
+
+                // Write version 2
+                await session.Write(200, new SerializableObject(new byte[] { 2 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 2 }, false); // Version 2
+
+                // Write version 3
+                await session.Write(300, new SerializableObject(new byte[] { 3 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 3 }, false); // Version 2
+
+                var firstDataFile = (await provider.ListDataFilesAboveVersionAsync(0)).First();
+
+                Assert.True((firstDataFile & (1UL << 63)) > 0);
+                Assert.True(cacheProvider.TryGetFileData(firstDataFile, out var fileData));
+
+                byte[] newData = new byte[0];
+                cacheProvider.SetFileData(firstDataFile, newData);
+
+                await persistentStorage.RecoverAsync(2);
+
+                var v2 = await session.Read(200);
+                Assert.Equal(new byte[] { 2 }, v2);
+
+                var ex = await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+                {
+                    await session.Read(300);
+                });
+                Assert.Equal("Key 300 not found in persistent storage.", ex.Message);
+            }
+        }
     }
 }
