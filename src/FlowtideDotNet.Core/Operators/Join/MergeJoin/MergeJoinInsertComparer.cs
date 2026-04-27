@@ -83,7 +83,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             int start = startIndex;
             int end = endIndex;
-            bool noMatch = false;
             for (int i = 0; i < columnOrder.Count; i++)
             {
                 var column = columnOrder[i];
