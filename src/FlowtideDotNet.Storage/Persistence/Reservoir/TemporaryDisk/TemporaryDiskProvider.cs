@@ -296,6 +296,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
                     await data.CopyToAsync(fileStream, cancellationToken);
                     return;
                 }
+                if (!Directory.Exists(_checkpointFileDirectory))
+                {
+                    Directory.CreateDirectory(_checkpointFileDirectory);
+                }
                 fileStream = new FileStream(filePath, FileMode.Create, FileAccess.ReadWrite, FileShare.None, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
                 _openFiles[filePath] = fileStream;
                 await data.CopyToAsync(fileStream, cancellationToken);
