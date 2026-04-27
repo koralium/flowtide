@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public readonly struct LeafBatchMapping
         {
-            public readonly long LeafId; // Assuming your pointers are longs/ints
+            public readonly long LeafId;
             public readonly int Offset;
             public readonly int Length;
 
