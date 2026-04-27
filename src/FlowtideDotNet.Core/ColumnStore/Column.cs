@@ -630,23 +630,32 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            if (otherColumn.Type == _type)
+            if (otherColumn is Column otherCol)
             {
-                if (_type == ArrowTypeId.Null)
+                var thisType = GetTypeAt(thisIndex, default);
+                var otherType = otherCol.GetTypeAt(otherIndex, default);
+                
+                if (thisType == otherType)
                 {
-                    return 0;
+                    if (_type == ArrowTypeId.Null)
+                    {
+                        return 0;
+                    }
+                    return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
                 }
-                return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
-            }
-            // Check if any of the columns are unions, if so fetch the value and compare it
-            else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
-            {
-                var otherValue = otherColumn.GetValueAt(otherIndex, default);
-                return CompareTo(thisIndex, otherValue, default);
+                else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
+                {
+                    var otherValue = otherColumn.GetValueAt(otherIndex, default);
+                    return CompareTo(thisIndex, otherValue, default);
+                }
+                else
+                {
+                    return thisType - otherType;
+                }
             }
             else
             {
-                return _type - otherColumn.Type;
+                throw new NotImplementedException("Only Column is supported as other column");
             }
         }
 
