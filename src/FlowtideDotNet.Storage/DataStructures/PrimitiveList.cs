@@ -34,6 +34,12 @@ namespace FlowtideDotNet.Storage.DataStructures
             _memoryAllocator = memoryAllocator;
         }
 
+        public PrimitiveList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            _memoryAllocator = memoryAllocator;
+            EnsureCapacity(initialCapacity);
+        }
+
         public PrimitiveList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;

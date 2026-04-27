@@ -151,6 +151,12 @@ namespace FlowtideDotNet.Storage.DataStructures
             this.memoryAllocator = memoryAllocator;
         }
 
+        public BitmapList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            this.memoryAllocator = memoryAllocator;
+            EnsureSize((initialCapacity + 31) / 32);
+        }
+
         public BitmapList(IMemoryOwner<byte> memoryOwner, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memoryOwner;

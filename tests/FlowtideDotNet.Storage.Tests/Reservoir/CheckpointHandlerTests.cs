@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         [Fact]
         public void TestIsBundleFile()
         {
-            var handler = new CheckpointHandler(new MemoryFileProvider(), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(new MemoryFileProvider(), MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance, default);
 
             Assert.False(handler.IsBundleFile_Test(1), "Normal file ID incorrectly classified as bundle file!");
             Assert.True(handler.IsBundleFile_Test(ulong.MaxValue), "Max ulong ID should be classified as bundle file!");
@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public async Task TestDeletedPagesClears()
         {
             var provider = new MemoryFileProvider();
-            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance, default);
 
             handler.AddDeletedPages(new HashSet<long>() { 101 });
             await handler.FinishCheckpoint(null);
@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             var allocator = GlobalMemoryManager.Instance;
             var pool = MemoryPool<byte>.Shared;
-            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance, default);
 
             var page = new MockPagesFile(allocator, 101);
 
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             var allocator = GlobalMemoryManager.Instance;
             var pool = MemoryPool<byte>.Shared;
-            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance, default);
 
             var page = new MockPagesFile(allocator, 202);
 
@@ -119,7 +119,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public async Task TestModifiedFileIdsClears()
         {
             var provider = new MemoryFileProvider();
-            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance, default);
 
             var page = new MockPagesFile(GlobalMemoryManager.Instance, 303);
             await handler.EnqueueFileAsync(page);
@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public async Task TestModifiedSinceLastCheckpointResets()
         {
             var provider = new MemoryFileProvider();
-            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, MemoryPool<byte>.Shared, GlobalMemoryManager.Instance, 5, NullLogger.Instance, default);
 
             var page = new MockPagesFile(GlobalMemoryManager.Instance, 404);
             await handler.EnqueueFileAsync(page);
@@ -185,7 +185,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             var allocator = GlobalMemoryManager.Instance;
             var pool = MemoryPool<byte>.Shared;
-            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance, default);
 
             // Write page 501 and checkpoint (version 1)
             var page1 = new MockPagesFile(allocator, 501);
@@ -218,7 +218,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var pool = MemoryPool<byte>.Shared;
             
             // Create some bundle files to trigger the recovery loop
-            var writerHandler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+            var writerHandler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance, default);
             var merged = new MergedBlobFileWriter(pool, allocator);
             merged.StartAddingSequences(1);
             merged.AddSequence(1, 12, new ReadOnlySequence<byte>(new byte[10]));
@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             await writerHandler.FinishCheckpoint(merged);
 
             // Instantiate another to invoke recover
-            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance);
+            var handler = new CheckpointHandler(provider, pool, allocator, 5, NullLogger.Instance, default);
             await handler.RecoverToLatest(default);
 
             Assert.True(provider.DataFileCount > 0);

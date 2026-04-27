@@ -281,6 +281,13 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotSupportedException("Column with offset does not support DeleteBatch.");
         }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            // Give the inner size, this is not an exact number, but it gives a good estimate of the size of the data,
+            // without needing to calculate the exact size of the offsets which is more expensive.
+            return innerColumn.GetColumnSizeInfo();
+        }
     }
 }
 

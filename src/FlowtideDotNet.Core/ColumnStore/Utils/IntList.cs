@@ -41,6 +41,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             this.memoryAllocator = memoryAllocator;
         }
 
+        public IntList(IMemoryAllocator memoryAllocator, int initialCapacity)
+        {
+            this.memoryAllocator = memoryAllocator;
+            _memoryOwner = memoryAllocator.Allocate(initialCapacity * sizeof(int), 64);
+            _dataLength = initialCapacity;
+            _data = (int*)_memoryOwner.Memory.Pin().Pointer;
+        }
+
         public IntList(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
         {
             _memoryOwner = memory;

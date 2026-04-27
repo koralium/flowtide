@@ -11,7 +11,9 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
 using Microsoft.Extensions.Logging;
 using System.Buffers;
 using System.Collections.Concurrent;
@@ -26,6 +28,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     {
         private readonly int VersionBetweenSnapshot = 5;
         private readonly ILogger _logger;
+        private readonly LocalCacheProvider? cacheProvider;
         private readonly IReservoirStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
         private readonly IMemoryAllocator _memoryAllocator;
@@ -72,7 +75,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             MemoryPool<byte> pool,
             IMemoryAllocator memoryAllocator,
             int snapshotCheckpointInterval,
-            ILogger logger)
+            ILogger logger,
+            LocalCacheProvider? cacheProvider)
         {
             _channel = Channel.CreateBounded<PagesFile>(new BoundedChannelOptions(4)
             {
@@ -84,6 +88,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _newCheckpoint = new BlobNewCheckpoint(_memoryPool, memoryAllocator);
             VersionBetweenSnapshot = snapshotCheckpointInterval;
             _logger = logger;
+            this.cacheProvider = cacheProvider;
             this._memoryAllocator = memoryAllocator;
             _currentCheckpointVersion = 0;
             _checkpointVersion = 1;
@@ -328,16 +333,36 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 if (checkpointFile.IsBundled)
                 {
                     var fileId = (1UL << 63) | (ulong)checkpointFile.Version;
-                    var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
                     try
                     {
-                        var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
-                        ReadCheckpointFile(checkpointFile, checkpointData);
+                        var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
+                        try
+                        {
+                            var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
+                            ReadCheckpointFile(checkpointFile, checkpointData);
+                        }
+                        finally
+                        {
+                            dataFileReader.Complete();
+                        }
                     }
-                    finally
+                    catch (Exception e) when ((e is FlowtideChecksumMismatchException or InvalidOperationException) && cacheProvider != null)
                     {
-                        dataFileReader.Complete();
+                        // If we got a checksum error, and we have a cache, try and evict it from cache and try again
+                        // If this fails again, we fail the stream
+                        await cacheProvider.EvictDataFileAsync(fileId);
+                        var dataFileReader = await _fileProvider.ReadDataFileAsync(fileId, 0, CancellationToken.None);
+                        try
+                        {
+                            var checkpointData = await BundleFileRegistryReader.ReadCheckpointDataAsync(dataFileReader, default);
+                            ReadCheckpointFile(checkpointFile, checkpointData);
+                        }
+                        finally
+                        {
+                            dataFileReader.Complete();
+                        }
                     }
+                    
                 }
                 else
                 {
@@ -1122,7 +1147,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         ~CheckpointHandler()
         {
-            Debug.Assert(false, "CheckpointHandler finalized without calling dispose");
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: false);
         }
@@ -1143,7 +1167,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     _cancellationTokenSource.Cancel();
                 }
 
-                _channel.Writer.Complete();
+                _channel.Writer.TryComplete();
 
                 if (_writeTasks != null)
                 {
