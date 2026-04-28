@@ -154,16 +154,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var leafTask = _tree.m_stateClient.GetValue(mapping.LeafId);
                 var leaf = (leafTask.IsCompletedSuccessfully ? leafTask.Result : await leafTask)
                             as LeafNode<K, V, TKeyContainer, TValueContainer>;
-
-                LeafMutateFromBatch(leaf!, mutator, in mapping, _tree.m_keyComparer);
+                Debug.Assert(leaf != null, "Expected leaf node");
+                LeafMutateFromBatch(leaf, mutator, in mapping, _tree.m_keyComparer);
                 leaf.Return();
             }
         }
 
         public async ValueTask ApplySplitsAndMerges()
         {
+            Debug.Assert(_keys != null);
+
             // at the start we just split once, not multi splits, this can also be improved later to do X splits directly.
-            for(int i = 0; i < _requireSplitMappings.Count; i++)
+            for (int i = 0; i < _requireSplitMappings.Count; i++)
             {
                 var map = _requireSplitMappings[i];
                 var keyIndex = _sortedIndices[map.Offset];

@@ -161,11 +161,11 @@ namespace FlowtideDotNet.Storage.Tests
             var results = await CollectAllResults(searcher);
 
             // key[0]=1 found, key[1]=2 not found, key[2]=5 found, key[3]=8 not found, key[4]=9 found
-            Assert.True(results[0].Any(r => r.Found));   // 1
+            Assert.Contains(results[0], r => r.Found);   // 1
             Assert.True(results[1].All(r => !r.Found));   // 2
-            Assert.True(results[2].Any(r => r.Found));   // 5
+            Assert.Contains(results[2], r => r.Found);   // 5
             Assert.True(results[3].All(r => !r.Found));   // 8
-            Assert.True(results[4].Any(r => r.Found));   // 9
+            Assert.Contains(results[4], r => r.Found);   // 9
         }
 
         [Fact]
@@ -180,9 +180,9 @@ namespace FlowtideDotNet.Storage.Tests
 
             var results = await CollectAllResults(searcher);
 
-            Assert.True(results[0].Any(r => r.Found));   // 0
-            Assert.True(results[1].Any(r => r.Found));   // 50
-            Assert.True(results[2].Any(r => r.Found));   // 99
+            Assert.Contains(results[0], r => r.Found);   // 0
+            Assert.Contains(results[1], r => r.Found);   // 50
+            Assert.Contains(results[2], r => r.Found);   // 99
         }
 
         [Fact]
@@ -198,9 +198,9 @@ namespace FlowtideDotNet.Storage.Tests
             var results = await CollectAllResults(searcher);
 
             // KeyIndex should map back to original positions
-            Assert.True(results[0].Any(r => r.Found));  // key[0]=30
-            Assert.True(results[1].Any(r => r.Found));  // key[1]=10
-            Assert.True(results[2].Any(r => r.Found));  // key[2]=20
+            Assert.Contains(results[0], r => r.Found);  // key[0]=30
+            Assert.Contains(results[1], r => r.Found);  // key[1]=10
+            Assert.Contains(results[2], r => r.Found);  // key[2]=20
         }
 
         [Fact]
@@ -214,15 +214,15 @@ namespace FlowtideDotNet.Storage.Tests
             var keys1 = new long[] { 1, 4 };
             await searcher.Start(keys1, keys1.Length);
             var results1 = await CollectAllResults(searcher);
-            Assert.True(results1[0].Any(r => r.Found));   // 1
+            Assert.Contains(results1[0], r => r.Found);   // 1
             Assert.True(results1[1].All(r => !r.Found));   // 4
 
             // Second search reusing the same searcher
             var keys2 = new long[] { 2, 3, 5 };
             await searcher.Start(keys2, keys2.Length);
             var results2 = await CollectAllResults(searcher);
-            Assert.True(results2[0].Any(r => r.Found));   // 2
-            Assert.True(results2[1].Any(r => r.Found));   // 3
+            Assert.Contains(results2[0], r => r.Found);   // 2
+            Assert.Contains(results2[1], r => r.Found);   // 3
             Assert.True(results2[2].All(r => !r.Found));   // 5
         }
 
@@ -282,8 +282,8 @@ namespace FlowtideDotNet.Storage.Tests
             // Only key indices 0 and 1 should have results
             Assert.True(results.ContainsKey(0));
             Assert.True(results.ContainsKey(1));
-            Assert.True(results[0].Any(r => r.Found));
-            Assert.True(results[1].Any(r => r.Found));
+            Assert.Contains(results[0], r => r.Found);
+            Assert.Contains(results[1], r => r.Found);
         }
 
         [Fact]

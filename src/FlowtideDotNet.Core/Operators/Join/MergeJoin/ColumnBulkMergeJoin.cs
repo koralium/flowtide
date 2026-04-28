@@ -172,8 +172,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public override async Task OnCheckpoint()
         {
-            await _leftTree!.Commit();
-            await _rightTree!.Commit();
+            Debug.Assert(_leftTree != null);
+            Debug.Assert(_rightTree != null);
+
+            await _leftTree.Commit();
+            await _rightTree.Commit();
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -219,6 +222,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_rightTree != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_leftInserter != null);
             Debug.Assert(_rightSearcher != null);
@@ -253,10 +257,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 };
             }
 
-            //var leftInserter = _leftTree!.CreateBulkInserter();
             var sortedIndices = _leftInserter.SortAndGetIndices(keys, keyLength);
 
-            //var rightSearcher = _rightTree!.CreateBulkSearcher(_searchRightComparer);
             await _rightSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitLeftAlways = _mergeJoinRelation.Type == JoinType.Left || _mergeJoinRelation.Type == JoinType.Outer;
@@ -346,7 +348,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                 if (pageUpdated)
                 {
-                    var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_rightTree!;
+                    var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_rightTree;
                     var isFull = bTree.m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     if (isFull)
                     {
@@ -403,6 +405,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
         {
+            Debug.Assert(_leftTree != null);
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_rightInserter != null);
             Debug.Assert(_leftSearcher != null);
@@ -439,7 +442,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var sortedIndices = _rightInserter.SortAndGetIndices(keys, keyLength);
 
-            var leftSearcher = _leftTree!.CreateBulkSearcher(_searchLeftComparer);
+            var leftSearcher = _leftTree.CreateBulkSearcher(_searchLeftComparer);
             await leftSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
@@ -528,7 +531,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                 if (pageUpdated)
                 {
-                    var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_leftTree!;
+                    var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_leftTree;
                     var isFull = bTree.m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
                     if (isFull)
                     {
@@ -586,24 +589,31 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)
         {
+            Debug.Assert(rightColumns != null);
+            Debug.Assert(leftColumns != null);
             IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + _rightOutputColumns.Count];
+            bool shouldDisposeOffsets = true;
             if (isLeft)
             {
                 if (_leftOutputColumns.Count > 0)
                 {
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out _);
+                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var usedOffset);
+                        if (usedOffset)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
                     }
                 }
-                for (int i = 0; i < rightColumns!.Count; i++)
+                for (int i = 0; i < rightColumns.Count; i++)
                 {
                     outputColumns[_rightOutputIndices[i]] = rightColumns[i];
                 }
             }
             else
             {
-                for (int i = 0; i < leftColumns!.Count; i++)
+                for (int i = 0; i < leftColumns.Count; i++)
                 {
                     outputColumns[_leftOutputIndices[i]] = leftColumns[i];
                 }
@@ -611,9 +621,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 {
                     for (int i = 0; i < _rightOutputColumns.Count; i++)
                     {
-                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true, MemoryAllocator, out _);
+                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var usedOffset);
+                        if (usedOffset)
+                        {
+                            shouldDisposeOffsets = false;
+                        }
                     }
                 }
+            }
+            if (shouldDisposeOffsets)
+            {
+                foundOffsets.Dispose();
             }
             return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
         }
