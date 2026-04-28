@@ -99,53 +99,53 @@ namespace FlowtideDotNet.Benchmarks
             _stateManager?.Dispose();
         }
 
-        //[Benchmark(Baseline = true)]
-        //public async Task IteratorSeek()
-        //{
-        //    var comparer = new PrimitiveListComparer<long>();
-        //    using var iterator = _tree.CreateIterator();
+        [Benchmark(Baseline = true)]
+        public async Task IteratorSeek()
+        {
+            var comparer = new PrimitiveListComparer<long>();
+            using var iterator = _tree.CreateIterator();
 
-        //    for (int i = 0; i < _searchKeys.Length; i++)
-        //    {
-        //        await iterator.Seek(_searchKeys[i], comparer);
+            for (int i = 0; i < _searchKeys.Length; i++)
+            {
+                await iterator.Seek(_searchKeys[i], comparer);
 
-        //        await foreach (var page in iterator)
-        //        {
-        //            // Just consume the first page to match bulk search behavior
-        //            break;
-        //        }
-        //    }
-        //}
+                await foreach (var page in iterator)
+                {
+                    // Just consume the first page to match bulk search behavior
+                    break;
+                }
+            }
+        }
 
-        //[Benchmark()]
-        //public async Task IteratorSeekInOrder()
-        //{
-        //    var comparer = new PrimitiveListComparer<long>();
-        //    using var iterator = _tree.CreateIterator();
+        [Benchmark()]
+        public async Task IteratorSeekInOrder()
+        {
+            var comparer = new PrimitiveListComparer<long>();
+            using var iterator = _tree.CreateIterator();
 
-        //    for (int i = 0; i < _inOrderSearchKeys.Length; i++)
-        //    {
-        //        await iterator.Seek(_inOrderSearchKeys[i], comparer);
+            for (int i = 0; i < _inOrderSearchKeys.Length; i++)
+            {
+                await iterator.Seek(_inOrderSearchKeys[i], comparer);
 
-        //        await foreach (var page in iterator)
-        //        {
-        //            // Just consume the first page to match bulk search behavior
-        //            break;
-        //        }
-        //    }
-        //}
+                await foreach (var page in iterator)
+                {
+                    // Just consume the first page to match bulk search behavior
+                    break;
+                }
+            }
+        }
 
-        //[Benchmark]
-        //public async Task BulkSearchInOrder()
-        //{
-        //    await _bulkSearcher.Start(_inOrderSearchKeys, _inOrderSearchKeys.Length);
+        [Benchmark]
+        public async Task BulkSearchInOrder()
+        {
+            await _bulkSearcher.Start(_inOrderSearchKeys, _inOrderSearchKeys.Length);
 
-        //    while (await _bulkSearcher.MoveNextLeaf())
-        //    {
-        //        // Consume results
-        //        var _ = _bulkSearcher.CurrentResults;
-        //    }
-        //}
+            while (await _bulkSearcher.MoveNextLeaf())
+            {
+                // Consume results
+                _ = _bulkSearcher.CurrentResults;
+            }
+        }
 
         [Benchmark]
         public async Task BulkSearchPreSorted()
@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Benchmarks
             while (await _bulkSearcher.MoveNextLeaf())
             {
                 // Consume results
-                var _ = _bulkSearcher.CurrentResults;
+                _ = _bulkSearcher.CurrentResults;
             }
         }
     }
