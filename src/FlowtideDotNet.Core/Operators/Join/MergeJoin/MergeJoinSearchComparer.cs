@@ -108,8 +108,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             try
             {
-                int start = startIndex;
-                int end = endIndex;
+                int currentStart = startIndex;
+                int currentEnd = endIndex;
                 for (int i = 0; i < selfColumns.Count; i++)
                 {
                     // Get value by container to skip boxing for each value
@@ -117,9 +117,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                     if (dataValueContainer._type == ArrowTypeId.Null)
                     {
-                        return new FindBoundriesResult(~start, ~start);
+                        return new FindBoundriesResult(~currentStart, ~currentStart);
                     }
-                    var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, start, end, selfColumns[i].Value);
+                    var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, currentStart, currentEnd, selfColumns[i].Value);
 
                     if (low < 0)
                     {
@@ -127,11 +127,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     }
                     else
                     {
-                        start = low;
-                        end = high;
+                        currentStart = low;
+                        currentEnd = high;
                     }
                 }
-                return new FindBoundriesResult(start, end);
+                return new FindBoundriesResult(currentStart, currentEnd);
             }
             catch
             {
