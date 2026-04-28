@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Benchmarks
             {
                 await iterator.Seek(_searchKeys[i], comparer);
 
-                await foreach (var page in iterator)
+                await foreach (var _ in iterator)
                 {
                     // Just consume the first page to match bulk search behavior
                     break;
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Benchmarks
             {
                 await iterator.Seek(_inOrderSearchKeys[i], comparer);
 
-                await foreach (var page in iterator)
+                await foreach (var _ in iterator)
                 {
                     // Just consume the first page to match bulk search behavior
                     break;
