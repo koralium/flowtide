@@ -208,14 +208,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Place the new element from the other list
                 int oIdx = sortedLookup[i];
                 currentWriteIdx--;
-                if (oIdx == lookupNullIndex)
-                {
-                    selfData[currentWriteIdx] = default;
-                }
-                else
-                {
-                    selfData[currentWriteIdx] = otherData[oIdx];
-                }
+                selfData[currentWriteIdx] = oIdx == lookupNullIndex ? default : otherData[oIdx];
 
                 // Move the read tracker to the left of the block we just processed
                 currentReadIdx = targetInsertIdx;
