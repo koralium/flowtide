@@ -253,14 +253,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var keyIndex = _sortedIndices[i];
                 var boundries = comparer.FindBoundries(_keys[keyIndex], leaf.keys, lowerBound, lastIndex);
 
-                if (boundries.lowerBounds < 0)
-                {
-                    lowerBound = ~boundries.lowerBounds;
-                }
-                else
-                {
-                    lowerBound = boundries.lowerBounds;
-                }
+                lowerBound = boundries.lowerBounds < 0 ? ~boundries.lowerBounds : boundries.lowerBounds;
 
                 var result = new BulkSearchKeyResult
                 {
