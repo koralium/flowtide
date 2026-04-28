@@ -283,12 +283,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                     for (int k = lowerBound; k <= upperBound; k++)
                     {
-                        if (_postCondition != null)
+                        if (_postCondition != null && !_postCondition(keys[keyIndex].referenceBatch, keys[keyIndex].RowIndex, pageKeyStorage._data, k))
                         {
-                            if (!_postCondition(keys[keyIndex].referenceBatch, keys[keyIndex].RowIndex, pageKeyStorage._data, k))
-                            {
-                                continue;
-                            }
+                            continue;
                         }
 
                         var joinStorageValue = pageValues.Get(k);
