@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -67,6 +68,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// UNSAFE: Gets the raw pointer to do operations without boundary checks
         /// </summary>
         /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal T* GetPointer_Unsafe()
         {
             return (T*)_data;
@@ -343,10 +345,11 @@ namespace FlowtideDotNet.Storage.DataStructures
             CheckSizeReduction();
         }
 
-        public T Get(in int index)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Get(int index)
         {
-            var span = AccessSpan;
-            return span[index];
+            Debug.Assert(index >= 0 && index < _length);
+            return ((T*)_data)[index];
         }
 
         public ref T GetRef(scoped in int index)

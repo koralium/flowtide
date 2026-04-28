@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         public T Get(int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public ref T GetRef(int index)

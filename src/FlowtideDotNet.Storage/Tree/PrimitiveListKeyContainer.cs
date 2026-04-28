@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Storage.Tree
 
         public T Get(in int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public unsafe int GetByteSize()
