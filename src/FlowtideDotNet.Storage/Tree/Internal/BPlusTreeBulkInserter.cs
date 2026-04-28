@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private K[]? _keys;
         private V[]? _values;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireSplitMappings;
-        List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireMergeMappings;
+        private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireMergeMappings;
 
         public int LeafHitCount => _mappings.Count;
 
