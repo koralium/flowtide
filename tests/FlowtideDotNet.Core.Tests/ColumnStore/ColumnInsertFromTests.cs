@@ -81,7 +81,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 99);
@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 10);
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertIntValue(target, 0, 100);
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[0];
             Span<int> positions = stackalloc int[0];
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(2, target.Count);
             AssertIntValue(target, 0, 10);
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertStringValue(target, 0, "a");
@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 2, 4 };
             Span<int> positions = stackalloc int[] { 0, 1, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(6, target.Count);
             for (int i = 0; i < 6; i++)
@@ -210,7 +210,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertNullValue(target, 0);
@@ -233,7 +233,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -254,7 +254,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertNullValue(target, 0);
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 100);
@@ -290,7 +290,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -308,7 +308,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 10);
@@ -330,7 +330,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -352,7 +352,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
 
@@ -387,7 +387,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(2, target.Count);
             Assert.Equal(2, target.GetValueAt(0, default).AsMap.GetValueAt(0).AsLong);
@@ -408,7 +408,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(2, target.Count);
             var s0 = target.GetValueAt(0, default).AsStruct;
@@ -429,7 +429,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 2, 4 };
             Span<int> positions = stackalloc int[] { 0, 2, 4 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(8, target.Count);
             AssertIntValue(target, 0, 100);
@@ -451,7 +451,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 1, 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertIntValue(target, 0, 10);
@@ -470,7 +470,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 0, 0, 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 100);
@@ -487,7 +487,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 10);
@@ -504,7 +504,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 0, 0, 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(6, target.Count);
             AssertIntValue(target, 0, 10);
@@ -524,7 +524,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 3, 3, 3 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(6, target.Count);
             AssertIntValue(target, 0, 50);
@@ -544,7 +544,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 1, 5, 9 };
             Span<int> positions = stackalloc int[] { 0, 0, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 11);
@@ -567,7 +567,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 500 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(1001, target.Count);
             AssertIntValue(target, 499, 499);
@@ -590,7 +590,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 1, 3 };
             Span<int> positions = stackalloc int[] { 2, 4 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(7, target.Count);
             AssertIntValue(target, 0, 1);
@@ -615,7 +615,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 2 };
             Span<int> positions = stackalloc int[] { 1, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertIntValue(target, 0, 1);
@@ -636,7 +636,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 1);
@@ -654,7 +654,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2, 3, 4 };
             Span<int> positions = stackalloc int[] { 1, 1, 1, 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(7, target.Count);
             AssertIntValue(target, 0, 0);
@@ -709,7 +709,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 expected.Insert(positions[i], sourceValues[lookups[i]]);
             }
 
-            target.InsertFrom(source, lookups.AsSpan(), positions.AsSpan());
+            ReadOnlySpan<int> sl = lookups; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(expected.Count, target.Count);
             for (int i = 0; i < expected.Count; i++)
@@ -777,7 +777,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 expected.Insert(positions[i], sourceValues[lookups[i]]);
             }
 
-            target.InsertFrom(source, lookups.AsSpan(), positions.AsSpan());
+            ReadOnlySpan<int> sl = lookups; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(expected.Count, target.Count);
             for (int i = 0; i < expected.Count; i++)
@@ -806,7 +806,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 0, 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertNullValue(target, 0);
@@ -826,7 +826,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(2, target.Count);
             AssertIntValue(target, 0, 100);
@@ -846,7 +846,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0 };
             Span<int> positions = stackalloc int[] { 0 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(2, target.Count);
             var s0 = target.GetValueAt(0, default).AsStruct;
@@ -867,7 +867,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -888,7 +888,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 0, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertNullValue(target, 0);
@@ -911,7 +911,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(4, target.Count);
             AssertIntValue(target, 0, 10);
@@ -933,7 +933,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 1, 3, 5 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(8, target.Count);
             AssertIntValue(target, 0, 1);
@@ -955,7 +955,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 1, 3 };
             Span<int> positions = stackalloc int[] { 0, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(3, target.Count);
             AssertIntValue(target, 0, 20);
@@ -972,7 +972,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 0, 2, 4 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(7, target.Count);
             AssertNullValue(target, 0);
@@ -999,7 +999,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 2 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertIntValue(target, 0, 1);
@@ -1024,7 +1024,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1, 2 };
             Span<int> positions = stackalloc int[] { 0, 1, 1 };
 
-            target.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
 
             Assert.Equal(5, target.Count);
             AssertNullValue(target, 0);
@@ -1037,3 +1037,4 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
     }
 }
+

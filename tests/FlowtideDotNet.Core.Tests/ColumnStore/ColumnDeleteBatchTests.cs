@@ -517,7 +517,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Span<int> lookup = stackalloc int[] { 0, 1 };
             Span<int> positions = stackalloc int[] { 1, 2 };
 
-            col.InsertFrom(source, lookup, positions);
+            ReadOnlySpan<int> sl = lookup; 
+            ReadOnlySpan<int> ip = positions; 
+            col.InsertFrom(source, in sl, in ip, -1);
 
             // After insert: [10, 99, 30, 88, 50]
             Assert.Equal(5, col.Count);
@@ -771,3 +773,4 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         }
     }
 }
+

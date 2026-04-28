@@ -710,15 +710,22 @@ namespace FlowtideDotNet.Core.ColumnStore
             _valueColumn.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is MapColumn otherMap)
             {
                 for (int i = sortedLookup.Length - 1; i >= 0; i--)
                 {
                     int oIdx = sortedLookup[i];
-                    var value = otherMap.GetValueAt(oIdx, default);
-                    InsertAt(insertPositions[i], value);
+                    if (oIdx == lookupNullIndex)
+                    {
+                        InsertAt(insertPositions[i], NullValue.Instance);
+                    }
+                    else
+                    {
+                        var value = otherMap.GetValueAt(oIdx, default);
+                        InsertAt(insertPositions[i], value);
+                    }
                 }
                 return;
             }
@@ -748,3 +755,5 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+

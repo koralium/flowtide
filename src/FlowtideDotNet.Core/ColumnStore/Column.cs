@@ -1243,7 +1243,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.WriteDataToBuffer(ref dataWriter);
         }
 
-        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             Debug.Assert(_validityList != null);
 
@@ -1264,50 +1264,63 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         Debug.Assert(_dataColumn != null);
                         Debug.Assert(other._dataColumn != null);
-                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, lookupNullIndex);
                         return;
                     }
 
                     // Same non-null, non-union type
                     // Handle validity list
-                    if (_nullCounter > 0 || other._nullCounter > 0)
+                    int incomingNullCount = 0;
+                    for (int i = 0; i < count; i++)
                     {
-                        if (_nullCounter > 0 && other._nullCounter > 0)
+                        var idx = sortedLookup[i];
+                        if (idx == lookupNullIndex)
                         {
-                            Debug.Assert(other._validityList != null);
-                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
-                            // Count new nulls from the inserted elements
-                            for (int i = 0; i < count; i++)
+                            incomingNullCount++;
+                        }
+                        else if (other._nullCounter > 0 && !other._validityList!.Get(idx))
+                        {
+                            incomingNullCount++;
+                        }
+                    }
+
+                    if (_nullCounter > 0 || incomingNullCount > 0)
+                    {
+                        if (_nullCounter == 0)
+                        {
+                            CheckNullInitialization();
+                        }
+
+                        if (incomingNullCount > 0)
+                        {
+                            if (other._nullCounter > 0)
                             {
-                                if (!other._validityList.Get(sortedLookup[i]))
+                                Debug.Assert(other._validityList != null);
+                                _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, lookupNullIndex);
+                            }
+                            else
+                            {
+                                _validityList.InsertConstantFrom(true, insertPositions);
+                                for (int i = 0; i < count; i++)
                                 {
-                                    _nullCounter++;
+                                    if (sortedLookup[i] == lookupNullIndex)
+                                    {
+                                        _validityList.Unset(insertPositions[i] + i);
+                                    }
                                 }
                             }
+                            _nullCounter += incomingNullCount;
                         }
-                        else if (_nullCounter > 0)
+                        else
                         {
                             // This has nulls, other doesn't — insert all as valid
                             _validityList.InsertConstantFrom(true, insertPositions);
-                        }
-                        else // other has nulls, this doesn't
-                        {
-                            Debug.Assert(other._validityList != null);
-                            CheckNullInitialization();
-                            _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
-                            for (int i = 0; i < count; i++)
-                            {
-                                if (!other._validityList.Get(sortedLookup[i]))
-                                {
-                                    _nullCounter++;
-                                }
-                            }
                         }
                     }
 
                     Debug.Assert(_dataColumn != null);
                     Debug.Assert(other._dataColumn != null);
-                    _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                    _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, lookupNullIndex);
                 }
                 else
                 {
@@ -1345,19 +1358,41 @@ namespace FlowtideDotNet.Core.ColumnStore
                         }
 
                         // Handle validity bitmap for the inserted elements
-                        if (other._nullCounter > 0 || _nullCounter > 0)
+                        int incomingNullCount = 0;
+                        for (int i = 0; i < count; i++)
                         {
-                            if (other._nullCounter > 0)
+                            var idx = sortedLookup[i];
+                            if (idx == lookupNullIndex)
                             {
-                                Debug.Assert(other._validityList != null);
-                                _validityList.InsertFrom(other._validityList, sortedLookup, insertPositions);
-                                for (int i = 0; i < count; i++)
+                                incomingNullCount++;
+                            }
+                            else if (other._nullCounter > 0 && !other._validityList!.Get(idx))
+                            {
+                                incomingNullCount++;
+                            }
+                        }
+
+                        if (incomingNullCount > 0 || _nullCounter > 0)
+                        {
+                            if (incomingNullCount > 0)
+                            {
+                                if (other._nullCounter > 0)
                                 {
-                                    if (!other._validityList.Get(sortedLookup[i]))
+                                    Debug.Assert(other._validityList != null);
+                                    _validityList.InsertFrom(in other._validityList!, in sortedLookup, in insertPositions, lookupNullIndex);
+                                }
+                                else
+                                {
+                                    _validityList.InsertConstantFrom(true, insertPositions);
+                                    for (int i = 0; i < count; i++)
                                     {
-                                        _nullCounter++;
+                                        if (sortedLookup[i] == lookupNullIndex)
+                                        {
+                                            _validityList.Unset(insertPositions[i] + i);
+                                        }
                                     }
                                 }
+                                _nullCounter += incomingNullCount;
                             }
                             else
                             {
@@ -1412,7 +1447,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     else
                     {
-                        _dataColumn.InsertFrom(other._dataColumn, sortedLookup, insertPositions);
+                        _dataColumn.InsertFrom(in other._dataColumn, in sortedLookup, in insertPositions, lookupNullIndex);
                     }
                 }
             }
@@ -1468,3 +1503,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+
+
+
+

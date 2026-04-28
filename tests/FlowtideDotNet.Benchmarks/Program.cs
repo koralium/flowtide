@@ -11,5 +11,24 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Running;
+using DifferntialCompute.Benchmarks;
+using FlowtideDotNet.Benchmarks;
 
+//BPlusTreeBulkSearchBenchmark bPlusTreeBulkSearchBenchmark = new BPlusTreeBulkSearchBenchmark();
+//bPlusTreeBulkSearchBenchmark.TreeSize = 1_000_000;
+//bPlusTreeBulkSearchBenchmark.SearchKeyCount = 1000;
+//bPlusTreeBulkSearchBenchmark.GlobalSetup();
+//await bPlusTreeBulkSearchBenchmark.BulkSearchPreSorted();
+
+//ColumnStoreTreeBenchmark columnStore = new ColumnStoreTreeBenchmark();
+//columnStore.GlobalSetup();
+//columnStore.IterationSetup();
+//await columnStore.ColumnarInsertBulkInOrder();
+//BPlusTreeBulkInsertBenchmark bPlusTreeBulkInsertBenchmark = new BPlusTreeBulkInsertBenchmark();
+//bPlusTreeBulkInsertBenchmark.ElementCount = 1_000_000;
+//bPlusTreeBulkInsertBenchmark.GlobalSetup();
+//bPlusTreeBulkInsertBenchmark.IterationSetup();
+//await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
+
+//Console.WriteLine("hello");
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -70,5 +70,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             }
             return index;
         }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in AggregateKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

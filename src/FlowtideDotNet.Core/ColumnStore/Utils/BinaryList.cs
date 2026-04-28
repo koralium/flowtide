@@ -384,7 +384,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="other">The other binary list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the sorted indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list.</param>
-        public void InsertFrom(BinaryList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(ref readonly BinaryList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
@@ -395,7 +395,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             for (int i = 0; i < otherCount; i++)
             {
                 int oIdx = sortedLookup[i];
-                totalNewBytes += other._offsets.Get(oIdx + 1) - other._offsets.Get(oIdx);
+                if (oIdx != lookupNullIndex)
+                {
+                    totalNewBytes += other._offsets.Get(oIdx + 1) - other._offsets.Get(oIdx);
+                }
             }
 
 
@@ -439,13 +442,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 }
 
                 int oIdx = sortedLookup[i];
-                int oStart = other._offsets.Get(oIdx);
-                int oEnd = other._offsets.Get(oIdx + 1);
-                int oSize = oEnd - oStart;
+                int oSize = 0;
+                
+                if (oIdx != lookupNullIndex)
+                {
+                    int oStart = other._offsets.Get(oIdx);
+                    int oEnd = other._offsets.Get(oIdx + 1);
+                    oSize = oEnd - oStart;
 
-                // Copy the data
-                currentWriteDataPtr -= oSize;
-                otherData.Slice(oStart, oSize).CopyTo(selfData.Slice(currentWriteDataPtr));
+                    // Copy the data
+                    currentWriteDataPtr -= oSize;
+                    otherData.Slice(oStart, oSize).CopyTo(selfData.Slice(currentWriteDataPtr));
+                }
 
                 // Update the running delta
                 runningByteDelta -= oSize;

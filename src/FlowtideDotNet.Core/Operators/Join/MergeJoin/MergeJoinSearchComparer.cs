@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -35,14 +35,39 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             this.selfColumns = selfColumns;
             this.referenceColumns = referenceColumns;
         }
+        private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
+
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
-            throw new NotImplementedException();
+            // Usually not called for SearchComparer, but implementing similarly if needed
+            for (int i = 0; i < selfColumns.Count; i++)
+            {
+                var col = selfColumns[i];
+                x.referenceBatch.Columns[col.Key].GetValueAt(x.RowIndex, dataValueContainer, col.Value);
+                y.referenceBatch.Columns[col.Key].GetValueAt(y.RowIndex, _yDataValueContainer, col.Value);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
         public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < selfColumns.Count; i++)
+            {
+                var col = selfColumns[i];
+                key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
+                keyContainer._data.Columns[col.Key].GetValueAt(index, _yDataValueContainer, col.Value);
+                int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
         public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)
@@ -77,6 +102,42 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
             }
             return index;
+        }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)
+        {
+            try
+            {
+                int currentStart = startIndex;
+                int currentEnd = endIndex;
+                for (int i = 0; i < selfColumns.Count; i++)
+                {
+                    // Get value by container to skip boxing for each value
+                    key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
+
+                    if (dataValueContainer._type == ArrowTypeId.Null)
+                    {
+                        return new FindBoundriesResult(~currentStart, ~currentStart);
+                    }
+                    var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, currentStart, currentEnd, selfColumns[i].Value);
+
+                    if (low < 0)
+                    {
+                        return new FindBoundriesResult(low, low);
+                    }
+                    else
+                    {
+                        currentStart = low;
+                        currentEnd = high;
+                    }
+                }
+                return new FindBoundriesResult(currentStart, currentEnd);
+            }
+            catch
+            {
+                throw;
+            }
+            
         }
     }
 }

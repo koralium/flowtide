@@ -33,5 +33,9 @@ namespace FlowtideDotNet.Storage.Tree
         int GetByteSize();
 
         int GetByteSize(int start, int end);
+
+        void InsertFrom(V[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+
+        void DeleteBatch(ReadOnlySpan<int> positions);
     }
 }

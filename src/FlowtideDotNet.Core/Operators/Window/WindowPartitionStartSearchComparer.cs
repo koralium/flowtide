@@ -89,5 +89,10 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
             return index;
         }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

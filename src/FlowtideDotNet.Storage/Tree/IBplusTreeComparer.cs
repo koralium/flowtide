@@ -12,6 +12,18 @@
 
 namespace FlowtideDotNet.Storage.Tree
 {
+    public struct FindBoundriesResult
+    {
+        public readonly int lowerBounds; 
+        public readonly int upperBounds;
+
+        public FindBoundriesResult(int lowerBounds, int upperBounds)
+        {
+            this.lowerBounds = lowerBounds;
+            this.upperBounds = upperBounds;
+        }
+    }
+
     public interface IBplusTreeComparer<K, TKeyContainer>
         where TKeyContainer : IKeyContainer<K>
     {
@@ -23,6 +35,8 @@ namespace FlowtideDotNet.Storage.Tree
         /// <param name="keyContainer"></param>
         /// <returns></returns>
         int FindIndex(in K key, in TKeyContainer keyContainer);
+
+        FindBoundriesResult FindBoundries(in K key, in TKeyContainer keyContainer, int startIndex, int endIndex);
 
         /// <summary>
         /// Compare two kwys with eachother

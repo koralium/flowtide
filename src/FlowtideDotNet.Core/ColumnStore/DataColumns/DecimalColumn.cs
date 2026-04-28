@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -282,11 +282,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is DecimalColumn decimalColumn)
             {
-                _values.InsertFrom(decimalColumn._values, sortedLookup, insertPositions);
+                _values.InsertFrom(in decimalColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
             }
             else
             {
@@ -309,3 +309,5 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
     }
 }
+
+

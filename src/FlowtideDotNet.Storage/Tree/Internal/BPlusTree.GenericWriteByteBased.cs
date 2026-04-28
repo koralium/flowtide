@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
     {
         // These constants exist only to have a minimum size so there will be a sufficent fanout.
         // This must be atleast 2x larger than minpagesize
-        private const int minPageSizeBeforeSplit = 16;
-        private const int minPageSize = 4;
-        private const int minPageSizeAfterSplit = 8;
+        internal const int minPageSizeBeforeSplit = 16;
+        internal const int minPageSize = 4;
+        internal const int minPageSizeAfterSplit = 8;
 
         public ValueTask<GenericWriteOperation> GenericWriteByteBased(ref readonly K key, ref readonly V? value, ref readonly GenericWriteFunction<V> function)
         {
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     // No lock required
                     newParentNode.children.InsertAt(0, leafNode.Id);
-                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
+                    m_stateClient.Metadata = m_stateClient.Metadata.UpdateRootAndDepth(nextId, m_stateClient.Metadata.Depth + 1);
                     LeafNode<K, V, TKeyContainer, TValueContainer> newNode;
 
                     (newNode, _) = SplitLeafNodeBasedOnBytes(in newParentNode, 0, in leafNode, in byteSize);
@@ -301,7 +301,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var newParentNode = new InternalNode<K, V, TKeyContainer>(nextId, emptyKeys, m_options.MemoryAllocator);
                 // No lock requireds
                 newParentNode.children.InsertAt(0, internalNode.Id);
-                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(nextId);
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRootAndDepth(nextId, m_stateClient.Metadata.Depth + 1);
 
                 var (newNode, _) = SplitInternalNodeBasedOnBytes(in newParentNode, 0, in internalNode, in byteSize);
 
@@ -318,7 +318,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
             if (internalNode.children.Count == 1)
             {
-                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRoot(internalNode.children[0]);
+                m_stateClient.Metadata = m_stateClient.Metadata.UpdateRootAndDepth(internalNode.children[0], m_stateClient.Metadata.Depth - 1);
                 m_stateClient.Delete(internalNode.Id);
             }
             else

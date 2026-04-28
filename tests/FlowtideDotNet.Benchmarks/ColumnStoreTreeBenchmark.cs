@@ -20,7 +20,9 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.Tree.Internal;
 using Microsoft.Extensions.Logging.Abstractions;
+using SqlParser.Ast;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Benchmarks
@@ -28,11 +30,10 @@ namespace FlowtideDotNet.Benchmarks
     public class ColumnStoreTreeBenchmark
     {
         private IStateManagerClient? nodeClient;
-        private IBPlusTree<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>>? tree;
+        private IBPlusTree<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>? tree;
         private IBPlusTree<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>? flxTree;
+        private BPlusTreeBulkInserter<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>? _bulkInserter;
 
-        //[Params(1000, 5000, 10000)]
-        //public int CachePageCount;
         private EventBatchData data = new EventBatchData(
         [
             new Column(GlobalMemoryManager.Instance)
@@ -54,7 +55,7 @@ namespace FlowtideDotNet.Benchmarks
 
             for (int i = 0; i < 1_000_000; i++)
             {
-                data.Columns[0].Add(new Int64Value(i));
+                data.Columns[0].Add(new StringValue(i.ToString()));
                 rowEvents.Add(RowEvent.Create(1, 0, b =>
                 {
                     b.Add(i);
@@ -66,14 +67,17 @@ namespace FlowtideDotNet.Benchmarks
         public void IterationSetup()
         {
             Debug.Assert(nodeClient != null);
-            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, string, ColumnKeyStorageContainer, ListValueContainer<string>>()
+            tree = nodeClient.GetOrCreateTree("tree", new BPlusTreeOptions<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>()
             {
-                BucketSize = 1024,
+                UseByteBasedPageSizes = true,
                 Comparer = new ColumnComparer(1),
                 KeySerializer = new ColumnStoreSerializer(1, GlobalMemoryManager.Instance),
-                ValueSerializer = new ValueListSerializer<string>(new StringSerializer()),
+                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(GlobalMemoryManager.Instance),
                 MemoryAllocator = GlobalMemoryManager.Instance
             }).GetAwaiter().GetResult();
+
+            var casted = (BPlusTree<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>)tree;
+            _bulkInserter = new BPlusTreeBulkInserter<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>(casted);
             tree.Clear();
             flxTree = nodeClient.GetOrCreateTree("flxtree", new BPlusTreeOptions<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>()
             {
@@ -88,16 +92,6 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark]
-        public async Task FlxValueInsertInOrder()
-        {
-            Debug.Assert(flxTree != null);
-            for (int i = 0; i < 1_000_000; i++)
-            {
-                await flxTree.Upsert(rowEvents[i], $"hello{i}");
-            }
-        }
-
-        [Benchmark]
         public async Task ColumnarInsertInOrder()
         {
             Debug.Assert(tree != null);
@@ -107,7 +101,40 @@ namespace FlowtideDotNet.Benchmarks
                 {
                     referenceBatch = data,
                     RowIndex = i
-                }, $"hello{i}");
+                }, i);
+            }
+        }
+
+        private struct UpsertMutator : IRowMutator<ColumnRowReference, long>
+        {
+            public GenericWriteOperation Process(ColumnRowReference key, bool exists, in long existingData, ref long incomingData)
+            {
+                return GenericWriteOperation.Upsert;
+            }
+        }
+
+        [Benchmark]
+        public async Task ColumnarInsertBulkInOrder()
+        {
+            Debug.Assert(tree != null);
+            Debug.Assert(_bulkInserter != null);
+            int batchSize = 1_000;
+            ColumnRowReference[] keys = new ColumnRowReference[batchSize];
+            long[] values = new long[batchSize];
+            for (int i = 0; i < 1_000_000; i++)
+            {
+                var count = Math.Min(batchSize, 1_000_000 - i);
+                for (int k = 0; k < count; k++)
+                {
+                    keys[k] = new ColumnRowReference()
+                    {
+                        referenceBatch = data,
+                        RowIndex = i,
+                    };
+                    values[k] = i;
+                    i++;
+                }
+                await _bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
             }
         }
     }

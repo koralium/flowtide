@@ -905,7 +905,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        public void InsertFrom(BitmapList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
@@ -931,10 +931,17 @@ namespace FlowtideDotNet.Storage.DataStructures
                 }
 
                 int oIdx = sortedLookup[i];
-                int oIntIdx = oIdx >> 5;
-                int oBitOffset = oIdx & 31;
-
-                bool isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+                bool isSet;
+                if (oIdx == lookupNullIndex)
+                {
+                    isSet = false;
+                }
+                else
+                {
+                    int oIntIdx = oIdx >> 5;
+                    int oBitOffset = oIdx & 31;
+                    isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+                }
 
                 int writeBitIdx = targetInsertIdx + i;
                 int wIntIdx = writeBitIdx >> 5;

@@ -17,9 +17,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 {
     internal class BPlusTreeMetadata : IStorageMetadata
     {
-        public static BPlusTreeMetadata Create(int bucketLength, long root, long left, int pageSizeBytes, List<long> keyMetadataPages, List<long> valueMetadataPages)
+        public static BPlusTreeMetadata Create(
+            int bucketLength, 
+            long root, 
+            long left, 
+            int pageSizeBytes, 
+            List<long> keyMetadataPages, 
+            List<long> valueMetadataPages,
+            int depth)
         {
-            var newMetadata = new BPlusTreeMetadata(bucketLength, root, left, pageSizeBytes, keyMetadataPages, valueMetadataPages);
+            var newMetadata = new BPlusTreeMetadata(bucketLength, root, left, pageSizeBytes, keyMetadataPages, valueMetadataPages, depth);
             newMetadata.Updated = true;
             return newMetadata;
         }
@@ -32,7 +39,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         /// <param name="left"></param>
         /// <param name="pageSizeBytes"></param>
         [JsonConstructor]
-        public BPlusTreeMetadata(int bucketLength, long root, long left, int pageSizeBytes, List<long> keyMetadataPages, List<long> valueMetadataPages)
+        public BPlusTreeMetadata(
+            int bucketLength, 
+            long root, 
+            long left, 
+            int pageSizeBytes, 
+            List<long> keyMetadataPages, 
+            List<long> valueMetadataPages,
+            int depth)
         {
             BucketLength = bucketLength;
             Root = root;
@@ -41,6 +55,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             Updated = false;
             KeyMetadataPages = keyMetadataPages;
             ValueMetadataPages = valueMetadataPages;
+            Depth = depth;
         }
 
         public int BucketLength { get; }
@@ -57,12 +72,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
         public List<long> ValueMetadataPages { get; }
 
+        public int Depth { get; }
+
         [JsonIgnore]
         public bool Updated { get; set; }
 
         public BPlusTreeMetadata UpdateRoot(long newRoot)
         {
-            var newMetadata = new BPlusTreeMetadata(BucketLength, newRoot, Left, PageSizeBytes, KeyMetadataPages, ValueMetadataPages);
+            var newMetadata = new BPlusTreeMetadata(BucketLength, newRoot, Left, PageSizeBytes, KeyMetadataPages, ValueMetadataPages, Depth);
+            newMetadata.Updated = true;
+            return newMetadata;
+        }
+
+        public BPlusTreeMetadata UpdateRootAndDepth(long newRoot, int depth)
+        {
+            var newMetadata = new BPlusTreeMetadata(BucketLength, newRoot, Left, PageSizeBytes, KeyMetadataPages, ValueMetadataPages, depth);
             newMetadata.Updated = true;
             return newMetadata;
         }

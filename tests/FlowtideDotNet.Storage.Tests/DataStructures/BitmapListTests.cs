@@ -1120,7 +1120,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             var other = new BitmapList(GlobalMemoryManager.Instance);
             other.Add(false);
 
-            list.InsertFrom(other, Span<int>.Empty, Span<int>.Empty);
+            var emptySpan = ReadOnlySpan<int>.Empty;
+            list.InsertFrom(in other, in emptySpan, in emptySpan, -1);
 
             Assert.Equal(3, list.Count);
             Assert.True(list.Get(0));
@@ -1143,7 +1144,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0];
             int[] insertPositions = [1];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             Assert.Equal(4, list.Count);
             Assert.True(list.Get(0));
@@ -1166,7 +1167,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0];
             int[] insertPositions = [1];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             Assert.Equal(4, list.Count);
             Assert.True(list.Get(0));
@@ -1198,7 +1199,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [0, 0, 0];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1235,7 +1236,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [10, 10, 10];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1272,7 +1273,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2, 3, 4];
             int[] insertPositions = [1, 3, 5, 7, 9];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1311,7 +1312,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2, 3, 4];
             int[] insertPositions = [15, 30, 31, 32, 50];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1341,7 +1342,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [0, 0, 0];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1378,7 +1379,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2, 3];
             int[] insertPositions = [0, 10, 20, 30];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1415,7 +1416,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2, 3];
             int[] insertPositions = [0, 10, 20, 30];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1452,7 +1453,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [5, 6, 7];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1489,7 +1490,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 2, 4];
             int[] insertPositions = [3, 8, 12];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1542,7 +1543,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     sortedLookup[i] = r.Next(0, otherList.Count);
                 }
 
-                list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
                 for (int i = 0; i < sortedLookup.Length; i++)
                 {
@@ -1582,7 +1583,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [5, 5, 5];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1621,7 +1622,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
             int[] insertPositions = [0, 14, 31, 32, 48, 63, 64, 80, 96, 112];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1647,7 +1648,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0];
             int[] insertPositions = [0];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             Assert.Equal(2, list.Count);
             Assert.False(list.Get(0));
@@ -1685,7 +1686,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = 0;
             }
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1730,7 +1731,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = 0;
             }
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1775,7 +1776,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = Math.Min(i / 4, 4); // clusters at 0,0,0,0,1,1,1,1,...,4
             }
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1813,7 +1814,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [3, 7, 9];
             int[] insertPositions = [2, 10, 18];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1867,7 +1868,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     sortedLookup[i] = r.Next(0, otherList.Count);
                 }
 
-                list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
                 for (int i = 0; i < sortedLookup.Length; i++)
                 {
@@ -1915,7 +1916,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = i;
             }
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1949,7 +1950,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0];
             int[] insertPositions = [31];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             expected.Insert(31, true);
 
@@ -1980,7 +1981,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             int[] sortedLookup = [0];
             int[] insertPositions = [32];
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             expected.Insert(32, false);
 
@@ -2023,7 +2024,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = i * 16;
             }
 
-            list.InsertFrom(other, sortedLookup.AsSpan(), insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -2530,5 +2531,37 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
         }
+
+        [Fact]
+         public void TestInsertFromWithNullIndex()
+         {
+             var list = new BitmapList(GlobalMemoryManager.Instance);
+             
+             // Base list
+             for (int i = 0; i < 5; i++)
+             {
+                 list.Add(true);
+             }
+
+             var other = new BitmapList(GlobalMemoryManager.Instance);
+             other.Add(true);
+             other.Add(true);
+
+             // Test inserting null values (represented as false in BitmapList)
+             int[] sortedLookup = [0, 100, 1]; // 100 is the null index
+             int[] insertPositions = [1, 3, 5];
+
+             ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, 100);
+
+             Assert.Equal(8, list.Count);
+             Assert.True(list.Get(0));
+             Assert.True(list.Get(1)); // from other (0)
+             Assert.True(list.Get(2));
+             Assert.True(list.Get(3)); 
+             Assert.False(list.Get(4)); // null index (100) -> false
+             Assert.True(list.Get(5));
+             Assert.True(list.Get(6));
+             Assert.True(list.Get(7)); // from other (1)
+         }
     }
 }

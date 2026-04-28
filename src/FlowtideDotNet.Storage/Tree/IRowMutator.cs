@@ -10,12 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Runtime.CompilerServices;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.DependencyInjection")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Storage.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
-[assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
+namespace FlowtideDotNet.Storage.Tree
+{
+    public interface IRowMutator<K, V>
+    {
+        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
+    }
+}

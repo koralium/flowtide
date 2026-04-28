@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
-            void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+            void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex);
 
             void DeleteBatch(ReadOnlySpan<int> targets);
         }
@@ -217,11 +217,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return index;
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertFrom(int8data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -371,11 +371,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertFrom(int16Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -465,7 +465,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list.InsertStaticRange(index, 0, count);
             }
 
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
+            public unsafe (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             {
                 if (desc)
                 {
@@ -491,7 +491,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32Comparer.Instance);
+                    return BoundarySearch.SearchBoundriesAsc(_list.GetPointer_Unsafe(), (int)dataValue, start, in end);
                 }
             }
 
@@ -526,11 +526,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertFrom(int32Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -680,11 +680,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertFrom(int64Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -1106,7 +1106,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is IntegerColumn integerColumn)
             {
@@ -1130,7 +1130,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         return;
                     }
                 }
-                _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
+                _data.InsertFrom(integerColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
                 return;
             }
             throw new NotImplementedException();
@@ -1155,3 +1155,5 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
     }
 }
+
+

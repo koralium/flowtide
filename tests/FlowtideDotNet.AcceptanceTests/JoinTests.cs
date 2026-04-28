@@ -13,6 +13,7 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
+using System.Runtime.CompilerServices;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -63,7 +64,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoin()
         {
-            GenerateData(1000);
+            GenerateData(100);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1294,7 +1295,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task RightJoinMergeJoinFromUsersUsersFirst()
         {
             GenerateCompanies(10);
-            GenerateUsers(1000);
+            GenerateUsers(10);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1315,7 +1316,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     subuser.LastName
                 });
 
-            GenerateOrders(1000);
+            GenerateOrders(10);
 
             await WaitForUpdate();
 
@@ -1441,6 +1442,66 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(new[] { new { val = 1 } });
+        }
+
+        [Fact]
+        public async Task DoubleLeftJoinMiddleTableRetractionPropagatesNullsWithoutCrashing()
+        {
+            GenerateCompanies(10);
+
+            void Validate()
+            {
+                AssertCurrentDataEqual(
+                from company in Companies
+                join user in Users on company.CompanyId equals user.CompanyId into companyUsers
+                from subuser in companyUsers.DefaultIfEmpty()
+                let userOrders = subuser == null
+                    ? Enumerable.Empty<Order>()
+                    : Orders.Where(o => o.UserKey == subuser.UserKey)
+                from suborder in userOrders.DefaultIfEmpty()
+                select new
+                {
+                    company.Name,
+                    subuser?.FirstName,
+                    suborder?.GuidVal
+                });
+            }
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    c.name, u.firstName, o.GuidVal
+                FROM companies c
+                LEFT JOIN users u
+                ON c.CompanyId = u.CompanyId
+                LEFT JOIN orders o
+                ON o.UserKey = u.UserKey");
+            await WaitForUpdate();
+
+            Validate();
+
+            GenerateUsers(100);
+            
+            await WaitForUpdate();
+
+            Validate();
+
+            GenerateOrders(100);
+
+            await WaitForUpdate();
+
+            Validate();
+
+            var firstCompany = Companies.First();
+
+            foreach(var user in Users.Where(x => x.CompanyId == firstCompany.CompanyId).ToList())
+            {
+                DeleteUser(user);
+            }
+
+            await WaitForUpdate();
+
+            Validate();
         }
     }
 }

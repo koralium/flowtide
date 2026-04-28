@@ -91,5 +91,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             return (end - start + 1) * 8;
         }
+
+        public void InsertFrom(JoinWeights[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            _values.InsertFrom(values, sortedLookup, targetPositions);
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            _values.DeleteBatch(positions);
+        }
     }
 }

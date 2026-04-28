@@ -45,6 +45,11 @@ namespace FlowtideDotNet.Storage.Tree
             return _list.BinarySearch(key, comparer);
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
         }
@@ -67,6 +72,11 @@ namespace FlowtideDotNet.Storage.Tree
         public void Insert(int index, K key)
         {
             _list.Insert(index, key);
+        }
+
+        public void InsertFrom(K[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            throw new NotImplementedException();
         }
 
         public void Insert_Internal(int index, K key)
