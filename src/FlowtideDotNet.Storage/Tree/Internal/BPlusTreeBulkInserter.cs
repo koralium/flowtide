@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _insertTargetPositions = Array.Empty<int>();
         private int[] _deletePositions = Array.Empty<int>();
         private int[] _lookupBuffer = Array.Empty<int>();
-        List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
+        private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireSplitMappings;
