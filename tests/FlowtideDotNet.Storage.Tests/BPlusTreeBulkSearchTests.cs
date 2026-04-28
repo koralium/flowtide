@@ -559,8 +559,9 @@ namespace FlowtideDotNet.Storage.Tests
             var groupMatchCounts = new Dictionary<long, int>();
             while (await searcher.MoveNextLeaf())
             {
-                foreach (var result in searcher.CurrentResults)
+                for (int i = 0; i < searcher.CurrentResults.Count; i++)
                 {
+                    var result = searcher.CurrentResults[i];
                     if (result.Found)
                     {
                         long group = searchKeys[result.KeyIndex] / divisor;
