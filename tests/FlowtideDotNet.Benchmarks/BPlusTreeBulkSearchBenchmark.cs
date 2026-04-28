@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Benchmarks
             while (await _bulkSearcher.MoveNextLeaf())
             {
                 // Consume results
-                var _ = _bulkSearcher.CurrentResults;
+                _ = _bulkSearcher.CurrentResults;
             }
         }
 
