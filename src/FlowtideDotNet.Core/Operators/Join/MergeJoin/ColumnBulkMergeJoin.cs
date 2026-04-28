@@ -210,14 +210,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 #endif
 
             _eventsProcessed.Add(msg.Data.Weights.Count);
-            if (targetId == 0)
-            {
-                return OnRecieveLeft(msg, time);
-            }
-            else
-            {
-                return OnRecieveRight(msg, time);
-            }
+            return targetId == 0 ? OnRecieveLeft(msg, time) : OnRecieveRight(msg, time);
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
