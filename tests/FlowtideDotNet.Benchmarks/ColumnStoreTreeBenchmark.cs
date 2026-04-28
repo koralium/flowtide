@@ -34,8 +34,6 @@ namespace FlowtideDotNet.Benchmarks
         private IBPlusTree<RowEvent, string, ListKeyContainer<RowEvent>, ListValueContainer<string>>? flxTree;
         private BPlusTreeBulkInserter<ColumnRowReference, long, ColumnKeyStorageContainer, PrimitiveListValueContainer<long>>? _bulkInserter;
 
-        //[Params(1000, 5000, 10000)]
-        //public int CachePageCount;
         private EventBatchData data = new EventBatchData(
         [
             new Column(GlobalMemoryManager.Instance)
@@ -55,7 +53,6 @@ namespace FlowtideDotNet.Benchmarks
 
             nodeClient = stateManager.GetOrCreateClient("node1");
 
-            Random r = new Random(123);
             for (int i = 0; i < 1_000_000; i++)
             {
                 data.Columns[0].Add(new StringValue(i.ToString()));

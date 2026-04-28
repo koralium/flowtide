@@ -1120,7 +1120,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             var other = new BitmapList(GlobalMemoryManager.Instance);
             other.Add(false);
 
-            list.InsertFrom(in other, Span<int>.Empty, Span<int>.Empty, -1);
+            var emptySpan = ReadOnlySpan<int>.Empty;
+            list.InsertFrom(in other, in emptySpan, in emptySpan, -1);
 
             Assert.Equal(3, list.Count);
             Assert.True(list.Get(0));
