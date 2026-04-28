@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public JoinWeights Get(int index)
         {
-            return _values.Get(in index);
+            return _values.Get(index);
         }
 
         public ref JoinWeights GetRef(int index)
