@@ -589,8 +589,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)
         {
-            Debug.Assert(rightColumns != null);
-            Debug.Assert(leftColumns != null);
             IColumn[] outputColumns = new IColumn[_leftOutputColumns.Count + _rightOutputColumns.Count];
             bool shouldDisposeOffsets = true;
             if (isLeft)
@@ -606,6 +604,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
+                Debug.Assert(rightColumns != null);
                 for (int i = 0; i < rightColumns.Count; i++)
                 {
                     outputColumns[_rightOutputIndices[i]] = rightColumns[i];
@@ -613,6 +612,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             else
             {
+                Debug.Assert(leftColumns != null);
                 for (int i = 0; i < leftColumns.Count; i++)
                 {
                     outputColumns[_leftOutputIndices[i]] = leftColumns[i];
