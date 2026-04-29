@@ -315,6 +315,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return NativeSortHelpers.CallCompareDouble(selfComparePointerExpression, xExpression, yExpression);
         }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
 

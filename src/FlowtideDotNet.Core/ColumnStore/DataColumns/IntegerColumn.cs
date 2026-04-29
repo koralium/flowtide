@@ -1221,6 +1221,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             return System.Linq.Expressions.Expression.Constant(0); // No elements
         }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
 

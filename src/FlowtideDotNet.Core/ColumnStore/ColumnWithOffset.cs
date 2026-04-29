@@ -291,7 +291,23 @@ namespace FlowtideDotNet.Core.ColumnStore
             return innerColumn.GetColumnSizeInfo();
         }
 
-        internal unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        bool IColumn.SupportSelfCompareExpression => innerColumn.SupportSelfCompareExpression;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (innerColumn is Column c)
+            {
+                var state = c.GetColumnState();
+                state |= CompareColumnState.IsIndirectView;
+                return state;
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
             if (innerColumn is Column c)
             {
@@ -300,11 +316,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotSupportedException();
             }
         }
 
-        internal System.Linq.Expressions.Expression CreateSelfCompareExpression(
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(
             System.Linq.Expressions.Expression selfComparePointerExpression,
             System.Linq.Expressions.Expression xExpression,
             System.Linq.Expressions.Expression yExpression)
@@ -327,7 +343,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var assignXOffset = System.Linq.Expressions.Expression.Assign(xOffset, getXOffset);
                 var assignYOffset = System.Linq.Expressions.Expression.Assign(yOffset, getYOffset);
 
-                var innerCompare = c.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
+                var innerCompare = innerColumn.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
 
                 if (c.NullCounter > 0)
                 {
@@ -360,7 +376,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
-                throw new NotImplementedException();
+                throw new NotSupportedException();
             }
         }
     }

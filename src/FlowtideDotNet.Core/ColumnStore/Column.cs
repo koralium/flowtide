@@ -1505,7 +1505,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn.GetColumnSizeInfo();
         }
 
-        internal unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        bool IColumn.SupportSelfCompareExpression => _dataColumn != null ? _dataColumn.SupportSelfCompareExpression : true;
+
+        public CompareColumnState GetColumnState()
+        {
+            var state = CompareColumnStateBuilder.Create(Type);
+
+            if (_dataColumn != null && _nullCounter > 0)
+            {
+                state |= CompareColumnState.HasValidityBitmap;
+            }
+            return state;
+        }
+
+        public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
             if (_dataColumn != null)
             {
@@ -1515,11 +1528,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     Debug.Assert(_validityList != null);
                     selfComparePointers.validityPointer = _validityList.GetPointer_Unsafe();
                 }
-                
             }
         }
 
-        internal System.Linq.Expressions.Expression CreateSelfCompareExpression(
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(
             System.Linq.Expressions.Expression selfComparePointerExpression,
             System.Linq.Expressions.Expression xExpression,
             System.Linq.Expressions.Expression yExpression)

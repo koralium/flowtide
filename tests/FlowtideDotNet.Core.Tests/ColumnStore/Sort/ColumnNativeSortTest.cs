@@ -117,5 +117,47 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             var compareResult = compiled(selfComparePointers, 0, 2);
             Assert.Equal(1, compareResult);
         }
+
+        [Fact]
+        public void BatchTest()
+        {
+            Column column1 = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(123),
+                new DoubleValue(456)
+            };
+            Column column2 = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("123"),
+                NullValue.Instance
+            };
+
+            IColumn[] columns = new IColumn[2]{ column1, column2 };
+
+            EventBatchData data = new EventBatchData(columns);
+            var block = BatchSortCompiler.Compile(data, [0, 1]);
+            var compiled = block.Compile();
+
+            SelfComparePointers[] pointers = new SelfComparePointers[2];
+
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i].SetSelfComparePointers(ref pointers[i]);
+            }
+
+            var context = new SortCompareContext()
+            {
+                columns = columns,
+                compareOrder = [0, 1],
+                pointers = pointers
+            };
+
+            for (int i = 0; i < 10_000_000; i++)
+            {
+                var result = compiled(ref context, 0, 0);
+            }
+            int a = 0;
+            
+        }
     }
 }

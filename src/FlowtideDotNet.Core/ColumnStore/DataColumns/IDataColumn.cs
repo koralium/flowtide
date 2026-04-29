@@ -107,6 +107,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         ColumnSizeInfo GetColumnSizeInfo();
 
+        bool SupportSelfCompareExpression => false;
+
         void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
             // Do nothing
