@@ -417,7 +417,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         bool shouldDisposeOffsets = true;
                         for (int k = 0; k < _emitList.Count; k++)
                         {
-                            columns[k] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
+                            columns[k] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, MemoryAllocator, out var offsetUsed);
                             if (offsetUsed)
                             {
                                 shouldDisposeOffsets = false;
@@ -456,7 +456,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);
                             if (emitIndex >= 0)
                             {
-                                deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
+                                deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(e.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, MemoryAllocator, out var offsetUsed);
                                 if (offsetUsed)
                                 {
                                     shouldDisposeOffsets = false;
@@ -604,7 +604,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                     bool shouldDisposeOffsets = true;
                     for (int k = 0; k < _emitList.Count; k++)
                     {
-                        columns[k] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
+                        columns[k] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;
@@ -650,7 +650,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                         var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);
                         if (emitIndex >= 0)
                         {
-                            deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
+                            deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, MemoryAllocator, out var offsetUsed);
                             if (offsetUsed)
                             {
                                 shouldDisposeOffsets = false;

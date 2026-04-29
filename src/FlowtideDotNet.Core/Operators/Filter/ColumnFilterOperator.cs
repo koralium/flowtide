@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
                 for (int i = 0; i < _filterRelation.Emit.Count; i++)
                 {
                     var emitIndex = _filterRelation.Emit[i];
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[emitIndex], offsets, false, MemoryAllocator, out var offsetUsed);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[emitIndex], offsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffset = false;
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
                 var outputColumns = new IColumn[_filterRelation.OutputLength];
                 for (int i = 0; i < data.EventBatchData.Columns.Count; i++)
                 {
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[i], offsets, false, MemoryAllocator, out var offsetUsed);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[i], offsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffset = false;

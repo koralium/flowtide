@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 IColumn[] outputColumns = new IColumn[_emit.Length];
                 for (int i = 0; i < _emit.Length; i++)
                 {
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emit[i]], foundOffsets, false, MemoryAllocator, out var offsetUsed);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emit[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;
