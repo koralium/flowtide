@@ -14,10 +14,13 @@ using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Data;
+using System.Diagnostics;
 using System.IO.Hashing;
 using System.Text.Json;
 
@@ -287,6 +290,48 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Give the inner size, this is not an exact number, but it gives a good estimate of the size of the data,
             // without needing to calculate the exact size of the offsets which is more expensive.
             return innerColumn.GetColumnSizeInfo();
+        }
+
+        internal unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (innerColumn is Column c)
+            {
+                c.SetSelfComparePointers(ref selfComparePointers);
+                selfComparePointers.columnOffsetsPointer = offsets.GetPointer_Unsafe();
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        internal System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (innerColumn is Column c)
+            {
+                var getXOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, xExpression);
+                var getYOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, yExpression);
+
+                var xOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "xOffset");
+                var yOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "yOffset");
+
+                // Assign
+                var assignXOffset = System.Linq.Expressions.Expression.Assign(xOffset, getXOffset);
+                var assignYOffset = System.Linq.Expressions.Expression.Assign(yOffset, getYOffset);
+
+                // Must check if offset is = count of inner column, if includeNullValueAtEnd is true, since that means we should return null for that value.
+                // So then a comparison must be made
+                // Easier if -1 is used instead
+
+                return c.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
+            }
+            else
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }

@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -105,5 +106,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         void DeleteBatch(ReadOnlySpan<int> targets);
 
         ColumnSizeInfo GetColumnSizeInfo();
+
+        void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            // Do nothing
+        }
+
+        System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

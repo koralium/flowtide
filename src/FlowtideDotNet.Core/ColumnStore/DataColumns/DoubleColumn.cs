@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -300,6 +301,19 @@ namespace FlowtideDotNet.Core.ColumnStore
                 DataType = ArrowTypeId.Double,
                 TotalRows = Count,
             };
+        }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _data.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression, 
+            System.Linq.Expressions.Expression xExpression, 
+            System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareDouble(selfComparePointerExpression, xExpression, yExpression);
         }
     }
 }
