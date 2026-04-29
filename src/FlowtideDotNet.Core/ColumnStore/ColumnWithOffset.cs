@@ -104,7 +104,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
-            if (offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 return ArrowTypeId.Null;
             }
