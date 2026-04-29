@@ -30,7 +30,8 @@ namespace FlowtideDotNet.Core.ColumnStore
     {
         private readonly IColumn innerColumn;
         private readonly PrimitiveList<int> offsets;
-        private readonly bool includeNullValueAtEnd;
+
+        public const int NullValueIndex = -1;
 
         /// <summary>
         /// 
@@ -40,11 +41,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// <param name="includeNullValueAtEnd">Adds an extra index at the end which always gives out null, useful
         /// when doing left joins or similar to easily add null without needing to modify the inner data columns.
         /// Since these can be used by different operators, all data would need to be copied.</param>
-        public ColumnWithOffset(IColumn innerColumn, PrimitiveList<int> offsets, bool includeNullValueAtEnd)
+        public ColumnWithOffset(IColumn innerColumn, PrimitiveList<int> offsets)
         {
             this.innerColumn = innerColumn;
             this.offsets = offsets;
-            this.includeNullValueAtEnd = includeNullValueAtEnd;
         }
 
         public int Count => offsets.Count;
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             for (int i = start; i <= end; i++)
             {
                 var offset = offsets[i];
-                if (includeNullValueAtEnd && offset == innerColumn.Count)
+                if (offset == NullValueIndex)
                 {
                     size += 0;
                 }
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 return ArrowTypeId.Null;
             }
@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
         {
             var offset = offsets.Get(index);
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 return NullValue.Instance;
             }
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
         {
             var offset = offsets.Get(index);
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 dataValueContainer._type = ArrowTypeId.Null;
                 return;
@@ -186,7 +186,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var offset = offsets[index];
 
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 writer.WriteNullValue();
             }
@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
             var offset = offsets[index];
-            if (includeNullValueAtEnd && offset == innerColumn.Count)
+            if (offset == NullValueIndex)
             {
                 hashAlgorithm.Append(ByteArrayUtils.nullBytes);
                 return;
@@ -239,8 +239,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static ColumnWithOffset CreateFlattened(
             IColumn column, 
-            PrimitiveList<int> offsets, 
-            bool includeNullValueAtEnd, 
+            PrimitiveList<int> offsets,
             IMemoryAllocator memoryAllocator,
             out bool usedOffset)
         {
@@ -251,16 +250,16 @@ namespace FlowtideDotNet.Core.ColumnStore
                 for (int i = 0; i < offsets.Count; i++)
                 {
                     var offset = offsets.Get(i);
-                    if (includeNullValueAtEnd && offset == column.Count)
+                    if (offset == NullValueIndex)
                     {
-                        newOffsets.Add(columnWithOffset.innerColumn.Count);
+                        newOffsets.Add(NullValueIndex);
                     }
                     else
                     {
                         var otherOffset = otherOffsets.Get(offset);
-                        if (columnWithOffset.includeNullValueAtEnd && otherOffset == columnWithOffset.innerColumn.Count)
+                        if (otherOffset == NullValueIndex)
                         {
-                            newOffsets.Add(columnWithOffset.innerColumn.Count);
+                            newOffsets.Add(NullValueIndex);
                         }
                         else
                         {
@@ -269,10 +268,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                 }
                 usedOffset = false;
-                return new ColumnWithOffset(columnWithOffset.innerColumn, newOffsets, includeNullValueAtEnd);
+                return new ColumnWithOffset(columnWithOffset.innerColumn, newOffsets);
             }
             usedOffset = true;
-            return new ColumnWithOffset(column, offsets, includeNullValueAtEnd);
+            return new ColumnWithOffset(column, offsets);
         }
 
         public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
