@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _leftOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_leftOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                                        outputColumns[_leftOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
                                         if (offsetUsed)
                                         {
                                             shouldDisposeOffsets = false;
@@ -338,7 +338,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;
@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _rightOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_rightOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                                        outputColumns[_rightOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
                                         if (offsetUsed)
                                         {
                                             shouldDisposeOffsets = false;
@@ -566,7 +566,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _rightOutputColumns.Count; i++)
                     {
-                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;
@@ -650,7 +650,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
                         leftColumns[z].Add(_dataValueContainer);
                     }
-                    foundOffsets.Add(msg.Data.Weights.Count);
+                    foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                     weights.Add(-joinStorageValue.weight);
                     iterations.Add(msg.Data.Iterations[i]);
                 }
@@ -665,7 +665,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         pageKeyStorage!._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
                         leftColumns[z].Add(_dataValueContainer);
                     }
-                    foundOffsets.Add(msg.Data.Weights.Count);
+                    foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                     weights.Add(joinStorageValue.weight);
                     iterations.Add(msg.Data.Iterations[i]);
                 }
@@ -713,7 +713,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
                         rightColumns[z].Add(_dataValueContainer);
                     }
-                    foundOffsets.Add(msg.Data.Weights.Count);
+                    foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                     weights.Add(-joinStorageValue.weight);
                     iterations.Add(msg.Data.Iterations[i]);
                 }
@@ -728,7 +728,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         pageKeyStorage!._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
                         rightColumns[z].Add(_dataValueContainer);
                     }
-                    foundOffsets.Add(msg.Data.Weights.Count);
+                    foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                     weights.Add(joinStorageValue.weight);
                     iterations.Add(msg.Data.Iterations[i]);
                 }

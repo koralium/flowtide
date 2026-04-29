@@ -99,7 +99,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
                 bool shouldDisposeOffsets = true;
                 for (int i = 0; i < data.Data.EventBatchData.Columns.Count; i++)
                 {
-                    egressColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsEgress, false, MemoryAllocator, out var offsetUsed);
+                    egressColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsEgress, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Operators.Iteration
                 bool shouldDisposeOffsets = true;
                 for (int i = 0; i < data.Data.EventBatchData.Columns.Count; i++)
                 {
-                    loopColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsLoop, false, MemoryAllocator, out var offsetUsed);
+                    loopColumns[i] = ColumnWithOffset.CreateFlattened(data.Data.EventBatchData.Columns[i], offsetsLoop, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;

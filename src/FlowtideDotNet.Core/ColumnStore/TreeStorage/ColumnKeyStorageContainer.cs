@@ -176,11 +176,11 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         lookupBuffer[j] = offsets[key.RowIndex];
                     }
                     ReadOnlySpan<int> lb = lookupBuffer; 
-                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, columnWithOffset.InnerColumn.Count);
+                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, ColumnWithOffset.NullValueIndex);
                 }
                 else
                 {
-                    column.InsertFrom(sourceColumn, in sortedLookup, in targetPositions, -1);
+                    column.InsertFrom(sourceColumn, in sortedLookup, in targetPositions, ColumnWithOffset.NullValueIndex);
                 }
             }
             _count += sortedLookup.Length;

@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.Operators.TopN
                 bool shouldDisposeOffsets = true;
                 for (int i = 0; i < outputColumns.Length; i++)
                 {
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(inputBatch.Columns[i], foundOffsets, false, MemoryAllocator, out var offsetUsed);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(inputBatch.Columns[i], foundOffsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;

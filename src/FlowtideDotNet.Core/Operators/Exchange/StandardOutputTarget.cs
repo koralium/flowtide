@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 bool shouldDisposeOffsets = true;
                 for (int i = 0; i < _columnCount; i++)
                 {
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(_currentBatch.EventBatchData.Columns[i], _offsets, false, _memoryAllocator, out var usedOffset);
+                    outputColumns[i] = ColumnWithOffset.CreateFlattened(_currentBatch.EventBatchData.Columns[i], _offsets, _memoryAllocator, out var usedOffset);
                     if (usedOffset)
                     {
                         shouldDisposeOffsets = false;
