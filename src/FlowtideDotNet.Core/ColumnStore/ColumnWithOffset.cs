@@ -311,6 +311,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (innerColumn is Column c)
             {
+                if (c.Type == ArrowTypeId.Null)
+                {
+                    // We will always get null for all offsets
+                    return System.Linq.Expressions.Expression.Constant(0);
+                }
+
                 var getXOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, xExpression);
                 var getYOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, yExpression);
 
@@ -321,11 +327,36 @@ namespace FlowtideDotNet.Core.ColumnStore
                 var assignXOffset = System.Linq.Expressions.Expression.Assign(xOffset, getXOffset);
                 var assignYOffset = System.Linq.Expressions.Expression.Assign(yOffset, getYOffset);
 
-                // Must check if offset is = count of inner column, if includeNullValueAtEnd is true, since that means we should return null for that value.
-                // So then a comparison must be made
-                // Easier if -1 is used instead
+                var innerCompare = c.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
 
-                return c.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
+                if (c.NullCounter > 0)
+                {
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset],
+                        assignXOffset,
+                        assignYOffset,
+                        innerCompare
+                        );
+                }
+                else
+                {
+                    var offsetCompare = NativeSortHelpers.CallCompareOffsets(xOffset, yOffset);
+                    var offsetCompareVar = System.Linq.Expressions.Expression.Variable(typeof(int), "offsetCompare");
+                    var assignOffsetCompare = System.Linq.Expressions.Expression.Assign(offsetCompareVar, offsetCompare);
+                    var condition = System.Linq.Expressions.Expression.Condition(
+                        System.Linq.Expressions.Expression.Equal(offsetCompareVar, System.Linq.Expressions.Expression.Constant(2)),
+                        innerCompare,
+                        offsetCompareVar
+                        );
+
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset, offsetCompareVar],
+                        assignXOffset,
+                        assignYOffset,
+                        assignOffsetCompare,
+                        condition
+                        );
+                }
             }
             else
             {

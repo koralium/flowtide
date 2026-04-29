@@ -195,6 +195,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public IDataValue this[int index] => GetValueAt(index, default);
 
+        public int NullCounter => _nullCounter;
+
         /// <summary>
         /// Used only for debugging
         /// </summary>
@@ -1538,9 +1540,9 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                 System.Linq.Expressions.Expression assignCompareBits = System.Linq.Expressions.Expression.Assign(compareBitsResult, compareBitsExpression);
 
-                // (compareBits == 0) ? DataColumn.Compare(...) : compareBits
+                // (compareBits == 2) ? DataColumn.Compare(...) : compareBits
                 System.Linq.Expressions.Expression checkResult = System.Linq.Expressions.Expression.Condition(
-                    System.Linq.Expressions.Expression.Equal(compareBitsResult, System.Linq.Expressions.Expression.Constant(0)),
+                    System.Linq.Expressions.Expression.Equal(compareBitsResult, System.Linq.Expressions.Expression.Constant(2)),
                     dataColumnCompare,
                     compareBitsResult
                     );

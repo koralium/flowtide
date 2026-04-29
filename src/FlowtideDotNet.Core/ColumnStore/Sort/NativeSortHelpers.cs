@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
     internal unsafe static class NativeSortHelpers
     {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static bool GetBit(void* ptr, int index)
         {
             var wordIndex = index >> 5;
@@ -30,13 +30,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return (((int*)ptr)[wordIndex] & bitIndex) != 0;
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        /// <summary>
+        /// Compare validity bits, returns 2 if both are valid to make easy branching.
+        /// If either both are invalid or one is valid and the other not, it returns -1, 0, 1.
+        /// </summary>
+        /// <param name="ptr"></param>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static int CompareBits(void* ptr, int x, int y)
         {
             int* intPtr = (int*)ptr;
-            int bitX = (intPtr[x >> 5] >> (x & 31)) & 1;
-            int bitY = (intPtr[y >> 5] >> (y & 31)) & 1;
-            return bitX - bitY;
+
+            int maskX = ~(x >> 31);
+            int clampX = x & maskX;
+            int bitX = ((intPtr[clampX >> 5] >> (clampX & 31)) & 1) & maskX;
+
+            int maskY = ~(y >> 31);
+            int clampY = y & maskY;
+            int bitY = ((intPtr[clampY >> 5] >> (clampY & 31)) & 1) & maskY;
+
+            return (bitX - bitY) + ((bitX & bitY) << 1);
         }
 
         public static Expression CallCompareBits(Expression selfComparePointers, Expression x, Expression y)
@@ -58,7 +73,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return Expression.Call(methodInfo, getPtrExpression, x, y);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static int GetInt32(void* ptr, int index)
         {
             return ((int*)ptr)[index];
@@ -80,7 +95,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return Expression.Call(methodInfo, getPtrExpression, index);
         }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
         public static int CompareDouble(void* ptr, int x, int y)
         {
             var doublePtr = (double*)ptr;
@@ -103,6 +118,172 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             }
             var getPtrExpression = Expression.Field(selfComparePointers, doublePointerField);
             return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareInt32(void* ptr, int x, int y)
+        {
+            var intPtr = (int*)ptr;
+            int valueX = intPtr[x];
+            int valueY = intPtr[y];
+            return valueX.CompareTo(valueY);
+        }
+
+        public static Expression CallCompareInt32(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareInt32), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareInt32));
+            }
+            var intPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            if (intPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer");
+            }
+            var getPtrExpression = Expression.Field(selfComparePointers, intPointerField);
+            return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareInt8(void* ptr, int x, int y)
+        {
+            var intPtr = (sbyte*)ptr;
+            sbyte valueX = intPtr[x];
+            sbyte valueY = intPtr[y];
+            return valueX.CompareTo(valueY);
+        }
+
+        public static Expression CallCompareInt8(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareInt8), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareInt8));
+            }
+            var intPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            if (intPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer");
+            }
+            var getPtrExpression = Expression.Field(selfComparePointers, intPointerField);
+            return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareInt16(void* ptr, int x, int y)
+        {
+            var intPtr = (short*)ptr;
+            short valueX = intPtr[x];
+            short valueY = intPtr[y];
+            return valueX.CompareTo(valueY);
+        }
+
+        public static Expression CallCompareInt16(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareInt16), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareInt16));
+            }
+            var intPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            if (intPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer");
+            }
+            var getPtrExpression = Expression.Field(selfComparePointers, intPointerField);
+            return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareInt64(void* ptr, int x, int y)
+        {
+            var intPtr = (long*)ptr;
+            long valueX = intPtr[x];
+            long valueY = intPtr[y];
+            return valueX.CompareTo(valueY);
+        }
+
+        public static Expression CallCompareInt64(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareInt64), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareInt64));
+            }
+            var intPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            if (intPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer");
+            }
+            var getPtrExpression = Expression.Field(selfComparePointers, intPointerField);
+            return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
+        /// <summary>
+        /// This method compares offsets for column with offset, -1 is same as null
+        /// It returns nr 2 if both are above or equal to 0 as a special case.
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareOffsets(int x, int y)
+        {
+            int sx = x >> 31; // 0 if valid (>=0), -1 if null (<0)
+            int sy = y >> 31; // 0 if valid (>=0), -1 if null (<0)
+
+            return (sx - sy) + (((sx | sy) + 1) << 1);
+        }
+
+        public static Expression CallCompareOffsets(Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareOffsets), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareOffsets));
+            }
+            return Expression.Call(methodInfo, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareStrings(void* dataPointer, void* offsetPointer, int x, int y)
+        {
+            if (x == y) return 0;
+
+            int* offsets = (int*)offsetPointer;
+            byte* data = (byte*)dataPointer;
+
+            int startX = offsets[x];
+            int endX = offsets[x + 1];
+            int lengthX = endX - startX;
+
+            int startY = offsets[y];
+            int endY = offsets[y + 1];
+            int lengthY = endY - startY;
+
+            var spanX = new ReadOnlySpan<byte>(data + startX, lengthX);
+            var spanY = new ReadOnlySpan<byte>(data + startY, lengthY);
+
+            return spanX.SequenceCompareTo(spanY);
+        }
+
+        public static Expression CallCompareStrings(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareStrings), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareStrings));
+            }
+            var dataPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            var offsetPointerField = typeof(SelfComparePointers).GetField("secondaryPointer");
+            if (dataPointerField == null || offsetPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer or secondaryPointer");
+            }
+            var dataPtrExpression = Expression.Field(selfComparePointers, dataPointerField);
+            var offsetPtrExpression = Expression.Field(selfComparePointers, offsetPointerField);
+            return Expression.Call(methodInfo, dataPtrExpression, offsetPtrExpression, x, y);
         }
     }
 }

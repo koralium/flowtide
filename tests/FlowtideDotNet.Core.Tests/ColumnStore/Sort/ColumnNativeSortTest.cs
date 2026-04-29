@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
@@ -34,7 +35,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             Column column = new Column(GlobalMemoryManager.Instance);
             column.Add(new DoubleValue(123));
             column.Add(new DoubleValue(456));
-            column.Add(NullValue.Instance);
 
             SelfComparePointers selfComparePointers = new SelfComparePointers();
             column.SetSelfComparePointers(ref selfComparePointers);
@@ -46,31 +46,76 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             var lambda = Expression.Lambda<CompareDelegate>(expr, p1, p2, p3);
             var compiled = lambda.Compile();
 
-            var compareResult = compiled(selfComparePointers, 0, 2);
+            var compareResult = compiled(selfComparePointers, 0, 1);
         }
 
         [Fact]
         public void TestSortColumnWithOffset()
         {
-            Column column = new Column(GlobalMemoryManager.Instance);
-            column.Add(new DoubleValue(123));
-            column.Add(new DoubleValue(456));
-            column.Add(NullValue.Instance);
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(123),
+                new DoubleValue(456),
+                NullValue.Instance
+            };
 
+            PrimitiveList<int> offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance)
+            {
+                2,
+                1,
+                0,
+                -1
+            };
 
-            ColumnWithOffset columnWithOffset = new ColumnWithOffset(column, [2, 1, 0], false);
+            ColumnWithOffset columnWithOffset = new ColumnWithOffset(column, offsets);
 
             SelfComparePointers selfComparePointers = new SelfComparePointers();
-            column.SetSelfComparePointers(ref selfComparePointers);
+            columnWithOffset.SetSelfComparePointers(ref selfComparePointers);
 
             var p1 = Expression.Parameter(typeof(SelfComparePointers), "pointers");
             var p2 = Expression.Parameter(typeof(int), "x");
             var p3 = Expression.Parameter(typeof(int), "y");
-            var expr = column.CreateSelfCompareExpression(p1, p2, p3);
+            var expr = columnWithOffset.CreateSelfCompareExpression(p1, p2, p3);
+            var lambda = Expression.Lambda<CompareDelegate>(expr, p1, p2, p3);
+            var compiled = lambda.Compile();
+
+            var compareResult = compiled(selfComparePointers, 0, 3);
+            Assert.Equal(0, compareResult);
+            Assert.True(compiled(selfComparePointers, 1, 2) > 0);
+            Assert.True(compiled(selfComparePointers, 3, 2) < 0);
+            Assert.True(compiled(selfComparePointers, 1, 0) > 0);
+        }
+
+        [Fact]
+        public void TestSortColumnWithOffsetNoNull()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(123),
+                new DoubleValue(456)
+            };
+
+            PrimitiveList<int> offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance)
+            {
+                1,
+                0,
+                -1
+            };
+
+            ColumnWithOffset columnWithOffset = new ColumnWithOffset(column, offsets);
+
+            SelfComparePointers selfComparePointers = new SelfComparePointers();
+            columnWithOffset.SetSelfComparePointers(ref selfComparePointers);
+
+            var p1 = Expression.Parameter(typeof(SelfComparePointers), "pointers");
+            var p2 = Expression.Parameter(typeof(int), "x");
+            var p3 = Expression.Parameter(typeof(int), "y");
+            var expr = columnWithOffset.CreateSelfCompareExpression(p1, p2, p3);
             var lambda = Expression.Lambda<CompareDelegate>(expr, p1, p2, p3);
             var compiled = lambda.Compile();
 
             var compareResult = compiled(selfComparePointers, 0, 2);
+            Assert.Equal(1, compareResult);
         }
     }
 }

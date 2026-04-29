@@ -106,6 +106,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         }
 
+        public void* GetDataPointer_Unsafe()
+        {
+            return _data;
+        }
+
+        public void* GetOffsetPointer_Unsafe()
+        {
+            return _offsets.GetPointer_Unsafe();
+        }
+
         private void EnsureCapacity(int length)
         {
             if (_dataLength < length)

@@ -62,6 +62,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
         public int Count => _length;
 
+        public int* GetPointer_Unsafe()
+        {
+            return _data;
+        }
+
         internal void EnsureCapacity(int length)
         {
             if (_dataLength < length)
