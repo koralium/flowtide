@@ -41,9 +41,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return lambda.Compile();
         }
 
-        public static void DoSort<TComparer>(ref Span<int> indices, TComparer comparer) where TComparer : IComparer<int>
+        public static void DoSort<TComparer>(ref Span<int> indices, TComparer comparer) where TComparer : struct, IComparer<int>
         {
-            indices.Sort(comparer);
+            IntroSort.Sort(indices, ref comparer);
         }
 
     }

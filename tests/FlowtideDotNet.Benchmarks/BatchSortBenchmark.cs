@@ -12,6 +12,7 @@
 
 using BenchmarkDotNet.Attributes;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
@@ -26,21 +27,27 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Benchmarks
 {
-    [MemoryDiagnoser]
+    //[MemoryDiagnoser]
+    //[DisassemblyDiagnoser(printSource: true, maxDepth: 3)]
     public class BatchSortBenchmark
     {
-        public const int Count = 1_000_000;
+        //public const int Count = 1_000;
+        [Params(100, 1000, 100_000)]
+        public int Count { get; set; }
 
-        int[] indices = new int[Count];
-        int[] raw_data = new int[Count];
+        int[] indices = null!;
+        int[] raw_data = null!;
         private IColumn[] columns = null!;
         private EventBatchData data = null!;
         private SortCompiler.SortDelegate sortMethod = null!;
         private SelfComparePointers[] pointers = new SelfComparePointers[1];
+        private BatchSortCompiler.CompareDelegate _compareDelegate = null!;
 
         [GlobalSetup]
         public void GlobalSetup()
         {
+            indices = new int[Count];
+            raw_data = new int[Count];
             Column column = new Column(GlobalMemoryManager.Instance);
             Random r = new Random(123);
             for (int i = 0; i < Count; i++)
@@ -52,21 +59,31 @@ namespace FlowtideDotNet.Benchmarks
             columns = new IColumn[1] {column };
             data = new EventBatchData(columns);
             sortMethod = SortCompiler.Compile(columns);
+            _compareDelegate = BatchSortCompiler.Compile(columns).Compile();
         }
 
-
-        [IterationSetup]
-        public void BeforeIteration()
+        private struct ComparerWithDelegate : IComparer<int>
         {
-            for (int i = 0; i < Count; i++)
+            private SortCompareContext context;
+            private readonly BatchSortCompiler.CompareDelegate d;
+
+            public ComparerWithDelegate(SortCompareContext context, BatchSortCompiler.CompareDelegate d)
             {
-                indices[i] = i;
+                this.context = context;
+                this.d = d;
+            }
+
+            public int Compare(int x, int y)
+            {
+                return d(ref context, x, y);
             }
         }
 
-        private struct OldSortMethod : IComparer<int>
+        private class OldSortMethod : IComparer<int>
         {
             private readonly IColumn[] columns;
+            private DataValueContainer _c1 = new DataValueContainer();
+            private DataValueContainer _c2 = new DataValueContainer();
 
             public OldSortMethod(IColumn[] columns)
             {
@@ -76,7 +93,10 @@ namespace FlowtideDotNet.Benchmarks
             {
                 for (int i = 0; i < columns.Length; i++)
                 {
-                    var result = columns[i].CompareTo(columns[i], x, y);
+                    columns[i].GetValueAt(x, _c1, default);
+                    columns[i].GetValueAt(y, _c2, default);
+                    var result = DataValueComparer.CompareTo(_c1, _c2);
+                    //var result = columns[i].CompareTo(columns[i], x, y);
                     if (result != 0)
                     {
                         return result;
@@ -89,19 +109,46 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark]
         public void PureCsharp()
         {
+            for (int i = 0; i < Count; i++)
+            {
+                indices[i] = i;
+            }
             Array.Sort(indices, (x, y) => raw_data[x].CompareTo(raw_data[y]));
         }
 
         [Benchmark]
         public void OldMethod()
         {
+            for (int i = 0; i < Count; i++)
+            {
+                indices[i] = i;
+            }
             var comparer = new OldSortMethod(columns);
             indices.AsSpan().Sort(comparer);
         }
 
         [Benchmark]
+        public void SortWithDelegate()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                indices[i] = i;
+            }
+            for (int i = 0; i < pointers.Length; i++)
+            {
+                columns[i].SetSelfComparePointers(ref pointers[i]);
+            }
+            var c = new ComparerWithDelegate(new SortCompareContext(columns, pointers), _compareDelegate);
+            indices.AsSpan().Sort(c);
+        }
+
+        [Benchmark]
         public void SortMethod()
         {
+            for (int i = 0; i < Count; i++)
+            {
+                indices[i] = i;
+            }
             for (int i = 0; i < pointers.Length; i++)
             {
                 columns[i].SetSelfComparePointers(ref pointers[i]);
