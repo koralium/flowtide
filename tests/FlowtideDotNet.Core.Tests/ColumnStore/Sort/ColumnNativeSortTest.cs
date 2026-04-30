@@ -184,7 +184,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
                 columns[i].SetSelfComparePointers(ref pointers[i]);
             }
 
-            var sortMethod = SortCompiler.Compile(columns);
+            var sortMethod = SortCompiler.GetOrCompile(columns);
 
             var indices = new int[] { 0, 1 };
             var ss = indices.AsSpan();

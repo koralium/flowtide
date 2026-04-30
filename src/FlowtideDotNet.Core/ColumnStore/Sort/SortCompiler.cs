@@ -11,9 +11,11 @@
 // limitations under the License.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -23,7 +25,35 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     {
         public delegate void SortDelegate(SortCompareContext context, ref Span<int> indices);
 
-        public static SortDelegate Compile(IColumn[] columns)
+        private static ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static UInt128 CreateKey(IColumn[] columns)
+        {
+            UInt128 key = 0;
+            for (int i = 0; i < columns.Length && i < 7; i++)
+            {
+                CompareColumnStateBuilder.BuildColumnsKey(ref key, columns[i].GetColumnState(), i);
+            }
+            if (columns.Length > 7)
+            {
+                CompareColumnStateBuilder.AddHasTailToKey(ref key);
+            }
+            return key;
+        }
+
+        public static SortDelegate GetOrCompile(IColumn[] columns)
+        {
+            var key = CreateKey(columns);
+            return GetOrCompile(key, columns);
+        }
+
+        public static SortDelegate GetOrCompile(UInt128 key, IColumn[] columns)
+        {
+            return _cache.GetOrAdd<IColumn[]>(key, static (key, args) => Compile(args), columns);
+        }
+
+        private static SortDelegate Compile(IColumn[] columns)
         {
             var comparerType = ComparerStructCompiler.Compile(columns);
             

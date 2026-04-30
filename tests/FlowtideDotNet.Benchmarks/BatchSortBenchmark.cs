@@ -42,6 +42,7 @@ namespace FlowtideDotNet.Benchmarks
         private SortCompiler.SortDelegate sortMethod = null!;
         private SelfComparePointers[] pointers = new SelfComparePointers[1];
         private BatchSortCompiler.CompareDelegate _compareDelegate = null!;
+        private BatchSorter _batchSorter = null!;
 
         [GlobalSetup]
         public void GlobalSetup()
@@ -58,8 +59,9 @@ namespace FlowtideDotNet.Benchmarks
             }
             columns = new IColumn[1] {column };
             data = new EventBatchData(columns);
-            sortMethod = SortCompiler.Compile(columns);
+            sortMethod = SortCompiler.GetOrCompile(columns);
             _compareDelegate = BatchSortCompiler.Compile(columns).Compile();
+            _batchSorter = new BatchSorter(1);
         }
 
         private struct ComparerWithDelegate : IComparer<int>
@@ -155,6 +157,17 @@ namespace FlowtideDotNet.Benchmarks
             }
             var span = indices.AsSpan();
             sortMethod(new SortCompareContext(columns, pointers), ref span);
+        }
+
+        [Benchmark]
+        public void BatchSorter()
+        {
+            for (int i = 0; i < Count; i++)
+            {
+                indices[i] = i;
+            }
+            var span = indices.AsSpan();
+            _batchSorter.SortData(columns, ref span);
         }
     }
 }
