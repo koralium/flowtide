@@ -37,9 +37,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void AddRangeFrom(IValueContainer<JoinWeights> container, int start, int count)
         {
-            for (int i = start; i < start + count; i++)
+            if (container is JoinWeightsValueContainer other)
             {
-                _values.Add(container.Get(i));
+                _values.AddRangeFrom(other._values, start, count);
+            }
+            else
+            {
+                throw new NotSupportedException();
             }
         }
 
@@ -70,11 +74,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public void RemoveRange(int start, int count)
         {
-            var end = start + count;
-            for (int i = end - 1; i >= start; i--)
-            {
-                RemoveAt(i);
-            }
+            _values.RemoveRange(start, count);
+            //var end = start + count;
+            //for (int i = end - 1; i >= start; i--)
+            //{
+            //    RemoveAt(i);
+            //}
         }
 
         public void Update(int index, JoinWeights value)

@@ -13,15 +13,14 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal class MergeJoinSearchComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private readonly List<KeyValuePair<int, ReferenceSegment?>> selfColumns;
-        private readonly List<KeyValuePair<int, ReferenceSegment?>> referenceColumns;
+        private readonly List<int> selfColumns;
+        private readonly List<int> referenceColumns;
 
         public int start;
         public int end;
@@ -29,7 +28,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public bool SeekNextPageForValue => true;
 
-        public MergeJoinSearchComparer(List<KeyValuePair<int, ReferenceSegment?>> selfColumns, List<KeyValuePair<int, ReferenceSegment?>> referenceColumns)
+        public MergeJoinSearchComparer(List<int> selfColumns, List<int> referenceColumns)
         {
             dataValueContainer = new DataValueContainer();
             this.selfColumns = selfColumns;
@@ -43,8 +42,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             for (int i = 0; i < selfColumns.Count; i++)
             {
                 var col = selfColumns[i];
-                x.referenceBatch.Columns[col.Key].GetValueAt(x.RowIndex, dataValueContainer, col.Value);
-                y.referenceBatch.Columns[col.Key].GetValueAt(y.RowIndex, _yDataValueContainer, col.Value);
+                x.referenceBatch.Columns[col].GetValueAt(x.RowIndex, dataValueContainer, default);
+                y.referenceBatch.Columns[col].GetValueAt(y.RowIndex, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -59,8 +58,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             for (int i = 0; i < selfColumns.Count; i++)
             {
                 var col = selfColumns[i];
-                key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
-                keyContainer._data.Columns[col.Key].GetValueAt(index, _yDataValueContainer, col.Value);
+                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
+                keyContainer._data.Columns[col].GetValueAt(index, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -79,14 +78,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             for (int i = 0; i < selfColumns.Count; i++)
             {
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
+                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
 
                 if (dataValueContainer._type == ArrowTypeId.Null)
                 {
                     noMatch = true;
                     return start;
                 }
-                var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, start, end, selfColumns[i].Value);
+                var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low < 0)
                 {
@@ -113,13 +112,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 for (int i = 0; i < selfColumns.Count; i++)
                 {
                     // Get value by container to skip boxing for each value
-                    key.referenceBatch.Columns[referenceColumns[i].Key].GetValueAt(key.RowIndex, dataValueContainer, referenceColumns[i].Value);
+                    key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
 
                     if (dataValueContainer._type == ArrowTypeId.Null)
                     {
                         return new FindBoundriesResult(~currentStart, ~currentStart);
                     }
-                    var (low, high) = keyContainer._data.Columns[selfColumns[i].Key].SearchBoundries(dataValueContainer, currentStart, currentEnd, selfColumns[i].Value);
+                    var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
 
                     if (low < 0)
                     {
