@@ -14,6 +14,17 @@ using BenchmarkDotNet.Running;
 using DifferntialCompute.Benchmarks;
 using FlowtideDotNet.Benchmarks;
 
+//BatchSortBenchmark batchSortBenchmark = new BatchSortBenchmark();
+//batchSortBenchmark.GlobalSetup();
+
+
+//for (int i = 0; i < 10000; i++)
+//{
+//    batchSortBenchmark.BeforeIteration();
+//    batchSortBenchmark.SortMethod();
+//}
+
+
 //BPlusTreeBulkSearchBenchmark bPlusTreeBulkSearchBenchmark = new BPlusTreeBulkSearchBenchmark();
 //bPlusTreeBulkSearchBenchmark.TreeSize = 1_000_000;
 //bPlusTreeBulkSearchBenchmark.SearchKeyCount = 1000;

@@ -14,9 +14,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
-using System.Reflection;
-using System.Reflection.Emit;
-using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -24,56 +21,30 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
     internal static class SortCompiler
     {
-        public static void Compile()
+        public delegate void SortDelegate(SortCompareContext context, ref Span<int> indices);
+
+        public static SortDelegate Compile(IColumn[] columns)
         {
-            var assemblyName = new AssemblyName("DynamicSortAssembly");
+            var comparerType = ComparerStructCompiler.Compile(columns);
+            
+            var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
+            var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
 
-            var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
-                assemblyName,
-                AssemblyBuilderAccess.RunAndCollect
-            );
+            var newExpr = Expression.New(comparerType.GetConstructor([typeof(SortCompareContext)]), parameter);
 
-            var moduleBuilder = assemblyBuilder.DefineDynamicModule("DynamicSortModule");
+            var doSort = typeof(SortCompiler).GetMethod(nameof(DoSort), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
 
-            // 4. Define the struct type
-            var typeBuilder = moduleBuilder.DefineType(
-                "DynamicSortContext",
-                TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.SequentialLayout,
-                typeof(ValueType) // This makes it a struct!
-            );
+            var callSort = Expression.Call(doSort.MakeGenericMethod(comparerType), indicesParameter, newExpr);
 
-            typeBuilder.AddInterfaceImplementation(typeof(IComparer<int>));
+            var lambda = Expression.Lambda<SortDelegate>(callSort, parameter, indicesParameter);
 
-            var contextField = typeBuilder.DefineField(
-                "Context",
-                typeof(SortCompareContext),
-                FieldAttributes.Public
-            );
-
-            var ctorBuilder = typeBuilder.DefineConstructor(
-                MethodAttributes.Public,
-                CallingConventions.Standard,
-                new Type[] { typeof(SortCompareContext) }
-            );
-
-            var ctorIl = ctorBuilder.GetILGenerator();
-            ctorIl.Emit(OpCodes.Ldarg_0);      // Load 'this' (the struct being constructed) onto the stack
-            ctorIl.Emit(OpCodes.Ldarg_1);      // Load the first argument (SortCompareContext) onto the stack
-            ctorIl.Emit(OpCodes.Stfld, contextField); // Store arg1 into this.Context
-            ctorIl.Emit(OpCodes.Ret);          // Return from constructor
-
-            var methodBuilder = typeBuilder.DefineMethod(
-                "Compare",
-                MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.HideBySig | MethodAttributes.NewSlot,
-                typeof(int),
-                new[] { typeof(int), typeof(int) }
-            );
-
-            Expression<Func<int, int, int>> expr;
-            var gen = methodBuilder.GetILGenerator();
-
-            Span<int> a;
-            a.Sort()
+            return lambda.Compile();
         }
+
+        public static void DoSort<TComparer>(ref Span<int> indices, TComparer comparer) where TComparer : IComparer<int>
+        {
+            indices.Sort(comparer);
+        }
+
     }
 }

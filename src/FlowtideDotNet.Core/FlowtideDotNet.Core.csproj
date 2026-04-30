@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <PackageReference Include="Apache.Arrow" />
+    <PackageReference Include="FastExpressionCompiler" />
     <PackageReference Include="System.IO.Hashing" />
 
 	<PackageReference Include="Fody" PrivateAssets="all" />

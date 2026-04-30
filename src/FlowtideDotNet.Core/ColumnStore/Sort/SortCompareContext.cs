@@ -18,9 +18,15 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
-    internal struct SortCompareContext
+    public struct SortCompareContext
     {
         public SelfComparePointers[] pointers;
         public IColumn[] columns;
+
+        public SortCompareContext(IColumn[] columns, SelfComparePointers[] pointers)
+        {
+            this.columns = columns;
+            this.pointers = pointers;
+        }
     }
 }

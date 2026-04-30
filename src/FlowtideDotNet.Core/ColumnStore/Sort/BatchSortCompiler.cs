@@ -141,5 +141,77 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             var lambda = Expression.Lambda<CompareDelegate>(block, pointersParameter, xParameter, yParameter);
             return lambda;
         }
+
+        public static BlockExpression Compile(IColumn[] columns, Expression contextParameter, Expression xParameter, Expression yParameter)
+        {
+            var pointersField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.pointers))!;
+            var columnsField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.columns))!;
+
+            var fetchPointers = Expression.Field(contextParameter, pointersField);
+            var fetchColumns = Expression.Field(contextParameter, columnsField);
+
+            var returnTarget = Expression.Label(typeof(int), "ReturnLabel");
+            var compareResultVar = Expression.Variable(typeof(int), "compareResult");
+            var bodyExpressions = new List<Expression>();
+
+            for (int i = 0; i < columns.Length && i < 7; i++)
+            {
+                var column = columns[i];
+
+                if (column.SupportSelfCompareExpression)
+                {
+                    // Take out index i from the pointers parameter
+                    var pointer = Expression.ArrayIndex(fetchPointers, Expression.Constant(i));
+                    var compareResult = column.CreateSelfCompareExpression(pointer, xParameter, yParameter);
+                    bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
+
+                    var ifCompareNotEqual = Expression.IfThen(
+                        Expression.NotEqual(compareResultVar, Expression.Constant(0)),
+                        Expression.Return(returnTarget, compareResultVar)
+                    );
+                    bodyExpressions.Add(ifCompareNotEqual);
+                }
+                else
+                {
+                    var col = Expression.ArrayIndex(fetchColumns, Expression.Constant(i));
+                    var compareResult = Expression.Call(
+                        typeof(BatchSortCompiler).GetMethod(nameof(CompareColumn))!,
+                        col,
+                        xParameter,
+                        yParameter
+                    );
+                    bodyExpressions.Add(Expression.Assign(compareResultVar, compareResult));
+
+                    var ifCompareNotEqual = Expression.IfThen(
+                        Expression.NotEqual(compareResultVar, Expression.Constant(0)),
+                        Expression.Return(returnTarget, compareResultVar)
+                    );
+                    bodyExpressions.Add(ifCompareNotEqual);
+                }
+            }
+
+            if (columns.Length > 7)
+            {
+                // Add extra code to handle the remainder
+                var compareTailCall = Expression.Call(
+                    typeof(BatchSortCompiler).GetMethod(nameof(CompareTail))!,
+                    contextParameter,
+                    xParameter,
+                    yParameter
+                );
+                bodyExpressions.Add(Expression.Label(returnTarget, compareTailCall));
+            }
+            else
+            {
+                bodyExpressions.Add(Expression.Label(returnTarget, Expression.Constant(0)));
+            }
+
+            var block = Expression.Block(
+                new[] { compareResultVar },
+                bodyExpressions
+            );
+
+            return block;
+        }
     }
 }

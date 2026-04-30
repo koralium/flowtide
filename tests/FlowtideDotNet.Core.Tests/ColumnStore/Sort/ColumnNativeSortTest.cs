@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FastExpressionCompiler;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -135,7 +136,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             IColumn[] columns = new IColumn[2]{ column1, column2 };
 
             EventBatchData data = new EventBatchData(columns);
-            var block = BatchSortCompiler.Compile(data, [0, 1]);
+            var block = BatchSortCompiler.Compile(columns);
             var compiled = block.Compile();
 
             SelfComparePointers[] pointers = new SelfComparePointers[2];
@@ -148,7 +149,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             var context = new SortCompareContext()
             {
                 columns = columns,
-                compareOrder = [0, 1],
                 pointers = pointers
             };
 
@@ -158,6 +158,42 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             }
             int a = 0;
             
+        }
+
+        [Fact]
+        public void TestStruct()
+        {
+            Column column1 = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(456),
+                new DoubleValue(123)
+            };
+            Column column2 = new Column(GlobalMemoryManager.Instance)
+            {
+                new StringValue("123"),
+                NullValue.Instance
+            };
+
+            IColumn[] columns = new IColumn[2] { column1, column2 };
+
+            var type = ComparerStructCompiler.Compile(columns);
+
+            var pointers = new SelfComparePointers[columns.Length];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i].SetSelfComparePointers(ref pointers[i]);
+            }
+
+            var sortMethod = SortCompiler.Compile(columns);
+
+            var indices = new int[] { 0, 1 };
+            var ss = indices.AsSpan();
+            sortMethod(new SortCompareContext(columns, pointers), ref ss);
+            //var spanMethods = typeof(Span<int>).GetMethods();
+            //var comparer = (IComparer<int>)Activator.CreateInstance(type, new SortCompareContext() { columns = columns, pointers = pointers });
+            //var rr = comparer.Compare(0, 1);
+
+
         }
     }
 }
