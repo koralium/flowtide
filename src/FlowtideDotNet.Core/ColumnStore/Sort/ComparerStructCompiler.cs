@@ -17,6 +17,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
@@ -26,14 +27,26 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     internal static class ComparerStructCompiler
     {
         private static readonly AssemblyName s_assemblyName = new AssemblyName("DynamicSortAssembly");
-        private static readonly AssemblyBuilder s_assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
-                s_assemblyName,
-                AssemblyBuilderAccess.Run
-            );
+        private static readonly AssemblyBuilder s_assemblyBuilder = CreateAssemblyBuilder();
         private static readonly ModuleBuilder s_moduleBuilder = s_assemblyBuilder.DefineDynamicModule("DynamicSortModule");
         private static readonly object s_lock = new object();
         private static int _typeNameCounter = 0;
 
+        private static AssemblyBuilder CreateAssemblyBuilder()
+        {
+            var builder = AssemblyBuilder.DefineDynamicAssembly(
+                s_assemblyName,
+                AssemblyBuilderAccess.Run
+            );
+            var ignoresAccessChecksTo = new CustomAttributeBuilder
+            (
+                typeof(IgnoresAccessChecksToAttribute).GetConstructor(new Type[] { typeof(string) }),
+                new object[] { typeof(ComparerStructCompiler).Assembly.GetName().Name }
+            );
+
+            builder.SetCustomAttribute(ignoresAccessChecksTo);
+            return builder;
+        }
 
         public static Type Compile(IColumn[] columns)
         {
