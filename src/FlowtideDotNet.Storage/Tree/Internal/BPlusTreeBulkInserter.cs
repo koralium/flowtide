@@ -57,6 +57,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private V[]? _values;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireSplitMappings;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _requireMergeMappings;
+        private int _totalBatchByteSize;
 
         public int LeafHitCount => _mappings.Count;
 
@@ -68,18 +69,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _requireMergeMappings = new List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping>();
         }
 
-        public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, TMutator mutator)
+        public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>
         {
+            _totalBatchByteSize = totalBatchByteSize;
             await StartBatch(keys, values, keyLength);
             await MutateBatch(mutator);
             await ApplySplitsAndMerges();
         }
 
 
-        public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, TMutator mutator)
+        public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>
         {
+            _totalBatchByteSize = totalBatchByteSize;
             await StartBatch(keys, values, keyLength, sortedIndices);
             await MutateBatch(mutator);
             await ApplySplitsAndMerges();
@@ -101,7 +104,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _sortedIndices;
         }
 
-        public ValueTask StartBatch(K[] keys, V[] values, int keyLength, int[] sortedIndices)
+        private ValueTask StartBatch(K[] keys, V[] values, int keyLength, int[] sortedIndices)
         {
             _keys = keys;
             _values = values;
@@ -117,7 +120,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
         }
 
-        public ValueTask StartBatch(K[] keys, V[] values, int keyLength)
+        private ValueTask StartBatch(K[] keys, V[] values, int keyLength)
         {
             _keys = keys;
             _values = values;
@@ -145,7 +148,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings);
         }
 
-        public async ValueTask MutateBatch<TMutator>(TMutator mutator)
+        private async ValueTask MutateBatch<TMutator>(TMutator mutator)
             where TMutator : IRowMutator<K, V>
         {
             for (int i = 0; i < _mappings.Count; i++)
@@ -160,7 +163,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
         }
 
-        public async ValueTask ApplySplitsAndMerges()
+        private async ValueTask ApplySplitsAndMerges()
         {
             Debug.Assert(_keys != null);
 

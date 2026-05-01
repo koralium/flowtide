@@ -63,6 +63,14 @@ namespace FlowtideDotNet.Storage.Tests
         /// </summary>
         private struct UpsertMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 return GenericWriteOperation.Upsert;
@@ -74,6 +82,14 @@ namespace FlowtideDotNet.Storage.Tests
         /// </summary>
         private struct DeleteIfExistsMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 return exists ? GenericWriteOperation.Delete : GenericWriteOperation.None;
@@ -86,6 +102,14 @@ namespace FlowtideDotNet.Storage.Tests
         /// </summary>
         private struct ToggleMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 return exists ? GenericWriteOperation.Delete : GenericWriteOperation.Upsert;
@@ -97,6 +121,14 @@ namespace FlowtideDotNet.Storage.Tests
         /// </summary>
         private struct ConditionalUpsertMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 if (!exists || incomingData > existingData)
@@ -112,6 +144,14 @@ namespace FlowtideDotNet.Storage.Tests
         /// </summary>
         private struct NoOpMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 return GenericWriteOperation.None;
@@ -125,6 +165,14 @@ namespace FlowtideDotNet.Storage.Tests
         private class DeleteThenReinsertMutator : IRowMutator<long, long>
         {
             private readonly HashSet<long> _deletedInThisBatch = new();
+
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
 
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
@@ -226,7 +274,7 @@ namespace FlowtideDotNet.Storage.Tests
                 values[i] = i * 10;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < count; i++)
@@ -250,7 +298,7 @@ namespace FlowtideDotNet.Storage.Tests
                 values[i] = (count - 1 - i) * 10;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < count; i++)
@@ -275,7 +323,7 @@ namespace FlowtideDotNet.Storage.Tests
                 expected[keys[i]] = keys[i] * 10;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             await AssertTreeContents(expected);
         }
@@ -287,7 +335,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 42 };
             var values = new long[] { 420 };
 
-            await bulkInserter.ApplyBatch(keys, values, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 1, new UpsertMutator(), 8);
 
             var (found, value) = await _tree.GetValue(42);
             Assert.True(found);
@@ -311,7 +359,7 @@ namespace FlowtideDotNet.Storage.Tests
                 values[i] = i * 10;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator(), 10 * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < 10; i++)
@@ -343,7 +391,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 5, 5, 5 };
             var values = new long[] { 100, 200, 300 };
 
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // There should be exactly 1 entry for key 5
             var all = await ReadAllFromTree();
@@ -365,7 +413,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 1, 2, 1, 2, 1 };
             var values = new long[] { 10, 20, 100, 200, 1000 };
 
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             var all = await ReadAllFromTree();
 
@@ -393,7 +441,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 1, 2, 3, 2, 4, 3 };
             var values = new long[] { 10, 20, 30, 200, 40, 300 };
 
-            await bulkInserter.ApplyBatch(keys, values, 6, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 6, new UpsertMutator(), 6 * 8);
 
             var all = await ReadAllFromTree();
 
@@ -421,12 +469,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate key 5
             var setupKeys = new long[] { 5 };
             var setupValues = new long[] { 50 };
-            await bulkInserter.ApplyBatch(setupKeys, setupValues, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 1, new UpsertMutator(), 1 * 8);
 
             // Batch with key 5 appearing twice
             var keys = new long[] { 5, 5 };
             var values = new long[] { 500, 5000 };
-            await bulkInserter.ApplyBatch(keys, values, 2, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 2, new UpsertMutator(), 2 * 8);
 
             var all = await ReadAllFromTree();
             Assert.Single(all);
@@ -456,7 +504,7 @@ namespace FlowtideDotNet.Storage.Tests
                 expected[keys[i]] = i; // SortedDictionary keeps last value per key
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             var all = await ReadAllFromTree();
             Assert.Equal(expected.Count, all.Count);
@@ -493,7 +541,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             var (found, val) = await _tree.GetValue(42);
             Assert.True(found);
@@ -517,14 +565,14 @@ namespace FlowtideDotNet.Storage.Tests
                 keys[i] = i;
                 values[i] = i * 10;
             }
-            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator(), 10 * 8);
 
             // Second batch: update keys 0-9 with new values
             for (int i = 0; i < 10; i++)
             {
                 values[i] = i * 100; // Updated values
             }
-            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 10, new UpsertMutator(), 10 * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < 10; i++)
@@ -541,12 +589,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Insert initial values
             var keys = new long[] { 1, 2, 3 };
             var values = new long[] { 100, 200, 300 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Conditionally update: only key=2 should be updated (500 > 200), key=1 should not (50 < 100)
             var keys2 = new long[] { 1, 2 };
             var values2 = new long[] { 50, 500 };
-            await bulkInserter.ApplyBatch(keys2, values2, 2, new ConditionalUpsertMutator());
+            await bulkInserter.ApplyBatch(keys2, values2, 2, new ConditionalUpsertMutator(), 2 * 8);
 
             var (found1, val1) = await _tree.GetValue(1);
             Assert.True(found1);
@@ -578,7 +626,7 @@ namespace FlowtideDotNet.Storage.Tests
                 keys[i] = i;
                 values[i] = i * 10;
             }
-            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator(), 20 * 8);
 
             // Delete even keys
             var deleteKeys = new long[10];
@@ -588,7 +636,7 @@ namespace FlowtideDotNet.Storage.Tests
                 deleteKeys[i] = i * 2;
                 deleteValues[i] = 0;
             }
-            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 10, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 10, new DeleteIfExistsMutator(), 10 * 8);
 
             // Only odd keys should remain
             var expected = new SortedDictionary<long, long>();
@@ -615,10 +663,10 @@ namespace FlowtideDotNet.Storage.Tests
                 keys[i] = i;
                 values[i] = i;
             }
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             // Delete all keys
-            await bulkInserter.ApplyBatch(keys, values, count, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new DeleteIfExistsMutator(), count * 8);
 
             var all = await ReadAllFromTree();
             Assert.Empty(all);
@@ -631,12 +679,12 @@ namespace FlowtideDotNet.Storage.Tests
 
             var keys = new long[] { 1, 2, 3 };
             var values = new long[] { 10, 20, 30 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Delete just the middle key
             var deleteKeys = new long[] { 2 };
             var deleteValues = new long[] { 0 };
-            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 1, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 1, new DeleteIfExistsMutator(), 1 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -654,12 +702,12 @@ namespace FlowtideDotNet.Storage.Tests
 
             var keys = new long[] { 1, 2, 3, 4, 5 };
             var values = new long[] { 10, 20, 30, 40, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             // Delete first and last
             var deleteKeys = new long[] { 1, 5 };
             var deleteValues = new long[] { 0, 0 };
-            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 2, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 2, new DeleteIfExistsMutator(), 2 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -684,12 +732,12 @@ namespace FlowtideDotNet.Storage.Tests
                 keys[i] = i;
                 values[i] = i * 10;
             }
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             // Try to delete keys that don't exist
             var deleteKeys = new long[] { 100, 200, 300 };
             var deleteValues = new long[] { 0, 0, 0 };
-            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 3, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 3, new DeleteIfExistsMutator(), 3 * 8);
 
             // Original keys should all still be present
             var expected = new SortedDictionary<long, long>();
@@ -706,12 +754,12 @@ namespace FlowtideDotNet.Storage.Tests
 
             var keys = new long[] { 1, 2, 3, 4, 5 };
             var values = new long[] { 10, 20, 30, 40, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             // Delete keys 2, 4 (exist) and 7, 9 (don't exist)
             var deleteKeys = new long[] { 2, 4, 7, 9 };
             var deleteValues = new long[] { 0, 0, 0, 0 };
-            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 4, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, 4, new DeleteIfExistsMutator(), 4 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -731,12 +779,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate with keys 1, 3, 5
             var setupKeys = new long[] { 1, 3, 5 };
             var setupValues = new long[] { 10, 30, 50 };
-            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator(), 3 * 8);
 
             // Toggle: keys 1,3,5 exist (will be deleted), keys 2,4 don't exist (will be inserted)
             var keys = new long[] { 1, 2, 3, 4, 5 };
             var values = new long[] { 0, 20, 0, 40, 0 };
-            await bulkInserter.ApplyBatch(keys, values, 5, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new ToggleMutator(), 5 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -760,7 +808,7 @@ namespace FlowtideDotNet.Storage.Tests
                 keys[i] = i;
                 values[i] = i;
             }
-            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator(), 20 * 8);
 
             // Delete 0-9
             var delKeys = new long[10];
@@ -770,7 +818,7 @@ namespace FlowtideDotNet.Storage.Tests
                 delKeys[i] = i;
                 delValues[i] = 0;
             }
-            await bulkInserter.ApplyBatch(delKeys, delValues, 10, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(delKeys, delValues, 10, new DeleteIfExistsMutator(), 10 * 8);
 
             // Insert 20-29
             var keys2 = new long[10];
@@ -780,7 +828,7 @@ namespace FlowtideDotNet.Storage.Tests
                 keys2[i] = 20 + i;
                 values2[i] = 20 + i;
             }
-            await bulkInserter.ApplyBatch(keys2, values2, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys2, values2, 10, new UpsertMutator(), 10 * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 10; i < 30; i++)
@@ -804,7 +852,7 @@ namespace FlowtideDotNet.Storage.Tests
             }
 
             // Insert all
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             // Delete in random order batches
             var rng = new Random(111);
@@ -824,7 +872,7 @@ namespace FlowtideDotNet.Storage.Tests
                     remainingKeys.RemoveAt(idx);
                 }
 
-                await bulkInserter.ApplyBatch(delKeys, delValues, batchSize, new DeleteIfExistsMutator());
+                await bulkInserter.ApplyBatch(delKeys, delValues, batchSize, new DeleteIfExistsMutator(), batchSize * 8);
             }
 
             var all = await ReadAllFromTree();
@@ -839,12 +887,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Insert 1,2,3
             var keys = new long[] { 1, 2, 3 };
             var values = new long[] { 10, 20, 30 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Delete key 2
             var delKeys = new long[] { 2 };
             var delValues = new long[] { 0 };
-            await bulkInserter.ApplyBatch(delKeys, delValues, 1, new DeleteIfExistsMutator());
+            await bulkInserter.ApplyBatch(delKeys, delValues, 1, new DeleteIfExistsMutator(), 1 * 8);
 
             // Verify key 2 is gone
             var (found, _) = await _tree.GetValue(2);
@@ -853,7 +901,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Re-insert key 2 with a different value
             var reinsertKeys = new long[] { 2 };
             var reinsertValues = new long[] { 999 };
-            await bulkInserter.ApplyBatch(reinsertKeys, reinsertValues, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(reinsertKeys, reinsertValues, 1, new UpsertMutator(), 1 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -877,12 +925,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate with keys 0, 2, 4
             var setupKeys = new long[] { 0, 2, 4 };
             var setupValues = new long[] { 0, 20, 40 };
-            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator(), 3 * 8);
 
             // Batch with mix of existing keys (will update) and new keys (will insert)
             var keys = new long[] { 1, 2, 3, 4, 5 };
             var values = new long[] { 10, 200, 30, 400, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -909,12 +957,12 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate
             var keys = new long[] { 1, 2, 3 };
             var values = new long[] { 10, 20, 30 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Apply with no-op mutator
             var keys2 = new long[] { 1, 2, 3, 4, 5 };
             var values2 = new long[] { 100, 200, 300, 400, 500 };
-            await bulkInserter.ApplyBatch(keys2, values2, 5, new NoOpMutator());
+            await bulkInserter.ApplyBatch(keys2, values2, 5, new NoOpMutator(), 5 * 8);
 
             // Tree should be unchanged
             var expected = new SortedDictionary<long, long>
@@ -949,7 +997,7 @@ namespace FlowtideDotNet.Storage.Tests
                     values[i] = key * 10;
                     expected[key] = key * 10;
                 }
-                await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator(), 20 * 8);
             }
 
             await AssertTreeContents(expected);
@@ -968,7 +1016,7 @@ namespace FlowtideDotNet.Storage.Tests
                 keys1[i] = i;
                 values1[i] = i;
             }
-            await bulkInserter.ApplyBatch(keys1, values1, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys1, values1, 10, new UpsertMutator(), 10 * 8);
 
             // Batch 2: keys 5-14 (overlaps with 5-9)
             var keys2 = new long[10];
@@ -978,7 +1026,7 @@ namespace FlowtideDotNet.Storage.Tests
                 keys2[i] = i + 5;
                 values2[i] = (i + 5) * 100;
             }
-            await bulkInserter.ApplyBatch(keys2, values2, 10, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys2, values2, 10, new UpsertMutator(), 10 * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < 5; i++)
@@ -1010,7 +1058,7 @@ namespace FlowtideDotNet.Storage.Tests
                 values[i] = i;
                 expected[i] = i;
             }
-            await bulkInserter.ApplyBatch(keys, values, 50, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 50, new UpsertMutator(), 50 * 8);
 
             // Batch 2: reuse arrays with different data, keys 100-119 (only first 20)
             for (int i = 0; i < 20; i++)
@@ -1019,7 +1067,7 @@ namespace FlowtideDotNet.Storage.Tests
                 values[i] = 1000 + i;
                 expected[100 + i] = 1000 + i;
             }
-            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 20, new UpsertMutator(), 20 * 8);
 
             await AssertTreeContents(expected);
         }
@@ -1044,7 +1092,7 @@ namespace FlowtideDotNet.Storage.Tests
                 expected[i] = i * 10;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             await AssertTreeContents(expected);
             await AssertGetValueForAll(expected);
@@ -1066,7 +1114,7 @@ namespace FlowtideDotNet.Storage.Tests
                 expected[keys[i]] = keys[i];
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
 
             await AssertTreeContents(expected);
         }
@@ -1088,7 +1136,7 @@ namespace FlowtideDotNet.Storage.Tests
                     values[i] = keys[i] * 10 + batch;
                     expected[keys[i]] = keys[i] * 10 + batch;
                 }
-                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator(), batchSize * 8);
             }
 
             await AssertTreeContents(expected);
@@ -1106,7 +1154,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Insert some data
             var keys = new long[] { 1, 2, 3 };
             var values = new long[] { 10, 20, 30 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Clear the tree
             await _tree.Clear();
@@ -1115,7 +1163,7 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter2 = CreateBulkInserter();
             var keys2 = new long[] { 10, 20, 30 };
             var values2 = new long[] { 100, 200, 300 };
-            await bulkInserter2.ApplyBatch(keys2, values2, 3, new UpsertMutator());
+            await bulkInserter2.ApplyBatch(keys2, values2, 3, new UpsertMutator(), 3 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1138,7 +1186,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { -10, -5, 0, 5, 10 };
             var values = new long[] { -100, -50, 0, 50, 100 };
 
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1159,7 +1207,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { long.MinValue, -1, 0, 1, long.MaxValue };
             var values = new long[] { 1, 2, 3, 4, 5 };
 
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1180,11 +1228,11 @@ namespace FlowtideDotNet.Storage.Tests
 
             var keys1 = new long[] { 42 };
             var values1 = new long[] { 100 };
-            await bulkInserter.ApplyBatch(keys1, values1, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys1, values1, 1, new UpsertMutator(), 1 * 8);
 
             var keys2 = new long[] { 42 };
             var values2 = new long[] { 200 };
-            await bulkInserter.ApplyBatch(keys2, values2, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys2, values2, 1, new UpsertMutator(), 1 * 8);
 
             var (found, value) = await _tree.GetValue(42);
             Assert.True(found);
@@ -1214,7 +1262,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
 
                 // Upsert only
-                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator(), batchSize * 8);
                 for (int i = 0; i < batchSize; i++)
                     expected[keys[i]] = values[i];
             }
@@ -1244,7 +1292,7 @@ namespace FlowtideDotNet.Storage.Tests
                     values[i] = rng.Next(0, 1000);
                 }
 
-                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, batchSize, new UpsertMutator(), batchSize * 8);
 
                 for (int i = 0; i < batchSize; i++)
                     expected[keys[i]] = values[i];
@@ -1266,7 +1314,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Bulk insert
             var keys = new long[] { 1, 3, 5 };
             var values = new long[] { 10, 30, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             // Individual upserts
             await _tree.Upsert(2, 20);
@@ -1295,7 +1343,7 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter = CreateBulkInserter();
             var keys = new long[] { 1, 3, 5 };
             var values = new long[] { 10, 30, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new UpsertMutator(), 3 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1315,7 +1363,7 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter = CreateBulkInserter();
             var keys = new long[] { 1, 2, 3, 4, 5 };
             var values = new long[] { 10, 20, 30, 40, 50 };
-            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new UpsertMutator(), 5 * 8);
 
             await _tree.Delete(3);
 
@@ -1347,7 +1395,7 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter = CreateBulkInserter();
             var keys = new long[] { 3, 7, 10, 11 };
             var values = new long[] { 300, 700, 100, 110 };
-            await bulkInserter.ApplyBatch(keys, values, 4, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, 4, new UpsertMutator(), 4 * 8);
 
             var expected = new SortedDictionary<long, long>();
             for (int i = 0; i < 10; i++)
@@ -1380,7 +1428,7 @@ namespace FlowtideDotNet.Storage.Tests
                 {
                     values[i] = rng.Next();
                 }
-                await bulkInserter.ApplyBatch(keys, values, size, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, size, new UpsertMutator(), size * 8);
             }
 
             // Verify sorted order
@@ -1427,7 +1475,7 @@ namespace FlowtideDotNet.Storage.Tests
                 expected[i] = i;
             }
 
-            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
             await AssertTreeContents(expected);
         }
 
@@ -1458,7 +1506,7 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate key 5 with value 50
             var setupKeys = new long[] { 1, 5, 10 };
             var setupValues = new long[] { 10, 50, 100 };
-            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 3, new UpsertMutator(), 3 * 8);
 
             // Verify setup
             var (foundSetup, valSetup) = await _tree.GetValue(5);
@@ -1471,7 +1519,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 5, 5 };
             var values = new long[] { 0, 999 };
             var mutator = new DeleteThenReinsertMutator();
-            await bulkInserter.ApplyBatch(keys, values, 2, mutator);
+            await bulkInserter.ApplyBatch(keys, values, 2, mutator, 2 * 8);
 
             // Expected: key 5 should exist with value 999
             // Keys 1 and 10 should be untouched
@@ -1495,13 +1543,13 @@ namespace FlowtideDotNet.Storage.Tests
             // Pre-populate keys 1-5
             var setupKeys = new long[] { 1, 2, 3, 4, 5 };
             var setupValues = new long[] { 10, 20, 30, 40, 50 };
-            await bulkInserter.ApplyBatch(setupKeys, setupValues, 5, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 5, new UpsertMutator(), 5 * 8);
 
             // Delete-then-reinsert keys 2 and 4
             var keys = new long[] { 2, 2, 4, 4 };
             var values = new long[] { 0, 222, 0, 444 };
             var mutator = new DeleteThenReinsertMutator();
-            await bulkInserter.ApplyBatch(keys, values, 4, mutator);
+            await bulkInserter.ApplyBatch(keys, values, 4, mutator, 4 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1535,7 +1583,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 5, 5 };
             var values = new long[] { 100, 200 };
 
-            await bulkInserter.ApplyBatch(keys, values, 2, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 2, new ToggleMutator(), 2 * 8);
 
             var (found, _) = await _tree.GetValue(5);
             Assert.False(found, "Key 5 should not exist after insert→delete in same batch");
@@ -1563,7 +1611,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 5, 5, 10 };
             var values = new long[] { 100, 200, 1000 };
 
-            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator(), 3 * 8);
 
             // Key 5 should NOT exist (inserted then deleted)
             var (found5, _) = await _tree.GetValue(5);
@@ -1595,7 +1643,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 5, 5, 5 };
             var values = new long[] { 100, 200, 300 };
 
-            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 3, new ToggleMutator(), 3 * 8);
 
             // Key 5 should exist (insert → delete → insert)
             var (found, val) = await _tree.GetValue(5);
@@ -1616,7 +1664,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = new long[] { 3, 5, 5, 5, 10 };
             var values = new long[] { 30, 100, 200, 300, 1000 };
 
-            await bulkInserter.ApplyBatch(keys, values, 5, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 5, new ToggleMutator(), 5 * 8);
 
             var expected = new SortedDictionary<long, long>
             {
@@ -1638,7 +1686,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = Enumerable.Repeat(5L, 9).ToArray();
             var values = Enumerable.Range(0, 9).Select(i => (long)(i * 100)).ToArray();
 
-            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator(), 9 * 8);
 
             var (found, val) = await _tree.GetValue(5);
             Assert.True(found, "Odd toggle count should leave key inserted");
@@ -1657,7 +1705,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys = Enumerable.Repeat(5L, 10).ToArray();
             var values = Enumerable.Range(0, 10).Select(i => (long)(i * 100)).ToArray();
 
-            await bulkInserter.ApplyBatch(keys, values, 10, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 10, new ToggleMutator(), 10 * 8);
 
             var (found, _) = await _tree.GetValue(5);
             Assert.False(found, "Even toggle count should leave key absent");
@@ -1676,12 +1724,12 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter = CreateBulkInserter();
 
             var setup = new long[] { 5 };
-            await bulkInserter.ApplyBatch(setup, new long[] { 50 }, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(setup, new long[] { 50 }, 1, new UpsertMutator(), 1 * 8);
 
             var keys = Enumerable.Repeat(5L, 6).ToArray();
             var values = Enumerable.Range(0, 6).Select(i => (long)(i * 100)).ToArray();
 
-            await bulkInserter.ApplyBatch(keys, values, 6, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 6, new ToggleMutator(), 6 * 8);
 
             // Even pairs: delete→cancel, delete→cancel, delete→cancel = key survives
             var (found, val) = await _tree.GetValue(5);
@@ -1696,7 +1744,7 @@ namespace FlowtideDotNet.Storage.Tests
             var bulkInserter = CreateBulkInserter();
 
             // Pre-populate key 5
-            await bulkInserter.ApplyBatch(new long[] { 5 }, new long[] { 50 }, 1, new UpsertMutator());
+            await bulkInserter.ApplyBatch(new long[] { 5 }, new long[] { 50 }, 1, new UpsertMutator(), 1 * 8);
 
             // Batch: key 1 (new), key 3 (new x3 = insert→delete→insert),
             //        key 5 (exists x2 = delete→cancel = survives),
@@ -1704,7 +1752,7 @@ namespace FlowtideDotNet.Storage.Tests
             var keys   = new long[] { 1,  3, 3, 3,  5, 5,  8, 8,  10 };
             var values = new long[] { 10, 30, 31, 32, 51, 52, 80, 81, 100 };
 
-            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator());
+            await bulkInserter.ApplyBatch(keys, values, 9, new ToggleMutator(), 9 * 8);
 
             var expected = new SortedDictionary<long, long>
             {

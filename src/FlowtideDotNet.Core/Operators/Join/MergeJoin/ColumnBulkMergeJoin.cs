@@ -32,6 +32,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal struct JoinWeightsMutator : IRowMutator<ColumnRowReference, JoinWeights>
     {
+        public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            var batch = keys[0].referenceBatch;
+            for(int i = 0; i < batch.Columns.Count; i++)
+            {
+                batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
+        }
+
         public GenericWriteOperation Process(ColumnRowReference key, bool exists, in JoinWeights existingData, ref JoinWeights incomingData)
         {
             if (exists)
@@ -248,7 +257,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 rightColumns.Add(Column.Create(memoryManager));
             }
 
-            
+            var batchSize = msg.Data.EventBatchData.GetByteSize();
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -406,7 +415,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
 
-            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(), batchSize);
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
@@ -429,7 +438,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            
+            var batchSize = msg.Data.EventBatchData.GetByteSize();
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -587,7 +596,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 
 
-            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(), batchSize);
         }
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)

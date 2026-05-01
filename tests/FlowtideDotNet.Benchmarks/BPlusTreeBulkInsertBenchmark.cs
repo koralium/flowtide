@@ -140,12 +140,20 @@ namespace DifferntialCompute.Benchmarks
                     values[i] = offset + i;
                 }
 
-                await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+                await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
             }
         }
 
         private struct UpsertMutator : IRowMutator<long, long>
         {
+            public void GetSizePrefixSum(long[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] = 8 * (i + 1);
+                }
+            }
+
             public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
             {
                 return GenericWriteOperation.Upsert;
