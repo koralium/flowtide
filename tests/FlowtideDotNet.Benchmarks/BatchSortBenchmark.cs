@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Benchmarks
         {
             private readonly IColumn[] columns;
             private DataValueContainer _c1 = new DataValueContainer();
-            private DataValueContainer _c2 = new DataValueContainer();
+            private readonly DataValueContainer _c2 = new DataValueContainer();
 
             public OldSortMethod(IColumn[] columns)
             {
