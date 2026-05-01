@@ -15,8 +15,10 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
@@ -25,7 +27,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -1029,6 +1030,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 TotalRows = Count,
                 Children = children
             };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Union);
         }
     }
 }

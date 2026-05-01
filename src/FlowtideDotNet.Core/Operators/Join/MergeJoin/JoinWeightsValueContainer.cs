@@ -75,11 +75,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public void RemoveRange(int start, int count)
         {
             _values.RemoveRange(start, count);
-            //var end = start + count;
-            //for (int i = end - 1; i >= start; i--)
-            //{
-            //    RemoveAt(i);
-            //}
         }
 
         public void Update(int index, JoinWeights value)

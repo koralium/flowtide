@@ -85,6 +85,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 System.Linq.Expressions.Expression selfComparePointerExpression,
                 System.Linq.Expressions.Expression xExpression,
                 System.Linq.Expressions.Expression yExpression);
+
+            CompareColumnState GetColumnState();
         }
 
         private sealed class Int8Data : IIntData
@@ -249,6 +251,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 return NativeSortHelpers.CallCompareInt8(selfComparePointerExpression, xExpression, yExpression);
             }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -412,6 +419,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
             {
                 return NativeSortHelpers.CallCompareInt16(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int16);
             }
         }
 
@@ -578,6 +590,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 return NativeSortHelpers.CallCompareInt32(selfComparePointerExpression, xExpression, yExpression);
             }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int32);
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -741,6 +758,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
             {
                 return NativeSortHelpers.CallCompareInt64(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
             }
         }
 
@@ -1223,6 +1245,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (_data != null)
+            {
+                return _data.GetColumnState();
+            }
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+        }
     }
 }
 

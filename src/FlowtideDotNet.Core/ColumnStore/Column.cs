@@ -1509,13 +1509,16 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public CompareColumnState GetColumnState()
         {
-            var state = CompareColumnStateBuilder.Create(Type);
-
-            if (_dataColumn != null && _nullCounter > 0)
+            if (_dataColumn != null)
             {
-                state |= CompareColumnState.HasValidityBitmap;
+                var state = _dataColumn.GetColumnState();
+                if (_nullCounter > 0)
+                {
+                    state |= CompareColumnState.HasValidityBitmap;
+                }
+                return state;
             }
-            return state;
+            return CompareColumnStateBuilder.Create(Type);
         }
 
         public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)

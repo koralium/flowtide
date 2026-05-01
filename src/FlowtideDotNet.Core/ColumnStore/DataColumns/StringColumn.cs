@@ -329,5 +329,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.String);
+        }
     }
 }

@@ -114,6 +114,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Do nothing
         }
 
+        CompareColumnState GetColumnState();
+
         System.Linq.Expressions.Expression CreateSelfCompareExpression(
             System.Linq.Expressions.Expression selfComparePointerExpression,
             System.Linq.Expressions.Expression xExpression,
