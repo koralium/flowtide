@@ -78,6 +78,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int GetByteSize(int start, int end);
 
+        void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
+
         void InsertRangeFrom(int index, IColumn otherColumn, int start, int count);
 
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);

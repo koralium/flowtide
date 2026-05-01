@@ -218,6 +218,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return Count * sizeof(decimal);
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _values.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
         {
             if (other is DecimalColumn decimalColumn)

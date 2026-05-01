@@ -19,7 +19,10 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using SqlParser.Ast;
 using System.IO.Hashing;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -100,6 +103,41 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
             }
             return size;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+
+            int lastOffset = -2;
+            int lastSize = 0;
+
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+                int offset = offsets.Get(idx);
+
+                if (offset == NullValueIndex)
+                {
+                    // Do nothing
+                }
+                else if (offset == lastOffset)
+                {
+                    sum += lastSize;
+                }
+                else
+                {
+                    lastSize = innerColumn.GetByteSize(offset, offset);
+                    lastOffset = offset;
+                    sum += lastSize;
+                }
+
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)

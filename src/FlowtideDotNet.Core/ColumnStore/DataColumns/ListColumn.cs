@@ -25,6 +25,8 @@ using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore
@@ -465,6 +467,31 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return sizeof(int);
             }
             return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+
+                int startOffset = _offsets.Get(idx);
+                int endOffset = _offsets.Get(idx + 1);
+
+                sum += sizeof(int);
+
+                if (startOffset != endOffset)
+                {
+                    sum += _internalColumn.GetByteSize(startOffset, endOffset - 1);
+                }
+
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
         }
 
         public int GetByteSize()

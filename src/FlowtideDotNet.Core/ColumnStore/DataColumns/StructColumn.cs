@@ -20,8 +20,10 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.Drawing;
 using System.IO.Hashing;
 using System.Text.Json;
+using static SqlParser.Ast.MatchRecognizeSymbol;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -250,6 +252,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 size += _columns[i].GetByteSize();
             }
             return size;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
         }
 
         public SerializationEstimation GetSerializationEstimate()

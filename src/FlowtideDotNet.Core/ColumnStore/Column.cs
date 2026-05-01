@@ -909,6 +909,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn!.GetByteSize() + _validityList!.GetByteSize(0, Count - 1);
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            _dataColumn!.GetPrefixSumByteSizes(indices, sizes);
+            _validityList!.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         private bool CompareOtherColumnType(Column otherColumn)
         {
             if (_type != otherColumn.Type)

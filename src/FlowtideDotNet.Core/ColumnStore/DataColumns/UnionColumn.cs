@@ -26,6 +26,7 @@ using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
@@ -606,6 +607,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 size += _valueColumns[i].GetByteSize();
             }
             return size + (Count * sizeof(int));
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+                sum += sizeof(int);
+                int typeIndex = _typeList[idx];
+                int childOffset = _offsets.Get(idx);
+                sum += _valueColumns[typeIndex].GetByteSize(childOffset, childOffset);
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
         }
 
         private sbyte CheckOtherDataColumnTypeExists(IDataColumn other, sbyte[] typeIds, List<IDataColumn> valueColumns)

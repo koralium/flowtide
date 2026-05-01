@@ -13,6 +13,8 @@
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Core.ColumnStore.Utils
 {
@@ -352,6 +354,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             var startOffset = _offsets.Get(start);
             var endOffset = _offsets.Get(end + 1);
             return endOffset - startOffset + ((end - start + 1) * sizeof(int));
+        }
+
+        /// <summary>
+        /// Fetches sizes for each index and adds them to the sizes span. 
+        /// This is used to calculate the size of a batch of elements in bytes.
+        /// It adds instead of replaces so it can check multiple columns
+        /// </summary>
+        /// <param name="indices"></param>
+        /// <param name="sizes"></param>
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+
+                int startOffset = _offsets.Get(idx);
+                int endOffset = _offsets.Get(idx + 1);
+                sum += endOffset - startOffset + sizeof(int);
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
         }
 
         public void InsertRangeFrom(int index, BinaryList binaryList, int start, int count)
