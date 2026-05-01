@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             var lambda = Expression.Lambda<CompareDelegate>(expr, p1, p2, p3);
             var compiled = lambda.Compile();
 
-            var compareResult = compiled(selfComparePointers, 0, 1);
+            Assert.True(compiled(selfComparePointers, 0, 1) < 0);
         }
 
         [Fact]
