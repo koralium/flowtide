@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
     internal static class ComparerStructCompiler
     {
-        private static AssemblyName s_assemblyName = new AssemblyName("DynamicSortAssembly");
+        private static readonly AssemblyName s_assemblyName = new AssemblyName("DynamicSortAssembly");
         private static AssemblyBuilder s_assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
                 s_assemblyName,
                 AssemblyBuilderAccess.Run
