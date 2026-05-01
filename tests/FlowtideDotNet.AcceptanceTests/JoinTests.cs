@@ -1503,5 +1503,84 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Validate();
         }
+
+        /// <summary>
+        /// Tests complex data types that wont be able to do native sorting.
+        /// This will do normal compare
+        /// </summary>
+        /// <returns></returns>
+        [Fact]
+        public async Task DoubleLeftJoinMiddleTableRetractionPropagatesNullsWithoutCrashingComplexType()
+        {
+            GenerateCompanies(10);
+
+            void Validate()
+            {
+                AssertCurrentDataEqual(
+                from company in Companies
+                join user in Users on company.CompanyId equals user.CompanyId into companyUsers
+                from subuser in companyUsers.DefaultIfEmpty()
+                let userOrders = subuser == null
+                    ? Enumerable.Empty<Order>()
+                    : Orders.Where(o => o.UserKey == subuser.UserKey)
+                from suborder in userOrders.DefaultIfEmpty()
+                select new
+                {
+                    company.Name,
+                    subuser?.FirstName,
+                    suborder?.GuidVal
+                });
+            }
+
+            await StartStream(@"
+
+                CREATE VIEW ordersview AS
+                SELECT 
+                    o.GuidVal as GuidVal,
+                    LIST(o.UserKey) as UserKey
+                FROM orders o;
+
+                CREATE VIEW usersview AS
+                SELECT 
+                    u.FirstName as FirstName,
+                    CASE WHEN u.UserKey IS NULL THEN NULL ELSE LIST(u.UserKey) END as UserKey,
+                    u.CompanyId as CompanyId
+                FROM users u;
+
+                INSERT INTO output 
+                SELECT 
+                    c.name, u.firstName, o.GuidVal
+                FROM companies c
+                LEFT JOIN usersview u
+                ON c.CompanyId = u.CompanyId
+                LEFT JOIN ordersview o
+                ON o.UserKey = u.UserKey;");
+            await WaitForUpdate();
+
+            Validate();
+
+            GenerateUsers(100);
+
+            await WaitForUpdate();
+
+            Validate();
+
+            GenerateOrders(100);
+
+            await WaitForUpdate();
+
+            Validate();
+
+            var firstCompany = Companies.First();
+
+            foreach (var user in Users.Where(x => x.CompanyId == firstCompany.CompanyId).ToList())
+            {
+                DeleteUser(user);
+            }
+
+            await WaitForUpdate();
+
+            Validate();
+        }
     }
 }

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -42,7 +43,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int CompareColumn(IColumn column, int x, int y)
         {
-            return column.CompareTo(column, x, y);
+            var xval = column.GetValueAt(x, default);
+            var yval = column.GetValueAt(y, default);
+
+            return DataValueComparer.CompareTo(xval, yval);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
