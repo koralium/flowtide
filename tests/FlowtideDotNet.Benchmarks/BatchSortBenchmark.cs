@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Benchmarks
         private IColumn[] columns = null!;
         private EventBatchData data = null!;
         private SortCompiler.SortDelegate sortMethod = null!;
-        private SelfComparePointers[] pointers = new SelfComparePointers[1];
+        private readonly SelfComparePointers[] pointers = new SelfComparePointers[1];
         private BatchSortCompiler.CompareDelegate _compareDelegate = null!;
         private BatchSorter _batchSorter = null!;
 
