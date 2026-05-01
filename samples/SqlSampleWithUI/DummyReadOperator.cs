@@ -76,7 +76,6 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            Random r = new Random(123);
             for (int i = 0; i < 1_000_000; i++)
             {
                 await output.EnterCheckpointLock();
