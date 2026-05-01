@@ -217,6 +217,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return Count * sizeof(double);
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _data.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
         {
             if (other is DoubleColumn doubleColumn)

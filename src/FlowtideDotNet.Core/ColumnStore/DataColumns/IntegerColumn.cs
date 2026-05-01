@@ -29,6 +29,8 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -1253,6 +1255,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return _data.GetColumnState();
             }
             return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            if (_data != null)
+            {
+                int length = indices.Length;
+                var elementSize = _data.BitWidth / 8;
+                ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+                int cumulativeMass = elementSize;
+
+                for (int i = 0; i < length; i++)
+                {
+                    Unsafe.Add(ref sizesHead, i) += cumulativeMass;
+                    cumulativeMass += elementSize;
+                }
+            }
         }
     }
 }

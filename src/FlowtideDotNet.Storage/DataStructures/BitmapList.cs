@@ -1380,6 +1380,17 @@ namespace FlowtideDotNet.Storage.DataStructures
             return (((end - start) + 31) / 32) * 4;
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            for (int i = 0; i < length; i++)
+            {
+                Unsafe.Add(ref sizesHead, i) += ((i + 8) >> 3);
+            }
+        }
+
         public BitmapList Copy(IMemoryAllocator memoryAllocator)
         {
             var mem = MemorySlice;

@@ -76,6 +76,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             return 0;
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            // Do nothing, no sizes
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Null;

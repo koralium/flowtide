@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -306,6 +307,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Get(in int index)
         {
             return _data[index];

@@ -205,6 +205,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Null);
         }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            // Null column has no data, so all sizes are 0
+        }
     }
 }
 

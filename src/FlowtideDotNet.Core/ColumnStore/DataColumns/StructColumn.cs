@@ -252,6 +252,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return size;
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
+        }
+
         public SerializationEstimation GetSerializationEstimate()
         {
             var estimate = new SerializationEstimation();

@@ -15,6 +15,7 @@ using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -458,6 +459,22 @@ namespace FlowtideDotNet.Storage.DataStructures
         public void SetLength(int newLength)
         {
             _length = newLength;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            int elementSize = sizeof(T);
+
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int cumulativeMass = elementSize;
+
+            for (int i = 0; i < length; i++)
+            {
+                Unsafe.Add(ref sizesHead, i) += cumulativeMass;
+                cumulativeMass += elementSize;
+            }
         }
     }
 }

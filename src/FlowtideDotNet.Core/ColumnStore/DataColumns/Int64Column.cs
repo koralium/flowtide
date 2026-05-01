@@ -363,6 +363,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
         }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            throw new NotSupportedException("Int64Column is no longer in use");
+        }
     }
 }
 

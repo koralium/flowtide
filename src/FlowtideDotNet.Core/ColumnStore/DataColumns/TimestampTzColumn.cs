@@ -146,6 +146,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return Count * sizeof(TimestampTzValue);
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _values.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
         {
             return ArrowTypeId.Timestamp;
