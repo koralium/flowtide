@@ -237,17 +237,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var memoryManager = MemoryAllocator;
 
+            int keyLength = msg.Data.Weights.Count;
             List<Column> rightColumns = new List<Column>();
-            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
 
-            int keyLength = msg.Data.Weights.Count;
+            
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -417,17 +418,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var memoryManager = MemoryAllocator;
 
+            int keyLength = msg.Data.Weights.Count;
             List<Column> leftColumns = new List<Column>();
-            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            int keyLength = msg.Data.Weights.Count;
+            
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -447,19 +449,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var sortedIndices = SortBatch(msg.Data.EventBatchData, keyLength, _rightInsertComparer, _rightBatchSorter, _rightSortColumns);
 
-            var leftSearcher = _leftTree.CreateBulkSearcher(_searchLeftComparer);
-            await leftSearcher.Start(keys, keyLength, sortedIndices);
+            await _leftSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
 
-            while (await leftSearcher.MoveNextLeaf())
+            while (await _leftSearcher.MoveNextLeaf())
             {
-                var leafNode = leftSearcher.CurrentLeaf;
+                var leafNode = _leftSearcher.CurrentLeaf;
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
 
-                var results = leftSearcher.CurrentResults;
+                var results = _leftSearcher.CurrentResults;
                 for (int r = 0; r < results.Count; r++)
                 {
                     var result = results[r];

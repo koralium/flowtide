@@ -1549,7 +1549,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             // If there are null values, we need to check the validity bitmap first
             if (_nullCounter > 0)
             {
-                var compareBitsExpression = NativeSortHelpers.CallCompareBits(selfComparePointerExpression, xExpression, yExpression);
+                var compareBitsExpression = NativeSortHelpers.CallCompareValidityBits(selfComparePointerExpression, xExpression, yExpression);
 
                 var compareBitsResult = System.Linq.Expressions.Expression.Variable(typeof(int), "compareBits");
 

@@ -105,38 +105,30 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            try
+            int currentStart = startIndex;
+            int currentEnd = endIndex;
+            for (int i = 0; i < selfColumns.Count; i++)
             {
-                int currentStart = startIndex;
-                int currentEnd = endIndex;
-                for (int i = 0; i < selfColumns.Count; i++)
+                // Get value by container to skip boxing for each value
+                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
+
+                if (dataValueContainer._type == ArrowTypeId.Null)
                 {
-                    // Get value by container to skip boxing for each value
-                    key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
-
-                    if (dataValueContainer._type == ArrowTypeId.Null)
-                    {
-                        return new FindBoundriesResult(~currentStart, ~currentStart);
-                    }
-                    var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
-
-                    if (low < 0)
-                    {
-                        return new FindBoundriesResult(low, low);
-                    }
-                    else
-                    {
-                        currentStart = low;
-                        currentEnd = high;
-                    }
+                    return new FindBoundriesResult(~currentStart, ~currentStart);
                 }
-                return new FindBoundriesResult(currentStart, currentEnd);
+                var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                else
+                {
+                    currentStart = low;
+                    currentEnd = high;
+                }
             }
-            catch
-            {
-                throw;
-            }
-            
+            return new FindBoundriesResult(currentStart, currentEnd);
         }
     }
 }

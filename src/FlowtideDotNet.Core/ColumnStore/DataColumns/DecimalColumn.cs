@@ -313,6 +313,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Decimal128);
         }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _values.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareDecimal128(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
 

@@ -308,6 +308,19 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             return CompareColumnStateBuilder.Create(ArrowTypeId.Binary);
         }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _data.GetDataPointer_Unsafe();
+            selfComparePointers.secondaryPointer = _data.GetOffsetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareBinary(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
 

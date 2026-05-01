@@ -325,7 +325,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
-            return NativeSortHelpers.CallCompareStrings(selfComparePointerExpression, xExpression, yExpression);
+            return NativeSortHelpers.CallCompareBinary(selfComparePointerExpression, xExpression, yExpression);
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;
