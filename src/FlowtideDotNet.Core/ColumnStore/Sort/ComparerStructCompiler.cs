@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 s_assemblyName,
                 AssemblyBuilderAccess.Run
             );
-        private static ModuleBuilder s_moduleBuilder = s_assemblyBuilder.DefineDynamicModule("DynamicSortModule");
+        private static readonly ModuleBuilder s_moduleBuilder = s_assemblyBuilder.DefineDynamicModule("DynamicSortModule");
         private static readonly object s_lock = new object();
         private static int _typeNameCounter = 0;
 
