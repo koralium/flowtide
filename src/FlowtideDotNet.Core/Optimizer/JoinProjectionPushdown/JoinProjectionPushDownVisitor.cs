@@ -41,8 +41,10 @@ namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
             List<int> leftSideIds,
             List<int> rightSideIds)
         {
-            if (expression is DirectFieldReference)
-            {
+            if (expression is DirectFieldReference directField && 
+                directField.ReferenceSegment is StructReferenceSegment structRef &&
+                structRef.Child == null)
+            {   
                 return expression;
             }
             var visitor = new JoinExpressionVisitor(leftSize);
