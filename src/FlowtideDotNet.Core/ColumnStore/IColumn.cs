@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using System.IO.Hashing;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -92,6 +93,17 @@ namespace FlowtideDotNet.Core.ColumnStore
         void DeleteBatch(ReadOnlySpan<int> targets);
 
         ColumnSizeInfo GetColumnSizeInfo();
+
+        CompareColumnState GetColumnState();
+
+        bool SupportSelfCompareExpression => false;
+
+        void SetSelfComparePointers(ref SelfComparePointers selfComparePointers);
+
+        System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression);
     }
 }
 

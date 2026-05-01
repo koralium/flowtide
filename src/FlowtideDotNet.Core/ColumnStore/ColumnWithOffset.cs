@@ -14,6 +14,7 @@ using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -286,6 +287,95 @@ namespace FlowtideDotNet.Core.ColumnStore
             // Give the inner size, this is not an exact number, but it gives a good estimate of the size of the data,
             // without needing to calculate the exact size of the offsets which is more expensive.
             return innerColumn.GetColumnSizeInfo();
+        }
+
+        bool IColumn.SupportSelfCompareExpression => innerColumn.SupportSelfCompareExpression;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (innerColumn is Column c)
+            {
+                var state = c.GetColumnState();
+                state |= CompareColumnState.IsIndirectView;
+                return state;
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (innerColumn is Column c)
+            {
+                c.SetSelfComparePointers(ref selfComparePointers);
+                selfComparePointers.columnOffsetsPointer = offsets.GetPointer_Unsafe();
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
+        }
+
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (innerColumn is Column c)
+            {
+                if (c.Type == ArrowTypeId.Null)
+                {
+                    // We will always get null for all offsets
+                    return System.Linq.Expressions.Expression.Constant(0);
+                }
+
+                var getXOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, xExpression);
+                var getYOffset = NativeSortHelpers.CallGetColumnOffset(selfComparePointerExpression, yExpression);
+
+                var xOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "xOffset");
+                var yOffset = System.Linq.Expressions.Expression.Variable(typeof(int), "yOffset");
+
+                // Assign
+                var assignXOffset = System.Linq.Expressions.Expression.Assign(xOffset, getXOffset);
+                var assignYOffset = System.Linq.Expressions.Expression.Assign(yOffset, getYOffset);
+
+                var innerCompare = innerColumn.CreateSelfCompareExpression(selfComparePointerExpression, xOffset, yOffset);
+
+                if (c.NullCounter > 0)
+                {
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset],
+                        assignXOffset,
+                        assignYOffset,
+                        innerCompare
+                        );
+                }
+                else
+                {
+                    var offsetCompare = NativeSortHelpers.CallCompareOffsets(xOffset, yOffset);
+                    var offsetCompareVar = System.Linq.Expressions.Expression.Variable(typeof(int), "offsetCompare");
+                    var assignOffsetCompare = System.Linq.Expressions.Expression.Assign(offsetCompareVar, offsetCompare);
+                    var condition = System.Linq.Expressions.Expression.Condition(
+                        System.Linq.Expressions.Expression.Equal(offsetCompareVar, System.Linq.Expressions.Expression.Constant(2)),
+                        innerCompare,
+                        offsetCompareVar
+                        );
+
+                    return System.Linq.Expressions.Expression.Block(
+                        [xOffset, yOffset, offsetCompareVar],
+                        assignXOffset,
+                        assignYOffset,
+                        assignOffsetCompare,
+                        condition
+                        );
+                }
+            }
+            else
+            {
+                throw new NotSupportedException();
+            }
         }
     }
 }

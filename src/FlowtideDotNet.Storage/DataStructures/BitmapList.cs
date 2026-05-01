@@ -16,6 +16,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -169,6 +170,12 @@ namespace FlowtideDotNet.Storage.DataStructures
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
         public bool this[int index] => Get(index);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void* GetPointer_Unsafe()
+        {
+            return _data;
+        }
 
         private void EnsureSize(int length)
         {

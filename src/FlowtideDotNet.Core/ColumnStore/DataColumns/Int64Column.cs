@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -356,6 +357,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 DataType = ArrowTypeId.Int64,
                 TotalRows = Count
             };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
         }
     }
 }

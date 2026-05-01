@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -123,22 +123,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return (columns, outgoingIndices);
         }
 
-        private static List<KeyValuePair<int, ReferenceSegment?>> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
+        private static List<int> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
         {
-            List<KeyValuePair<int, ReferenceSegment?>> leftKeys = new List<KeyValuePair<int, ReferenceSegment?>>();
+            List<int> keys = new List<int>();
             for (int i = 0; i < fieldReferences.Count; i++)
             {
                 if (fieldReferences[i] is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    leftKeys.Add(new KeyValuePair<int, ReferenceSegment?>(structReferenceSegment.Field - relativeIndex, structReferenceSegment.Child));
+                    if (structReferenceSegment.Child != null)
+                    {
+                        throw new NotSupportedException("Nested struct join keys are not supported in ColumnStoreMergeJoin. Use a projection to flatten nested keys before the join.");
+                    }
+                    keys.Add(structReferenceSegment.Field - relativeIndex);
                 }
                 else
                 {
                     throw new NotImplementedException("Merge join can only have keys that use struct reference segments at this time");
                 }
             }
-            return leftKeys;
+            return keys;
         }
 
         public override string DisplayName => "Merge Join";

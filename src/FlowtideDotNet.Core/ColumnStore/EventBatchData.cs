@@ -38,6 +38,16 @@ namespace FlowtideDotNet.Core.ColumnStore
         }
 
         /// <summary>
+        /// Returns the raw array of columns, this array MUST not be modified
+        /// since that will break thread safety.
+        /// </summary>
+        /// <returns></returns>
+        public IColumn[] GetColumns_Unsafe()
+        {
+            return columns;
+        }
+
+        /// <summary>
         /// Compares two rows from different batches.
         /// </summary>
         /// <param name="otherBatch"></param>

@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
@@ -56,6 +57,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private IBplusTreeBulkSearch<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer, MergeJoinSearchComparer>? _rightSearcher;
         private IBplusTreeBulkSearch<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer, MergeJoinSearchComparer>? _leftSearcher;
 
+        private readonly BatchSorter _leftBatchSorter;
+        private readonly BatchSorter _rightBatchSorter;
+        private readonly IColumn[] _leftSortColumns;
+        private readonly IColumn[] _rightSortColumns;
+        private int[] _sortedIndicesBuffer = Array.Empty<int>();
 
         private readonly MergeJoinRelation _mergeJoinRelation;
         private readonly MergeJoinInsertComparer _leftInsertComparer;
@@ -95,6 +101,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns);
             _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns);
+
+            _leftBatchSorter = new BatchSorter(_leftInsertComparer.ColumnOrder.Count);
+            _rightBatchSorter = new BatchSorter(_rightInsertComparer.ColumnOrder.Count);
+            _leftSortColumns = new IColumn[_leftInsertComparer.ColumnOrder.Count];
+            _rightSortColumns = new IColumn[_rightInsertComparer.ColumnOrder.Count];
 
             (_leftOutputColumns, _leftOutputIndices) = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
             (_rightOutputColumns, _rightOutputIndices) = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
@@ -140,22 +151,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return (columns, outgoingIndices);
         }
 
-        private static List<KeyValuePair<int, ReferenceSegment?>> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
+        private static List<int> GetCompareColumns(List<FieldReference> fieldReferences, int relativeIndex)
         {
-            List<KeyValuePair<int, ReferenceSegment?>> leftKeys = new List<KeyValuePair<int, ReferenceSegment?>>();
+            List<int> keys = new List<int>();
             for (int i = 0; i < fieldReferences.Count; i++)
             {
                 if (fieldReferences[i] is DirectFieldReference directFieldReference &&
                     directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    leftKeys.Add(new KeyValuePair<int, ReferenceSegment?>(structReferenceSegment.Field - relativeIndex, structReferenceSegment.Child));
+                    if (structReferenceSegment.Child != null)
+                    {
+                        throw new NotSupportedException("Nested struct join keys are not supported in ColumnBulkMergeJoin. Use a projection to flatten nested keys before the join.");
+                    }
+                    keys.Add(structReferenceSegment.Field - relativeIndex);
                 }
                 else
                 {
                     throw new NotImplementedException("Merge join can only have keys that use struct reference segments at this time");
                 }
             }
-            return leftKeys;
+            return keys;
         }
 
         public override string DisplayName => "Merge Join Bulk";
@@ -222,17 +237,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var memoryManager = MemoryAllocator;
 
+            int keyLength = msg.Data.Weights.Count;
             List<Column> rightColumns = new List<Column>();
-            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
 
-            int keyLength = msg.Data.Weights.Count;
+            
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -250,7 +266,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 };
             }
 
-            var sortedIndices = _leftInserter.SortAndGetIndices(keys, keyLength);
+            var sortedIndices = SortBatch(msg.Data.EventBatchData, keyLength, _leftInsertComparer, _leftBatchSorter, _leftSortColumns);
 
             await _rightSearcher.Start(keys, keyLength, sortedIndices);
 
@@ -402,17 +418,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             var memoryManager = MemoryAllocator;
 
+            int keyLength = msg.Data.Weights.Count;
             List<Column> leftColumns = new List<Column>();
-            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
+            PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            int keyLength = msg.Data.Weights.Count;
+            
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -430,21 +447,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 };
             }
 
-            var sortedIndices = _rightInserter.SortAndGetIndices(keys, keyLength);
+            var sortedIndices = SortBatch(msg.Data.EventBatchData, keyLength, _rightInsertComparer, _rightBatchSorter, _rightSortColumns);
 
-            var leftSearcher = _leftTree.CreateBulkSearcher(_searchLeftComparer);
-            await leftSearcher.Start(keys, keyLength, sortedIndices);
+            await _leftSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
 
-            while (await leftSearcher.MoveNextLeaf())
+            while (await _leftSearcher.MoveNextLeaf())
             {
-                var leafNode = leftSearcher.CurrentLeaf;
+                var leafNode = _leftSearcher.CurrentLeaf;
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
 
-                var results = leftSearcher.CurrentResults;
+                var results = _leftSearcher.CurrentResults;
                 for (int r = 0; r < results.Count; r++)
                 {
                     var result = results[r];
@@ -698,6 +714,25 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 });
             _rightInserter = _rightTree.CreateBulkInserter();
             _rightSearcher = _rightTree.CreateBulkSearcher(_searchRightComparer);
+        }
+
+        private int[] SortBatch(EventBatchData batchData, int keyLength, MergeJoinInsertComparer comparer, BatchSorter batchSorter, IColumn[] sortColumns)
+        {
+            if (keyLength > _sortedIndicesBuffer.Length)
+            {
+                _sortedIndicesBuffer = new int[keyLength];
+            }
+            for (int i = 0; i < comparer.ColumnOrder.Count; i++)
+            {
+                sortColumns[i] = batchData.Columns[comparer.ColumnOrder[i]];
+            }
+            for (int i = 0; i < keyLength; i++)
+            {
+                _sortedIndicesBuffer[i] = i;
+            }
+            var indirectSpan = _sortedIndicesBuffer.AsSpan(0, keyLength);
+            batchSorter.SortData(sortColumns, ref indirectSpan);
+            return _sortedIndicesBuffer;
         }
     }
 }

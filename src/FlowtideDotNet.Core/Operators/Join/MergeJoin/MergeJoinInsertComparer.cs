@@ -13,32 +13,29 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
-using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal class MergeJoinInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private List<KeyValuePair<int, ReferenceSegment?>> columnOrder;
-        public MergeJoinInsertComparer(List<KeyValuePair<int, ReferenceSegment?>> comparisonColumns, int columnCount)
+        public List<int> ColumnOrder { get; }
+        public MergeJoinInsertComparer(List<int> comparisonColumns, int columnCount)
         {
             dataValueContainer = new DataValueContainer();
-            columnOrder = new List<KeyValuePair<int, ReferenceSegment?>>();
+            ColumnOrder = new List<int>();
             // Add the comparison columns first
             for (int i = 0; i < comparisonColumns.Count; i++)
             {
-                columnOrder.Add(comparisonColumns[i]);
+                ColumnOrder.Add(comparisonColumns[i]);
             }
 
             // Add the missing columns in the order they appear in the data
             for (int i = 0; i < columnCount; i++)
             {
-                var exists = columnOrder.Exists(x => x.Key == i);
-                var existingColumn = columnOrder.Find(x => x.Key == i);
-                if (!exists || existingColumn.Value != null)
+                if (!ColumnOrder.Contains(i))
                 {
-                    columnOrder.Add(new KeyValuePair<int, ReferenceSegment?>(i, default));
+                    ColumnOrder.Add(i);
                 }
             }
         }
@@ -49,11 +46,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
-            for (int i = 0; i < columnOrder.Count; i++)
+            for (int i = 0; i < ColumnOrder.Count; i++)
             {
-                var col = columnOrder[i];
-                x.referenceBatch.Columns[col.Key].GetValueAt(x.RowIndex, dataValueContainer, col.Value);
-                y.referenceBatch.Columns[col.Key].GetValueAt(y.RowIndex, _yDataValueContainer, col.Value);
+                var col = ColumnOrder[i];
+                x.referenceBatch.Columns[col].GetValueAt(x.RowIndex, dataValueContainer, default);
+                y.referenceBatch.Columns[col].GetValueAt(y.RowIndex, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -65,11 +62,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
         {
-            for (int i = 0; i < columnOrder.Count; i++)
+            for (int i = 0; i < ColumnOrder.Count; i++)
             {
-                var col = columnOrder[i];
-                key.referenceBatch.Columns[col.Key].GetValueAt(key.RowIndex, dataValueContainer, col.Value);
-                keyContainer._data.Columns[col.Key].GetValueAt(index, _yDataValueContainer, col.Value);
+                var col = ColumnOrder[i];
+                key.referenceBatch.Columns[col].GetValueAt(key.RowIndex, dataValueContainer, default);
+                keyContainer._data.Columns[col].GetValueAt(index, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -83,11 +80,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             int start = startIndex;
             int end = endIndex;
-            for (int i = 0; i < columnOrder.Count; i++)
+            for (int i = 0; i < ColumnOrder.Count; i++)
             {
-                var column = columnOrder[i];
-                key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);
-                var (low, high) = keyContainer._data.Columns[column.Key].SearchBoundries(dataValueContainer, start, end, column.Value);
+                var column = ColumnOrder[i];
+                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low < 0)
                 {
@@ -107,12 +104,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             int index = -1;
             int start = 0;
             int end = keyContainer.Count - 1;
-            for (int i = 0; i < columnOrder.Count; i++)
+            for (int i = 0; i < ColumnOrder.Count; i++)
             {
-                var column = columnOrder[i];
+                var column = ColumnOrder[i];
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[column.Key].GetValueAt(key.RowIndex, dataValueContainer, column.Value);
-                var (low, high) = keyContainer._data.Columns[column.Key].SearchBoundries(dataValueContainer, start, end, column.Value);
+                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low < 0)
                 {

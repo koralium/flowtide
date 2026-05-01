@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -319,6 +320,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 TotalRows = Count,
             };
         }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Timestamp);
+        }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _values.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareTimestampTzValues(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
 

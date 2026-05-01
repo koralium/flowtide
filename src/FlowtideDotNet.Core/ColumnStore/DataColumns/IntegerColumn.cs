@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -77,6 +78,15 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex);
 
             void DeleteBatch(ReadOnlySpan<int> targets);
+
+            void SetSelfComparePointers(ref SelfComparePointers selfComparePointers);
+
+            System.Linq.Expressions.Expression CreateSelfCompareExpression(
+                System.Linq.Expressions.Expression selfComparePointerExpression,
+                System.Linq.Expressions.Expression xExpression,
+                System.Linq.Expressions.Expression yExpression);
+
+            CompareColumnState GetColumnState();
         }
 
         private sealed class Int8Data : IIntData
@@ -231,6 +241,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _list.DeleteBatch(targets);
             }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt8(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -384,6 +409,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt16(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int16);
             }
         }
 
@@ -540,6 +580,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 _list.DeleteBatch(targets);
             }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt32(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int32);
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -693,6 +748,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt64(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
             }
         }
 
@@ -1152,6 +1222,37 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 TotalRows = Count,
                 BitWidth = _data?.BitWidth ?? 8
             };
+        }
+
+        void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (_data != null)
+            {
+                _data.SetSelfComparePointers(ref selfComparePointers);
+            }
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (_data != null)
+            {
+                return _data.CreateSelfCompareExpression(selfComparePointerExpression, xExpression, yExpression);
+            }
+            return System.Linq.Expressions.Expression.Constant(0); // No elements
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (_data != null)
+            {
+                return _data.GetColumnState();
+            }
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
         }
     }
 }

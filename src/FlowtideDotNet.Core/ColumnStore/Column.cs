@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -193,6 +194,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         StructHeader? IColumn.StructHeader => StructHeader;
 
         public IDataValue this[int index] => GetValueAt(index, default);
+
+        public int NullCounter => _nullCounter;
 
         /// <summary>
         /// Used only for debugging
@@ -1500,6 +1503,75 @@ namespace FlowtideDotNet.Core.ColumnStore
                 };
             }
             return _dataColumn.GetColumnSizeInfo();
+        }
+
+        bool IColumn.SupportSelfCompareExpression => _dataColumn == null || _dataColumn.SupportSelfCompareExpression;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (_dataColumn != null)
+            {
+                var state = _dataColumn.GetColumnState();
+                if (_nullCounter > 0)
+                {
+                    state |= CompareColumnState.HasValidityBitmap;
+                }
+                return state;
+            }
+            return CompareColumnStateBuilder.Create(Type);
+        }
+
+        public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (_dataColumn != null)
+            {
+                _dataColumn.SetSelfComparePointers(ref selfComparePointers);
+                if (_nullCounter > 0)
+                {
+                    Debug.Assert(_validityList != null);
+                    selfComparePointers.validityPointer = _validityList.GetPointer_Unsafe();
+                }
+            }
+        }
+
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (_dataColumn == null)
+            {
+                return System.Linq.Expressions.Expression.Constant(0);
+            }
+
+            var dataColumnCompare = _dataColumn.CreateSelfCompareExpression(selfComparePointerExpression, xExpression, yExpression);
+
+            // If there are null values, we need to check the validity bitmap first
+            if (_nullCounter > 0)
+            {
+                var compareBitsExpression = NativeSortHelpers.CallCompareValidityBits(selfComparePointerExpression, xExpression, yExpression);
+
+                var compareBitsResult = System.Linq.Expressions.Expression.Variable(typeof(int), "compareBits");
+
+                System.Linq.Expressions.Expression assignCompareBits = System.Linq.Expressions.Expression.Assign(compareBitsResult, compareBitsExpression);
+
+                // (compareBits == 2) ? DataColumn.Compare(...) : compareBits
+                System.Linq.Expressions.Expression checkResult = System.Linq.Expressions.Expression.Condition(
+                    System.Linq.Expressions.Expression.Equal(compareBitsResult, System.Linq.Expressions.Expression.Constant(2)),
+                    dataColumnCompare,
+                    compareBitsResult
+                    );
+
+                System.Linq.Expressions.Expression block = System.Linq.Expressions.Expression.Block(
+                    new[] { compareBitsResult },
+                    assignCompareBits,
+                    checkResult
+                );
+
+                return block;
+            }
+
+            return dataColumnCompare;
         }
     }
 }
