@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     {
         public delegate void SortDelegate(SortCompareContext context, ref Span<int> indices);
 
-        private static ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
+        private static readonly ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UInt128 CreateKey(IColumn[] columns)
