@@ -1505,7 +1505,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             return _dataColumn.GetColumnSizeInfo();
         }
 
-        bool IColumn.SupportSelfCompareExpression => _dataColumn != null ? _dataColumn.SupportSelfCompareExpression : true;
+        bool IColumn.SupportSelfCompareExpression => _dataColumn == null || _dataColumn.SupportSelfCompareExpression;
 
         public CompareColumnState GetColumnState()
         {
