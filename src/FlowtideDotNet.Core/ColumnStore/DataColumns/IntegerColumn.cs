@@ -1272,9 +1272,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     Unsafe.Add(ref sizesHead, i) += cumulativeMass;
                     cumulativeMass += elementSize;
                 }
-                return;
             }
-            throw new InvalidOperationException("Tried to get prefix sum byte sizes for an empty integer column, this should not happen.");
         }
     }
 }
