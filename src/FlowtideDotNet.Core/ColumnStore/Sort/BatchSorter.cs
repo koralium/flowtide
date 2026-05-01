@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     /// </summary>
     internal class BatchSorter
     {
-        private SelfComparePointers[] _pointers;
+        private readonly SelfComparePointers[] _pointers;
         private UInt128 _lastKey = 0;
         private SortCompiler.SortDelegate? _lastSort;
         public BatchSorter(int columnCount)
