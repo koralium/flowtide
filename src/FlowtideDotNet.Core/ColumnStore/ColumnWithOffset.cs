@@ -19,8 +19,6 @@ using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
-using System.Data;
-using System.Diagnostics;
 using System.IO.Hashing;
 using System.Text.Json;
 
