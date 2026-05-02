@@ -1229,7 +1229,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         if (canTakeLeaf && canTakeBatch)
                         {
 
-                            int batchTargetLeafIndex = _insertTargetPositions[mapping.Offset + batchCut];
+                            int batchTargetLeafIndex = _insertTargetPositions[batchCut];
 
                             if (batchTargetLeafIndex <= leafCut)
                             {
@@ -1337,7 +1337,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (leafCut == 0)
                 {
-                    int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+                    int keyIndex = _insertSortedIndices[batchCut - 1];
                     splitKey = _keys[keyIndex];
                 }
                 else if (batchCut == 0)
@@ -1346,7 +1346,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 }
                 else if (_splitPointsBuffer[s].IsBatchMax)
                 {
-                    int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+                    int keyIndex = _insertSortedIndices[batchCut - 1];
                     splitKey = _keys[keyIndex];
                 }
                 else
@@ -1407,7 +1407,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (subLength > 0)
                 {
-                    int offset = mapping.Offset + batchStart;
+                    int offset = batchStart;
 
                     if (currentLeafLo > 0 || batchStart > 0)
                     {
