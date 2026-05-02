@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Buffers;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
@@ -92,6 +93,139 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             var childNode = await task;
             return await SearchLeafNodeForRead_AfterTask(key, childNode!, searchComparer);
+        }
+
+        public readonly struct LeafBatchMapping
+        {
+            public readonly long LeafId;
+            public readonly int Offset;
+            public readonly int Length;
+
+            public LeafBatchMapping(long leafId, int offset, int length)
+            {
+                LeafId = leafId;
+                Offset = offset;
+                Length = length;
+            }
+        }
+
+        internal async ValueTask RouteBatchRootAsync(
+            K[] keys, 
+            int batchLength,
+            int[] sortedIndices, 
+            IBplusTreeComparer<K, TKeyContainer> searchComparer,
+            List<LeafBatchMapping> mappings)
+        {
+            Debug.Assert(m_stateClient.Metadata != null);
+
+            int depth = m_stateClient.Metadata.Depth;
+
+            int safeArenaSize = depth == 0 ? 0 : depth * batchLength;
+            var workspace = depth > 0 ? ArrayPool<(long, int, int)>.Shared.Rent(safeArenaSize) : null;
+
+            try
+            {
+                if (depth == 0)
+                {
+                    // If depth 0 it is just a leaf as root
+                    mappings.Add(new LeafBatchMapping(m_stateClient.Metadata.Root, 0, batchLength));
+                }
+                else
+                {
+                    var rootTask = m_stateClient.GetValue(m_stateClient.Metadata.Root);
+                    var root = (rootTask.IsCompletedSuccessfully ? rootTask.Result : await rootTask)
+                                as InternalNode<K, V, TKeyContainer>;
+
+                    await RouteBatchInternalAsync(
+                        keys, sortedIndices, 0, batchLength,
+                        root!, depth, searchComparer, mappings, workspace!, 0);
+                }
+            }
+            finally
+            {
+                if (workspace != null)
+                {
+                    ArrayPool<(long, int, int)>.Shared.Return(workspace);
+                }
+            }
+        }
+
+        private async ValueTask RouteBatchInternalAsync(
+            K[] keys,
+            int[] sortedIndices,
+            int offset,
+            int length,
+            InternalNode<K, V, TKeyContainer> node,
+            int currentDepth,
+            IBplusTreeComparer<K, TKeyContainer> searchComparer,
+            List<LeafBatchMapping> mappings,
+            (long pointer, int offset, int length)[] workspace,
+            int workspaceStartIndex)
+        {
+            int sliceCount = 0;
+            int currentOffset = offset;
+            int end = offset + length;
+
+            while (currentOffset < end)
+            {
+                int firstKeyIndex = sortedIndices[currentOffset];
+                int targetChildIndex = searchComparer.FindIndex(keys[firstKeyIndex], node.keys);
+                if (targetChildIndex < 0) targetChildIndex = ~targetChildIndex;
+
+                int itemsForThisChild;
+
+                if (targetChildIndex == node.keys.Count)
+                {
+                    itemsForThisChild = end - currentOffset;
+                }
+                else
+                {
+                    // Normal look-ahead for non-last children
+                    itemsForThisChild = 1;
+                    while (currentOffset + itemsForThisChild < end)
+                    {
+                        int nextKeyIndex = sortedIndices[currentOffset + itemsForThisChild];
+                        int nextChildIndex = searchComparer.FindIndex(keys[nextKeyIndex], node.keys);
+                        if (nextChildIndex < 0) nextChildIndex = ~nextChildIndex;
+
+                        if (nextChildIndex == targetChildIndex) itemsForThisChild++;
+                        else break;
+                    }
+                }
+
+                workspace[workspaceStartIndex + sliceCount] =
+                    (node.children[targetChildIndex], currentOffset, itemsForThisChild);
+
+                sliceCount++;
+                currentOffset += itemsForThisChild;
+            }
+
+            node.Return();
+
+            for (int i = 0; i < sliceCount; i++)
+            {
+                var slice = workspace[workspaceStartIndex + i];
+
+                if (currentDepth == 1)
+                {
+                    // At leaf id
+                    mappings.Add(new LeafBatchMapping(slice.pointer, slice.offset, slice.length));
+                }
+                else
+                {
+                    var childNodeTask = m_stateClient.GetValue(slice.pointer);
+                    var rawChildNode = childNodeTask.IsCompletedSuccessfully
+                        ? childNodeTask.Result!
+                        : (await childNodeTask)!;
+
+                    var internalChild = (InternalNode<K, V, TKeyContainer>)rawChildNode;
+
+                    await RouteBatchInternalAsync(
+                        keys, sortedIndices, slice.offset, slice.length,
+                        internalChild, currentDepth - 1, searchComparer,
+                        mappings, workspace, workspaceStartIndex + sliceCount);
+                }
+            }
         }
     }
 }

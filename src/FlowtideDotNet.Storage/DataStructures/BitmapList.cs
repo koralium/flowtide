@@ -16,6 +16,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -169,6 +170,12 @@ namespace FlowtideDotNet.Storage.DataStructures
         private Span<int> AccessSpan => new Span<int>(_data, _dataLength);
 
         public bool this[int index] => Get(index);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void* GetPointer_Unsafe()
+        {
+            return _data;
+        }
 
         private void EnsureSize(int length)
         {
@@ -905,7 +912,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
         }
 
-        public void InsertFrom(BitmapList other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(ref readonly BitmapList other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
@@ -931,10 +938,17 @@ namespace FlowtideDotNet.Storage.DataStructures
                 }
 
                 int oIdx = sortedLookup[i];
-                int oIntIdx = oIdx >> 5;
-                int oBitOffset = oIdx & 31;
-
-                bool isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+                bool isSet;
+                if (oIdx == lookupNullIndex)
+                {
+                    isSet = false;
+                }
+                else
+                {
+                    int oIntIdx = oIdx >> 5;
+                    int oBitOffset = oIdx & 31;
+                    isSet = (otherSpan[oIntIdx] & (1 << oBitOffset)) != 0;
+                }
 
                 int writeBitIdx = targetInsertIdx + i;
                 int wIntIdx = writeBitIdx >> 5;
@@ -1364,6 +1378,17 @@ namespace FlowtideDotNet.Storage.DataStructures
         public int GetByteSize(int start, int end)
         {
             return (((end - start) + 31) / 32) * 4;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            for (int i = 0; i < length; i++)
+            {
+                Unsafe.Add(ref sizesHead, i) += ((i + 8) >> 3);
+            }
         }
 
         public BitmapList Copy(IMemoryAllocator memoryAllocator)

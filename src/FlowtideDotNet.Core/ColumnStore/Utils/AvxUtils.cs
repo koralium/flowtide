@@ -135,8 +135,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         // Load 8 ints from source array and 8 conditionals
                         Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + j);
-                        Vector128<sbyte> condVec = Avx2.LoadVector128(pCond + sourceIndex + j);
-
+                        Vector128<sbyte> condVec = Avx2.LoadScalarVector128((long*)(pCond + sourceIndex + j)).AsSByte();
                         // Compare the conditionals with the target conditional value
                         Vector128<sbyte> cmpResult = Avx2.CompareEqual(condVec, conditionalValueVec);
 

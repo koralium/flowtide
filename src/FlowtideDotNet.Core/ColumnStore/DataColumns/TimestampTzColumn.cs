@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -143,6 +144,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         public unsafe int GetByteSize()
         {
             return Count * sizeof(TimestampTzValue);
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _values.GetPrefixSumByteSizes(indices, sizes);
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -294,11 +300,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is TimestampTzColumn timestampColumn)
             {
-                _values.InsertFrom(timestampColumn._values, sortedLookup, insertPositions);
+                _values.InsertFrom(in timestampColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
             }
             else
             {
@@ -319,5 +325,26 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 TotalRows = Count,
             };
         }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Timestamp);
+        }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _values.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareTimestampTzValues(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
     }
 }
+
+
+
+

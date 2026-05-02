@@ -63,5 +63,10 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             }
             return index;
         }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in NormalizeKeyStorage keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

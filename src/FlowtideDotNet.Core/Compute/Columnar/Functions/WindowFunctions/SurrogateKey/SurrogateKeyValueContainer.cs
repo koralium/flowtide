@@ -54,6 +54,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _column.Dispose();
@@ -88,6 +93,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
         {
             _column.InsertAt(index, value.Value);
             _weights.InsertAt(index, value.Weight);
+        }
+
+        public void InsertFrom(SurrogateKeyValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
         }
 
         public void RemoveAt(int index)

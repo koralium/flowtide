@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -68,6 +69,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int GetByteSize();
 
+        void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
+
         void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList);
 
         /// <summary>
@@ -100,10 +103,27 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         StructHeader StructHeader { get; }
 
-        void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions);
+        void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
 
         void DeleteBatch(ReadOnlySpan<int> targets);
 
         ColumnSizeInfo GetColumnSizeInfo();
+
+        bool SupportSelfCompareExpression => false;
+
+        void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            // Do nothing
+        }
+
+        CompareColumnState GetColumnState();
+
+        System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

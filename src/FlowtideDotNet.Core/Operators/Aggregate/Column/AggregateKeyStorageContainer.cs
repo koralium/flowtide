@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             throw new NotImplementedException();
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _data.Dispose();
@@ -112,6 +117,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 //_data.Columns[i].InsertAt(index, key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, default));
             }
             _length++;
+        }
+
+        public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            throw new NotImplementedException();
         }
 
         public void Insert_Internal(int index, ColumnRowReference key)

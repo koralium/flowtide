@@ -64,5 +64,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Li
 
             return index;
         }
+
+        public FindBoundriesResult FindBoundries(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

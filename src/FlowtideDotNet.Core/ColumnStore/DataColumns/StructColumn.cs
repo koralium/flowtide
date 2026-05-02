@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
@@ -249,6 +250,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 size += _columns[i].GetByteSize();
             }
             return size;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
         }
 
         public SerializationEstimation GetSerializationEstimate()
@@ -608,15 +617,22 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is StructColumn otherStruct)
             {
                 for (int i = sortedLookup.Length - 1; i >= 0; i--)
                 {
                     int oIdx = sortedLookup[i];
-                    var value = otherStruct.GetValueAt(oIdx, default);
-                    InsertAt(insertPositions[i], value);
+                    if (oIdx == lookupNullIndex)
+                    {
+                        InsertAt(insertPositions[i], NullValue.Instance);
+                    }
+                    else
+                    {
+                        var value = otherStruct.GetValueAt(oIdx, default);
+                        InsertAt(insertPositions[i], value);
+                    }
                 }
                 return;
             }
@@ -649,5 +665,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 TotalRows = Count,
             };
         }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Struct);
+        }
     }
 }
+
+

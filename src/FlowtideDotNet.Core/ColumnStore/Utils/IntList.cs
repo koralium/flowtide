@@ -13,6 +13,7 @@
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -61,6 +62,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         public ReadOnlySpan<int> Span => new ReadOnlySpan<int>(_data, _length);
 
         public int Count => _length;
+
+        public int* GetPointer_Unsafe()
+        {
+            return _data;
+        }
 
         internal void EnsureCapacity(int length)
         {
@@ -301,6 +307,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             AvxUtils.AddValueToElements(AccessSpan.Slice(index + 1, _length - index - 1), additionOnAbove);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int Get(in int index)
         {
             return _data[index];

@@ -295,7 +295,7 @@ namespace FlowtideDotNet.Core.Engine
                     MultipleInputVertex<StreamEventBatch> op;
                     if (_useColumnStore)
                     {
-                        op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                        op = new ColumnBulkMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                     }
                     else
                     {
@@ -323,7 +323,7 @@ namespace FlowtideDotNet.Core.Engine
                 MultipleInputVertex<StreamEventBatch> op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnStoreMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
+                    op = new ColumnBulkMergeJoin(mergeJoinRelation, functionsRegister, DefaultBlockOptions);
                 }
                 else
                 {

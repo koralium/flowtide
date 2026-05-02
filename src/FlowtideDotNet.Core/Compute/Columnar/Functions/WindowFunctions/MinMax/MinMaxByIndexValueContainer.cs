@@ -132,5 +132,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.MinMax
             _compareData.UpdateAt(index, value.CompareValue);
             _indices.Update(index, value.Index);
         }
+
+        public void InsertFrom(MinMaxByIndexValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

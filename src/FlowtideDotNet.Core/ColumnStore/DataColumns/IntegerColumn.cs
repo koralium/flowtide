@@ -16,6 +16,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
@@ -28,6 +29,8 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -74,9 +77,18 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
             (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount);
 
-            void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions);
+            void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex);
 
             void DeleteBatch(ReadOnlySpan<int> targets);
+
+            void SetSelfComparePointers(ref SelfComparePointers selfComparePointers);
+
+            System.Linq.Expressions.Expression CreateSelfCompareExpression(
+                System.Linq.Expressions.Expression selfComparePointerExpression,
+                System.Linq.Expressions.Expression xExpression,
+                System.Linq.Expressions.Expression yExpression);
+
+            CompareColumnState GetColumnState();
         }
 
         private sealed class Int8Data : IIntData
@@ -217,11 +229,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return index;
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int8Data int8data)
                 {
-                    _list.InsertFrom(int8data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int8data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -230,6 +242,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt8(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
             }
         }
 
@@ -371,11 +398,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int16Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int16Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int16Data int16Data)
                 {
-                    _list.InsertFrom(int16Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int16Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -384,6 +411,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt16(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int16);
             }
         }
 
@@ -465,7 +507,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 _list.InsertStaticRange(index, 0, count);
             }
 
-            public (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
+            public unsafe (int, int) SearchBoundries(in long dataValue, in int start, in int end, in ReferenceSegment? child, bool desc)
             {
                 if (desc)
                 {
@@ -491,7 +533,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         var index = ~(end + 1);
                         return (index, index);
                     }
-                    return BoundarySearch.SearchBoundries(_list, (int)dataValue, start, end, Int32Comparer.Instance);
+                    return BoundarySearch.SearchBoundriesAsc(_list.GetPointer_Unsafe(), (int)dataValue, start, in end);
                 }
             }
 
@@ -526,11 +568,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int32Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int32Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int32Data int32Data)
                 {
-                    _list.InsertFrom(int32Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int32Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -539,6 +581,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt32(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int32);
             }
         }
 
@@ -680,11 +737,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 return (new Int64Array(valueBuffer, nullBuffer, _list.Count, nullCount, 0), Int64Type.Default);
             }
 
-            public void InsertFrom(IIntData other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+            public void InsertFrom(IIntData other, in ReadOnlySpan<int> sortedLookup, in ReadOnlySpan<int> targetPositions, in int lookupNullIndex)
             {
                 if (other is Int64Data int64Data)
                 {
-                    _list.InsertFrom(int64Data._list, sortedLookup, targetPositions);
+                    _list.InsertFrom(in int64Data._list, in sortedLookup, in targetPositions, lookupNullIndex);
                     return;
                 }
                 throw new NotImplementedException();
@@ -693,6 +750,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public void DeleteBatch(ReadOnlySpan<int> targets)
             {
                 _list.DeleteBatch(targets);
+            }
+
+            public unsafe void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+            {
+                selfComparePointers.dataPointer = _list.GetPointer_Unsafe();
+            }
+
+            public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+            {
+                return NativeSortHelpers.CallCompareInt64(selfComparePointerExpression, xExpression, yExpression);
+            }
+
+            public CompareColumnState GetColumnState()
+            {
+                return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
             }
         }
 
@@ -1106,7 +1178,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             if (other is IntegerColumn integerColumn)
             {
@@ -1130,7 +1202,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         return;
                     }
                 }
-                _data.InsertFrom(integerColumn._data, sortedLookup, insertPositions);
+                _data.InsertFrom(integerColumn._data, in sortedLookup, in insertPositions, lookupNullIndex);
                 return;
             }
             throw new NotImplementedException();
@@ -1153,5 +1225,56 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 BitWidth = _data?.BitWidth ?? 8
             };
         }
+
+        void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            if (_data != null)
+            {
+                _data.SetSelfComparePointers(ref selfComparePointers);
+            }
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression)
+        {
+            if (_data != null)
+            {
+                return _data.CreateSelfCompareExpression(selfComparePointerExpression, xExpression, yExpression);
+            }
+            return System.Linq.Expressions.Expression.Constant(0); // No elements
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
+
+        public CompareColumnState GetColumnState()
+        {
+            if (_data != null)
+            {
+                return _data.GetColumnState();
+            }
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            if (_data != null)
+            {
+                int length = indices.Length;
+                var elementSize = _data.BitWidth / 8;
+                ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+                int cumulativeMass = elementSize;
+
+                for (int i = 0; i < length; i++)
+                {
+                    Unsafe.Add(ref sizesHead, i) += cumulativeMass;
+                    cumulativeMass += elementSize;
+                }
+            }
+        }
     }
 }
+
+

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Entities;
+using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Engine;
@@ -37,6 +38,11 @@ namespace FlowtideDotNet.AcceptanceTests
         public IReadOnlyList<ProjectMember> ProjectMembers => flowtideTestStream.ProjectMembers;
 
         public IReadOnlyList<GraphNode> GraphNodes => flowtideTestStream.GraphNodes;
+
+        public IReadOnlyList<Security> Securities => flowtideTestStream.Securities;
+
+        public IReadOnlyList<DailyMarket> DailyMarkets => flowtideTestStream.DailyMarkets;
+
         public IFunctionsRegister FunctionsRegister => flowtideTestStream.FunctionsRegister;
         public ISqlFunctionRegister SqlFunctionRegister => flowtideTestStream.SqlFunctionRegister;
 
@@ -173,6 +179,16 @@ namespace FlowtideDotNet.AcceptanceTests
         public void DeleteGraphNode(Entities.GraphNode graphNode)
         {
             flowtideTestStream.DeleteGraphNode(graphNode);
+        }
+
+        public void GenerateTpcDi(int securityCount, int dailyMarketCount)
+        {
+            flowtideTestStream.GenerateTpcDi(securityCount, dailyMarketCount);
+        }
+
+        public void GenerateDailyMarkets(int dailyMarketDays)
+        {
+            flowtideTestStream.GenerateDailyMarkets(dailyMarketDays);
         }
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)

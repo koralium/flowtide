@@ -18,3 +18,4 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AspNetCore")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.AcceptanceTests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]

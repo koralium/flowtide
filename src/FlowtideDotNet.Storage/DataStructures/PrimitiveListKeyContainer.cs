@@ -81,6 +81,11 @@ namespace FlowtideDotNet.Storage.DataStructures
             return ~lo;
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _list.Dispose();
@@ -104,6 +109,11 @@ namespace FlowtideDotNet.Storage.DataStructures
         public void Insert(int index, K key)
         {
             _list.InsertAt(index, key);
+        }
+
+        public void InsertFrom(K[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
+        {
+            throw new NotImplementedException();
         }
 
         public void Insert_Internal(int index, K key)

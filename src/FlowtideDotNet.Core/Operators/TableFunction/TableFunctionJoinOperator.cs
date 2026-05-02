@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
                     bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        emitColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, true, MemoryAllocator, out var offsetUsed);
+                        emitColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;

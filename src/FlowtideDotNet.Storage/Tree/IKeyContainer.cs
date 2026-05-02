@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.Tree
 
         void Insert(int index, K key);
 
+        //void InsertBulk(K[] items, Span<int> sortedLookup, Span<int> targetPositions);
+
         void Insert_Internal(int index, K key);
 
         void Update(int index, K key);
@@ -37,5 +39,13 @@ namespace FlowtideDotNet.Storage.Tree
         int GetByteSize();
 
         int GetByteSize(int start, int end);
+
+        void InsertFrom(
+            K[] keys, 
+            ReadOnlySpan<int> sortedLookup, 
+            ReadOnlySpan<int> targetPositions,
+            Span<int> lookupBuffer);
+
+        void DeleteBatch(ReadOnlySpan<int> positions);
     }
 }

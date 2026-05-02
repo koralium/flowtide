@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -19,6 +19,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Text.Json;
 using System.IO.Hashing;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -77,6 +78,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int GetByteSize(int start, int end);
 
+        void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes);
+
         void InsertRangeFrom(int index, IColumn otherColumn, int start, int count);
 
         void WriteToJson(ref readonly Utf8JsonWriter writer, in int index);
@@ -87,10 +90,22 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm);
 
-        void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions);
+        void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex);
 
         void DeleteBatch(ReadOnlySpan<int> targets);
 
         ColumnSizeInfo GetColumnSizeInfo();
+
+        CompareColumnState GetColumnState();
+
+        bool SupportSelfCompareExpression => false;
+
+        void SetSelfComparePointers(ref SelfComparePointers selfComparePointers);
+
+        System.Linq.Expressions.Expression CreateSelfCompareExpression(
+            System.Linq.Expressions.Expression selfComparePointerExpression,
+            System.Linq.Expressions.Expression xExpression,
+            System.Linq.Expressions.Expression yExpression);
     }
 }
+

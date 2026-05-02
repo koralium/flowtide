@@ -14,6 +14,8 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace FlowtideDotNet.Storage.DataStructures
 {
@@ -61,6 +63,16 @@ namespace FlowtideDotNet.Storage.DataStructures
             _dataLength = dataLength;
             _length = length;
             _memoryAllocator = memoryAllocator;
+        }
+
+        /// <summary>
+        /// UNSAFE: Gets the raw pointer to do operations without boundary checks
+        /// </summary>
+        /// <returns></returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal T* GetPointer_Unsafe()
+        {
+            return (T*)_data;
         }
 
         internal void EnsureCapacity(int length)
@@ -165,7 +177,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="other">The other primitive list to insert data from.</param>
         /// <param name="sortedLookup">A span containing the indices of the elements to insert from the other list.</param>
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
-        public void InsertFrom(PrimitiveList<T> other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(ref readonly PrimitiveList<T> other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
@@ -199,7 +211,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 // Place the new element from the other list
                 int oIdx = sortedLookup[i];
                 currentWriteIdx--;
-                selfData[currentWriteIdx] = otherData[oIdx];
+                selfData[currentWriteIdx] = oIdx == lookupNullIndex ? default : otherData[oIdx];
 
                 // Move the read tracker to the left of the block we just processed
                 currentReadIdx = targetInsertIdx;
@@ -259,6 +271,56 @@ namespace FlowtideDotNet.Storage.DataStructures
             CheckSizeReduction();
         }
 
+        /// <summary>
+        /// Special case insert that allows inserting a subset of elements from an array at specific positions.
+        /// This is used when merging two lists together more memory efficiently than inserting each element one by one.
+        /// The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the array.
+        /// The positions in <paramref name="insertPositions"/> are interpreted relative to the original contents of the current list before any elements are inserted.
+        /// Conceptually, this behaves like inserting the selected elements in order using <c>InsertAt(insertPositions[i] + i, ...)</c>.
+        /// </summary>
+        /// <param name="keys">The array to insert data from.</param>
+        /// <param name="sortedLookup">A span containing the indices of the elements to insert from the array.</param>
+        /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
+        public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
+            Debug.Assert(sortedLookup.Length == insertPositions.Length);
+            int otherCount = sortedLookup.Length;
+            if (otherCount == 0) return;
+
+            int oldCount = _length;
+
+            EnsureCapacity(oldCount + otherCount);
+
+            var selfData = AccessSpan;
+            var otherData = keys.AsSpan();
+
+            int currentReadIdx = oldCount;
+            int currentWriteIdx = oldCount + otherCount;
+
+            for (int i = otherCount - 1; i >= 0; i--)
+            {
+                int targetInsertIdx = insertPositions[i];
+                int elementsToMove = currentReadIdx - targetInsertIdx;
+
+                if (elementsToMove > 0)
+                {
+                    currentWriteIdx -= elementsToMove;
+                    currentReadIdx -= elementsToMove;
+
+                    selfData.Slice(currentReadIdx, elementsToMove)
+                            .CopyTo(selfData.Slice(currentWriteIdx, elementsToMove));
+                }
+
+                int oIdx = sortedLookup[i];
+                currentWriteIdx--;
+                selfData[currentWriteIdx] = otherData[oIdx];
+
+                currentReadIdx = targetInsertIdx;
+            }
+
+            _length += otherCount;
+        }
+
         public void MoveAtIndex(int index, int count)
         {
             EnsureCapacity(_length + count);
@@ -284,10 +346,11 @@ namespace FlowtideDotNet.Storage.DataStructures
             CheckSizeReduction();
         }
 
-        public T Get(in int index)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public T Get(int index)
         {
-            var span = AccessSpan;
-            return span[index];
+            Debug.Assert(index >= 0 && index < _length);
+            return ((T*)_data)[index];
         }
 
         public ref T GetRef(scoped in int index)
@@ -396,6 +459,22 @@ namespace FlowtideDotNet.Storage.DataStructures
         public void SetLength(int newLength)
         {
             _length = newLength;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            int elementSize = sizeof(T);
+
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int cumulativeMass = elementSize;
+
+            for (int i = 0; i < length; i++)
+            {
+                Unsafe.Add(ref sizesHead, i) += cumulativeMass;
+                cumulativeMass += elementSize;
+            }
         }
     }
 }

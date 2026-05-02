@@ -49,6 +49,23 @@ namespace FlowtideDotNet.Core.ColumnStore
                 this.BitWidth = Math.Max(this.BitWidth, other.BitWidth);
             }
 
+            if (this.DataType != ArrowTypeId.Null && other.DataType == ArrowTypeId.Null)
+            {
+                // if the oher is null we just add the row count to the current
+                this.TotalRows += other.TotalRows;
+                return;
+            }
+            if (this.DataType == ArrowTypeId.Null && other.DataType != ArrowTypeId.Null)
+            {
+                // If this is null, we add the content from the other to this
+                this.TotalRows += other.TotalRows;
+                this.DataType = other.DataType;
+                this.BitWidth = other.BitWidth;
+                this.Children = other.Children;
+                this.TotalVariableBytes = other.TotalVariableBytes;
+                this.StructHeader = other.StructHeader;
+                return;
+            }
             if (this.DataType == other.DataType && StructHeaderEqual(StructHeader, other.StructHeader))
             {
                 this.TotalRows += other.TotalRows;

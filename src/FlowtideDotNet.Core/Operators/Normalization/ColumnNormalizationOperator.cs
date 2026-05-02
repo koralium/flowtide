@@ -167,7 +167,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 bool shouldDisposeOffsets = true;
                 for (int i = 0; i < _emitList.Count; i++)
                 {
-                    columns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, false, MemoryAllocator, out var offsetUsed);
+                    columns[i] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_emitList[i]], toEmitOffsets, MemoryAllocator, out var offsetUsed);
                     if (offsetUsed)
                     {
                         shouldDisposeOffsets = false;
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     var emitIndex = _emitList.IndexOf(_keyColumns[i]);
                     if (emitIndex >= 0)
                     {
-                        deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, false, MemoryAllocator, out var offsetUsed);
+                        deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_keyColumns[i]], deleteBatchKeyOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;

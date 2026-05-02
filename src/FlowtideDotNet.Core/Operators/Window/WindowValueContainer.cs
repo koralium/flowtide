@@ -76,6 +76,11 @@ namespace FlowtideDotNet.Core.Operators.Window
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
             _weights.Dispose();
@@ -120,6 +125,11 @@ namespace FlowtideDotNet.Core.Operators.Window
                 _functionStates[i].InsertAt(index, NullValue.Instance);
             }
             _previousValueSent.InsertAt(index, false);
+        }
+
+        public void InsertFrom(WindowValue[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            throw new NotImplementedException();
         }
 
         public void RemoveAt(int index)

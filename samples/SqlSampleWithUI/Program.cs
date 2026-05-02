@@ -33,7 +33,7 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT map('a', t.val, 'b', o.val) as data FROM testtable t
+SELECT t.val, o.val FROM testtable t
 LEFT JOIN other o
 ON t.val = o.val;
 ";

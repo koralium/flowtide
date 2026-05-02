@@ -15,8 +15,10 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
@@ -24,8 +26,8 @@ using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json;
-using FlowtideDotNet.Storage.DataStructures;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 {
@@ -607,6 +609,24 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return size + (Count * sizeof(int));
         }
 
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            int length = indices.Length;
+            ref int indicesHead = ref MemoryMarshal.GetReference(indices);
+            ref int sizesHead = ref MemoryMarshal.GetReference(sizes);
+
+            int sum = 0;
+            for (int i = 0; i < length; i++)
+            {
+                int idx = Unsafe.Add(ref indicesHead, i);
+                sum += sizeof(int);
+                int typeIndex = _typeList[idx];
+                int childOffset = _offsets.Get(idx);
+                sum += _valueColumns[typeIndex].GetByteSize(childOffset, childOffset);
+                Unsafe.Add(ref sizesHead, i) += sum;
+            }
+        }
+
         private sbyte CheckOtherDataColumnTypeExists(IDataColumn other, sbyte[] typeIds, List<IDataColumn> valueColumns)
         {
             if (other.Type == ArrowTypeId.Struct)
@@ -985,13 +1005,20 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void InsertFrom(IDataColumn other, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             for (int i = sortedLookup.Length - 1; i >= 0; i--)
             {
                 int oIdx = sortedLookup[i];
-                var value = other.GetValueAt(oIdx, default);
-                InsertAt(insertPositions[i], value);
+                if (oIdx == lookupNullIndex)
+                {
+                    InsertAt(insertPositions[i], NullValue.Instance);
+                }
+                else
+                {
+                    var value = other.GetValueAt(oIdx, default);
+                    InsertAt(insertPositions[i], value);
+                }
             }
         }
 
@@ -1023,5 +1050,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 Children = children
             };
         }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Union);
+        }
     }
 }
+
+

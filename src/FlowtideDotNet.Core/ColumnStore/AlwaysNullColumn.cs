@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -73,6 +74,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int GetByteSize(int start, int end)
         {
             return 0;
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            // Do nothing, no sizes
         }
 
         public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
@@ -173,7 +179,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
-        public void InsertFrom(IColumn column, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        public void InsertFrom(IColumn column, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
             throw new NotSupportedException();
         }
@@ -190,5 +196,23 @@ namespace FlowtideDotNet.Core.ColumnStore
                 DataType = ArrowTypeId.Null
             };
         }
+
+        bool IColumn.SupportSelfCompareExpression => true;
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.Null);
+        }
+
+        public System.Linq.Expressions.Expression CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return System.Linq.Expressions.Expression.Constant(0);
+        }
+
+        public void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            // Nothing required
+        }
     }
 }
+

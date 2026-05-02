@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
         private bool m_isByteBased;
-        private int byteMinSize;
+        internal readonly int byteMinSize;
         private bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var emptyKeyContainer = m_options.KeySerializer.CreateEmpty();
                 var emptyValueContainer = m_options.ValueSerializer.CreateEmpty();
                 var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeyContainer, emptyValueContainer);
-                m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
+                m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>(), 0);
                 m_stateClient.AddOrUpdate(rootId, root);
             }
             return Task.CompletedTask;
@@ -204,8 +204,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var emptyKeys = m_options.KeySerializer.CreateEmpty();
             var emptyValues = m_options.ValueSerializer.CreateEmpty();
             var root = new LeafNode<K, V, TKeyContainer, TValueContainer>(rootId, emptyKeys, emptyValues);
-            m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>());
+            m_stateClient.Metadata = BPlusTreeMetadata.Create(m_options.BucketSize.Value, rootId, rootId, m_options.PageSizeBytes.Value, new List<long>(), new List<long>(), 0);
             m_stateClient.AddOrUpdate(rootId, root);
+        }
+
+        public IBplusTreeBulkSearch<K, V, TKeyContainer, TValueContainer, TComparer> CreateBulkSearcher<TComparer>(TComparer comparer)
+            where TComparer : IBplusTreeComparer<K, TKeyContainer>
+        {
+            return new BPlusTreeBulkSearch<K, V, TKeyContainer, TValueContainer, TComparer>(this, comparer);
+        }
+
+        public IBPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer> CreateBulkInserter()
+        {
+            return new BPlusTreeBulkInserter<K, V, TKeyContainer, TValueContainer>(this);
         }
     }
 }

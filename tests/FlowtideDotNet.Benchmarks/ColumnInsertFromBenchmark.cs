@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Benchmarks
         [Benchmark(Baseline = true)]
         public void InsertFromBatch()
         {
-            _target!.InsertFrom(_source!, _sortedLookup.AsSpan(), _insertPositions.AsSpan());
+            ReadOnlySpan<int> sl = _sortedLookup; ReadOnlySpan<int> ip = _insertPositions; _target!.InsertFrom(_source!, in sl, in ip, -1);
         }
 
         [Benchmark]
@@ -86,3 +86,4 @@ namespace FlowtideDotNet.Benchmarks
         }
     }
 }
+

@@ -63,5 +63,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             }
             return index;
         }
+
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ModifiedKeyStorage keyContainer, int startIndex, int length)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

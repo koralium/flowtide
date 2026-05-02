@@ -232,9 +232,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
             other.Add(new byte[] { 4, 5 });
 
-            Span<int> sortedLookup = stackalloc int[0];
-            Span<int> insertPositions = stackalloc int[0];
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[0];
+            ReadOnlySpan<int> insertPositions = stackalloc int[0];
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(1, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -254,9 +254,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
             other.Add(eNew);
 
-            Span<int> sortedLookup = stackalloc int[] { 0 };
-            Span<int> insertPositions = stackalloc int[] { 0 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eNew));
@@ -278,9 +278,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
             other.Add(eNew);
 
-            Span<int> sortedLookup = stackalloc int[] { 0 };
-            Span<int> insertPositions = stackalloc int[] { 2 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 2 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -302,9 +302,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
             other.Add(eNew);
 
-            Span<int> sortedLookup = stackalloc int[] { 0 };
-            Span<int> insertPositions = stackalloc int[] { 1 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 1 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -332,9 +332,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eB);
             other.Add(eC);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
-            Span<int> insertPositions = stackalloc int[] { 0, 1, 3 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 3 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(6, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -357,9 +357,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eA);
             other.Add(eB);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1 };
-            Span<int> insertPositions = stackalloc int[] { 0, 0 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(2, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -380,9 +380,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eA);
             other.Add(eB);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1 };
-            Span<int> insertPositions = stackalloc int[] { 1, 1 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 1, 1 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(3, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(e1));
@@ -406,9 +406,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eA);
             other.Add(eB);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1 };
-            Span<int> insertPositions = stackalloc int[] { 0, 0 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -433,9 +433,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eA);
             other.Add(eB);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1 };
-            Span<int> insertPositions = stackalloc int[] { 0, 2 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 2 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -464,9 +464,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eB);
             other.Add(eC);
 
-            Span<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
-            Span<int> insertPositions = stackalloc int[] { 0, 1, 2 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 0, 1, 2 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 2 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(6, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eA));
@@ -493,9 +493,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             other.Add(eB);
             other.Add(eC);
 
-            Span<int> sortedLookup = stackalloc int[] { 2, 1, 0 };
-            Span<int> insertPositions = stackalloc int[] { 0, 0, 1 };
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { 2, 1, 0 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 0, 1 };
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
 
             Assert.Equal(4, binaryList.Count);
             Assert.True(binaryList.Get(0).SequenceEqual(eC));
@@ -534,7 +534,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 insertPositions[i] = 50; // Multiple inserts at same position
             }
 
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookupRO = sortedLookup;
+            ReadOnlySpan<int> insertPositionsRO = insertPositions;
+            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1);
 
             Assert.Equal(135, binaryList.Count);
 
@@ -576,7 +578,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
                 insertPositions[i] = 0;
             }
 
-            binaryList.InsertFrom(other, sortedLookup, insertPositions);
+            ReadOnlySpan<int> sortedLookupRO = sortedLookup;
+            ReadOnlySpan<int> insertPositionsRO = insertPositions;
+            binaryList.InsertFrom(in other, in sortedLookupRO, in insertPositionsRO, -1);
 
             Assert.Equal(102, binaryList.Count);
 
@@ -588,6 +592,33 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Utils
             // Verify the original items were shifted correctly to the end
             Assert.True(binaryList.Get(100).SequenceEqual(e1));
             Assert.True(binaryList.Get(101).SequenceEqual(e2));
+        }
+
+        [Fact]
+        public void TestInsertFromWithNullIndex()
+        {
+            var e1 = new byte[] { 1, 2 };
+            var e2 = new byte[] { 3, 4 };
+            var eNew = new byte[] { 10, 11 };
+
+            using BinaryList binaryList = new BinaryList(GlobalMemoryManager.Instance);
+            binaryList.Add(e1);
+            binaryList.Add(e2);
+
+            using BinaryList other = new BinaryList(GlobalMemoryManager.Instance);
+            other.Add(eNew);
+
+            ReadOnlySpan<int> sortedLookup = stackalloc int[] { -1, 0, -1 };
+            ReadOnlySpan<int> insertPositions = stackalloc int[] { 0, 1, 3 };
+
+            binaryList.InsertFrom(in other, in sortedLookup, in insertPositions, -1);
+
+            Assert.Equal(5, binaryList.Count);
+            Assert.True(binaryList.Get(0).SequenceEqual(Span<byte>.Empty));
+            Assert.True(binaryList.Get(1).SequenceEqual(e1));
+            Assert.True(binaryList.Get(2).SequenceEqual(eNew));
+            Assert.True(binaryList.Get(3).SequenceEqual(e2));
+            Assert.True(binaryList.Get(4).SequenceEqual(Span<byte>.Empty));
         }
 
         [Fact]

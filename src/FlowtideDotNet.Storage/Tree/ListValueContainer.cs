@@ -37,6 +37,11 @@ namespace FlowtideDotNet.Storage.Tree
             }
         }
 
+        public void DeleteBatch(ReadOnlySpan<int> positions)
+        {
+            throw new NotImplementedException();
+        }
+
         public void Dispose()
         {
         }
@@ -64,6 +69,16 @@ namespace FlowtideDotNet.Storage.Tree
         public void Insert(int index, V value)
         {
             _values.Insert(index, value);
+        }
+
+        public void InsertFrom(V[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
+        {
+            for (int i = sortedLookup.Length - 1; i >= 0; i--)
+            {
+                int oIdx = sortedLookup[i];
+                var value = values[oIdx];
+                _values.Insert(targetPositions[i], value);
+            }
         }
 
         public void RemoveAt(int index)

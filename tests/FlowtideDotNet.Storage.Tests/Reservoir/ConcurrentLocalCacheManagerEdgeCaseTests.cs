@@ -369,8 +369,10 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             await Task.WhenAll(evict, read1, read2).WaitAsync(cts.Token);
 
-            Assert.Equal(new byte[] { 5, 6, 7 }, read1.Result.ToArray());
-            Assert.Equal(new byte[] { 5, 6, 7 }, read2.Result.ToArray());
+            var read1result = await read1;
+            var read2result = await read2;
+            Assert.Equal(new byte[] { 5, 6, 7 }, read1result.ToArray());
+            Assert.Equal(new byte[] { 5, 6, 7 }, read2result.ToArray());
         }
 
         [Fact]
@@ -773,7 +775,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             TaskCompletionSource evictionLoopSignal = new TaskCompletionSource();
             s.Cclm.SetEvictionLoopSignal_Test(evictionLoopSignal);
-            fakeTime.Advance(TimeSpan.FromSeconds(6));
+            fakeTime.Advance(TimeSpan.FromSeconds(20));
 
             await evictionLoopSignal.Task;
 
