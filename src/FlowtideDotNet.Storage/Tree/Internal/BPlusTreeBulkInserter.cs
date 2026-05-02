@@ -415,18 +415,23 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var byteSize = leaf.ByteSize;
             if (insertCounter > 0)
             {
+                   
                 var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(0, insertCounter);
-                CalculatePrefixSum(mutator, insertSortedIndicesSpan, insertCounter);
 
-                var expectedSize = byteSize + _prefixSumBuffer[insertCounter - 1];
                 var newCount = leaf.keys.Count + insertCounter;
-
-                // There will be a split
-                if (expectedSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
-                newCount > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
+                if (byteSize + _totalBatchByteSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
+                    newCount > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
                 {
-                    return insertCounter;
+                    CalculatePrefixSum(mutator, insertSortedIndicesSpan, insertCounter);
+                    var expectedSize = byteSize + _prefixSumBuffer[insertCounter - 1];
+
+                    // There will be a split
+                    if (expectedSize > _tree.m_stateClient.Metadata!.PageSizeBytes)
+                    {
+                        return insertCounter;
+                    }
                 }
+                
 
                 var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
                 var lookupBufferSpan = _lookupBuffer.AsSpan(0, insertCounter);
@@ -459,6 +464,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _prefixSumBuffer = new int[insertCount];
             }
             var span = _prefixSumBuffer.AsSpan(0, insertCount);
+            span.Clear();
             mutator.GetSizePrefixSum(_keys!, sortedLookup, span);
         }
 
@@ -1176,7 +1182,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var leafCount = leaf.keys.Count;
             var totalSize = leafByteSize + batchRangeSize;
-            var searchComparer = _tree.m_keyComparer;
+            //var searchComparer = _tree.m_keyComparer;
 
             var numNodes = (totalSize + maxPageSize - 1) / maxPageSize;
             if (numNodes < 2) numNodes = 2;
