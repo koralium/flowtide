@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         // Load 8 ints from source array and 8 conditionals
                         Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + i);
-                        Vector128<sbyte> condVec = Avx2.LoadVector128(pCond + sourceIndex + i);
+                        Vector128<sbyte> condVec = Avx2.LoadScalarVector128((long*)(pCond + sourceIndex + i)).AsSByte();
 
                         // Compare the conditionals with the target conditional value
                         Vector128<sbyte> cmpResult = Avx2.CompareEqual(condVec, conditionalValueVec);
@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 {
                     // Load 8 ints from source array and 8 typeids
                     Vector256<int> srcVec = Avx2.LoadVector256(pSource + sourceIndex + i);
-                    Vector128<sbyte> typeIdVec = Avx2.LoadVector128(pTypeIds + sourceIndex + i);
+                    Vector128<sbyte> typeIdVec = Avx2.LoadScalarVector128((long*)(pTypeIds + sourceIndex + i)).AsSByte();
 
                     var typeIdVecInt = Avx2.ConvertToVector256Int32(typeIdVec);
                     var additions = Avx2.PermuteVar8x32(valueToAddVec, typeIdVecInt);
@@ -323,7 +323,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         // Load 8 ints from source array and 8 typeids
                         Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + j);
-                        Vector128<sbyte> typeIdVec = Avx2.LoadVector128(pTypeIds + sourceIndex + j);
+                        Vector128<sbyte> typeIdVec = Avx2.LoadScalarVector128((long*)(pTypeIds + sourceIndex + j)).AsSByte();
 
                         var typeIdVecInt = Avx2.ConvertToVector256Int32(typeIdVec);
                         var additions = Avx2.PermuteVar8x32(valueToAddVec, typeIdVecInt);
@@ -348,7 +348,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     {
                         // Load 8 ints from source array and 8 typeids
                         Vector256<int> srcVec = Avx2.LoadVector256(pArray + sourceIndex + i);
-                        Vector128<sbyte> typeIdVec = Avx2.LoadVector128(pTypeIds + sourceIndex + i);
+                        Vector128<sbyte> typeIdVec = Avx2.LoadScalarVector128((long*)(pTypeIds + sourceIndex + i)).AsSByte();
 
                         var typeIdVecInt = Avx2.ConvertToVector256Int32(typeIdVec);
                         var additions = Avx2.PermuteVar8x32(valueToAddVec, typeIdVecInt);
