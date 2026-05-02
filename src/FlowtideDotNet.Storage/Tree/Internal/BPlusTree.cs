@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,12 +21,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TValueContainer : IValueContainer<V>
     {
         internal readonly IStateClient<IBPlusTreeNode, BPlusTreeMetadata> m_stateClient;
-        private readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
+        internal readonly BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> m_options;
         internal IBplusTreeComparer<K, TKeyContainer> m_keyComparer;
         private int minSize;
         private bool m_isByteBased;
         internal readonly int byteMinSize;
-        private bool m_usePreviousPointer;
+        internal bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {

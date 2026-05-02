@@ -13,6 +13,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 
 namespace FlowtideDotNet.Storage.Tree.Internal
 {
@@ -52,6 +53,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _insertTargetPositions = Array.Empty<int>();
         private int[] _deletePositions = Array.Empty<int>();
         private int[] _lookupBuffer = Array.Empty<int>();
+        private int[] _prefixSumBuffer = Array.Empty<int>();
+        private SplitBoundary[] _splitPointsBuffer = Array.Empty<SplitBoundary>();
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
@@ -158,7 +161,17 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var leaf = (leafTask.IsCompletedSuccessfully ? leafTask.Result : await leafTask)
                             as LeafNode<K, V, TKeyContainer, TValueContainer>;
                 Debug.Assert(leaf != null, "Expected leaf node");
-                LeafMutateFromBatch(leaf, mutator, in mapping, _tree.m_keyComparer);
+                var insertCount = LeafMutateFromBatch(leaf, mutator, in mapping, _tree.m_keyComparer);
+
+                if (insertCount > 0)
+                {
+                    // Do a NWay split here, data has not been inserted yet
+                    // But all data is in the buffers etc
+                    var leafByteSize = leaf.ByteSize;
+                    var incomingSize = _prefixSumBuffer[insertCount - 1];
+                    await NWaySplitAndMutate(leaf, mutator, mapping, insertCount, leafByteSize, incomingSize, _tree.m_stateClient.Metadata!.PageSizeBytes);
+                }
+
                 leaf.Return();
             }
         }
@@ -196,7 +209,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             _requireMergeMappings.Clear();
         }
 
-        private void LeafMutateFromBatch<TMutator>(
+        private int LeafMutateFromBatch<TMutator>(
             LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
             TMutator mutator,
             in BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping mapping,
@@ -399,17 +412,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 leaf.keys.DeleteBatch(deleteSpan);
                 leaf.values.DeleteBatch(deleteSpan);
             }
-
+            var byteSize = leaf.ByteSize;
             if (insertCounter > 0)
             {
                 var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(0, insertCounter);
+                CalculatePrefixSum(mutator, insertSortedIndicesSpan, insertCounter);
+
+                var expectedSize = byteSize + _prefixSumBuffer[insertCounter - 1];
+                var newCount = leaf.keys.Count + insertCounter;
+
+                // There will be a split
+                if (expectedSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
+                newCount > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
+                {
+                    return insertCounter;
+                }
+
                 var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
                 var lookupBufferSpan = _lookupBuffer.AsSpan(0, insertCounter);
                 leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan, lookupBufferSpan);
                 leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
             }
 
-            var byteSize = leaf.ByteSize;
+            
             if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
                 leaf.keys.Count > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
             {
@@ -422,7 +447,989 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 _requireMergeMappings.Add(mapping);
             }
+
+            return 0;
         }
 
+        private void CalculatePrefixSum<TRowMutator>(TRowMutator mutator, ReadOnlySpan<int> sortedLookup, int insertCount)
+             where TRowMutator : IRowMutator<K, V>
+        {
+            if (_prefixSumBuffer.Length < insertCount)
+            {
+                _prefixSumBuffer = new int[insertCount];
+            }
+            var span = _prefixSumBuffer.AsSpan(0, insertCount);
+            mutator.GetSizePrefixSum(_keys!, sortedLookup, span);
+        }
+
+
+        //private async ValueTask NWaySplitAndInsert(
+        //    LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //    int insertCounter,
+        //    int totalInsertBytes,
+        //    BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping mapping,
+        //    int maxPageSize)
+        //{
+        //    Debug.Assert(_keys != null && _values != null);
+        //    var leafCount = leaf.keys.Count;
+        //    var leafByteSize = leaf.ByteSize;
+        //    var totalSize = leafByteSize + totalInsertBytes;
+        //    var numNodes = (totalSize + maxPageSize - 1) / maxPageSize;
+        //    if (numNodes < 2) numNodes = 2;
+        //    var maxPossibleNodes = (leafCount + insertCounter) / BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit;
+        //    if (maxPossibleNodes < 2)
+        //    {
+        //        throw new InvalidOperationException("This is cheked before hand");
+        //    }
+        //    if (numNodes > maxPossibleNodes)
+        //    {
+        //        numNodes = maxPossibleNodes;
+        //    }
+        //    var targetPerNode = totalSize / numNodes;
+        //    // Find split points in the leaf by byte size
+        //    if (numNodes - 1 > _splitPointsBuffer.Length)
+        //    {
+        //        _splitPointsBuffer = new int[numNodes - 1];
+        //    }
+        //    for (int s = 0; s < numNodes - 1; s++)
+        //    {
+        //        var target = (s + 1) * targetPerNode;
+        //        var lo = s == 0 ? BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit
+        //                       : _splitPointsBuffer[s - 1] + BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit;
+        //        var hi = leafCount - (numNodes - s - 1) * BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit;
+        //        if (lo >= hi)
+        //        {
+        //            lo = hi - 1;
+        //        }
+        //        if (lo < 1) lo = 1;
+        //        _splitPointsBuffer[s] = BinarySearchSplitByBytes(leaf, lo, hi, target, insertCounter);
+        //    }
+        //    // Determine the parent internal node
+        //    InternalNode<K, V, TKeyContainer>? parent = null;
+        //    int indexInParent = 0;
+        //    if (mapping.ParentId == -1)
+        //    {
+        //        var newRootId = _tree.m_stateClient.GetNewPageId();
+        //        var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+        //        parent = new InternalNode<K, V, TKeyContainer>(newRootId, emptyKeys, _tree.m_options.MemoryAllocator);
+        //        parent.children.InsertAt(0, leaf.Id);
+        //        _tree.m_stateClient.Metadata = _tree.m_stateClient.Metadata!.UpdateRootAndDepth(
+        //            newRootId, _tree.m_stateClient.Metadata.Depth + 1);
+        //        indexInParent = 0;
+        //    }
+        //    else
+        //    {
+        //        var parentTask = _tree.m_stateClient.GetValue(mapping.ParentId);
+        //        parent = (parentTask.IsCompletedSuccessfully ? parentTask.Result : await parentTask)
+        //                 as InternalNode<K, V, TKeyContainer>;
+        //        Debug.Assert(parent != null, "Expected internal node as parent");
+        //        for (int c = 0; c < parent.children.Count; c++)
+        //        {
+        //            if (parent.children[c] == leaf.Id)
+        //            {
+        //                indexInParent = c;
+        //                break;
+        //            }
+        //        }
+        //    }
+        //    // Create new leaf nodes and distribute existing leaf data
+        //    var allLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>[numNodes];
+        //    allLeaves[0] = leaf;
+        //    parent.EnterWriteLock();
+        //    leaf.EnterWriteLock();
+        //    var originalNext = leaf.next;
+        //    for (int s = 0; s < numNodes - 1; s++)
+        //    {
+        //        var newNodeId = _tree.m_stateClient.GetNewPageId();
+        //        var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+        //        var emptyValues = _tree.m_options.ValueSerializer.CreateEmpty();
+        //        var newLeaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
+        //        newLeaf.EnterWriteLock();
+        //        var rangeStart = _splitPointsBuffer[s];
+        //        var rangeEnd = (s < numNodes - 2) ? _splitPointsBuffer[s + 1] : leafCount;
+        //        var rangeLen = rangeEnd - rangeStart;
+        //        newLeaf.keys.AddRangeFrom(leaf.keys, rangeStart, rangeLen);
+        //        newLeaf.values.AddRangeFrom(leaf.values, rangeStart, rangeLen);
+        //        if (s < numNodes - 2)
+        //        {
+        //            newLeaf.next = 0; // placeholder, fixed below
+        //        }
+        //        else
+        //        {
+        //            newLeaf.next = originalNext;
+        //        }
+        //        if (_tree.m_usePreviousPointer)
+        //        {
+        //            newLeaf.previous = s == 0 ? leaf.Id : allLeaves[s].Id;
+        //        }
+        //        newLeaf.ExitWriteLock();
+        //        allLeaves[s + 1] = newLeaf;
+        //        var splitKey = leaf.keys.Get(_splitPointsBuffer[s] - 1);
+        //        parent.keys.Insert_Internal(indexInParent + s, splitKey);
+        //        parent.children.InsertAt(indexInParent + s + 1, newNodeId);
+        //    }
+        //    // Fix next pointers
+        //    for (int s = 0; s < numNodes - 1; s++)
+        //    {
+        //        allLeaves[s].next = allLeaves[s + 1].Id;
+        //    }
+        //    // Trim original leaf
+        //    var keepCount = _splitPointsBuffer[0];
+        //    leaf.keys.RemoveRange(keepCount, leafCount - keepCount);
+        //    leaf.values.RemoveRange(keepCount, leafCount - keepCount);
+        //    leaf.ExitWriteLock();
+        //    parent.ExitWriteLock();
+        //    // Update previous pointer on the node originally after this leaf
+        //    if (_tree.m_usePreviousPointer && originalNext != 0)
+        //    {
+        //        var nextNodeTask = _tree.m_stateClient.GetValue(originalNext);
+        //        var nextNodeObj = nextNodeTask.IsCompletedSuccessfully ? nextNodeTask.Result : await nextNodeTask;
+        //        if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
+        //        {
+        //            nextNode.previous = allLeaves[numNodes - 1].Id;
+        //            _tree.m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
+        //            nextNode.Return();
+        //        }
+        //    }
+        //    _tree.m_stateClient.AddOrUpdate(parent.Id, parent);
+        //    var parentByteSize = parent.GetByteSize();
+        //    if (parentByteSize > maxPageSize &&
+        //        parent.keys.Count > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
+        //    {
+        //        _requireSplitMappings.Add(mapping);
+        //    }
+        //    if (mapping.ParentId != -1)
+        //    {
+        //        parent.Return();
+        //    }
+        //    // Distribute inserts to sub-leaves using _insertTargetPositions.
+        //    // Positions are relative to the post-delete leaf. Walk forward through
+        //    // sorted inserts, advancing to the next sub-leaf when position >= split point.
+        //    int insertPos = 0;
+        //    for (int s = 0; s < numNodes; s++)
+        //    {
+        //        var splitEnd = (s < numNodes - 1) ? _splitPointsBuffer[s] : int.MaxValue;
+        //        var subStart = insertPos;
+        //        var positionOffset = s == 0 ? 0 : _splitPointsBuffer[s - 1];
+        //        // Collect inserts for this sub-leaf
+        //        while (insertPos < insertCounter && _insertTargetPositions[insertPos] < splitEnd)
+        //        {
+        //            // Adjust position relative to this sub-leaf
+        //            _insertTargetPositions[insertPos] -= positionOffset;
+        //            insertPos++;
+        //        }
+        //        var subCount = insertPos - subStart;
+        //        if (subCount > 0)
+        //        {
+        //            ApplyInserts(allLeaves[s], subStart, subCount);
+        //        }
+        //        _tree.m_stateClient.AddOrUpdate(allLeaves[s].Id, allLeaves[s]);
+        //        if (s == 0)
+        //        {
+        //            allLeaves[s].Return();
+        //        }
+        //    }
+        //}
+
+        private void ApplyInserts(
+            LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+            int insertCounter)
+        {
+            Debug.Assert(_keys != null && _values != null);
+            var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(0, insertCounter);
+            var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
+            var lookupBufferSpan = _lookupBuffer.AsSpan(0, insertCounter);
+            leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan, lookupBufferSpan);
+            leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
+        }
+        private void ApplyInserts(
+            LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+            int offset,
+            int count)
+        {
+            Debug.Assert(_keys != null && _values != null);
+            var insertSortedIndicesSpan = _insertSortedIndices.AsSpan(offset, count);
+            var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(offset, count);
+            var lookupBufferSpan = _lookupBuffer.AsSpan(offset, count);
+            leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan, lookupBufferSpan);
+            leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
+        }
+
+        //    private async ValueTask NWaySplitAndInsert2(
+        //        LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //        int insertCounter,
+        //        int totalInsertBytes,
+        //        BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping mapping,
+        //        int maxPageSize)
+        //    {
+        //        var leafCount = leaf.keys.Count;
+        //        var leafByteSize = leaf.ByteSize;
+        //        var totalSize = leafByteSize + totalInsertBytes;
+        //        var numNodes = (totalSize + maxPageSize - 1) / maxPageSize;
+        //        if (numNodes < 2) numNodes = 2;
+        //        var maxPossibleNodes = (leafCount + insertCounter) / BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit;
+        //        if (maxPossibleNodes < 2)
+        //        {
+        //            throw new InvalidOperationException("This is cheked before hand");
+        //        }
+        //        if (numNodes > maxPossibleNodes)
+        //        {
+        //            numNodes = maxPossibleNodes;
+        //        }
+
+        //        var targetPerNode = totalSize / numNodes;
+        //        if (numNodes - 1 > _splitPointsBuffer.Length)
+        //        {
+        //            _splitPointsBuffer = new SplitBoundary[numNodes - 1];
+        //        }
+
+        //        int currentLeafLo = 0;
+        //        int currentBatchLo = 0;
+
+        //        for (int s = 0; s < numNodes - 1; s++)
+        //        {
+        //            var target = (s + 1) * targetPerNode;
+
+        //            _splitPointsBuffer[s] = BinarySearchSplitBoundary(
+        //                leaf, currentLeafLo, leafCount, currentBatchLo, target, mapping.Length);
+
+        //            currentLeafLo = _splitPointsBuffer[s].LeafIndex;
+        //            currentBatchLo = _splitPointsBuffer[s].BatchIndex;
+        //        }
+
+        //        InternalNode<K, V, TKeyContainer>? parent = null;
+        //        int indexInParent = 0;
+
+        //        if (mapping.ParentId == -1)
+        //        {
+        //            var newRootId = _tree.m_stateClient.GetNewPageId();
+        //            var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+        //            parent = new InternalNode<K, V, TKeyContainer>(newRootId, emptyKeys, _tree.m_options.MemoryAllocator);
+        //            parent.children.InsertAt(0, leaf.Id);
+        //            _tree.m_stateClient.Metadata = _tree.m_stateClient.Metadata!.UpdateRootAndDepth(
+        //                newRootId, _tree.m_stateClient.Metadata.Depth + 1);
+        //            indexInParent = 0;
+        //        }
+        //        else
+        //        {
+        //            var parentTask = _tree.m_stateClient.GetValue(mapping.ParentId);
+        //            parent = (parentTask.IsCompletedSuccessfully ? parentTask.Result : await parentTask)
+        //                     as InternalNode<K, V, TKeyContainer>;
+        //            Debug.Assert(parent != null, "Expected internal node as parent");
+
+        //            // Find the index of this leaf in the parent's children
+        //            for (int c = 0; c < parent.children.Count; c++)
+        //            {
+        //                if (parent.children[c] == leaf.Id)
+        //                {
+        //                    indexInParent = c;
+        //                    break;
+        //                }
+        //            }
+        //        }
+
+        //        var allLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>[numNodes];
+        //        allLeaves[0] = leaf; // First segment stays in the original leaf
+
+        //        parent.EnterWriteLock();
+        //        leaf.EnterWriteLock();
+
+        //        var originalNext = leaf.next;
+
+        //        for (int s = 0; s < numNodes - 1; s++)
+        //        {
+        //            var newNodeId = _tree.m_stateClient.GetNewPageId();
+        //            var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+        //            var emptyValues = _tree.m_options.ValueSerializer.CreateEmpty();
+        //            var newLeaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
+        //            newLeaf.EnterWriteLock();
+
+        //            // Slice the old leaf using the calculated boundaries
+        //            var rangeStart = _splitPointsBuffer[s].LeafIndex;
+        //            var rangeEnd = (s < numNodes - 2) ? _splitPointsBuffer[s + 1].LeafIndex : leafCount;
+        //            var rangeLen = rangeEnd - rangeStart;
+
+        //            newLeaf.keys.AddRangeFrom(leaf.keys, rangeStart, rangeLen);
+        //            newLeaf.values.AddRangeFrom(leaf.values, rangeStart, rangeLen);
+
+        //            // Chain next/previous pointers
+        //            if (s < numNodes - 2)
+        //            {
+        //                newLeaf.next = 0; // Placeholder, fixed below
+        //            }
+        //            else
+        //            {
+        //                newLeaf.next = originalNext; // Last new leaf points to original leaf's next
+        //            }
+
+        //            if (_tree.m_usePreviousPointer)
+        //            {
+        //                if (s == 0)
+        //                {
+        //                    newLeaf.previous = leaf.Id;
+        //                }
+        //                else
+        //                {
+        //                    newLeaf.previous = allLeaves[s].Id;
+        //                }
+        //            }
+
+        //            newLeaf.ExitWriteLock();
+        //            allLeaves[s + 1] = newLeaf;
+
+        //            // 3. Safe Parent Split Key Extraction
+        //            int leafCut = _splitPointsBuffer[s].LeafIndex;
+        //            int batchCut = _splitPointsBuffer[s].BatchIndex;
+        //            K splitKey;
+
+        //            if (leafCut == 0)
+        //            {
+        //                // The left node is 100% batch items! Grab the last batch key.
+        //                int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+        //                splitKey = _keys[keyIndex];
+        //            }
+        //            else if (batchCut == 0)
+        //            {
+        //                // The left node is 100% leaf items! Grab the last leaf key.
+        //                splitKey = leaf.keys.Get(leafCut - 1);
+        //            }
+        //            else
+        //            {
+        //                // The left node is a mix. The split key is the MAXIMUM of the last leaf item and last batch item.
+        //                var leafKey = leaf.keys.Get(leafCut - 1);
+        //                int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+        //                var batchKey = _keys[keyIndex];
+
+        //                splitKey = searchComparer.CompareTo(leafKey, batchKey) > 0 ? leafKey : batchKey;
+        //            }
+
+        //            parent.keys.Insert_Internal(indexInParent + s, splitKey);
+        //            parent.children.InsertAt(indexInParent + s + 1, newNodeId);
+        //        }
+        //    }
+
+        //    //public readonly struct SplitBoundary
+        //    //{
+        //    //    public readonly int LeafIndex;
+        //    //    public readonly int BatchIndex;
+
+        //    //    public SplitBoundary(int leafIndex, int batchIndex)
+        //    //    {
+        //    //        LeafIndex = leafIndex;
+        //    //        BatchIndex = batchIndex;
+        //    //    }
+        //    //}
+
+        //    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //    //private int GetCombinedMassBefore(
+        //    //    LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //    //    int leafIdx,
+        //    //    int insertCounter)
+        //    //{
+        //    //    int leafBytes = leafIdx > 0 ? leaf.GetByteSize(0, leafIdx - 1) : 0;
+        //    //    int insertsBefore = CountInsertsBeforePosition(leafIdx, insertCounter);
+        //    //    int batchBytes = insertsBefore > 0 ? _prefixSumBuffer[insertsBefore - 1] : 0;
+
+        //    //    return leafBytes + batchBytes;
+        //    //}
+
+        //    ///// <summary>
+        //    ///// Returns count of inserts with targetPosition &lt; position.
+        //    ///// Uses binary search on _insertTargetPositions (sorted integers).
+        //    ///// </summary>
+        //    //[MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //    //private int CountInsertsBeforePosition(int position, int insertCounter)
+        //    //{
+        //    //    int lo = 0, hi = insertCounter - 1;
+        //    //    int result = 0;
+        //    //    while (lo <= hi)
+        //    //    {
+        //    //        var mid = lo + (hi - lo) / 2;
+        //    //        if (_insertTargetPositions[mid] < position)
+        //    //        {
+        //    //            result = mid + 1;
+        //    //            lo = mid + 1;
+        //    //        }
+        //    //        else
+        //    //        {
+        //    //            hi = mid - 1;
+        //    //        }
+        //    //    }
+        //    //    return result;
+        //    //}
+
+        //    //private SplitBoundary BinarySearchSplitBoundary(
+        //    //    LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //    //    int lo,
+        //    //    int hi,
+        //    //    int target,
+        //    //    int insertCounter)
+        //    //{
+        //    //    int leafAnchor = 0; // The largest leaf index where MassBefore(L) <= target
+
+        //    //    // PHASE 1: Find the Leaf Anchor
+        //    //    while (lo <= hi)
+        //    //    {
+        //    //        int mid = lo + (hi - lo) / 2;
+        //    //        int mass = GetCombinedMassBefore(leaf, mid, insertCounter);
+
+        //    //        if (mass <= target)
+        //    //        {
+        //    //            leafAnchor = mid;
+        //    //            lo = mid + 1; // Try to get closer to the target mass
+        //    //        }
+        //    //        else
+        //    //        {
+        //    //            hi = mid - 1; // Too big, go left
+        //    //        }
+        //    //    }
+
+        //    //    // PHASE 2: The Micro-Split (Dive into the batch cluster)
+        //    //    // Find the exact slice of batch items that are targeting this exact leafAnchor
+        //    //    int startBatchIdx = CountInsertsBeforePosition(leafAnchor, insertCounter);
+        //    //    int endBatchIdx = CountInsertsBeforePosition(leafAnchor + 1, insertCounter) - 1;
+
+        //    //    // If there are batch items here, let's see if we can eat into them to reach the target
+        //    //    if (startBatchIdx <= endBatchIdx)
+        //    //    {
+        //    //        int leafBytesBeforeAnchor = leafAnchor > 0 ? leaf.GetByteSize(0, leafAnchor - 1) : 0;
+
+        //    //        int batchLo = startBatchIdx;
+        //    //        int batchHi = endBatchIdx;
+        //    //        int bestBatchCut = startBatchIdx; // Default to taking none of the cluster
+
+        //    //        while (batchLo <= batchHi)
+        //    //        {
+        //    //            int batchMid = batchLo + (batchHi - batchLo) / 2;
+
+        //    //            // Calculate mass: Leaf base + Batch items up to batchMid
+        //    //            int currentMass = leafBytesBeforeAnchor + _prefixSumBuffer[batchMid];
+
+        //    //            if (currentMass <= target)
+        //    //            {
+        //    //                bestBatchCut = batchMid + 1; // +1 because we are including batchMid
+        //    //                batchLo = batchMid + 1;
+        //    //            }
+        //    //            else
+        //    //            {
+        //    //                batchHi = batchMid - 1;
+        //    //            }
+        //    //        }
+
+        //    //        return new SplitBoundary(leafAnchor, bestBatchCut);
+        //    //    }
+
+        //    //    // No batch cluster at this anchor. Cut cleanly at the leaf index.
+        //    //    return new SplitBoundary(leafAnchor, startBatchIdx);
+        //    //}
+
+        //    public readonly struct SplitBoundary
+        //    {
+        //        public readonly int LeafIndex;
+        //        public readonly int BatchIndex;
+        //        public readonly bool IsBatchMax; // The topological flag
+
+        //        public SplitBoundary(int leafIndex, int batchIndex, bool isBatchMax)
+        //        {
+        //            LeafIndex = leafIndex;
+        //            BatchIndex = batchIndex;
+        //            IsBatchMax = isBatchMax;
+        //        }
+        //    }
+
+        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //    private int CountInsertsBeforePosition(int position, int insertCounter)
+        //    {
+        //        int lo = 0, hi = insertCounter - 1;
+        //        int result = 0;
+        //        while (lo <= hi)
+        //        {
+        //            var mid = lo + (hi - lo) / 2;
+        //            if (_insertTargetPositions[mid] < position)
+        //            {
+        //                result = mid + 1;
+        //                lo = mid + 1;
+        //            }
+        //            else
+        //            {
+        //                hi = mid - 1;
+        //            }
+        //        }
+        //        return result;
+        //    }
+
+        //    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        //    private int GetCombinedMassBefore(
+        //        LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //        int leafIdx,
+        //        int insertCounter)
+        //    {
+        //        int leafBytes = leafIdx > 0 ? leaf.GetByteSize(0, leafIdx - 1) : 0;
+        //        int insertsBefore = CountInsertsBeforePosition(leafIdx, insertCounter);
+        //        int batchBytes = insertsBefore > 0 ? _prefixSumBuffer[insertsBefore - 1] : 0;
+
+        //        return leafBytes + batchBytes;
+        //    }
+
+        //    private SplitBoundary BinarySearchSplitBoundary(
+        //LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+        //int leafLo,
+        //int leafHi,
+        //int batchLo,
+        //int target,
+        //int insertCounter)
+        //    {
+        //        int leafAnchor = leafLo;
+
+        //        // PHASE 1: Find the Leaf Anchor
+        //        int lo = leafLo;
+        //        int hi = leafHi;
+        //        while (lo <= hi)
+        //        {
+        //            int mid = lo + (hi - lo) / 2;
+        //            int mass = GetCombinedMassBefore(leaf, mid, insertCounter);
+
+        //            if (mass <= target)
+        //            {
+        //                leafAnchor = mid;
+        //                lo = mid + 1;
+        //            }
+        //            else
+        //            {
+        //                hi = mid - 1;
+        //            }
+        //        }
+
+        //        int startBatchIdx = CountInsertsBeforePosition(leafAnchor, insertCounter);
+        //        int endBatchIdx = CountInsertsBeforePosition(leafAnchor + 1, insertCounter) - 1;
+
+        //        if (startBatchIdx < batchLo)
+        //        {
+        //            startBatchIdx = batchLo;
+        //        }
+
+        //        if (startBatchIdx <= endBatchIdx)
+        //        {
+        //            int leafBytesBeforeAnchor = leafAnchor > 0 ? leaf.GetByteSize(0, leafAnchor - 1) : 0;
+
+        //            int batchSearchLo = startBatchIdx;
+        //            int batchSearchHi = endBatchIdx;
+        //            int bestBatchCut = startBatchIdx;
+
+        //            while (batchSearchLo <= batchSearchHi)
+        //            {
+        //                int batchMid = batchSearchLo + (batchSearchHi - batchSearchLo) / 2;
+        //                int currentMass = leafBytesBeforeAnchor + _prefixSumBuffer[batchMid];
+
+        //                if (currentMass <= target)
+        //                {
+        //                    bestBatchCut = batchMid + 1;
+        //                    batchSearchLo = batchMid + 1;
+        //                }
+        //                else
+        //                {
+        //                    batchSearchHi = batchMid - 1;
+        //                }
+        //            }
+
+        //            bool isBatchMax = bestBatchCut > startBatchIdx;
+
+        //            return new SplitBoundary(leafAnchor, bestBatchCut, isBatchMax);
+        //        }
+
+        //        return new SplitBoundary(leafAnchor, startBatchIdx, false);
+        //    }
+
+
+        public readonly struct SplitBoundary
+        {
+            public readonly int LeafIndex;
+            public readonly int BatchIndex;
+            public readonly bool IsBatchMax;
+
+            public SplitBoundary(int leafIndex, int batchIndex, bool isBatchMax)
+            {
+                LeafIndex = leafIndex;
+                BatchIndex = batchIndex;
+                IsBatchMax = isBatchMax;
+            }
+        }
+
+        // --- 2. The Mass & Search Helpers ---
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int CountInsertsBeforePosition(int position, int insertCounter)
+        {
+            int lo = 0, hi = insertCounter - 1;
+            int result = 0;
+            while (lo <= hi)
+            {
+                var mid = lo + (hi - lo) / 2;
+                if (_insertTargetPositions[mid] < position)
+                {
+                    result = mid + 1;
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid - 1;
+                }
+            }
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private int GetCombinedMassBefore(
+            LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+            int leafIdx,
+            int insertCounter)
+        {
+            int leafBytes = leafIdx > 0 ? leaf.GetByteSize(0, leafIdx - 1) : 0;
+            int insertsBefore = CountInsertsBeforePosition(leafIdx, insertCounter);
+            int batchBytes = insertsBefore > 0 ? _prefixSumBuffer[insertsBefore - 1] : 0;
+
+            return leafBytes + batchBytes;
+        }
+
+        private SplitBoundary BinarySearchSplitBoundary(
+            LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+            int leafLo,
+            int leafHi,
+            int batchLo,
+            int target,
+            int insertCounter)
+        {
+            int leafAnchor = leafLo;
+
+            // PHASE 1: Find the Leaf Anchor
+            int lo = leafLo;
+            int hi = leafHi;
+            while (lo <= hi)
+            {
+                int mid = lo + (hi - lo) / 2;
+                int mass = GetCombinedMassBefore(leaf, mid, insertCounter);
+
+                if (mass <= target)
+                {
+                    leafAnchor = mid;
+                    lo = mid + 1;
+                }
+                else
+                {
+                    hi = mid - 1;
+                }
+            }
+
+            // PHASE 2: The Micro-Split (Dive into the batch cluster)
+            int startBatchIdx = CountInsertsBeforePosition(leafAnchor, insertCounter);
+            int endBatchIdx = CountInsertsBeforePosition(leafAnchor + 1, insertCounter) - 1;
+
+            // THE OPTIMIZATION: Do not search batch items already assigned to previous cuts
+            if (startBatchIdx < batchLo)
+            {
+                startBatchIdx = batchLo;
+            }
+
+            if (startBatchIdx <= endBatchIdx)
+            {
+                int leafBytesBeforeAnchor = leafAnchor > 0 ? leaf.GetByteSize(0, leafAnchor - 1) : 0;
+
+                int batchSearchLo = startBatchIdx;
+                int batchSearchHi = endBatchIdx;
+                int bestBatchCut = startBatchIdx;
+
+                while (batchSearchLo <= batchSearchHi)
+                {
+                    int batchMid = batchSearchLo + (batchSearchHi - batchSearchLo) / 2;
+                    int currentMass = leafBytesBeforeAnchor + _prefixSumBuffer[batchMid];
+
+                    if (currentMass <= target)
+                    {
+                        bestBatchCut = batchMid + 1;
+                        batchSearchLo = batchMid + 1;
+                    }
+                    else
+                    {
+                        batchSearchHi = batchMid - 1;
+                    }
+                }
+
+                // THE O(1) TOPOLOGICAL CHECK
+                bool isBatchMax = bestBatchCut > startBatchIdx;
+                return new SplitBoundary(leafAnchor, bestBatchCut, isBatchMax);
+            }
+
+            return new SplitBoundary(leafAnchor, startBatchIdx, false);
+        }
+
+        private async ValueTask NWaySplitAndMutate<TMutator>(
+            LeafNode<K, V, TKeyContainer, TValueContainer> leaf,
+            TMutator mutator,
+            BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping mapping,
+            int insertCount,
+            int leafByteSize,
+            int batchRangeSize,
+            int maxPageSize)
+            where TMutator : IRowMutator<K, V>
+        {
+            Debug.Assert(_keys != null && _values != null);
+
+            var leafCount = leaf.keys.Count;
+            var totalSize = leafByteSize + batchRangeSize;
+            var searchComparer = _tree.m_keyComparer;
+
+            var numNodes = (totalSize + maxPageSize - 1) / maxPageSize;
+            if (numNodes < 2) numNodes = 2;
+
+            var maxPossibleNodes = (leafCount + insertCount) / BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit;
+            if (maxPossibleNodes < 2)
+            {
+                throw new InvalidOperationException("Split without possible split");
+                //// This should be caught before calling this method, but safe fallback
+                //LeafMutateFromBatch(leaf, mutator, in mapping, searchComparer);
+                //leaf.Return();
+                //return;
+            }
+            if (numNodes > maxPossibleNodes)
+            {
+                numNodes = maxPossibleNodes;
+            }
+
+            var targetPerNode = totalSize / numNodes;
+
+            if (numNodes - 1 > _splitPointsBuffer.Length)
+            {
+                _splitPointsBuffer = new SplitBoundary[numNodes - 1];
+            }
+
+            int currentLeafLo = 0;
+            int currentBatchLo = 0;
+
+            for (int s = 0; s < numNodes - 1; s++)
+            {
+                var target = (s + 1) * targetPerNode;
+
+                _splitPointsBuffer[s] = BinarySearchSplitBoundary(
+                    leaf, currentLeafLo, leafCount, currentBatchLo, target, insertCount);
+
+                int leafCut = _splitPointsBuffer[s].LeafIndex;
+                int batchCut = _splitPointsBuffer[s].BatchIndex;
+                bool isBatchMax = _splitPointsBuffer[s].IsBatchMax;
+
+                int assignedCount = (leafCut - currentLeafLo) + (batchCut - currentBatchLo);
+                int deficit = BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeAfterSplit - assignedCount;
+
+                if (deficit > 0)
+                {
+                    for (int i = 0; i < deficit; i++)
+                    {
+                        bool canTakeLeaf = leafCut < leafCount;
+                        bool canTakeBatch = batchCut < insertCount;
+
+                        if (canTakeLeaf && canTakeBatch)
+                        {
+
+                            int batchTargetLeafIndex = _insertTargetPositions[mapping.Offset + batchCut];
+
+                            if (batchTargetLeafIndex <= leafCut)
+                            {
+                                batchCut++;
+                                isBatchMax = true;
+                            }
+                            else
+                            {
+                                leafCut++;
+                                isBatchMax = false;
+                            }
+                        }
+                        else if (canTakeLeaf)
+                        {
+                            leafCut++;
+                            isBatchMax = false;
+                        }
+                        else if (canTakeBatch)
+                        {
+                            batchCut++;
+                            isBatchMax = true;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+
+                    _splitPointsBuffer[s] = new SplitBoundary(leafCut, batchCut, isBatchMax);
+                }
+
+                currentLeafLo = _splitPointsBuffer[s].LeafIndex;
+                currentBatchLo = _splitPointsBuffer[s].BatchIndex;
+            }
+
+            InternalNode<K, V, TKeyContainer>? parent = null;
+            int indexInParent = 0;
+
+            if (mapping.ParentId == -1)
+            {
+                var newRootId = _tree.m_stateClient.GetNewPageId();
+                var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+                parent = new InternalNode<K, V, TKeyContainer>(newRootId, emptyKeys, _tree.m_options.MemoryAllocator);
+                parent.children.InsertAt(0, leaf.Id);
+                _tree.m_stateClient.Metadata = _tree.m_stateClient.Metadata!.UpdateRootAndDepth(
+                    newRootId, _tree.m_stateClient.Metadata.Depth + 1);
+                indexInParent = 0;
+            }
+            else
+            {
+                var parentTask = _tree.m_stateClient.GetValue(mapping.ParentId);
+                parent = (parentTask.IsCompletedSuccessfully ? parentTask.Result : await parentTask)
+                         as InternalNode<K, V, TKeyContainer>;
+                Debug.Assert(parent != null, "Expected internal node as parent");
+
+                for (int c = 0; c < parent.children.Count; c++)
+                {
+                    if (parent.children[c] == leaf.Id)
+                    {
+                        indexInParent = c;
+                        break;
+                    }
+                }
+            }
+
+            var allLeaves = new LeafNode<K, V, TKeyContainer, TValueContainer>[numNodes];
+            allLeaves[0] = leaf;
+
+            parent.EnterWriteLock();
+            leaf.EnterWriteLock();
+
+            var originalNext = leaf.next;
+
+            for (int s = 0; s < numNodes - 1; s++)
+            {
+                var newNodeId = _tree.m_stateClient.GetNewPageId();
+                var emptyKeys = _tree.m_options.KeySerializer.CreateEmpty();
+                var emptyValues = _tree.m_options.ValueSerializer.CreateEmpty();
+                var newLeaf = new LeafNode<K, V, TKeyContainer, TValueContainer>(newNodeId, emptyKeys, emptyValues);
+                newLeaf.EnterWriteLock();
+
+                // Slice the old leaf using the calculated boundaries
+                var rangeStart = _splitPointsBuffer[s].LeafIndex;
+                var rangeEnd = (s < numNodes - 2) ? _splitPointsBuffer[s + 1].LeafIndex : leafCount;
+                var rangeLen = rangeEnd - rangeStart;
+
+                newLeaf.keys.AddRangeFrom(leaf.keys, rangeStart, rangeLen);
+                newLeaf.values.AddRangeFrom(leaf.values, rangeStart, rangeLen);
+
+                if (s < numNodes - 2) newLeaf.next = 0;
+                else newLeaf.next = originalNext;
+
+                if (_tree.m_usePreviousPointer)
+                {
+                    if (s == 0) newLeaf.previous = leaf.Id;
+                    else newLeaf.previous = allLeaves[s].Id;
+                }
+
+                newLeaf.ExitWriteLock();
+                allLeaves[s + 1] = newLeaf;
+
+                int leafCut = _splitPointsBuffer[s].LeafIndex;
+                int batchCut = _splitPointsBuffer[s].BatchIndex;
+                K splitKey;
+
+                if (leafCut == 0)
+                {
+                    int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+                    splitKey = _keys[keyIndex];
+                }
+                else if (batchCut == 0)
+                {
+                    splitKey = leaf.keys.Get(leafCut - 1);
+                }
+                else if (_splitPointsBuffer[s].IsBatchMax)
+                {
+                    int keyIndex = _sortedIndices[mapping.Offset + batchCut - 1];
+                    splitKey = _keys[keyIndex];
+                }
+                else
+                {
+                    splitKey = leaf.keys.Get(leafCut - 1);
+                }
+
+                parent.keys.Insert_Internal(indexInParent + s, splitKey);
+                parent.children.InsertAt(indexInParent + s + 1, newNodeId);
+            }
+
+            for (int s = 0; s < numNodes - 1; s++)
+            {
+                allLeaves[s].next = allLeaves[s + 1].Id;
+            }
+
+            var keepCount = _splitPointsBuffer[0].LeafIndex;
+            leaf.keys.RemoveRange(keepCount, leafCount - keepCount);
+            leaf.values.RemoveRange(keepCount, leafCount - keepCount);
+
+            
+            parent.ExitWriteLock();
+
+            if (_tree.m_usePreviousPointer && originalNext != 0)
+            {
+                var nextNodeTask = _tree.m_stateClient.GetValue(originalNext);
+                var nextNodeObj = nextNodeTask.IsCompletedSuccessfully ? nextNodeTask.Result : await nextNodeTask;
+                if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
+                {
+                    nextNode.previous = allLeaves[numNodes - 1].Id;
+                    _tree.m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
+                    nextNode.Return();
+                }
+            }
+
+            _tree.m_stateClient.AddOrUpdate(parent.Id, parent);
+
+            var parentByteSize = parent.GetByteSize();
+            if (parentByteSize > maxPageSize &&
+                parent.keys.Count > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
+            {
+                _requireSplitMappings.Add(mapping);
+            }
+
+            if (mapping.ParentId != -1)
+            {
+                parent.Return();
+            }
+
+            var batchStart = 0;
+
+            currentLeafLo = 0;
+
+            for (int s = 0; s < numNodes; s++)
+            {
+                int batchEnd = (s < numNodes - 1) ? _splitPointsBuffer[s].BatchIndex : insertCount; // mapping.Length here is insertCounter
+                var subLength = batchEnd - batchStart;
+
+                if (subLength > 0)
+                {
+                    int offset = mapping.Offset + batchStart;
+
+                    if (currentLeafLo > 0 || batchStart > 0)
+                    {
+                        for (int i = 0; i < subLength; i++)
+                        {
+                            _insertTargetPositions[offset + i] -= (currentLeafLo);
+                        }
+                    }
+
+                    ApplyInserts(allLeaves[s], offset, subLength);
+                }
+
+                _tree.m_stateClient.AddOrUpdate(allLeaves[s].Id, allLeaves[s]);
+
+                batchStart = batchEnd;
+                if (s < numNodes - 1)
+                {
+                    currentLeafLo = _splitPointsBuffer[s].LeafIndex;
+                }
+            }
+
+            leaf.ExitWriteLock();
+        }
     }
 }

@@ -1768,6 +1768,357 @@ namespace FlowtideDotNet.Storage.Tests
 
         #endregion
 
+        #region Pre-Split Tests
+
+        [Fact]
+        public async Task LargeBatchIntoEmptyTree_TriggersPreSplit()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var count = 50;
+            var keys = new long[count];
+            var values = new long[count];
+            var expected = new SortedDictionary<long, long>();
+
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i * 10;
+                expected[i] = i * 10;
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task LargeBatchIntoExistingLeaf_InterleavedKeys()
+        {
+            var bulkInserter = CreateBulkInserter();
+
+            // Pre-populate with 5 entries
+            var setupKeys = new long[] { 10, 20, 30, 40, 50 };
+            var setupValues = new long[] { 100, 200, 300, 400, 500 };
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, 5, new UpsertMutator(), 5 * 8);
+
+            // Insert 30 new keys that interleave with existing
+            var count = 30;
+            var keys = new long[count];
+            var values = new long[count];
+            var expected = new SortedDictionary<long, long>();
+
+
+            for (int i = 0; i < 5; i++)
+            {
+                expected[setupKeys[i]] = setupValues[i];
+            }
+
+            // Add 30 new keys that interleave
+            int idx = 0;
+            for (int i = 1; i <= 60; i += 2)
+            {
+                if (idx >= count) break;
+                if (!expected.ContainsKey(i))
+                {
+                    keys[idx] = i;
+                    values[idx] = i * 10;
+                    expected[i] = i * 10;
+                    idx++;
+                }
+            }
+            // Fill remaining with keys beyond 60
+            for (int i = 61; idx < count; i++)
+            {
+                keys[idx] = i;
+                values[idx] = i * 10;
+                expected[i] = i * 10;
+                idx++;
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task MultipleSequentialLargeBatches_EachTriggersPreSplit()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var expected = new SortedDictionary<long, long>();
+
+            for (int batch = 0; batch < 5; batch++)
+            {
+                var count = 30;
+                var keys = new long[count];
+                var values = new long[count];
+
+                for (int i = 0; i < count; i++)
+                {
+                    var key = batch * 100 + i;
+                    keys[i] = key;
+                    values[i] = key * 10;
+                    expected[key] = key * 10;
+                }
+
+                await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+            }
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task LargeBatchSpanningMultipleLeaves_MixedOverflow()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var expected = new SortedDictionary<long, long>();
+
+            // Spread keys across multiple leaves
+            var setupCount = 40;
+            var setupKeys = new long[setupCount];
+            var setupValues = new long[setupCount];
+            for (int i = 0; i < setupCount; i++)
+            {
+                setupKeys[i] = i * 10; // Spread out: 0, 10, 20, ..., 390
+                setupValues[i] = i;
+                expected[i * 10] = i;
+            }
+            await bulkInserter.ApplyBatch(setupKeys, setupValues, setupCount, new UpsertMutator(), setupCount * 8);
+
+            // Fill gaps near the beginning and add sparse keys at the end
+            var count = 25;
+            var keys = new long[count];
+            var values = new long[count];
+            int k = 0;
+            for (int i = 1; i <= 50 && k < 20; i += 2)
+            {
+                keys[k] = i;
+                values[k] = i * 100;
+                expected[i] = i * 100;
+                k++;
+            }
+
+            for (int i = 395; k < count; i++)
+            {
+                keys[k] = i;
+                values[k] = i * 100;
+                expected[i] = i * 100;
+                k++;
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+        }
+
+        [Fact]
+        public async Task UpdateOnlyBatch_DoesNotTriggerPreSplit()
+        {
+            var bulkInserter = CreateBulkInserter();
+
+            var count = 20;
+            var keys = new long[count];
+            var values = new long[count];
+            var expected = new SortedDictionary<long, long>();
+
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i * 10;
+                expected[i] = i * 10;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            // Update all keys with new values
+            for (int i = 0; i < count; i++)
+            {
+                values[i] = i * 100;
+                expected[i] = i * 100;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task PreSplitThenIndividualUpsertAndDelete()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var expected = new SortedDictionary<long, long>();
+
+            // Insert 40 even keys via bulk
+            var count = 40;
+            var keys = new long[count];
+            var values = new long[count];
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i * 2;
+                values[i] = i;
+                expected[i * 2] = i;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            // Individual upserts for odd keys
+            for (int i = 0; i < 10; i++)
+            {
+                var key = i * 2 + 1;
+                await _tree.Upsert(key, key * 100);
+                expected[key] = key * 100;
+            }
+
+            // Individual deletes
+            for (int i = 0; i < 5; i++)
+            {
+                var key = i * 4L; // Delete 0, 4, 8, 12, 16
+                await _tree.Delete(key);
+                expected.Remove(key);
+            }
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task BulkDeleteAfterPreSplit_ForcesRebalance()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var expected = new SortedDictionary<long, long>();
+
+            // Insert 50 keys
+            var count = 50;
+            var keys = new long[count];
+            var values = new long[count];
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i * 10;
+                expected[i] = i * 10;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            // Delete most keys, keeping only every 10th
+            var deleteCount = 45;
+            var deleteKeys = new long[deleteCount];
+            var deleteValues = new long[deleteCount];
+            int dk = 0;
+            for (int i = 0; i < count && dk < deleteCount; i++)
+            {
+                if (i % 10 != 0) // Keep 0, 10, 20, 30, 40
+                {
+                    deleteKeys[dk] = i;
+                    deleteValues[dk] = 0;
+                    expected.Remove(i);
+                    dk++;
+                }
+            }
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, deleteCount, new DeleteIfExistsMutator(), deleteCount * 8);
+
+            await AssertTreeContents(expected);
+            await AssertGetValueForAll(expected);
+        }
+
+        [Fact]
+        public async Task RandomLargeBatch_WithDuplicates()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var rng = new Random(12345);
+            var count = 200;
+            var keys = new long[count];
+            var values = new long[count];
+            var expected = new SortedDictionary<long, long>();
+
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = rng.Next(0, 500);
+                values[i] = i;
+                expected[keys[i]] = i;
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+        }
+
+        [Fact]
+        public async Task VeryLargeBatchIntoEmptyTree_IterationOrder()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var count = 500;
+            var keys = new long[count];
+            var values = new long[count];
+            var expected = new SortedDictionary<long, long>();
+
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i;
+                expected[i] = i;
+            }
+
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            await AssertTreeContents(expected);
+
+
+            var all = await ReadAllFromTree();
+            Assert.Equal(count, all.Count);
+            for (int i = 0; i < count; i++)
+            {
+                Assert.Equal(i, all[i].key);
+                Assert.Equal(i, all[i].value);
+            }
+        }
+
+        [Fact]
+        public async Task AlternatingLargeInsertAndDeleteBatches()
+        {
+            var bulkInserter = CreateBulkInserter();
+            var expected = new SortedDictionary<long, long>();
+
+            // Insert 100 keys
+            var count = 100;
+            var keys = new long[count];
+            var values = new long[count];
+            for (int i = 0; i < count; i++)
+            {
+                keys[i] = i;
+                values[i] = i;
+                expected[i] = i;
+            }
+            await bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
+
+            // Delete odd keys (50 deletes)
+            var deleteCount = 50;
+            var deleteKeys = new long[deleteCount];
+            var deleteValues = new long[deleteCount];
+            for (int i = 0; i < deleteCount; i++)
+            {
+                deleteKeys[i] = i * 2 + 1;
+                deleteValues[i] = 0;
+                expected.Remove(i * 2 + 1);
+            }
+            await bulkInserter.ApplyBatch(deleteKeys, deleteValues, deleteCount, new DeleteIfExistsMutator(), deleteCount * 8);
+
+            // Insert 80 new keys in gaps
+            var insertCount = 80;
+            var insertKeys = new long[insertCount];
+            var insertValues = new long[insertCount];
+            for (int i = 0; i < insertCount; i++)
+            {
+                insertKeys[i] = 100 + i;
+                insertValues[i] = (100 + i) * 10;
+                expected[100 + i] = (100 + i) * 10;
+            }
+            await bulkInserter.ApplyBatch(insertKeys, insertValues, insertCount, new UpsertMutator(), insertCount * 8);
+
+            await AssertTreeContents(expected);
+        }
+
+        #endregion
+
         public void Dispose()
         {
             _stateManager?.Dispose();
