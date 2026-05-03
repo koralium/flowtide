@@ -31,7 +31,10 @@ namespace FlowtideDotNet.Storage.Memory
     }
     internal unsafe static class FlowtideMemoryAllocation
     {
-        private static readonly bool _isMimallocAvailable = NativeLibrary.TryLoad("mimalloc", out _);
+        private static readonly bool _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
+            typeof(FlowtideMemoryAllocation).Assembly,
+            DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
+            out _);
 
         static FlowtideMemoryAllocation()
         {
