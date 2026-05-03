@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                     _data = newPtr;
                     _longData = (long*)_data;
                 }
-                _dataLength = newLength;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(long);
             }
         }
 
@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
                 _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(long), 64);
                 _data = _memoryOwner.Memory.Pin().Pointer;
                 _longData = (long*)_data;
-                _dataLength = _length;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(long);
             }
         }
 

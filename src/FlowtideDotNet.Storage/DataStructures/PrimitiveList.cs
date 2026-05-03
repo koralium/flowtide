@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                     _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, allocSize, 64);
                     _data = _memoryOwner.Memory.Pin().Pointer;
                 }
-                _dataLength = newLength;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
             }
         }
 
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Storage.DataStructures
                 Debug.Assert(_memoryOwner != null);
                 _memoryOwner = _memoryAllocator.Realloc(_memoryOwner, _length * sizeof(T), 64);
                 _data = _memoryOwner.Memory.Pin().Pointer;
-                _dataLength = _length;
+                _dataLength = _memoryOwner.Memory.Length / sizeof(T);
             }
         }
 
