@@ -45,6 +45,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
             }
+
+            const int joinWeightsValueSize = 8;
+            var cumulativeValueBytes = 0;
+            for (int i = 0; i < indices.Length; i++)
+            {
+                cumulativeValueBytes += joinWeightsValueSize;
+                sizes[i] += cumulativeValueBytes;
+            }
         }
 
         public GenericWriteOperation Process(ColumnRowReference key, bool exists, in JoinWeights existingData, ref JoinWeights incomingData)
