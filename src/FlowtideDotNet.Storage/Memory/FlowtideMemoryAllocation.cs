@@ -31,13 +31,22 @@ namespace FlowtideDotNet.Storage.Memory
     }
     internal unsafe static class FlowtideMemoryAllocation
     {
-        private static readonly bool _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
-            typeof(FlowtideMemoryAllocation).Assembly,
-            DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
-            out _);
+        private static readonly bool _isMimallocAvailable;
 
         static FlowtideMemoryAllocation()
         {
+            _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
+                typeof(FlowtideMemoryAllocation).Assembly,
+                DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
+                out _);
+
+            if (!_isMimallocAvailable)
+            {
+                // If it failed to load try a simple load again
+                _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
+                out _);
+            }
+
             if (!_isMimallocAvailable)
             {
                 Console.WriteLine("[Flowtide Warning] 'mimalloc' native library could not be loaded. Falling back to standard NativeMemory. Performance may be degraded.");
