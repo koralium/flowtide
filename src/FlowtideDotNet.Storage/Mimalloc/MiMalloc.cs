@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Mimalloc
     [SuppressUnmanagedCodeSecurity]
     public static unsafe class MiMalloc
     {
-        private const string NATIVE_LIBRARY = "mimalloc";
+        internal const string NATIVE_LIBRARY = "mimalloc";
 
         [DllImport(NATIVE_LIBRARY, CallingConvention = CallingConvention.Cdecl)]
         public static extern int mi_version();

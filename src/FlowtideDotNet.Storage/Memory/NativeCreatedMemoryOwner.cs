@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (ptr != null)
             {
-                MiMalloc.mi_free_aligned(ptr, alignment);
+                FlowtideMemoryAllocation.FreeAligned(ptr, alignment);
                 memoryManager!.RegisterFreeToMetrics(length);
                 ptr = null;
                 length = 0;
