@@ -20,6 +20,8 @@ namespace FlowtideDotNet.Storage.Tree
 {
     public interface IRowMutator<K, V>
     {
+        void GetSizePrefixSum(K[] keys, ReadOnlySpan<int> indices, Span<int> sizes);
+
         GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
     }
 }

@@ -76,7 +76,7 @@ namespace SqlSampleWithUI
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            for (int i = 0; i < 1_000_000; i++)
+            for (int i = 0; i < 1_00_000; i++)
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = MemoryAllocator;
@@ -90,13 +90,13 @@ namespace SqlSampleWithUI
                     columns[b] = Column.Create(memoryManager);
                 }
 
-                for (int k = 0; k < 100; k++)
+                for (int k = 0; k < 1000; k++)
                 {
                     weights.Add(1);
                     iterations.Add(0);
                     for (int z = 0; z < 16; z++)
                     {
-                        columns[z].Add(new Int64Value((i * 100) + k));
+                        columns[z].Add(new Int64Value((i * 1000) + k));
                     }
                 }
                 await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
