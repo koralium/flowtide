@@ -448,7 +448,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            var batchSize = msg.Data.EventBatchData.GetByteSize();
+            const int joinWeightsByteSize = 8;
+            var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
