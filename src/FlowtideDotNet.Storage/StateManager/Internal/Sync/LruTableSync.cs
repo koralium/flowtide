@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Mimalloc;
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
@@ -489,6 +490,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         }
                     }
                 }
+            }
+
+            if (isCleanup)
+            {
+                MiMalloc.mi_collect(true);
             }
         }
 
