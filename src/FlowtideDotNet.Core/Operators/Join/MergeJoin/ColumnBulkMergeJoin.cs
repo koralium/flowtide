@@ -105,6 +105,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
         private readonly DataValueContainer _dataValueContainer;
         private const int MaxRowSize = 100;
+        private const int joinWeightsByteSize = 8;
         private readonly int _leftInputColumnCount;
         private readonly int _rightInputColumnCount;
 
@@ -275,7 +276,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 rightColumns.Add(Column.Create(memoryManager));
             }
 
-            var batchSize = msg.Data.EventBatchData.GetByteSize();
+            var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -456,7 +457,6 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            const int joinWeightsByteSize = 8;
             var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
