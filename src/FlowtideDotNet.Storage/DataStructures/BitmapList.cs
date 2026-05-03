@@ -187,14 +187,14 @@ namespace FlowtideDotNet.Storage.DataStructures
                 {
                     _memoryOwner = memoryAllocator.Allocate(allocationSize, 64);
                     _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill(_data, (nuint)allocationSize, 0);
+                    NativeMemory.Fill(_data, (nuint)_memoryOwner.Memory.Length, 0);
                 }
                 else
                 {
                     int oldSize = _dataLength * sizeof(int);
                     _memoryOwner = memoryAllocator.Realloc(_memoryOwner, allocationSize, 64);
                     _data = _memoryOwner.Memory.Pin().Pointer;
-                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(allocationSize - oldSize), 0);
+                    NativeMemory.Fill((byte*)(_data) + oldSize, (nuint)(_memoryOwner.Memory.Length - oldSize), 0);
                 }
                 _dataLength = _memoryOwner.Memory.Length / sizeof(int);
             }
