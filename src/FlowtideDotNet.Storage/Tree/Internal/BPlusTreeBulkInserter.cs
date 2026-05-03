@@ -751,8 +751,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 newLeaf.keys.AddRangeFrom(leaf.keys, rangeStart, rangeLen);
                 newLeaf.values.AddRangeFrom(leaf.values, rangeStart, rangeLen);
 
-                if (s < numNodes - 2) newLeaf.next = 0;
-                else newLeaf.next = originalNext;
+                newLeaf.next = (s < numNodes - 2) ? 0 : originalNext;
 
                 if (_tree.m_usePreviousPointer)
                 {
