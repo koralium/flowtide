@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int minSize;
         private bool m_isByteBased;
         internal readonly int byteMinSize;
-        internal bool m_usePreviousPointer;
+        internal readonly bool m_usePreviousPointer;
 
         public BPlusTree(IStateClient<IBPlusTreeNode, BPlusTreeMetadata> stateClient, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
         {
