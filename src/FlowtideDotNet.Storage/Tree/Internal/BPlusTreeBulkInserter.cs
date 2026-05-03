@@ -755,8 +755,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                 if (_tree.m_usePreviousPointer)
                 {
-                    if (s == 0) newLeaf.previous = leaf.Id;
-                    else newLeaf.previous = allLeaves[s].Id;
+                    newLeaf.previous = (s == 0) ? leaf.Id : allLeaves[s].Id;
                 }
 
                 newLeaf.ExitWriteLock();
