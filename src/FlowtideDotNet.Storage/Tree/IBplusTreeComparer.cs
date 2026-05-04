@@ -36,6 +36,22 @@ namespace FlowtideDotNet.Storage.Tree
         /// <returns></returns>
         int FindIndex(in K key, in TKeyContainer keyContainer);
 
+        void FindBoundriesBulk(ReadOnlySpan<K> keys, in TKeyContainer keyContainer, Span<int> lowerBounds, Span<int> upperBounds)
+        {
+            int currentStart = 0;
+            int maxEnd = keyContainer.Count - 1;
+
+            for (int i = 0; i < keys.Length; i++)
+            {
+                var bounds = FindBoundries(keys[i], in keyContainer, currentStart, maxEnd);
+
+                lowerBounds[i] = bounds.lowerBounds;
+                upperBounds[i] = bounds.upperBounds;
+
+                currentStart = bounds.lowerBounds;
+            }
+        }
+
         FindBoundriesResult FindBoundries(in K key, in TKeyContainer keyContainer, int startIndex, int endIndex);
 
         /// <summary>
