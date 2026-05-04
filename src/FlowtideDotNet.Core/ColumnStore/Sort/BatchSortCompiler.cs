@@ -52,11 +52,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         [MethodImpl(MethodImplOptions.NoInlining)]
         public static int CompareTail(ref SortCompareContext context, int x, int y)
         {
+            if (x == y)
+            {
+                return 0;
+            }
             var columns = context.columns;
 
             for (int i = 7; i < columns.Length; i++)
             {
-                var result = columns[i].CompareTo(columns[i], x, y);
+                var xval = columns[i].GetValueAt(x, default);
+                var yval = columns[i].GetValueAt(y, default);
+                var result = DataValueComparer.CompareTo(xval, yval);
                 if (result != 0)
                 {
                     return result;
