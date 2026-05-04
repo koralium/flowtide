@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -51,10 +51,9 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             inputColumn.SetSelfComparePointers(ref inputPointers);
             T* inputData = (T*)inputPointers.dataPointer;
 
-            int treeCount = treeColumn.Count;
             int inputCount = inputSortedLookup.Length;
 
-            if (inputCount == 0 || treeCount == 0) return;
+            if (inputCount == 0) return;
 
             fixed (int* lookupPtr = &MemoryMarshal.GetReference(inputSortedLookup))
             fixed (int* lowerPtr = &MemoryMarshal.GetReference(lowerBounds))
@@ -63,12 +62,18 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 SearchTask* taskStack = stackalloc SearchTask[64];
                 int stackPointer = 0;
 
+                int initialLeafStart = lowerPtr[0];
+                initialLeafStart = initialLeafStart < 0 ? ~initialLeafStart : initialLeafStart;
+
+                int initialLeafEnd = upperPtr[inputCount - 1];
+                initialLeafEnd = initialLeafEnd < 0 ? ~initialLeafEnd : initialLeafEnd;
+
                 taskStack[stackPointer++] = new SearchTask
                 {
                     InputStart = 0,
                     InputEnd = inputCount - 1,
-                    LeafStart = 0,
-                    LeafEnd = treeCount - 1
+                    LeafStart = initialLeafStart,
+                    LeafEnd = initialLeafEnd
                 };
 
                 while (stackPointer > 0)
@@ -105,8 +110,20 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                         inputBlockEnd++;
                     }
 
-                    // Binary search and Galloping Bounds to handle skew
-                    FindBounds_Pivot(treeData, targetValue, task.LeafStart, task.LeafEnd, out int lower, out int upper);
+                    int blockStartBound = lowerPtr[inputBlockStart];
+
+                    int lower, upper;
+
+                    if (blockStartBound < 0)
+                    {
+                        lower = blockStartBound;
+                        upper = blockStartBound;
+                    }
+                    else
+                    {
+                        int blockEndBound = upperPtr[inputBlockEnd];
+                        FindBounds_Pivot(treeData, targetValue, blockStartBound, blockEndBound, out lower, out upper);
+                    }
 
                     // Apply bounds for all duplicates
                     for (int i = inputBlockStart; i <= inputBlockEnd; i++)

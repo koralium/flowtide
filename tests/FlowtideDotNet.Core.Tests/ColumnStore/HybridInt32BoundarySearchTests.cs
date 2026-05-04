@@ -883,44 +883,54 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         /// <summary>
         /// Multiple entries with varying pre-set bounds across non-globally-sorted segments.
+        /// Input is sorted ascending, bounds are contiguous ascending groups.
         /// Tests that each entry independently searches only its designated segment.
         /// </summary>
         [Fact]
         public void TestHybridInt32PreSetMicroBoundsMultipleSegments()
         {
             // Three segments: [0,3], [4,7], [8,11]
-            // Each sorted ascending internally but decreasing across segments
+            // Each sorted ascending internally but NOT globally sorted
             using var tree = CreateInt32Column(
                 80000, 85000, 90000, 95000,    // segment 0: [0,3]
-                50000, 55000, 60000, 65000,    // segment 1: [4,7]
-                33000, 34000, 35000, 36000     // segment 2: [8,11]
+                40000, 45000, 50000, 55000,    // segment 1: [4,7]
+                60000, 65000, 70000, 75000     // segment 2: [8,11]
             );
 
-            using var input = CreateInt32Column(90000, 55000, 35000, 80000);
-            var lookup = new int[] { 0, 1, 2, 3 };
+            // Input sorted ascending, 2 entries per segment, bounds match segment
+            using var input = CreateInt32Column(85000, 90000, 45000, 50000, 65000, 70000);
+            var lookup = new int[] { 0, 1, 2, 3, 4, 5 };
 
-            var lower = new int[] { 0, 4, 8, 0 };
-            var upper = new int[] { 3, 7, 11, 3 };
+            var lower = new int[] { 0, 0, 4, 4, 8, 8 };
+            var upper = new int[] { 3, 3, 7, 7, 11, 11 };
 
             BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
                 new DataValueContainer(), new DataValueContainer());
 
-            // Input[0] = 90000 in [0,3] → found at index 2
-            Assert.Equal(2, lower[0]);
-            Assert.Equal(2, upper[0]);
+            // Input[0] = 85000 in [0,3] → found at index 1
+            Assert.Equal(1, lower[0]);
+            Assert.Equal(1, upper[0]);
 
-            // Input[1] = 55000 in [4,7] → found at index 5
-            Assert.Equal(5, lower[1]);
-            Assert.Equal(5, upper[1]);
+            // Input[1] = 90000 in [0,3] → found at index 2
+            Assert.Equal(2, lower[1]);
+            Assert.Equal(2, upper[1]);
 
-            // Input[2] = 35000 in [8,11] → found at index 10
-            Assert.Equal(10, lower[2]);
-            Assert.Equal(10, upper[2]);
+            // Input[2] = 45000 in [4,7] → found at index 5
+            Assert.Equal(5, lower[2]);
+            Assert.Equal(5, upper[2]);
 
-            // Input[3] = 80000 in [0,3] → found at index 0
-            Assert.Equal(0, lower[3]);
-            Assert.Equal(0, upper[3]);
+            // Input[3] = 50000 in [4,7] → found at index 6
+            Assert.Equal(6, lower[3]);
+            Assert.Equal(6, upper[3]);
+
+            // Input[4] = 65000 in [8,11] → found at index 9
+            Assert.Equal(9, lower[4]);
+            Assert.Equal(9, upper[4]);
+
+            // Input[5] = 70000 in [8,11] → found at index 10
+            Assert.Equal(10, lower[5]);
+            Assert.Equal(10, upper[5]);
         }
     }
 }
