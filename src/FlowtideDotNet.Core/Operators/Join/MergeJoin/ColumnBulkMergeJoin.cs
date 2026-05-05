@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
@@ -107,6 +108,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _leftSortColumns = new IColumn[_leftInsertComparer.ColumnOrder.Count];
             _rightSortColumns = new IColumn[_rightInsertComparer.ColumnOrder.Count];
 
+            var leftColumnOrder = BuildColumnOrder(leftColumns, mergeJoinRelation.Left.OutputLength);
+            var rightColumnOrder = BuildColumnOrder(rightColumns, mergeJoinRelation.Right.OutputLength);
+
             (_leftOutputColumns, _leftOutputIndices) = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
             (_rightOutputColumns, _rightOutputIndices) = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
 
@@ -114,6 +118,61 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 _postCondition = ColumnBooleanCompiler.CompileTwoInputs(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
+        }
+
+        /// <summary>
+        /// Remaps the field references in the specified filter expression according to the provided left and right
+        /// column order mappings.
+        /// </summary>
+        /// <remarks>Use this method when the column order of the underlying data has changed and filter
+        /// expressions need to be updated to match the new schema. The method does not modify the original filter
+        /// expression.</remarks>
+        /// <param name="filter">The filter expression whose field references are to be remapped.</param>
+        /// <param name="leftColumnOrder">A list of column identifiers representing the original order of the left-side columns. Used to map old field
+        /// references to their new positions.</param>
+        /// <param name="rightColumnOrder">A list of column identifiers representing the original order of the right-side columns. Used to map old
+        /// field references to their new positions, offset by the count of left-side columns.</param>
+        /// <returns>A new expression with field references remapped to reflect the specified column orderings.</returns>
+        private Expression RemapFilter(Expression filter, List<int> leftColumnOrder, List<int> rightColumnOrder)
+        {
+            Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+
+            for (int i = 0; i < leftColumnOrder.Count; i++)
+            {
+                var oldId = leftColumnOrder[i];
+                oldToNew[oldId] = i;
+            }
+
+            for (int i = 0; i < rightColumnOrder.Count; i++)
+            {
+                var oldId = rightColumnOrder[i] + leftColumnOrder.Count;
+                oldToNew[oldId] = i + leftColumnOrder.Count;
+            }
+
+            var clone = filter.Clone();
+            var visitor = new ExpressionFieldReplaceVisitor(oldToNew);
+            visitor.Visit(clone, default);
+            return clone;
+        }
+
+        private List<int> BuildColumnOrder(List<int> comparisonColumns, int columnCount)
+        {
+            var output = new List<int>();
+            // Add the comparison columns first
+            for (int i = 0; i < comparisonColumns.Count; i++)
+            {
+                output.Add(comparisonColumns[i]);
+            }
+
+            // Add the missing columns in the order they appear in the data
+            for (int i = 0; i < columnCount; i++)
+            {
+                if (!output.Contains(i))
+                {
+                    output.Add(i);
+                }
+            }
+            return output;
         }
 
         private static (List<int> incomingIndices, List<int> outgoingIndex) GetOutputColumns(MergeJoinRelation mergeJoinRelation, int relative, int maxSize)
