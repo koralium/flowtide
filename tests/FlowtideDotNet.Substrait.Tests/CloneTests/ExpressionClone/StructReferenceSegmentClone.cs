@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class StructReferenceSegmentClone
     {
-        private StructReferenceSegment root;
+        private readonly StructReferenceSegment root;
 
         public StructReferenceSegmentClone()
         {
