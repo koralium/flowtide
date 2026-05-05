@@ -19,8 +19,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     internal class MergeJoinSearchComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private readonly List<int> selfColumns;
-        private readonly List<int> referenceColumns;
+        private readonly int _comparisonColumnsCount;
 
         public int start;
         public int end;
@@ -28,22 +27,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public bool SeekNextPageForValue => true;
 
-        public MergeJoinSearchComparer(List<int> selfColumns, List<int> referenceColumns)
+        public MergeJoinSearchComparer(int comparisonColumnsCount)
         {
             dataValueContainer = new DataValueContainer();
-            this.selfColumns = selfColumns;
-            this.referenceColumns = referenceColumns;
+            _comparisonColumnsCount = comparisonColumnsCount;
         }
         private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
         {
             // Usually not called for SearchComparer, but implementing similarly if needed
-            for (int i = 0; i < selfColumns.Count; i++)
+            for (int i = 0; i < _comparisonColumnsCount; i++)
             {
-                var col = selfColumns[i];
-                x.referenceBatch.Columns[col].GetValueAt(x.RowIndex, dataValueContainer, default);
-                y.referenceBatch.Columns[col].GetValueAt(y.RowIndex, _yDataValueContainer, default);
+                x.referenceBatch.Columns[i].GetValueAt(x.RowIndex, dataValueContainer, default);
+                y.referenceBatch.Columns[i].GetValueAt(y.RowIndex, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -55,11 +52,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public int CompareTo(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, in int index)
         {
-            for (int i = 0; i < selfColumns.Count; i++)
+            for (int i = 0; i < _comparisonColumnsCount; i++)
             {
-                var col = selfColumns[i];
-                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
-                keyContainer._data.Columns[col].GetValueAt(index, _yDataValueContainer, default);
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
+                keyContainer._data.Columns[i].GetValueAt(index, _yDataValueContainer, default);
                 int cmp = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(dataValueContainer, _yDataValueContainer);
                 if (cmp != 0)
                 {
@@ -75,17 +71,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             start = 0;
             end = keyContainer.Count - 1;
             noMatch = false;
-            for (int i = 0; i < selfColumns.Count; i++)
+            for (int i = 0; i < _comparisonColumnsCount; i++)
             {
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
 
                 if (dataValueContainer._type == ArrowTypeId.Null)
                 {
                     noMatch = true;
                     return start;
                 }
-                var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, start, end, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, start, end, default);
 
                 if (low < 0)
                 {
@@ -107,16 +103,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         {
             int currentStart = startIndex;
             int currentEnd = endIndex;
-            for (int i = 0; i < selfColumns.Count; i++)
+            for (int i = 0; i < _comparisonColumnsCount; i++)
             {
                 // Get value by container to skip boxing for each value
-                key.referenceBatch.Columns[referenceColumns[i]].GetValueAt(key.RowIndex, dataValueContainer, default);
+                key.referenceBatch.Columns[i].GetValueAt(key.RowIndex, dataValueContainer, default);
 
                 if (dataValueContainer._type == ArrowTypeId.Null)
                 {
                     return new FindBoundriesResult(~currentStart, ~currentStart);
                 }
-                var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
 
                 if (low < 0)
                 {

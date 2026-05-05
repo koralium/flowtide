@@ -23,6 +23,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
@@ -44,6 +45,51 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         private readonly List<int> _leftOutputIndices;
         private readonly List<int> _rightOutputIndices;
+
+        private readonly List<int> _leftColumnOrder;
+        private readonly List<int> _rightColumnOrder;
+
+        private List<int> BuildColumnOrder(List<int> comparisonColumns, int columnCount)
+        {
+            var output = new List<int>();
+            // Add the comparison columns first
+            for (int i = 0; i < comparisonColumns.Count; i++)
+            {
+                output.Add(comparisonColumns[i]);
+            }
+
+            // Add the missing columns in the order they appear in the data
+            for (int i = 0; i < columnCount; i++)
+            {
+                if (!output.Contains(i))
+                {
+                    output.Add(i);
+                }
+            }
+            return output;
+        }
+
+        private Expression RemapFilter(Expression filter, List<int> leftColumnOrder, List<int> rightColumnOrder)
+        {
+            Dictionary<int, int> oldToNew = new Dictionary<int, int>();
+
+            for (int i = 0; i < leftColumnOrder.Count; i++)
+            {
+                var oldId = leftColumnOrder[i];
+                oldToNew[oldId] = i;
+            }
+
+            for (int i = 0; i < rightColumnOrder.Count; i++)
+            {
+                var oldId = rightColumnOrder[i] + leftColumnOrder.Count;
+                oldToNew[oldId] = i + leftColumnOrder.Count;
+            }
+
+            var clone = filter.Clone();
+            var visitor = new ExpressionFieldReplaceVisitor(oldToNew);
+            visitor.Visit(clone, default);
+            return clone;
+        }
 
         // Metrics
         private ICounter<long>? _eventsCounter;
@@ -73,18 +119,31 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _dataValueContainer = new DataValueContainer();
             var leftColumns = GetCompareColumns(mergeJoinRelation.LeftKeys, 0);
             var rightColumns = GetCompareColumns(mergeJoinRelation.RightKeys, mergeJoinRelation.Left.OutputLength);
-            _leftInsertComparer = new MergeJoinInsertComparer(leftColumns, mergeJoinRelation.Left.OutputLength);
-            _rightInsertComparer = new MergeJoinInsertComparer(rightColumns, mergeJoinRelation.Right.OutputLength);
+            _leftColumnOrder = BuildColumnOrder(leftColumns, mergeJoinRelation.Left.OutputLength);
+            _rightColumnOrder = BuildColumnOrder(rightColumns, mergeJoinRelation.Right.OutputLength);
 
-            _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns);
-            _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns);
+            _leftInsertComparer = new MergeJoinInsertComparer(mergeJoinRelation.Left.OutputLength);
+            _rightInsertComparer = new MergeJoinInsertComparer(mergeJoinRelation.Right.OutputLength);
+
+            _searchLeftComparer = new MergeJoinSearchComparer(leftColumns.Count);
+            _searchRightComparer = new MergeJoinSearchComparer(rightColumns.Count);
 
             (_leftOutputColumns, _leftOutputIndices) = GetOutputColumns(mergeJoinRelation, 0, mergeJoinRelation.Left.OutputLength);
             (_rightOutputColumns, _rightOutputIndices) = GetOutputColumns(mergeJoinRelation, mergeJoinRelation.Left.OutputLength, mergeJoinRelation.Right.OutputLength);
 
+            for (int i = 0; i < _leftOutputColumns.Count; i++)
+            {
+                _leftOutputColumns[i] = _leftColumnOrder.IndexOf(_leftOutputColumns[i]);
+            }
+            for (int i = 0; i < _rightOutputColumns.Count; i++)
+            {
+                _rightOutputColumns[i] = _rightColumnOrder.IndexOf(_rightOutputColumns[i]);
+            }
+
             if (mergeJoinRelation.PostJoinFilter != null)
             {
-                _postCondition = ColumnBooleanCompiler.CompileTwoInputs(mergeJoinRelation.PostJoinFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
+                var remappedFilter = RemapFilter(mergeJoinRelation.PostJoinFilter, _leftColumnOrder, _rightColumnOrder);
+                _postCondition = ColumnBooleanCompiler.CompileTwoInputs(remappedFilter, functionsRegister, mergeJoinRelation.Left.OutputLength);
             }
         }
 
@@ -187,11 +246,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
+            
+            IColumn[] newColumns = new IColumn[_leftColumnOrder.Count];
+            for (int j = 0; j < _leftColumnOrder.Count; j++)
+            {
+                newColumns[j] = msg.Data.EventBatchData.Columns[_leftColumnOrder[j]];
+            }
+            var reorderedBatch = new EventBatchData(newColumns);
+            
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
                 {
-                    referenceBatch = msg.Data.EventBatchData,
+                    referenceBatch = reorderedBatch,
                     RowIndex = i
                 };
 
@@ -252,7 +319,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _leftOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_leftOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
+                                        outputColumns[_leftOutputIndices[l]] = ColumnWithOffset.CreateFlattened(reorderedBatch.Columns[_leftOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
                                         if (offsetUsed)
                                         {
                                             shouldDisposeOffsets = false;
@@ -342,7 +409,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _leftOutputColumns.Count; i++)
                     {
-                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_leftOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
+                        outputColumns[_leftOutputIndices[i]] = ColumnWithOffset.CreateFlattened(reorderedBatch.Columns[_leftOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;
@@ -409,11 +476,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 leftColumns.Add(Column.Create(memoryManager));
             }
+            
+            IColumn[] newColumns = new IColumn[_rightColumnOrder.Count];
+            for (int j = 0; j < _rightColumnOrder.Count; j++)
+            {
+                newColumns[j] = msg.Data.EventBatchData.Columns[_rightColumnOrder[j]];
+            }
+            var reorderedBatch = new EventBatchData(newColumns);
+            
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 var columnReference = new ColumnRowReference()
                 {
-                    referenceBatch = msg.Data.EventBatchData,
+                    referenceBatch = reorderedBatch,
                     RowIndex = i
                 };
 
@@ -480,7 +555,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                                     bool shouldDisposeOffsets = true;
                                     for (int l = 0; l < _rightOutputColumns.Count; l++)
                                     {
-                                        outputColumns[_rightOutputIndices[l]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
+                                        outputColumns[_rightOutputIndices[l]] = ColumnWithOffset.CreateFlattened(reorderedBatch.Columns[_rightOutputColumns[l]], foundOffsets, MemoryAllocator, out var offsetUsed);
                                         if (offsetUsed)
                                         {
                                             shouldDisposeOffsets = false;
@@ -570,7 +645,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                     bool shouldDisposeOffsets = true;
                     for (int i = 0; i < _rightOutputColumns.Count; i++)
                     {
-                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(msg.Data.EventBatchData.Columns[_rightOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
+                        outputColumns[_rightOutputIndices[i]] = ColumnWithOffset.CreateFlattened(reorderedBatch.Columns[_rightOutputColumns[i]], foundOffsets, MemoryAllocator, out var offsetUsed);
                         if (offsetUsed)
                         {
                             shouldDisposeOffsets = false;
