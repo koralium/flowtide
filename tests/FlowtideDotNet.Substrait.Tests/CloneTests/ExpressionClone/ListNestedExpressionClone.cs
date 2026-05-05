@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class ListNestedExpressionClone
     {
-        private ListNestedExpression root;
+        private readonly ListNestedExpression root;
 
         public ListNestedExpressionClone()
         {
