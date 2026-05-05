@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.LiteralClone
 {
     public class StringLiteralClone
     {
-        private StringLiteral root;
+        private readonly StringLiteral root;
 
         public StringLiteralClone()
         {
