@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class OrListRecordClone
     {
-        private OrListRecord root;
+        private readonly OrListRecord root;
 
         public OrListRecordClone()
         {
