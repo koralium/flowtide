@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class SingularOrListExpressionClone
     {
-        private SingularOrListExpression root;
+        private readonly SingularOrListExpression root;
 
         public SingularOrListExpressionClone()
         {
