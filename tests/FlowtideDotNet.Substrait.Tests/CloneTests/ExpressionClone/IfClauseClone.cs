@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class IfClauseClone
     {
-        private IfClause root;
+        private readonly IfClause root;
 
         public IfClauseClone()
         {
