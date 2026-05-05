@@ -30,6 +30,15 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
             return visitor.VisitIfThen(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new IfThenExpression
+            {
+                Ifs = Ifs.Select(ifClause => ifClause.Clone()).ToList(),
+                Else = Else?.Clone()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is IfThenExpression expression &&

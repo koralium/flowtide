@@ -49,5 +49,14 @@ namespace FlowtideDotNet.Substrait.Expressions.IfThen
         {
             return !(left == right);
         }
+
+        public IfClause Clone()
+        {
+            return new IfClause
+            {
+                If = If.Clone(),
+                Then = Then.Clone()
+            };
+        }
     }
 }

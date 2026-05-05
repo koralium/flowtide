@@ -23,6 +23,15 @@ namespace FlowtideDotNet.Substrait.Expressions
             throw new NotImplementedException();
         }
 
+        public override Expression Clone()
+        {
+            return new MultiOrListExpression
+            {
+                Value = Value.Select(v => v.Clone()).ToList(),
+                Options = Options.Select(o => o.Clone()).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is MultiOrListExpression expression &&

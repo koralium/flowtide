@@ -42,5 +42,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return !(left == right);
         }
+
+        public abstract ReferenceSegment Clone();
     }
 }

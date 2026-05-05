@@ -16,6 +16,15 @@ namespace FlowtideDotNet.Substrait.Expressions
     {
         public required string Key { get; set; }
 
+        public override ReferenceSegment Clone()
+        {
+            return new MapKeyReferenceSegment
+            {
+                Child = Child,
+                Key = Key
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is MapKeyReferenceSegment segment &&

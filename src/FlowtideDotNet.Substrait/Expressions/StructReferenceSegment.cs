@@ -17,6 +17,15 @@ namespace FlowtideDotNet.Substrait.Expressions
     {
         public int Field { get; set; }
 
+        public override ReferenceSegment Clone()
+        {
+            return new StructReferenceSegment()
+            {
+                Child = Child,
+                Field = Field
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is StructReferenceSegment segment &&
