@@ -1,0 +1,54 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Substrait.Expressions;
+
+namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
+{
+    public class DirectFieldReferenceClone
+    {
+        private DirectFieldReference root;
+
+        public DirectFieldReferenceClone()
+        {
+            root = new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment()
+                {
+                    Field = 3
+                }
+            };
+        }
+
+        [Fact]
+        public void CloneIsEqualToOriginal()
+        {
+            var clone = (DirectFieldReference)root.Clone();
+            Assert.Equal(root, clone);
+        }
+
+        [Fact]
+        public void CloneIsNotSameReference()
+        {
+            var clone = root.Clone();
+            Assert.False(ReferenceEquals(root, clone));
+        }
+
+        [Fact]
+        public void CloneReferenceSegmentIsIndependent()
+        {
+            var clone = (DirectFieldReference)root.Clone();
+            clone.ReferenceSegment = new StructReferenceSegment() { Field = 99 };
+            Assert.NotEqual(root, clone);
+        }
+    }
+}
