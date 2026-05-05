@@ -34,8 +34,6 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 
     internal unsafe static class ColumnBoundarySearchDelegates
     {
-
-
         private static readonly Dictionary<int, SearchBoundriesBulkDelegate> _delegateCache = new Dictionary<int, SearchBoundriesBulkDelegate>();
 
         static ColumnBoundarySearchDelegates()
