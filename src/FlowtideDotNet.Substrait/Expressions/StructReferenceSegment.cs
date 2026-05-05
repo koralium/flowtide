@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return new StructReferenceSegment()
             {
-                Child = Child,
+                Child = Child?.Clone(),
                 Field = Field
             };
         }
