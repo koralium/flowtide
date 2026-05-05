@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class MapKeyReferenceSegmentClone
     {
-        private MapKeyReferenceSegment root;
+        private readonly MapKeyReferenceSegment root;
 
         public MapKeyReferenceSegmentClone()
         {
