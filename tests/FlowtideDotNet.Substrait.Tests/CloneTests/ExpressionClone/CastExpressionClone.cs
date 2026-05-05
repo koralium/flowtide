@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class CastExpressionClone
     {
-        private CastExpression root;
+        private readonly CastExpression root;
 
         public CastExpressionClone()
         {
