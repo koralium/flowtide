@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class ScalarFunctionClone
     {
-        private ScalarFunction root;
+        private readonly ScalarFunction root;
 
         public ScalarFunctionClone()
         {
