@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class DirectFieldReferenceClone
     {
-        private DirectFieldReference root;
+        private readonly DirectFieldReference root;
 
         public DirectFieldReferenceClone()
         {
