@@ -21,6 +21,14 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitListNestedExpression(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new ListNestedExpression
+            {
+                Values = Values.Select(v => v.Clone()).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is ListNestedExpression expression &&

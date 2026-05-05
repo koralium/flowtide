@@ -22,6 +22,14 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
             return visitor.VisitBinaryLiteral(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new BinaryLiteral
+            {
+                Value = (byte[])Value.Clone()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is BinaryLiteral literal &&

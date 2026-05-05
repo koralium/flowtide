@@ -23,6 +23,14 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
             return visitor.VisitArrayLiteral(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new ArrayLiteral
+            {
+                Expressions = Expressions.Select(expr => expr.Clone()).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is ArrayLiteral literal &&

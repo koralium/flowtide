@@ -21,6 +21,14 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitStructExpression(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new StructExpression
+            {
+                Fields = Fields.Select(f => f.Clone()).ToList()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is StructExpression expression &&
