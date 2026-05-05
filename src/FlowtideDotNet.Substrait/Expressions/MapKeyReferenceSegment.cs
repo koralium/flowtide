@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return new MapKeyReferenceSegment
             {
-                Child = Child,
+                Child = Child?.Clone(),
                 Key = Key
             };
         }
