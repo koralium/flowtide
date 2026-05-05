@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class MultiOrListExpressionClone
     {
-        private MultiOrListExpression root;
+        private readonly MultiOrListExpression root;
 
         public MultiOrListExpressionClone()
         {
