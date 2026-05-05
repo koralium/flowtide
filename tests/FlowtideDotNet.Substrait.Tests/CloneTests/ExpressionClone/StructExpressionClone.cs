@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
 {
     public class StructExpressionClone
     {
-        private StructExpression root;
+        private readonly StructExpression root;
 
         public StructExpressionClone()
         {
