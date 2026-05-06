@@ -52,6 +52,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _insertTargetPositions = Array.Empty<int>();
         private int[] _deletePositions = Array.Empty<int>();
         private int[] _lookupBuffer = Array.Empty<int>();
+        private int[] _lowerBounds = Array.Empty<int>();
+        private int[] _upperBounds = Array.Empty<int>();
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
@@ -113,6 +115,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
                 _lookupBuffer = new int[keyLength];
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
             }
             return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
         }
@@ -129,6 +133,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
                 _lookupBuffer = new int[keyLength];
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
             }
 
             // Sort the keys and values by keys
@@ -218,15 +224,22 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // if the key was never in the leaf, canceling is a no-op on the leaf.
             bool prevKeyExistsInLeaf = false;
 
+            searchComparer.FindBoundriesBulk(
+                _keys, 
+                _sortedIndices.AsSpan(mapping.Offset, mapping.Length), 
+                leaf.keys, 
+                _lowerBounds, 
+                _upperBounds);
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
                 var key = _keys[keyIndex];
-
+                
                 // Detect duplicate: current key equals previous key in sorted order.
                 if (prevSortedKeyIndex >= 0
                     && searchComparer.CompareTo(key, _keys[prevSortedKeyIndex]) == 0)
                 {
+                    //throw new InvalidOperationException("Duplicate");
                     if (prevWasPendingInsert)
                     {
                         // The previous duplicate queued a pending insert.
@@ -335,7 +348,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     continue;
                 }
 
-                var leafIndex = searchComparer.FindIndex(key, leaf.keys);
+                var leafIndex = _lowerBounds[i];
 
                 if (leafIndex < 0)
                 {

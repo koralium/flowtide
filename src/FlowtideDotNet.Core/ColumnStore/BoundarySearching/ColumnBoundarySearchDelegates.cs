@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int GetKey(CompareColumnState columnState, CompareColumnState inputState)
+        public static int GetKey(CompareColumnState columnState, CompareColumnState inputState)
         {
             return ((int)columnState << 16) | (int)inputState;
         }
@@ -58,6 +58,11 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         public static SearchBoundriesBulkDelegate GetDelegate(CompareColumnState columnState, CompareColumnState inputState)
         {
             var key = GetKey(columnState, inputState);
+            return GetDelegate(key);
+        }
+
+        public static SearchBoundriesBulkDelegate GetDelegate(int key)
+        {
             if (_delegateCache.TryGetValue(key, out var del))
             {
                 return del;
@@ -78,13 +83,18 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 
             for (int i = 0; i < inputSortedLookup.Length; i++)
             {
-                int searchStart = lowerBounds[i];
+                int lowerBound = lowerBounds[i];
                 int searchEnd = upperBounds[i];
 
-                searchStart = Math.Max(searchStart, currentFastForward);
+                int searchStart = Math.Max(lowerBound, currentFastForward);
 
                 if (searchStart > searchEnd)
                 {
+                    if (lowerBound >= 0)
+                    {
+                        lowerBounds[i] = ~searchStart;
+                        upperBounds[i] = ~searchStart;
+                    }
                     continue;
                 }
 

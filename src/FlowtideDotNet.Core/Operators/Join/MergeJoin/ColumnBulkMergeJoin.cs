@@ -88,6 +88,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private StreamWriter? allInput;
         private StreamWriter? leftInput;
         private StreamWriter? rightInput;
+        private StreamWriter? allOutput;
 #endif
 
         public ColumnBulkMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
@@ -192,6 +193,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
             await _leftTree.Commit();
             await _rightTree.Commit();
+
+#if DEBUG_WRITE
+            allInput!.WriteLine("Checkpoint");
+            allInput.Flush();
+            allOutput!.WriteLine("Checkpoint");
+            allOutput!.Flush();
+#endif
         }
 
         public override IAsyncEnumerable<StreamEventBatch> OnRecieve(int targetId, StreamEventBatch msg, long time)
@@ -220,6 +228,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 rightInput!.Flush();
             }
+            allInput.WriteLine("End batch");
             
             allInput!.Flush();
 #endif
@@ -247,7 +256,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
-
+            
             
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
@@ -636,7 +645,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 foundOffsets.Dispose();
             }
-            return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+            var batch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+
+#if DEBUG_WRITE
+            allOutput!.WriteLine("Start batch");
+            foreach (var o in batch.Events)
+            {
+                allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+            }
+            allOutput!.WriteLine("End batch");
+            allOutput!.Flush();
+#endif
+
+
+            return batch;
         }
 
         private void ResetOutputLists(ref PrimitiveList<int> foundOffsets, ref PrimitiveList<int> weights, ref PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns)
@@ -680,6 +702,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.all.txt");
                 leftInput = File.CreateText($"debugwrite/{StreamName}-{Name}.left.txt");
                 rightInput = File.CreateText($"debugwrite/{StreamName}-{Name}.right.txt");
+                allOutput = File.CreateText($"debugwrite/{StreamName}-{Name}.output.txt");
             }
 #endif
 

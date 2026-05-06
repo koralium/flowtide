@@ -177,7 +177,12 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 searchStart = searchStart > currentFastForward ? searchStart : currentFastForward;
                 int searchEnd = upperPtr[i] > leafEnd ? leafEnd : upperPtr[i];
 
-                if (searchStart > searchEnd) continue;
+                if (searchStart > searchEnd)
+                {
+                    lowerPtr[i] = ~searchStart;
+                    upperPtr[i] = ~searchStart;
+                    continue;
+                }
 
                 T targetValue = inputData[lookupPtr[i]];
 

@@ -99,6 +99,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.testName = testName;
         }
 
+        public void EnterDataWriteLock()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                _db.RwLock.Wait();
+            }
+        }
+
+        public void ExitDataWriteLock()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                _db.RwLock.Release();
+            }
+        }
+
         public virtual void RegisterTableProviders(Action<SqlPlanBuilder> action)
         {
             action(sqlPlanBuilder);
@@ -162,6 +178,26 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AddOrUpdateOrder(Order order)
         {
             generator.AddOrUpdateOrder(order);
+        }
+
+        public void AddUser(User user)
+        {
+            generator.AddUser(user);
+        }
+
+        public void AddOrder(Order order)
+        {
+            generator.AddOrder(order);
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            generator.AddProjectMembers(projectMembers);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            generator.AddProjects(projects);
         }
 
         public void AddOrUpdateProject(Project project)
@@ -332,11 +368,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        private bool _waitForUpdateDoesNotRequireDataChange = false;
+
+        public void WaitForUpdateDoesNotRequireDataChange()
+        {
+            _waitForUpdateDoesNotRequireDataChange = true;
+        }
+
         private void CheckpointComplete()
         {
             lock (_lock)
             {
-                if (_dataUpdated)
+                if (_dataUpdated || _waitForUpdateDoesNotRequireDataChange)
                 {
                     updateCounter++;
                 }
@@ -450,9 +493,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             waitCounter = updateCounter;
         }
 
+        private bool _immutableSource = false;
+
+        public void SourceImmutable()
+        {
+            _immutableSource = true;
+        }
+
         protected virtual void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new MockSourceFactory("*", _db));
+            connectorManger.AddSource(new MockSourceFactory("*", _db, _immutableSource));
         }
 
         protected virtual void AddWriteResolvers(IConnectorManager connectorManger)

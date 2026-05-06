@@ -30,6 +30,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     }
     internal class MockDataSourceOperator : ReadBaseOperator
     {
+#if DEBUG_WRITE
+        private StreamWriter? allOutput;
+#endif
+
         private readonly ReadRelation readRelation;
         private readonly MockDatabase mockDatabase;
         private HashSet<string> _watermarkNames;
@@ -57,6 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private async Task FetchChanges(IngressOutput<StreamEventBatch> output, object? state)
         {
+            mockDatabase.RwLock.Wait();
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
@@ -88,8 +93,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (weights.Count > 100)
                 {
+                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+#if DEBUG_WRITE
+                    foreach (var o in outputBatch.Events)
+                    {
+                        allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                    }
+                    await allOutput!.FlushAsync();
+#endif
                     sentData = true;
-                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                    await output.SendAsync(outputBatch);
 
                     columns = new Column[readRelation.OutputLength];
                     for (int i = 0; i < readRelation.OutputLength; i++)
@@ -103,8 +116,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             if (weights.Count > 0)
             {
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await allOutput!.FlushAsync();
+#endif
                 sentData = true;
-                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                await output.SendAsync(outputBatch);
             }
             else
             {
@@ -121,9 +142,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(200));
+#if DEBUG_WRITE
+                allOutput!.WriteLine("Delta done");
+                await allOutput!.FlushAsync();
+#endif
             }
 
             output.ExitCheckpointLock();
+            mockDatabase.RwLock.Release();
         }
 
         public override Task OnTrigger(string triggerName, object? state)
@@ -165,6 +191,22 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+#if DEBUG_WRITE
+            if (!Directory.Exists("debugwrite"))
+            {
+                Directory.CreateDirectory("debugwrite");
+            }
+            if (allOutput == null)
+            {
+                allOutput = File.CreateText($"debugwrite/{StreamName}_{Name}_mock.alloutput.txt");
+            }
+            else
+            {
+                allOutput.WriteLine("Restart");
+                await allOutput.FlushAsync();
+            }
+#endif
+
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<MockDataSourceState>("mock_data_source_state");
             if (_state.Value == null)
             {
@@ -213,7 +255,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
                 if (weights.Count > 100)
                 {
-                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+#if DEBUG_WRITE
+                    foreach (var o in outputBatch.Events)
+                    {
+                        allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                    }
+                    await allOutput!.FlushAsync();
+#endif
+                    await output.SendAsync(outputBatch);
 
                     columns = new Column[readRelation.OutputLength];
                     for (int i = 0; i < readRelation.OutputLength; i++)
@@ -227,7 +277,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
             if (weights.Count > 0)
             {
-                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await allOutput!.FlushAsync();
+#endif
+                await output.SendAsync(outputBatch);
                 await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
                 this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
@@ -244,7 +302,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             
             output.ExitCheckpointLock();
             await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
-            
+#if DEBUG_WRITE
+            allOutput!.WriteLine("Initial done");
+            await allOutput!.FlushAsync();
+#endif
+
         }
     }
 }

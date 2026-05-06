@@ -21,9 +21,11 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 {
     internal class ColumnBoundarySearch
     {
-        private CompareColumnState[] columnStates;
+        private int[] columnStates;
         private SearchBoundriesBulkDelegate[] _savedDelegates;
-        private readonly int columnCount;
+        private readonly int _columnCount;
+        private readonly IReadOnlyList<int> _treeColumnOrder;
+        private readonly IReadOnlyList<int> _incomingColumnOrder;
 
         // Containers here are for fallback where we skip heap allocation on GetValue
         // This is only used for permutations where there is no specialized code
@@ -31,18 +33,27 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         private DataValueContainer _yContainer;
         
 
-        public ColumnBoundarySearch(int columnCount)
+        public ColumnBoundarySearch(IReadOnlyList<int> treeColumnOrder, IReadOnlyList<int> incomingColumnOrder)
         {
-            columnStates = new CompareColumnState[columnCount];
+            this._columnCount = treeColumnOrder.Count;
+            _treeColumnOrder = treeColumnOrder;
+            _incomingColumnOrder = incomingColumnOrder;
+            
+            columnStates = new int[_columnCount];
+
+            for (int i = 0; i < columnStates.Length; i++)
+            {
+                columnStates[i] = -1;
+            }
+
             _xContainer = new DataValueContainer();
             _yContainer = new DataValueContainer();
-            _savedDelegates = new SearchBoundriesBulkDelegate[columnCount];
-            this.columnCount = columnCount;
+            _savedDelegates = new SearchBoundriesBulkDelegate[_columnCount];
         }
 
         public void SearchBoundries(
-            IColumn[] columns, 
-            IColumn[] inputs,
+            IReadOnlyList<IColumn> columns,
+            IReadOnlyList<IColumn> inputs,
             ReadOnlySpan<int> inputSortedLookup,
             Span<int> lowerBounds, 
             Span<int> upperBounds, 
@@ -52,16 +63,20 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             lowerBounds.Fill(start);
             upperBounds.Fill(end);
 
-            for (int i = 0; i < columnCount; i++)
+            for (int i = 0; i < _columnCount; i++)
             {
-                var columnState = columns[i].GetColumnState();
-                if (columnStates[i] != columnState)
+                var treeColumn = columns[_treeColumnOrder[i]];
+                var inputColumn = inputs[_incomingColumnOrder[i]];
+                var treeColumnState = treeColumn.GetColumnState();
+                var inputColumnState = inputColumn.GetColumnState();
+                var searchKey = ColumnBoundarySearchDelegates.GetKey(treeColumnState, inputColumnState);
+                if (columnStates[i] != searchKey)
                 {
                     // If the state has changed, we need to get a new delegate for this column
-                    _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(columns[i].GetColumnState(), inputs[i].GetColumnState());
-                    columnStates[i] = columnState;
+                    _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(searchKey);
+                    columnStates[i] = searchKey;
                 }
-                _savedDelegates[i](columns[i], inputs[i], inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer);
+                _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer);
             }
         }
     }

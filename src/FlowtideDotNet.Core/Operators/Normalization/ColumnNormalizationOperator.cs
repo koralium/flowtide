@@ -178,7 +178,16 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     toEmitOffsets.Dispose();
                 }
 
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+#if DEBUG_WRITE
+                foreach (var o in outputBatch.Events)
+                {
+                    allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
+                }
+                await allOutput!.FlushAsync();
+#endif
+
+                yield return outputBatch;
             }
 
 

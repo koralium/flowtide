@@ -23,14 +23,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     internal class MockSourceFactory : RegexConnectorSourceFactory
     {
         private readonly MockDatabase mockDatabase;
+        private readonly bool immutable;
 
-        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase) : base(regexPattern)
+        public MockSourceFactory(string regexPattern, MockDatabase mockDatabase, bool immutable) : base(regexPattern)
         {
             this.mockDatabase = mockDatabase;
+            this.immutable = immutable;
         }
 
         public override Relation ModifyPlan(ReadRelation readRelation)
         {
+            if (immutable)
+            {
+                return readRelation;
+            }
             var table = mockDatabase.GetTable(readRelation.NamedTable.DotSeperated);
 
             var emit = readRelation.Emit?.ToList();
