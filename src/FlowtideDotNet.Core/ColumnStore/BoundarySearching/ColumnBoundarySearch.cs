@@ -58,7 +58,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> lowerBounds, 
             Span<int> upperBounds, 
             int start, 
-            int end)
+            int end,
+            bool doNotMatchNull)
         {
             lowerBounds.Fill(start);
             upperBounds.Fill(end);
@@ -76,7 +77,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                     _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(searchKey);
                     columnStates[i] = searchKey;
                 }
-                _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer);
+                _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer, doNotMatchNull);
             }
         }
     }

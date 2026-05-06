@@ -114,7 +114,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int batchLength,
             int[] sortedIndices, 
             IBplusTreeComparer<K, TKeyContainer> searchComparer,
-            List<LeafBatchMapping> mappings)
+            List<LeafBatchMapping> mappings,
+            int[] lowerBoundsBuffer,
+            int[] upperBoundsBuffer)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
@@ -138,7 +140,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     await RouteBatchInternalAsync(
                         keys, sortedIndices, 0, batchLength,
-                        root!, depth, searchComparer, mappings, workspace!, 0);
+                        root!, depth, searchComparer, mappings, workspace!, 0, lowerBoundsBuffer, upperBoundsBuffer);
                 }
             }
             finally
@@ -148,6 +150,24 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     ArrayPool<(long, int, int)>.Shared.Return(workspace);
                 }
             }
+        }
+
+        private void FindBoundries(
+            K[] keys,
+            int[] sortedIndices,
+            int offset,
+            int length,
+            InternalNode<K, V, TKeyContainer> node,
+            IBplusTreeComparer<K, TKeyContainer> searchComparer,
+            int[] lowerBoundsBuffer,
+            int[] upperBoundsBuffer
+            )
+        {
+            
+            var sortedIndicesSpan = sortedIndices.AsSpan(offset, length);
+            var lowerBoundsSpan = lowerBoundsBuffer.AsSpan(offset, length);
+            var upperBoundsSpan = upperBoundsBuffer.AsSpan(offset, length);
+            searchComparer.FindBoundriesBulk(keys, sortedIndicesSpan, node.keys, lowerBoundsSpan, upperBoundsSpan);
         }
 
         private async ValueTask RouteBatchInternalAsync(
@@ -160,16 +180,18 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             IBplusTreeComparer<K, TKeyContainer> searchComparer,
             List<LeafBatchMapping> mappings,
             (long pointer, int offset, int length)[] workspace,
-            int workspaceStartIndex)
+            int workspaceStartIndex,
+            int[] lowerBoundsBuffer,
+            int[] upperBoundsBuffer)
         {
             int sliceCount = 0;
             int currentOffset = offset;
             int end = offset + length;
 
+            FindBoundries(keys, sortedIndices, offset, length, node, searchComparer, lowerBoundsBuffer, upperBoundsBuffer);
             while (currentOffset < end)
             {
-                int firstKeyIndex = sortedIndices[currentOffset];
-                int targetChildIndex = searchComparer.FindIndex(keys[firstKeyIndex], node.keys);
+                int targetChildIndex = lowerBoundsBuffer[currentOffset];
                 if (targetChildIndex < 0) targetChildIndex = ~targetChildIndex;
 
                 int itemsForThisChild;
@@ -184,8 +206,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     itemsForThisChild = 1;
                     while (currentOffset + itemsForThisChild < end)
                     {
-                        int nextKeyIndex = sortedIndices[currentOffset + itemsForThisChild];
-                        int nextChildIndex = searchComparer.FindIndex(keys[nextKeyIndex], node.keys);
+                        int nextChildIndex = lowerBoundsBuffer[currentOffset + itemsForThisChild];
                         if (nextChildIndex < 0) nextChildIndex = ~nextChildIndex;
 
                         if (nextChildIndex == targetChildIndex) itemsForThisChild++;
@@ -223,7 +244,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     await RouteBatchInternalAsync(
                         keys, sortedIndices, slice.offset, slice.length,
                         internalChild, currentDepth - 1, searchComparer,
-                        mappings, workspace, workspaceStartIndex + sliceCount);
+                        mappings, workspace, workspaceStartIndex + sliceCount,
+                        lowerBoundsBuffer, upperBoundsBuffer);
                 }
             }
         }

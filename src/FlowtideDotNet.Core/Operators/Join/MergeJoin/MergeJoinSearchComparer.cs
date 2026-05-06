@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 
@@ -21,6 +22,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private DataValueContainer dataValueContainer;
         private readonly List<int> selfColumns;
         private readonly List<int> referenceColumns;
+        private ColumnBoundarySearch _columnBoundarySearch;
 
         public int start;
         public int end;
@@ -33,6 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             dataValueContainer = new DataValueContainer();
             this.selfColumns = selfColumns;
             this.referenceColumns = referenceColumns;
+            _columnBoundarySearch = new ColumnBoundarySearch(selfColumns, referenceColumns);
         }
         private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
 
@@ -101,6 +104,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
             }
             return index;
+        }
+
+        void IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>.FindBoundriesBulk(
+            ReadOnlySpan<ColumnRowReference> keys,
+            ReadOnlySpan<int> sortedLookup,
+            in ColumnKeyStorageContainer keyContainer,
+            Span<int> lowerBounds,
+            Span<int> upperBounds)
+        {
+            var incomingBatch = keys[0].referenceBatch.Columns;
+            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, true);
         }
 
         public FindBoundriesResult FindBoundries(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer, int startIndex, int endIndex)

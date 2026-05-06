@@ -30,7 +30,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> lowerBounds,
             Span<int> upperBounds,
             DataValueContainer xContainer,
-            DataValueContainer yContainer);
+            DataValueContainer yContainer,
+            bool doNotMatchNull);
 
     internal unsafe static class ColumnBoundarySearchDelegates
     {
@@ -77,7 +78,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> lowerBounds,
             Span<int> upperBounds,
             DataValueContainer xContainer,
-            DataValueContainer yContainer)
+            DataValueContainer yContainer,
+            bool doNotMatchNull)
         {
             int currentFastForward = 0;
 
@@ -86,20 +88,26 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 int lowerBound = lowerBounds[i];
                 int searchEnd = upperBounds[i];
 
-                int searchStart = Math.Max(lowerBound, currentFastForward);
+                if (lowerBound < 0) continue;
+
+                int searchStart = lowerBound > currentFastForward ? lowerBound : currentFastForward;
 
                 if (searchStart > searchEnd)
                 {
-                    if (lowerBound >= 0)
-                    {
-                        lowerBounds[i] = ~searchStart;
-                        upperBounds[i] = ~searchStart;
-                    }
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
                     continue;
                 }
 
                 var inputIndex = inputSortedLookup[i];
                 inputCol.GetValueAt(inputIndex, xContainer, null);
+
+                if (doNotMatchNull && xContainer.Type == ArrowTypeId.Null)
+                {
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
+                    continue;
+                }
 
                 var (lower, upper) = column.SearchBoundries(xContainer, searchStart, searchEnd, null);
 

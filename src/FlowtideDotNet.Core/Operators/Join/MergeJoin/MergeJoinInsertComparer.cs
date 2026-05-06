@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             Span<int> upperBounds)
         {
             var incomingBatch = keys[0].referenceBatch.Columns;
-            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1);
+            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false);
         }
 
         public int FindIndex(in ColumnRowReference key, in ColumnKeyStorageContainer keyContainer)

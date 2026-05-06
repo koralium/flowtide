@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _lowerBounds = new int[keyLength];
                 _upperBounds = new int[keyLength];
             }
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds);
         }
 
         public ValueTask StartBatch(K[] keys, V[] values, int keyLength)
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys,keyComparer));
 
-            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings);
+            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds);
         }
 
         public async ValueTask MutateBatch<TMutator>(TMutator mutator)

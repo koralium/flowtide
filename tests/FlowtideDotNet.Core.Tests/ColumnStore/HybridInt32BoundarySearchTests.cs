@@ -61,7 +61,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
                 lower,
                 upper,
                 new DataValueContainer(),
-                new DataValueContainer());
+                new DataValueContainer(),
+                false);
 
             return (lower, upper);
         }
@@ -806,7 +807,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
-                new DataValueContainer(), new DataValueContainer());
+                new DataValueContainer(), new DataValueContainer(),
+                false);
 
             // Input[0] = 60000 in [0,2] → found at index 1
             Assert.Equal(1, lower[0]);
@@ -838,7 +840,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
-                new DataValueContainer(), new DataValueContainer());
+                new DataValueContainer(), new DataValueContainer(),
+                false);
 
             // Input[0] = 50000 in [0,2] → found at indices 0..1
             Assert.Equal(0, lower[0]);
@@ -870,7 +873,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
-                new DataValueContainer(), new DataValueContainer());
+                new DataValueContainer(), new DataValueContainer(),
+                false);
 
             // Input[0] = 65000 in [0,2] → between 60000 and 70000, insert at 2 → ~2
             Assert.Equal(~2, lower[0]);
@@ -906,7 +910,8 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid(
                 tree, input, lookup, lower, upper,
-                new DataValueContainer(), new DataValueContainer());
+                new DataValueContainer(), new DataValueContainer(),
+                false);
 
             // Input[0] = 85000 in [0,3] → found at index 1
             Assert.Equal(1, lower[0]);

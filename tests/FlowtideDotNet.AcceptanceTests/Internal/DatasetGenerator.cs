@@ -56,12 +56,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void Generate(int count = 1000, int seed = 8675309)
         {
+            mockDatabase.RwLock.Wait();
             Randomizer.Seed = new Random(seed);
             GenerateCompanies(10);
             GenerateUsers(count);
             GenerateOrders(count);
             GenerateProjects(count);
             GenerateProjectMembers(count);
+            mockDatabase.RwLock.Release();
         }
 
         public void AddOrUpdateUser(User user)

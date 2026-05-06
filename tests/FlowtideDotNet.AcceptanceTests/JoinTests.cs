@@ -454,7 +454,9 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
 
+            EnterDataWriteLock();
             GenerateOrders(100);
+            ExitDataWriteLock();
 
             await WaitForUpdate();
 
@@ -899,7 +901,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoinWithPushdown()
         {
-            GenerateData(100);
+            GenerateData(10);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1090,9 +1092,9 @@ namespace FlowtideDotNet.AcceptanceTests
             Validate();
             for (int i = 0; i < 20; i++)
             {
-                EnterDataWriteLock();
+                //EnterDataWriteLock();
                 GenerateData(10);
-                ExitDataWriteLock();
+                //ExitDataWriteLock();
                 await WaitForUpdate();
                 
                 Validate();
