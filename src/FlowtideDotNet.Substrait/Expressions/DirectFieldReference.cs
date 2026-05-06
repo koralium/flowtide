@@ -22,6 +22,14 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitDirectFieldReference(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new DirectFieldReference()
+            {
+                ReferenceSegment = ReferenceSegment.Clone()
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is DirectFieldReference reference &&

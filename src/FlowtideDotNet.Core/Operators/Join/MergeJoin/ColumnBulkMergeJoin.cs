@@ -32,6 +32,29 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
     internal struct JoinWeightsMutator : IRowMutator<ColumnRowReference, JoinWeights>
     {
+        private readonly int numberOfColumns;
+
+        public JoinWeightsMutator(int numberOfColumns)
+        {
+            this.numberOfColumns = numberOfColumns;
+        }
+        public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            var batch = keys[0].referenceBatch;
+            for(int i = 0; i < numberOfColumns; i++)
+            {
+                batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
+
+            const int joinWeightsValueSize = 8;
+            var cumulativeValueBytes = 0;
+            for (int i = 0; i < indices.Length; i++)
+            {
+                cumulativeValueBytes += joinWeightsValueSize;
+                sizes[i] += cumulativeValueBytes;
+            }
+        }
+
         public GenericWriteOperation Process(ColumnRowReference key, bool exists, in JoinWeights existingData, ref JoinWeights incomingData)
         {
             if (exists)
@@ -82,6 +105,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool>? _postCondition;
         private readonly DataValueContainer _dataValueContainer;
         private const int MaxRowSize = 100;
+        private const int joinWeightsByteSize = 8;
+        private readonly int _leftInputColumnCount;
+        private readonly int _rightInputColumnCount;
 
 #if DEBUG_WRITE
         // Debug data
@@ -94,6 +120,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         public ColumnBulkMergeJoin(MergeJoinRelation mergeJoinRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._mergeJoinRelation = mergeJoinRelation;
+            _leftInputColumnCount = mergeJoinRelation.Left.OutputLength;
+            _rightInputColumnCount = mergeJoinRelation.Right.OutputLength;
             _dataValueContainer = new DataValueContainer();
             var leftColumns = GetCompareColumns(mergeJoinRelation.LeftKeys, 0);
             var rightColumns = GetCompareColumns(mergeJoinRelation.RightKeys, mergeJoinRelation.Left.OutputLength);
@@ -256,8 +284,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 rightColumns.Add(Column.Create(memoryManager));
             }
-            
-            
+
+            var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -415,7 +443,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
 
-            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
@@ -438,7 +466,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 leftColumns.Add(Column.Create(memoryManager));
             }
 
-            
+            var batchSize = msg.Data.EventBatchData.GetByteSize() + (keyLength * joinWeightsByteSize);
             ColumnRowReference[] keys = new ColumnRowReference[keyLength];
             JoinWeights[] insertValues = new JoinWeights[keyLength];
 
@@ -596,7 +624,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 
 
-            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator());
+            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
         }
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)

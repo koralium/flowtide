@@ -23,6 +23,14 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
             return visitor.VisitNumericLiteral(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new NumericLiteral
+            {
+                Value = Value
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is NumericLiteral literal &&

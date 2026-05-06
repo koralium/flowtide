@@ -24,6 +24,14 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
             return visitor.VisitBoolLiteral(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new BoolLiteral
+            {
+                Value = this.Value
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is BoolLiteral literal &&

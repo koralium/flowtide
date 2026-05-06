@@ -100,12 +100,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             public readonly long LeafId;
             public readonly int Offset;
             public readonly int Length;
+            public readonly long ParentId;
 
-            public LeafBatchMapping(long leafId, int offset, int length)
+            public LeafBatchMapping(long leafId, int offset, int length, long parentId)
             {
                 LeafId = leafId;
                 Offset = offset;
                 Length = length;
+                ParentId = parentId;
             }
         }
 
@@ -130,7 +132,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (depth == 0)
                 {
                     // If depth 0 it is just a leaf as root
-                    mappings.Add(new LeafBatchMapping(m_stateClient.Metadata.Root, 0, batchLength));
+                    mappings.Add(new LeafBatchMapping(m_stateClient.Metadata.Root, 0, batchLength, -1));
                 }
                 else
                 {
@@ -230,7 +232,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (currentDepth == 1)
                 {
                     // At leaf id
-                    mappings.Add(new LeafBatchMapping(slice.pointer, slice.offset, slice.length));
+                    mappings.Add(new LeafBatchMapping(slice.pointer, slice.offset, slice.length, node.Id));
                 }
                 else
                 {

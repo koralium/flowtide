@@ -107,6 +107,15 @@ namespace FlowtideDotNet.Benchmarks
 
         private struct UpsertMutator : IRowMutator<ColumnRowReference, long>
         {
+            public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                var batch = keys[0].referenceBatch;
+                for (int i = 0; i < batch.Columns.Count; i++)
+                {
+                    batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
+                }
+            }
+
             public GenericWriteOperation Process(ColumnRowReference key, bool exists, in long existingData, ref long incomingData)
             {
                 return GenericWriteOperation.Upsert;
@@ -134,7 +143,7 @@ namespace FlowtideDotNet.Benchmarks
                     values[k] = i;
                     i++;
                 }
-                await _bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator());
+                await _bulkInserter.ApplyBatch(keys, values, count, new UpsertMutator(), count * 8);
             }
         }
     }
