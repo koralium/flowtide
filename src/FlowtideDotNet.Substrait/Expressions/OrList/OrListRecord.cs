@@ -53,5 +53,13 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return !(left == right);
         }
+
+        public OrListRecord Clone()
+        {
+            return new OrListRecord
+            {
+                Fields = Fields.Select(f => f.Clone()).ToList()
+            };
+        }
     }
 }

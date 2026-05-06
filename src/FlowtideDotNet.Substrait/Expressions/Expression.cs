@@ -16,5 +16,7 @@ namespace FlowtideDotNet.Substrait.Expressions
     {
 
         public abstract TOutput Accept<TOutput, TState>(ExpressionVisitor<TOutput, TState> visitor, TState state);
+
+        public abstract Expression Clone();
     }
 }

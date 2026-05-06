@@ -27,6 +27,17 @@ namespace FlowtideDotNet.Substrait.Expressions
             return visitor.VisitScalarFunction(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new ScalarFunction
+            {
+                ExtensionUri = ExtensionUri,
+                ExtensionName = ExtensionName,
+                Arguments = Arguments.Select(arg => arg.Clone()).ToList(),
+                Options = Options != null ? new SortedList<string, string>(Options) : null
+            };
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is ScalarFunction function &&

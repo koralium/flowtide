@@ -22,6 +22,11 @@ namespace FlowtideDotNet.Substrait.Expressions.Literals
             return visitor.VisitNullLiteral(this, state)!;
         }
 
+        public override Expression Clone()
+        {
+            return new NullLiteral();
+        }
+
         public override bool Equals(object? obj)
         {
             return obj is NullLiteral;
