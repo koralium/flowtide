@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 {
     internal class ColumnBoundarySearch
     {
-        private int[] columnStates;
+        private readonly int[] columnStates;
         private SearchBoundriesBulkDelegate[] _savedDelegates;
         private readonly int _columnCount;
         private readonly IReadOnlyList<int> _treeColumnOrder;
