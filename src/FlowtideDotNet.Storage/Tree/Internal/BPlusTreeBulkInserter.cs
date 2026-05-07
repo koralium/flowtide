@@ -240,12 +240,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // if the key was never in the leaf, canceling is a no-op on the leaf.
             bool prevKeyExistsInLeaf = false;
 
+            var lowerBoundsSpan = _lowerBounds.AsSpan(0, mapping.Length);
+            var upperBoundsSpan = _upperBounds.AsSpan(0, mapping.Length);
             searchComparer.FindBoundriesBulk(
                 _keys, 
                 _sortedIndices.AsSpan(mapping.Offset, mapping.Length), 
                 leaf.keys, 
-                _lowerBounds, 
-                _upperBounds);
+                lowerBoundsSpan, 
+                upperBoundsSpan);
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
