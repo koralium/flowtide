@@ -38,16 +38,16 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         }
 
         internal static void SearchBoundries_Hybrid(
-            IColumn treeColumn, 
-            IColumn inputColumn,
-            ReadOnlySpan<int> inputSortedLookup,
-            Span<int> lowerBounds, 
-            Span<int> upperBounds,
+        IColumn treeColumn,
+        IColumn inputColumn,
+        ReadOnlySpan<int> inputSortedLookup,
+        Span<int> lowerBounds,
+        Span<int> upperBounds,
 
-            // Not used parameters
-            DataValueContainer xContainer, 
-            DataValueContainer yContainer,
-            bool doNotMatchNull)
+        // Not used parameters
+        DataValueContainer xContainer,
+        DataValueContainer yContainer,
+        bool doNotMatchNull)
         {
             SelfComparePointers treePointers = default;
             treeColumn.SetSelfComparePointers(ref treePointers);
@@ -66,101 +66,125 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             fixed (int* upperPtr = &MemoryMarshal.GetReference(upperBounds))
             {
                 SearchTask* taskStack = stackalloc SearchTask[64];
-                int stackPointer = 0;
 
-                int initialLeafStart = lowerPtr[0];
-                initialLeafStart = initialLeafStart < 0 ? ~initialLeafStart : initialLeafStart;
+                int groupStart = 0;
+                int groupLower = lowerPtr[0];
+                int groupUpper = upperPtr[0];
 
-                int initialLeafEnd = upperPtr[inputCount - 1];
-                initialLeafEnd = initialLeafEnd < 0 ? ~initialLeafEnd : initialLeafEnd;
-
-                taskStack[stackPointer++] = new SearchTask
+                // Iterate through the input to isolate chunks that share the exact same bounds
+                for (int groupIdx = 1; groupIdx <= inputCount; groupIdx++)
                 {
-                    InputStart = 0,
-                    InputEnd = inputCount - 1,
-                    LeafStart = initialLeafStart,
-                    LeafEnd = initialLeafEnd
-                };
+                    bool isEnd = groupIdx == inputCount;
 
-                while (stackPointer > 0)
-                {
-                    var task = taskStack[--stackPointer];
-
-                    int leafSpace = task.LeafEnd - task.LeafStart + 1;
-
-                    // If the leaf has less than 128 elements we do a quick SIMD linear scan
-                    if (leafSpace < 128)
+                    // If we reach the end, or the boundaries shift, we process the isolated chunk
+                    if (isEnd || lowerPtr[groupIdx] != groupLower || upperPtr[groupIdx] != groupUpper)
                     {
-                        RunMicroSimdLoop(
-                            treeData, inputData, lookupPtr,
-                            lowerPtr, upperPtr,
-                            task.InputStart, task.InputEnd,
-                            task.LeafStart, task.LeafEnd);
-                        continue;
-                    }
-
-                    int inputSpace = task.InputEnd - task.InputStart + 1;
-                    int midInput = task.InputStart + (inputSpace >> 1);
-                    T targetValue = inputData[lookupPtr[midInput]];
-
-                    // Handle incoming duplicates
-                    int inputBlockStart = midInput;
-                    while (inputBlockStart > task.InputStart && inputData[lookupPtr[inputBlockStart - 1]] == targetValue)
-                    {
-                        inputBlockStart--;
-                    }
-
-                    int inputBlockEnd = midInput;
-                    while (inputBlockEnd < task.InputEnd && inputData[lookupPtr[inputBlockEnd + 1]] == targetValue)
-                    {
-                        inputBlockEnd++;
-                    }
-
-                    int blockStartBound = lowerPtr[inputBlockStart];
-
-                    int lower, upper;
-
-                    if (blockStartBound < 0)
-                    {
-                        lower = blockStartBound;
-                        upper = blockStartBound;
-                    }
-                    else
-                    {
-                        int blockEndBound = upperPtr[inputBlockEnd];
-                        FindBounds_Pivot(treeData, targetValue, blockStartBound, blockEndBound, out lower, out upper);
-                    }
-
-                    // Apply bounds for all duplicates
-                    for (int i = inputBlockStart; i <= inputBlockEnd; i++)
-                    {
-                        lowerPtr[i] = lower;
-                        upperPtr[i] = upper;
-                    }
-
-                    int leftLeafSplit = lower < 0 ? ~lower : lower;
-                    int rightLeafSplit = upper < 0 ? ~upper : upper;
-
-                    if (inputBlockEnd + 1 <= task.InputEnd)
-                    {
-                        taskStack[stackPointer++] = new SearchTask
+                        // Only process groups that actually have valid starting bounds
+                        if (groupLower >= 0)
                         {
-                            InputStart = inputBlockEnd + 1,
-                            InputEnd = task.InputEnd,
-                            LeafStart = rightLeafSplit,
-                            LeafEnd = task.LeafEnd
-                        };
-                    }
+                            int chunkInputEnd = groupIdx - 1;
+                            int leafSpace = groupUpper - groupLower + 1;
 
-                    if (inputBlockStart - 1 >= task.InputStart)
-                    {
-                        taskStack[stackPointer++] = new SearchTask
+                            if (leafSpace < 128)
+                            {
+                                RunMicroSimdLoop(
+                                    treeData, inputData, lookupPtr,
+                                    lowerPtr, upperPtr,
+                                    groupStart, chunkInputEnd,
+                                    groupLower, groupUpper);
+                            }
+                            else
+                            {
+                                int stackPointer = 0;
+
+                                taskStack[stackPointer++] = new SearchTask
+                                {
+                                    InputStart = groupStart,
+                                    InputEnd = chunkInputEnd,
+                                    LeafStart = groupLower,
+                                    LeafEnd = groupUpper
+                                };
+
+                                while (stackPointer > 0)
+                                {
+                                    var task = taskStack[--stackPointer];
+
+                                    int taskLeafSpace = task.LeafEnd - task.LeafStart + 1;
+
+                                    if (taskLeafSpace < 128)
+                                    {
+                                        RunMicroSimdLoop(
+                                            treeData, inputData, lookupPtr,
+                                            lowerPtr, upperPtr,
+                                            task.InputStart, task.InputEnd,
+                                            task.LeafStart, task.LeafEnd);
+                                        continue;
+                                    }
+
+                                    int inputSpace = task.InputEnd - task.InputStart + 1;
+                                    int midInput = task.InputStart + (inputSpace >> 1);
+                                    T targetValue = inputData[lookupPtr[midInput]];
+
+                                    
+                                    int inputBlockStart = midInput;
+                                    while (inputBlockStart > task.InputStart && inputData[lookupPtr[inputBlockStart - 1]] == targetValue)
+                                    {
+                                        inputBlockStart--;
+                                    }
+
+                                    int inputBlockEnd = midInput;
+                                    while (inputBlockEnd < task.InputEnd && inputData[lookupPtr[inputBlockEnd + 1]] == targetValue)
+                                    {
+                                        inputBlockEnd++;
+                                    }
+
+                                    int blockStartBound = lowerPtr[inputBlockStart];
+                                    int blockEndBound = upperPtr[inputBlockEnd];
+
+                                    FindBounds_Pivot(treeData, targetValue, blockStartBound, blockEndBound, out int lower, out int upper);
+
+                                    // Apply bounds for all duplicates
+                                    for (int i = inputBlockStart; i <= inputBlockEnd; i++)
+                                    {
+                                        lowerPtr[i] = lower;
+                                        upperPtr[i] = upper;
+                                    }
+
+                                    int leftLeafSplit = lower < 0 ? ~lower : lower;
+                                    int rightLeafSplit = upper < 0 ? ~upper : upper;
+
+                                    if (inputBlockEnd + 1 <= task.InputEnd)
+                                    {
+                                        taskStack[stackPointer++] = new SearchTask
+                                        {
+                                            InputStart = inputBlockEnd + 1,
+                                            InputEnd = task.InputEnd,
+                                            LeafStart = rightLeafSplit,
+                                            LeafEnd = task.LeafEnd
+                                        };
+                                    }
+
+                                    if (inputBlockStart - 1 >= task.InputStart)
+                                    {
+                                        taskStack[stackPointer++] = new SearchTask
+                                        {
+                                            InputStart = task.InputStart,
+                                            InputEnd = inputBlockStart - 1,
+                                            LeafStart = task.LeafStart,
+                                            LeafEnd = leftLeafSplit
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        // Shift tracking to the new bounds group
+                        if (!isEnd)
                         {
-                            InputStart = task.InputStart,
-                            InputEnd = inputBlockStart - 1,
-                            LeafStart = task.LeafStart,
-                            LeafEnd = leftLeafSplit
-                        };
+                            groupStart = groupIdx;
+                            groupLower = lowerPtr[groupIdx];
+                            groupUpper = upperPtr[groupIdx];
+                        }
                     }
                 }
             }
