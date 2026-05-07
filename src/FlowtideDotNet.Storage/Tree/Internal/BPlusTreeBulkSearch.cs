@@ -264,15 +264,11 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var lookupBufferSpan = _lookupBuffer.AsSpan(0, mapping.Length);
             _comparer.FindBoundriesBulk(_keys, sortedIndicesSpan, leaf.keys, lowerBoundsSpan, upperBoundsSpan, lookupBufferSpan);
 
-            int lowerBound = 0;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = sortedIndicesSpan[i];
                 var foundLowerBound = lowerBoundsSpan[i];
                 var foundUpperBound = upperBoundsSpan[i];
-
-
-                lowerBound = foundLowerBound < 0 ? ~foundLowerBound : foundLowerBound;
 
                 var result = new BulkSearchKeyResult
                 {
