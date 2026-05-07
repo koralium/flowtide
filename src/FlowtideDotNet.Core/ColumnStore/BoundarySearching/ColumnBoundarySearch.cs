@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         // Containers here are for fallback where we skip heap allocation on GetValue
         // This is only used for permutations where there is no specialized code
         private DataValueContainer _xContainer;
-        private DataValueContainer _yContainer;
+        private readonly DataValueContainer _yContainer;
         
 
         public ColumnBoundarySearch(IReadOnlyList<int> treeColumnOrder, IReadOnlyList<int> incomingColumnOrder)
