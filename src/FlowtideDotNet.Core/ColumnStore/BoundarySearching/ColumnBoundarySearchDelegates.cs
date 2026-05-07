@@ -31,7 +31,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> upperBounds,
             DataValueContainer xContainer,
             DataValueContainer yContainer,
-            bool doNotMatchNull);
+            bool doNotMatchNull,
+            Span<int> buffer);
 
     internal unsafe static class ColumnBoundarySearchDelegates
     {
@@ -43,11 +44,23 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int16, ArrowTypeId.Int16)]  = BoundarySearchHybridPrimitiveNoNull<short>.SearchBoundries_Hybrid;
             _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int32, ArrowTypeId.Int32)]  = BoundarySearchHybridPrimitiveNoNull<int>.SearchBoundries_Hybrid;
             _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.Int64, ArrowTypeId.Int64)]  = BoundarySearchHybridPrimitiveNoNull<long>.SearchBoundries_Hybrid;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int8, ArrowTypeId.Int8)] = BoundarySearchPrimitiveNoNullWithInputOffsets<sbyte>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int>;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long>;
         }
 
         private static int GetKeyFromTypeNoNull(ArrowTypeId key1, ArrowTypeId key2)
         {
             return GetKey(CompareColumnStateBuilder.Create(key1), CompareColumnStateBuilder.Create(key2));
+        }
+
+        private static int GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId key1, ArrowTypeId key2)
+        {
+            var inputCol = CompareColumnStateBuilder.Create(key2);
+            inputCol |= CompareColumnState.IsIndirectView;
+            var key = GetKey(CompareColumnStateBuilder.Create(key1), inputCol);
+            return key;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -71,6 +84,44 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             return FallbackMethod;
         }
 
+        internal static void BoundarySearchPrimitiveNoNullWithInputOffsets<T>(
+            IColumn treeColumn,
+            IColumn inputColumn,
+            ReadOnlySpan<int> inputSortedLookup,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            DataValueContainer xContainer,
+            DataValueContainer yContainer,
+            bool doNotMatchNull,
+            Span<int> buffer
+            )
+            where T : unmanaged, IComparisonOperators<T, T, bool>
+        {
+            SelfComparePointers treePointers = default;
+            treeColumn.SetSelfComparePointers(ref treePointers);
+
+            SelfComparePointers inputPointers = default;
+            inputColumn.SetSelfComparePointers(ref inputPointers);
+
+            int* inputOffsets = (int*)inputPointers.columnOffsetsPointer;
+
+            for (int i = 0; i < inputSortedLookup.Length; i++)
+            {
+                int lookupIndex = inputSortedLookup[i];
+                int idx = inputOffsets[lookupIndex];
+
+                if (idx < 0 && lowerBounds[i] >= 0)
+                {
+                    lowerBounds[i] = ~lowerBounds[i];
+                    upperBounds[i] = lowerBounds[i];
+                }
+
+                buffer[i] = idx;
+            }
+
+            BoundarySearchHybridPrimitiveNoNull<T>.SearchBoundries_Hybrid_StructInput(treePointers, inputPointers, buffer, lowerBounds, upperBounds);
+        }
+
         internal static void FallbackMethod(
             IColumn column,
             IColumn inputCol,
@@ -79,7 +130,8 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             Span<int> upperBounds,
             DataValueContainer xContainer,
             DataValueContainer yContainer,
-            bool doNotMatchNull)
+            bool doNotMatchNull,
+            Span<int> buffer)
         {
             int currentFastForward = 0;
 

@@ -124,7 +124,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _lowerBounds = new int[keyLength];
                 _upperBounds = new int[keyLength];
             }
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds);
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         private ValueTask StartBatch(K[] keys, V[] values, int keyLength)
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys,keyComparer));
 
-            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds);
+            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         private async ValueTask MutateBatch<TMutator>(TMutator mutator)
@@ -242,12 +242,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var lowerBoundsSpan = _lowerBounds.AsSpan(0, mapping.Length);
             var upperBoundsSpan = _upperBounds.AsSpan(0, mapping.Length);
+            var lookupBufferSpanSearch = _lookupBuffer.AsSpan(0, mapping.Length);
             searchComparer.FindBoundriesBulk(
                 _keys, 
                 _sortedIndices.AsSpan(mapping.Offset, mapping.Length), 
                 leaf.keys, 
                 lowerBoundsSpan, 
-                upperBoundsSpan);
+                upperBoundsSpan,
+                lookupBufferSpanSearch);
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];

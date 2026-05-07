@@ -130,7 +130,8 @@ namespace FlowtideDotNet.Benchmarks
                 _upperBounds,
                 _xContainer,
                 _yContainer,
-                false);
+                false,
+                Array.Empty<int>());
         }
 
         /// <summary>

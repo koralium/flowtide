@@ -47,14 +47,27 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         // Not used parameters
         DataValueContainer xContainer,
         DataValueContainer yContainer,
-        bool doNotMatchNull)
+        bool doNotMatchNull,
+        Span<int> buffer)
         {
             SelfComparePointers treePointers = default;
             treeColumn.SetSelfComparePointers(ref treePointers);
-            T* treeData = (T*)treePointers.dataPointer;
 
             SelfComparePointers inputPointers = default;
             inputColumn.SetSelfComparePointers(ref inputPointers);
+
+            SearchBoundries_Hybrid_StructInput(
+                treePointers, inputPointers, inputSortedLookup, lowerBounds, upperBounds);
+        }
+
+        internal static void SearchBoundries_Hybrid_StructInput(
+        SelfComparePointers treePointers,
+        SelfComparePointers inputPointers,
+        ReadOnlySpan<int> inputSortedLookup,
+        Span<int> lowerBounds,
+        Span<int> upperBounds)
+        {
+            T* treeData = (T*)treePointers.dataPointer;
             T* inputData = (T*)inputPointers.dataPointer;
 
             int inputCount = inputSortedLookup.Length;

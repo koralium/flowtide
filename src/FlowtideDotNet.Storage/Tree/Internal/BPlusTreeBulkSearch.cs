@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _sortedIndices = Array.Empty<int>();
         private int[] _lowerBounds = Array.Empty<int>();
         private int[] _upperBounds = Array.Empty<int>();
+        private int[] _lookupBuffer = Array.Empty<int>();
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> _tree;
         private readonly TComparer _comparer;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
@@ -75,6 +76,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _sortedIndices = new int[keyLength];
                 _lowerBounds = new int[keyLength];
                 _upperBounds = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
             }
 
             for (int i = 0; i < keyLength; i++)
@@ -106,8 +108,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 _lowerBounds = new int[keyLength];
                 _upperBounds = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
             }
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds);
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         /// <summary>
@@ -258,7 +261,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var sortedIndicesSpan = _sortedIndices.AsSpan(mapping.Offset, mapping.Length);
             var lowerBoundsSpan = _lowerBounds.AsSpan(0, mapping.Length);
             var upperBoundsSpan = _upperBounds.AsSpan(0, mapping.Length);
-            _comparer.FindBoundriesBulk(_keys, sortedIndicesSpan, leaf.keys, lowerBoundsSpan, upperBoundsSpan);
+            var lookupBufferSpan = _lookupBuffer.AsSpan(0, mapping.Length);
+            _comparer.FindBoundriesBulk(_keys, sortedIndicesSpan, leaf.keys, lowerBoundsSpan, upperBoundsSpan, lookupBufferSpan);
 
             int lowerBound = 0;
             for (int i = 0; i < mapping.Length; i++)

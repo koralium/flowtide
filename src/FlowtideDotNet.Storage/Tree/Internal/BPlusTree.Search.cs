@@ -118,7 +118,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             IBplusTreeComparer<K, TKeyContainer> searchComparer,
             List<LeafBatchMapping> mappings,
             int[] lowerBoundsBuffer,
-            int[] upperBoundsBuffer)
+            int[] upperBoundsBuffer,
+            int[] lookupBuffer)
         {
             Debug.Assert(m_stateClient.Metadata != null);
 
@@ -142,7 +143,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
                     await RouteBatchInternalAsync(
                         keys, sortedIndices, 0, batchLength,
-                        root!, depth, searchComparer, mappings, workspace!, 0, lowerBoundsBuffer, upperBoundsBuffer);
+                        root!, depth, searchComparer, mappings, workspace!, 0, lowerBoundsBuffer, upperBoundsBuffer, lookupBuffer);
                 }
             }
             finally
@@ -162,14 +163,16 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             InternalNode<K, V, TKeyContainer> node,
             IBplusTreeComparer<K, TKeyContainer> searchComparer,
             int[] lowerBoundsBuffer,
-            int[] upperBoundsBuffer
+            int[] upperBoundsBuffer,
+            int[] lookupBuffer
             )
         {
             
             var sortedIndicesSpan = sortedIndices.AsSpan(offset, length);
             var lowerBoundsSpan = lowerBoundsBuffer.AsSpan(offset, length);
             var upperBoundsSpan = upperBoundsBuffer.AsSpan(offset, length);
-            searchComparer.FindBoundriesBulk(keys, sortedIndicesSpan, node.keys, lowerBoundsSpan, upperBoundsSpan);
+            var lookupBufferSpan = lookupBuffer.AsSpan(offset, length);
+            searchComparer.FindBoundriesBulk(keys, sortedIndicesSpan, node.keys, lowerBoundsSpan, upperBoundsSpan, lookupBufferSpan);
         }
 
         private async ValueTask RouteBatchInternalAsync(
@@ -184,13 +187,15 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             (long pointer, int offset, int length)[] workspace,
             int workspaceStartIndex,
             int[] lowerBoundsBuffer,
-            int[] upperBoundsBuffer)
+            int[] upperBoundsBuffer,
+            int[] lookupBuffer
+            )
         {
             int sliceCount = 0;
             int currentOffset = offset;
             int end = offset + length;
 
-            FindBoundries(keys, sortedIndices, offset, length, node, searchComparer, lowerBoundsBuffer, upperBoundsBuffer);
+            FindBoundries(keys, sortedIndices, offset, length, node, searchComparer, lowerBoundsBuffer, upperBoundsBuffer, lookupBuffer);
             while (currentOffset < end)
             {
                 int targetChildIndex = lowerBoundsBuffer[currentOffset];
@@ -247,7 +252,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         keys, sortedIndices, slice.offset, slice.length,
                         internalChild, currentDepth - 1, searchComparer,
                         mappings, workspace, workspaceStartIndex + sliceCount,
-                        lowerBoundsBuffer, upperBoundsBuffer);
+                        lowerBoundsBuffer, upperBoundsBuffer, lookupBuffer);
                 }
             }
         }
