@@ -20,18 +20,14 @@ namespace FlowtideDotNet.Storage.Memory
         private readonly string _streamName;
         private readonly Meter _meter;
         private readonly Dictionary<string, OperatorMemoryManager> _managers;
-        private MemoryHeap _memoryHeap;
         private bool disposedValue;
         private long _allocatedMemory;
-
-        internal MemoryHeap MemoryHeap => _memoryHeap;
 
         public StreamMemoryManager(string streamName)
         {
             this._streamName = streamName;
             _meter = new Meter($"flowtide.{streamName}.memory");
             _managers = new Dictionary<string, OperatorMemoryManager>();
-            _memoryHeap = FlowtideMemoryAllocation.CreateMemoryHeap();
         }
 
         public IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName)
@@ -59,7 +55,10 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (!disposedValue)
             {
-                FlowtideMemoryAllocation.FreeMemoryHeap(_memoryHeap);
+                if (disposing)
+                {
+                    _meter.Dispose();
+                }
                 disposedValue = true;
             }
         }

@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Storage.Memory
 
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment, _streamMemoryManager.MemoryHeap);
+            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
             RegisterAllocationToMetrics(allocated.length);
             return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, this);
         }
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 var previousLength = native.length;
                 var oldPtr = native.ptr;
-                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment, _streamMemoryManager.MemoryHeap);
+                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment);
                 
                 // If length is same and ptr is same, nothing happened
                 if (allocated.length == previousLength && allocated.ptr == oldPtr)
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.Memory
             }
             else
             {
-                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment, _streamMemoryManager.MemoryHeap);
+                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
                 RegisterAllocationToMetrics(allocated.length);
                 RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory

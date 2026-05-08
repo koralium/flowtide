@@ -23,14 +23,11 @@ namespace FlowtideDotNet.Storage.Memory
         private bool disposedValue;
         private readonly IMemoryAllocator _operatorMemoryManager;
         private readonly MemoryHandle _pin;
-        private MemoryHeap _memoryHeap;
 
         public PreAllocatedMemoryManager(IMemoryAllocator operatorMemoryManager, MemoryHandle pin)
         {
             this._operatorMemoryManager = operatorMemoryManager;
             this._pin = pin;
-            // Blank heap, this class is not really in use any longer so no special heap logic required
-            _memoryHeap = new MemoryHeap();
         }
 
         public void Initialize(IMemoryOwner<byte> memoryOwner, int usageCount)
@@ -42,7 +39,7 @@ namespace FlowtideDotNet.Storage.Memory
 
         public IMemoryOwner<byte> Allocate(int size, int alignment)
         {
-            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment, _memoryHeap);
+            var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
             _operatorMemoryManager.RegisterAllocationToMetrics(allocated.length);
             return NativeCreatedMemoryOwnerFactory.Get(allocated.ptr, allocated.length, (nuint)alignment, _operatorMemoryManager);
         }
@@ -73,7 +70,7 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 var previousLength = native.length;
                 var oldPtr = native.ptr;
-                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment, _memoryHeap);
+                FlowtideAllocatedMemory allocated = FlowtideMemoryAllocation.ReallocAligned(oldPtr, previousLength, size, alignment);
 
                 // If length is same and ptr is same, nothing happened
                 if (allocated.length == previousLength && allocated.ptr == oldPtr)
@@ -98,7 +95,7 @@ namespace FlowtideDotNet.Storage.Memory
             }
             else
             {
-                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment, _memoryHeap);
+                var allocated = FlowtideMemoryAllocation.AllocateAligned(size, alignment);
                 RegisterAllocationToMetrics(allocated.length);
                 RegisterFreeToMetrics(memory.Memory.Length);
                 // Copy the memory
