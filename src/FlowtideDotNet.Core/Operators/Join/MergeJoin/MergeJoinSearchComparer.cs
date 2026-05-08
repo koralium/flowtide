@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private DataValueContainer dataValueContainer;
         private readonly List<int> selfColumns;
         private readonly List<int> referenceColumns;
-        private ColumnBoundarySearch _columnBoundarySearch;
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
 
         public int start;
         public int end;
