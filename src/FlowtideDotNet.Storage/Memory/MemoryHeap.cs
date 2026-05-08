@@ -10,14 +10,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Storage.Memory
 {
-    /// <summary>
-    /// Manages the memory for one stream.
-    /// Can be used to keep track of total memory used in a stream.
-    /// </summary>
-    public interface IStreamMemoryManager : IDisposable
+    internal class MemoryHeap
     {
-        IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName);
+        public Mimalloc.mi_heap_t_ptr? heap;
+
+        public MemoryHeap()
+        {
+            
+        }
+
+        public MemoryHeap(Mimalloc.mi_heap_t_ptr heap)
+        {
+            this.heap = heap;
+        }
     }
 }

@@ -19,12 +19,15 @@ namespace FlowtideDotNet.Storage.Memory
         private readonly string _streamName;
         private readonly Meter _meter;
         private readonly Dictionary<string, OperatorMemoryManager> _managers;
+        private MemoryHeap _memoryHeap;
+        private bool disposedValue;
 
         public StreamMemoryManager(string streamName)
         {
             this._streamName = streamName;
             _meter = new Meter($"flowtide.{streamName}.memory");
             _managers = new Dictionary<string, OperatorMemoryManager>();
+            _memoryHeap = FlowtideMemoryAllocation.CreateMemoryHeap();
         }
 
         public IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName)
@@ -33,9 +36,31 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 return manager;
             }
-            manager = new OperatorMemoryManager(_streamName, operatorName, _meter);
+            manager = new OperatorMemoryManager(_streamName, operatorName, _meter, _memoryHeap);
             _managers.Add(operatorName, manager);
             return manager;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                FlowtideMemoryAllocation.FreeMemoryHeap(_memoryHeap);
+                disposedValue = true;
+            }
+        }
+
+        ~StreamMemoryManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

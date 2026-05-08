@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Tests
                 metrics.GetOrCreateVertexMeter("1", () => ""),
                 _stateManager.GetOrCreateClient("1"),
                 new LoggerFactory(),
-                new OperatorMemoryManager("stream", "op", new Meter("stream")),
+                new OperatorMemoryManager("stream", "op", new Meter("stream"), new MemoryHeap()),
                 (exception, version) => Task.CompletedTask);
             await @operator.Initialize("1", 0, 0, vertexHandler, null);
 

@@ -695,6 +695,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             });
 
             _stateManager.Dispose();
+
+            _streamMemoryManager.Dispose();
         }
 
         public StreamGraph GetGraph()

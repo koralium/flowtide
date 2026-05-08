@@ -53,12 +53,30 @@ namespace FlowtideDotNet.Storage.Memory
             }
         }
 
-        public static FlowtideAllocatedMemory AllocateAligned(int size, int alignment)
+        public static MemoryHeap CreateMemoryHeap()
+        {
+            if (_isMimallocAvailable)
+            {
+                var heap = MiMalloc.mi_heap_new();
+                return new MemoryHeap(heap);
+            }
+            return new MemoryHeap();
+        }
+
+        public static void FreeMemoryHeap(MemoryHeap memoryHeap)
+        {
+            if (_isMimallocAvailable && memoryHeap.heap.HasValue)
+            {
+                MiMalloc.mi_heap_delete(memoryHeap.heap.Value);
+            }
+        }
+
+        public static FlowtideAllocatedMemory AllocateAligned(int size, int alignment, MemoryHeap memoryHeap)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
             if (_isMimallocAvailable)
             {
-                return AllocateMimalloc(size, alignment);
+                return AllocateMimalloc(size, alignment, memoryHeap);
             }
             return AllocateNativeMemory(size, alignment);
         }
@@ -88,11 +106,11 @@ namespace FlowtideDotNet.Storage.Memory
             }
         }
 
-        public static FlowtideAllocatedMemory ReallocAligned(void* ptr, int oldSize, int newSize, int alignment)
+        public static FlowtideAllocatedMemory ReallocAligned(void* ptr, int oldSize, int newSize, int alignment, MemoryHeap memoryHeap)
         {
             if (_isMimallocAvailable)
             {
-                return ReallocMimalloc(ptr, oldSize, newSize, alignment);
+                return ReallocMimalloc(ptr, oldSize, newSize, alignment, memoryHeap);
             }
             return ReallocNativeMemory(ptr, newSize, alignment);
         }
@@ -107,17 +125,27 @@ namespace FlowtideDotNet.Storage.Memory
             return new FlowtideAllocatedMemory() { ptr = newPtr, length = newSize };
         }
 
-        private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment)
+        private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment, MemoryHeap memoryHeap)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-
+            
             var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
             alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
             if (alignedsize == oldSize)
             {
                 return new FlowtideAllocatedMemory() { ptr = ptr, length = oldSize };
             }
-            var newPtr = MiMalloc.mi_realloc_aligned(ptr, (nuint)alignedsize, (nuint)alignment);
+
+            void* newPtr;
+            if (memoryHeap.heap.HasValue)
+            {
+                newPtr = MiMalloc.mi_heap_realloc_aligned(memoryHeap.heap.Value, ptr, (nuint)alignedsize, (nuint)alignment);
+            }
+            else
+            {
+                newPtr = MiMalloc.mi_realloc_aligned(ptr, (nuint)alignedsize, (nuint)alignment);
+            }
+
             if (newPtr == GlobalMemoryManager.NullPtr)
             {
                 throw new InvalidOperationException("Could not reallocate memory");
@@ -135,12 +163,21 @@ namespace FlowtideDotNet.Storage.Memory
             return new FlowtideAllocatedMemory { ptr = ptr, length = size };
         }
 
-        private static FlowtideAllocatedMemory AllocateMimalloc(int size, int alignment)
+        private static FlowtideAllocatedMemory AllocateMimalloc(int size, int alignment, MemoryHeap memoryHeap)
         {
             var alignedsize = (size + alignment - 1) & ~(alignment - 1);
             var goodSize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
 
-            var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
+            void* ptr;
+            if (memoryHeap.heap.HasValue)
+            {
+                ptr = MiMalloc.mi_heap_malloc_aligned(memoryHeap.heap.Value, (nuint)goodSize, (nuint)alignment);
+            }
+            else
+            {
+                ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
+            }
+
             if (ptr == GlobalMemoryManager.NullPtr)
             {
                 throw new InvalidOperationException("Could not allocate memory");
