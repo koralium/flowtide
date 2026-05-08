@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
     internal class ColumnBoundarySearch
     {
         private readonly int[] columnStates;
-        private SearchBoundriesBulkDelegate[] _savedDelegates;
+        private readonly SearchBoundriesBulkDelegate[] _savedDelegates;
         private readonly int _columnCount;
         private readonly IReadOnlyList<int> _treeColumnOrder;
         private readonly IReadOnlyList<int> _incomingColumnOrder;
