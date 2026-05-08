@@ -10,8 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using Microsoft.Extensions.Logging;
-
 namespace FlowtideDotNet.Storage.Tree
 {
     public struct FindBoundriesResult
