@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Core.Tests
     {
         private TaskCompletionSource? _taskCompletion;
         private StateManagerSync<StreamState>? _stateManager;
+        private Meter? _operatorMemoryMeter;
         internal FunctionsRegister FunctionsRegister { get; private set; }
 
         public OperatorTestBase()
@@ -77,7 +78,7 @@ namespace FlowtideDotNet.Core.Tests
                 metrics.GetOrCreateVertexMeter("1", () => ""),
                 _stateManager.GetOrCreateClient("1"),
                 new LoggerFactory(),
-                new OperatorMemoryManager("stream", "op", new Meter("stream"), new StreamMemoryManager("stream")),
+                new OperatorMemoryManager("stream", "op", _operatorMemoryMeter ??= new Meter("stream"), new StreamMemoryManager("stream")),
                 (exception, version) => Task.CompletedTask);
             await @operator.Initialize("1", 0, 0, vertexHandler, null);
 
@@ -157,4 +158,9 @@ namespace FlowtideDotNet.Core.Tests
             
         }
     }
+        public void Dispose()
+        {
+            _operatorMemoryMeter?.Dispose();
+            _operatorMemoryMeter = null;
+        }
 }
