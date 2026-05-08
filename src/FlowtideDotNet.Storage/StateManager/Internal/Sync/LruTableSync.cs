@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Mimalloc;
 using FlowtideDotNet.Storage.Utils;
 using Microsoft.Extensions.Logging;
@@ -52,9 +53,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private float m_metrics_lastSentPercentage;
 
         private bool m_disposedValue;
-        private readonly Process _currentProcess;
         private readonly CancellationTokenSource m_cleanupTokenSource;
         private readonly LruTableOptions lruTableOptions;
+        private readonly IMemoryAllocationStats _memoryAllocationStats;
 
         // AddOrUpdate remove boxing hacks
         private readonly Func<long, AddOrUpdateContainer, LinkedListNode<LinkedListValue>> _addOrUpdate_newValue_func;
@@ -69,11 +70,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             this.meter = lruTableOptions.Meter;
             this.m_streamName = lruTableOptions.StreamName;
             this.maxMemoryUsageInBytes = lruTableOptions.MaxMemoryUsageInBytes;
+            _memoryAllocationStats = lruTableOptions.MemoryAllocationStats;
             cleanupStart = (int)Math.Ceiling(maxSize * 0.7);
             _fullLock = new SemaphoreSlim(1);
             m_cleanupTokenSource = new CancellationTokenSource();
             StartCleanupTask();
-            _currentProcess = Process.GetCurrentProcess();
 
             if (!string.IsNullOrEmpty(m_streamName))
             {
@@ -385,7 +386,6 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     m_lastSeenCacheHits = cacheHitsLocal;
                     m_sameCaheHitsCount = 0;
-                    return;
                 }
             }
 
@@ -393,21 +393,36 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             var toBeRemovedCount = currentCount - cleanupStartLocal;
             if (maxMemoryUsageInBytes > 0 && !isCleanup)
             {
-                _currentProcess.Refresh();
-                var percentage = (float)currentCount / maxSize;
-                if (_currentProcess.WorkingSet64 < (maxMemoryUsageInBytes * percentage))
+                var usedMemory = _memoryAllocationStats.GetAllocatedMemory();
+
+                if (usedMemory > 0)
                 {
-                    Volatile.Write(ref maxSize, (int)Math.Ceiling(maxSize * 1.1));
-                    Volatile.Write(ref cleanupStart, (int)Math.Ceiling(maxSize * 0.7));
-                    return;
+                    var avgItemSizeBytes = Math.Max(16 * 1024.0, (double)usedMemory / currentCount); // Minimum of 16KB to avoid very small sizes which can cause inflation of max size.
+
+                    var targetMemoryBytes = maxMemoryUsageInBytes * 0.80;
+
+                    var idealMaxSize = (int)Math.Floor(targetMemoryBytes / avgItemSizeBytes);
+
+                    var tolerance = idealMaxSize * 0.20;
+
+                    if (Math.Abs(maxSize - idealMaxSize) > tolerance)
+                    {
+                        Volatile.Write(ref maxSize, idealMaxSize);
+
+                        var cleanupSize = (int)Math.Ceiling(idealMaxSize * 0.7);
+                        Volatile.Write(ref cleanupStart, cleanupSize);
+
+                        if (currentCount > idealMaxSize)
+                        {
+                            toBeRemovedCount = currentCount - cleanupSize;
+                        }
+                    }
                 }
-                else
-                {
-                    Volatile.Write(ref maxSize, (int)Math.Floor(maxSize * 0.9));
-                    Volatile.Write(ref cleanupStart, (int)Math.Ceiling(maxSize * 0.7));
-                    // On reduction, remove more directly
-                    toBeRemovedCount = currentCount - cleanupStartLocal;
-                }
+            }
+
+            if (toBeRemovedCount <= 0)
+            {
+                return;
             }
 
             LinkedListNode<LinkedListValue>? iteratorNode;

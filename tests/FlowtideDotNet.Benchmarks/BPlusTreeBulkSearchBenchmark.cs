@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Benchmarks
             {
                 CachePageCount = 1_000_000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, NullLoggerFactory.Instance, new Meter("bulk_search_bench"), "bulk_search_bench");
+            }, NullLoggerFactory.Instance, new Meter("bulk_search_bench"), "bulk_search_bench", GlobalMemoryManager.Instance);
 
             _stateManager.InitializeAsync().GetAwaiter().GetResult();
             _nodeClient = _stateManager.GetOrCreateClient("node1");

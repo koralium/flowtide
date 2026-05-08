@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         FileProvider = new MemoryFileProvider()
                     })
-                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
 
             await stateManager.InitializeAsync();
 
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         FileProvider = new MemoryFileProvider()
                     })
-                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
 
             await stateManager.InitializeAsync();
 
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         FileProvider = new MemoryFileProvider()
                     })
-                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
 
             await stateManager.InitializeAsync();
 
@@ -205,7 +205,7 @@ namespace FlowtideDotNet.Storage.Tests
                     {
                         FileProvider = new MemoryFileProvider()
                     })
-                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+                }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
 
             await stateManager.InitializeAsync();
             Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);

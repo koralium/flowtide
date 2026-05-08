@@ -32,7 +32,7 @@ namespace DifferntialCompute.Benchmarks
             StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
                 CachePageCount = 1_000_000
-            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage");
+            }, NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter("storage"), "storage", GlobalMemoryManager.Instance);
 
             stateManager.InitializeAsync().GetAwaiter().GetResult();
 

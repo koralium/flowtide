@@ -10,14 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
 namespace FlowtideDotNet.Storage.Memory
 {
-    /// <summary>
-    /// Manages the memory for one stream.
-    /// Can be used to keep track of total memory used in a stream.
-    /// </summary>
-    public interface IStreamMemoryManager : IDisposable, IMemoryAllocationStats
+    internal class MemoryStatsWithGC : IMemoryAllocationStats
     {
-        IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName);
+        private readonly IMemoryAllocationStats inner;
+
+        public MemoryStatsWithGC(IMemoryAllocationStats inner)
+        {
+            this.inner = inner;
+        }
+        public long GetAllocatedMemory()
+        {
+            var mem = inner.GetAllocatedMemory();
+            var gcInfo = GC.GetGCMemoryInfo();
+            return gcInfo.TotalCommittedBytes + mem;
+        }
     }
 }

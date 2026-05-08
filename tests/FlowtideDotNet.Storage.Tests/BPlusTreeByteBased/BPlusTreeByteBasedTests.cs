@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
                 {
                     DirectoryPath = $"./data/temp/{testName}",
                 })
-            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
 
             var nodeClient = stateManager.GetOrCreateClient("node1");

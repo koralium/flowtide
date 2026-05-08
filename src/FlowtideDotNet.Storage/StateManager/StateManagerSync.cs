@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName)
+        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName, IMemoryAllocationStats memoryAllocationStats) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName, memoryAllocationStats)
         {
         }
 
@@ -69,6 +69,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly ILogger logger;
         private readonly Meter meter;
         private readonly string streamName;
+        private readonly IMemoryAllocationStats memoryAllocationStats;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -104,7 +105,13 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public long LastCompletedCheckpointVersion { get; private set; }
 
-        private protected StateManagerSync(IStateSerializer<StateManagerMetadata> metadataSerializer, StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName)
+        private protected StateManagerSync(
+            IStateSerializer<StateManagerMetadata> metadataSerializer, 
+            StateManagerOptions options, 
+            ILoggerFactory loggerFactory, 
+            Meter meter, 
+            string streamName,
+            IMemoryAllocationStats memoryAllocationStats)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
@@ -112,13 +119,14 @@ namespace FlowtideDotNet.Storage.StateManager
             this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
             this.streamName = streamName;
+            this.memoryAllocationStats = memoryAllocationStats;
         }
 
         private void Setup()
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter)
+                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(memoryAllocationStats))
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,

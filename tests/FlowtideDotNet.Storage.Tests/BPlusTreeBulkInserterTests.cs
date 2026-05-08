@@ -38,7 +38,7 @@ namespace FlowtideDotNet.Storage.Tests
             {
                 CachePageCount = 1000000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, NullLoggerFactory.Instance, new Meter("bulk_inserter_test"), "bulk_inserter_test");
+            }, NullLoggerFactory.Instance, new Meter("bulk_inserter_test"), "bulk_inserter_test", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             
             var nodeClient = stateManager.GetOrCreateClient("node1");

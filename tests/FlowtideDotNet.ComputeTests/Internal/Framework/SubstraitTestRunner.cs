@@ -190,7 +190,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 Options = parsedTest.Options
             };
 
-            using StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter(""), "");
+            using StateManagerSync stateManager = new StateManagerSync<object>(new StateManagerOptions(), NullLoggerFactory.Instance, new System.Diagnostics.Metrics.Meter(""), "", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("a");
             var compileResult = await ColumnMeasureCompiler.CompileMeasure(0, stateClient, aggregateFunction, register, GlobalMemoryManager.Instance);

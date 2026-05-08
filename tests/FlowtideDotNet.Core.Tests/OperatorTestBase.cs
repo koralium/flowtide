@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Core.Tests
             var statemanagermeter = new Meter("statemanager");
             _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions()
             {
-            }, NullLoggerFactory.Instance, statemanagermeter, "stream");
+            }, NullLoggerFactory.Instance, statemanagermeter, "stream", GlobalMemoryManager.Instance);
             await _stateManager.InitializeAsync();
             await ReinitializeOperator(@operator);
         }
@@ -77,7 +77,7 @@ namespace FlowtideDotNet.Core.Tests
                 metrics.GetOrCreateVertexMeter("1", () => ""),
                 _stateManager.GetOrCreateClient("1"),
                 new LoggerFactory(),
-                new OperatorMemoryManager("stream", "op", new Meter("stream"), new MemoryHeap()),
+                new OperatorMemoryManager("stream", "op", new Meter("stream"), new StreamMemoryManager("stream")),
                 (exception, version) => Task.CompletedTask);
             await @operator.Initialize("1", 0, 0, vertexHandler, null);
 

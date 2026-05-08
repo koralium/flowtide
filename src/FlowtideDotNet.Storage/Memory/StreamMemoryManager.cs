@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Diagnostics.Metrics;
+using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
@@ -21,6 +22,9 @@ namespace FlowtideDotNet.Storage.Memory
         private readonly Dictionary<string, OperatorMemoryManager> _managers;
         private MemoryHeap _memoryHeap;
         private bool disposedValue;
+        private long _allocatedMemory;
+
+        internal MemoryHeap MemoryHeap => _memoryHeap;
 
         public StreamMemoryManager(string streamName)
         {
@@ -36,9 +40,19 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 return manager;
             }
-            manager = new OperatorMemoryManager(_streamName, operatorName, _meter, _memoryHeap);
+            manager = new OperatorMemoryManager(_streamName, operatorName, _meter, this);
             _managers.Add(operatorName, manager);
             return manager;
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return Interlocked.Read(ref _allocatedMemory);
+        }
+
+        internal void AddMemoryDelta(int delta)
+        {
+            Interlocked.Add(ref _allocatedMemory, delta);
         }
 
         protected virtual void Dispose(bool disposing)
