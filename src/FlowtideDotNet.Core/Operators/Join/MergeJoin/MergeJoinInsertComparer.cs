@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
     internal class MergeJoinInsertComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private ColumnBoundarySearch _columnBoundarySearch;
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
         public List<int> ColumnOrder { get; }
         public MergeJoinInsertComparer(List<int> comparisonColumns, int columnCount)
         {
