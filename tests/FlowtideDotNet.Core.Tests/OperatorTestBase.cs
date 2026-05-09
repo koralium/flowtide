@@ -154,13 +154,10 @@ namespace FlowtideDotNet.Core.Tests
             if (_stateManager != null)
             {
                 _stateManager.Dispose();
+                _operatorMemoryMeter?.Dispose();
+                _operatorMemoryMeter = null;
             }
             
         }
     }
-        public void Dispose()
-        {
-            _operatorMemoryMeter?.Dispose();
-            _operatorMemoryMeter = null;
-        }
 }
