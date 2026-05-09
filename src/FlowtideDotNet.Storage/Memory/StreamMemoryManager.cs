@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using System.Diagnostics.Metrics;
-using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Memory
 {
