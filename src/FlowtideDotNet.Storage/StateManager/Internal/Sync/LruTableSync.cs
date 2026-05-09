@@ -389,19 +389,20 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 }
             }
 
-            // Take cleanup count before increasing memory, to try and reduce semaphore locks
             var toBeRemovedCount = currentCount - cleanupStartLocal;
-            if (maxMemoryUsageInBytes > 0 && !isCleanup)
+            if (maxMemoryUsageInBytes > 0 && !isCleanup && currentCount > 0)
             {
                 var usedMemory = _memoryAllocationStats.GetAllocatedMemory();
 
                 if (usedMemory > 0)
                 {
-                    var avgItemSizeBytes = Math.Max(16 * 1024.0, (double)usedMemory / currentCount); // Minimum of 16KB to avoid very small sizes which can cause inflation of max size.
-
+                    var avgItemSizeBytes = Math.Max(16 * 1024.0, (double)usedMemory / currentCount);
                     var targetMemoryBytes = maxMemoryUsageInBytes * 0.80;
 
-                    var idealMaxSize = (int)Math.Floor(targetMemoryBytes / avgItemSizeBytes);
+                    var rawIdealMaxSize = (int)Math.Floor(targetMemoryBytes / avgItemSizeBytes);
+
+                    var minAllowedSize = 100;
+                    var idealMaxSize = Math.Max(minAllowedSize, rawIdealMaxSize);
 
                     var tolerance = idealMaxSize * 0.20;
 
@@ -409,7 +410,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         Volatile.Write(ref maxSize, idealMaxSize);
 
-                        var cleanupSize = (int)Math.Ceiling(idealMaxSize * 0.7);
+                        var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
+
+                        var cleanupSize = Math.Max(1, rawCleanupSize);
                         Volatile.Write(ref cleanupStart, cleanupSize);
 
                         if (currentCount > idealMaxSize)
