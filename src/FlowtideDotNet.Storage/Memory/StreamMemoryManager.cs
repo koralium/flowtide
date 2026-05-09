@@ -19,6 +19,8 @@ namespace FlowtideDotNet.Storage.Memory
         private readonly string _streamName;
         private readonly Meter _meter;
         private readonly Dictionary<string, OperatorMemoryManager> _managers;
+        private bool disposedValue;
+        private long _allocatedMemory;
 
         public StreamMemoryManager(string streamName)
         {
@@ -33,9 +35,44 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 return manager;
             }
-            manager = new OperatorMemoryManager(_streamName, operatorName, _meter);
+            manager = new OperatorMemoryManager(_streamName, operatorName, _meter, this);
             _managers.Add(operatorName, manager);
             return manager;
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return Interlocked.Read(ref _allocatedMemory);
+        }
+
+        internal void AddMemoryDelta(int delta)
+        {
+            Interlocked.Add(ref _allocatedMemory, delta);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _meter.Dispose();
+                }
+                disposedValue = true;
+            }
+        }
+
+        ~StreamMemoryManager()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: false);
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

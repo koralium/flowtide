@@ -47,7 +47,7 @@ namespace DifferntialCompute.Benchmarks
             {
                 CachePageCount = 1_000_000,
                 PersistentStorage = new FileCachePersistentStorage(new FileCacheOptions())
-            }, NullLoggerFactory.Instance, new Meter("bulk_insert_bench"), "bulk_insert_bench");
+            }, NullLoggerFactory.Instance, new Meter("bulk_insert_bench"), "bulk_insert_bench", GlobalMemoryManager.Instance);
 
             _stateManager.InitializeAsync().GetAwaiter().GetResult();
             _nodeClient = _stateManager.GetOrCreateClient("node1");

@@ -406,7 +406,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 {
                     memoryOwner = _memoryAllocator.Allocate(decompressedSize, 64);
                     using var decompressor = new ZstdDecompression(_memoryAllocator);
-                    decompressor.Read(buffer.Slice(8), memoryOwner.Memory.Span);
+                    decompressor.Read(buffer.Slice(8), memoryOwner.Memory.Span.Slice(0, decompressedSize));
                     buffer = new ReadOnlySequence<byte>(memoryOwner.Memory.Slice(0, decompressedSize));
                 }
             }

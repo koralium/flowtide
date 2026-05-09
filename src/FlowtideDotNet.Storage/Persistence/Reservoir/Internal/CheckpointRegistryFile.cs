@@ -399,43 +399,45 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
             var footerSegment = new BufferSegment(fileData.Slice(footerOffset, FooterSize).ToArray());
 
-            var checkpointsVersionMemory = memoryAllocator.Allocate(checkpointCount * sizeof(long), 64);
+            var checkpointVersionMemorySize = checkpointCount * sizeof(long);
+            var checkpointsVersionMemory = memoryAllocator.Allocate(checkpointVersionMemorySize, 64);
             reader.Advance(versionsOffset - reader.Consumed);
-            if (!reader.TryCopyTo(checkpointsVersionMemory.Memory.Span))
+            if (!reader.TryCopyTo(checkpointsVersionMemory.Memory.Span.Slice(0, checkpointVersionMemorySize)))
             {
                 throw new InvalidDataException("Invalid checkpoint registry file: unable to read checkpoint versions.");
             }
             var checkpointVersions = new PrimitiveList<long>(checkpointsVersionMemory, checkpointCount, memoryAllocator);
-            reader.Advance(checkpointsVersionMemory.Memory.Length);
+            reader.Advance(checkpointVersionMemorySize);
 
             var snapshotMemoryCount = (checkpointCount + 31) / 32 * sizeof(int); // BitmapList uses int for storage, so we calculate the byte size needed for the bitmap
             var isSnapshotsMemory = memoryAllocator.Allocate(snapshotMemoryCount, 64);
             reader.Advance(isSnapshotsOffset - reader.Consumed);
-            if (!reader.TryCopyTo(isSnapshotsMemory.Memory.Span))
+            if (!reader.TryCopyTo(isSnapshotsMemory.Memory.Span.Slice(0, snapshotMemoryCount)))
             {
                 throw new InvalidDataException("Invalid checkpoint registry file: unable to read snapshot flags.");
             }
             var isSnapshots = new BitmapList(isSnapshotsMemory, checkpointCount, memoryAllocator);
-            reader.Advance(isSnapshotsMemory.Memory.Length);
+            reader.Advance(snapshotMemoryCount);
 
             var bundleMemoryCount = (checkpointCount + 31) / 32 * sizeof(int); // BitmapList uses int for storage, so we calculate the byte size needed for the bitmap
             var isBundleMemory = memoryAllocator.Allocate(bundleMemoryCount, 64);
             reader.Advance(isBundleOffset - reader.Consumed);
-            if (!reader.TryCopyTo(isBundleMemory.Memory.Span))
+            if (!reader.TryCopyTo(isBundleMemory.Memory.Span.Slice(0, bundleMemoryCount)))
             {
                 throw new InvalidDataException("Invalid checkpoint registry file: unable to read bundle flags.");
             }
             var isBundles = new BitmapList(isBundleMemory, checkpointCount, memoryAllocator);
-            reader.Advance(isBundleMemory.Memory.Length);
+            reader.Advance(bundleMemoryCount);
 
-            var crc64sMemory = memoryAllocator.Allocate(checkpointCount * sizeof(ulong), 64);
+            var crc64MemorySize = checkpointCount * sizeof(ulong);
+            var crc64sMemory = memoryAllocator.Allocate(crc64MemorySize, 64);
             reader.Advance(crc64sOffset - reader.Consumed);
-            if (!reader.TryCopyTo(crc64sMemory.Memory.Span))
+            if (!reader.TryCopyTo(crc64sMemory.Memory.Span.Slice(0, crc64MemorySize)))
             {
                 throw new InvalidDataException("Invalid checkpoint registry file: unable to read CRC64 values.");
             }
             var crc64s = new PrimitiveList<ulong>(crc64sMemory, checkpointCount, memoryAllocator);
-            reader.Advance(crc64sMemory.Memory.Length);
+            reader.Advance(crc64MemorySize);
 
             return new CheckpointRegistryFile(headerSegment, checkpointVersions, isSnapshots, isBundles, crc64s, footerSegment);
         }
