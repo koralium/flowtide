@@ -373,10 +373,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                         if (foundOffsets.Count >= MaxRowSize)
                         {
+                            leafNode.ExitWriteLock();
                             var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, null, rightColumns, true);
                             _eventsCounter.Add(outputBatch.Data.Weights.Count);
                             yield return outputBatch;
                             ResetOutputLists(ref foundOffsets, ref weights, ref iterations, null, rightColumns);
+                            leafNode.EnterWriteLock();
                         }
                     }
                 }
@@ -553,10 +555,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                         if (foundOffsets.Count >= MaxRowSize)
                         {
+                            leafNode.ExitWriteLock();
                             var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, leftColumns, null, false);
                             _eventsCounter.Add(outputBatch.Data.Weights.Count);
                             yield return outputBatch;
                             ResetOutputLists(ref foundOffsets, ref weights, ref iterations, leftColumns, null);
+                            leafNode.EnterWriteLock();
                         }
                     }
                 }
