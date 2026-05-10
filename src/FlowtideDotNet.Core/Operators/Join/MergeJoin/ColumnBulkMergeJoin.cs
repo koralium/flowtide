@@ -304,6 +304,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 leafTransitionsCount++;
                 var leafNode = _rightSearcher.CurrentLeaf;
+                leafNode.EnterWriteLock();
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
@@ -379,7 +380,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
-
+                leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
                     var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_rightTree;
@@ -480,10 +481,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             await _leftSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
-
             while (await _leftSearcher.MoveNextLeaf())
             {
                 var leafNode = _leftSearcher.CurrentLeaf;
+                leafNode.EnterWriteLock();
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
@@ -559,7 +560,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         }
                     }
                 }
-
+                leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
                     var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_leftTree;
