@@ -13,7 +13,6 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
-using System.Runtime.CompilerServices;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -455,7 +454,9 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(expected);
 
+            EnterDataWriteLock();
             GenerateOrders(100);
+            ExitDataWriteLock();
 
             await WaitForUpdate();
 
@@ -900,7 +901,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinMergeJoinWithPushdown()
         {
-            GenerateData(100);
+            GenerateData(10);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1062,11 +1063,24 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task JoinWithMultipleComparisons()
         {
-            GenerateData(1000);
+            void Validate()
+            {
+                var expected = from user in Users
+                               join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
+                               where projectmember.ProjectNumber != null && projectmember.CompanyId != null
+                               join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
+                               select new { user.UserKey, project.Name, project.ProjectKey };
+
+                var expectedList = expected.ToList();
+
+                AssertCurrentDataEqual(expectedList);
+            }
+
+            GenerateData(10);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    u.userkey, p.name
+                    u.userkey, p.name, p.ProjectKey
                 FROM users u
                 INNER JOIN projectmembers pm
                 ON u.userkey = pm.userkey
@@ -1074,16 +1088,69 @@ namespace FlowtideDotNet.AcceptanceTests
                 ON pm.projectnumber = p.projectnumber AND pm.companyid = p.companyid
                 ", pageSize: 64);
             await WaitForUpdate();
-            //
+            
+            Validate();
+            for (int i = 0; i < 20; i++)
+            {
+                //EnterDataWriteLock();
+                GenerateData(10);
+                //ExitDataWriteLock();
+                await WaitForUpdate();
+                
+                Validate();
+            }
+            
+        }
 
-            var expected = from user in Users
-                           join projectmember in ProjectMembers on user.UserKey equals projectmember.UserKey
-                           join project in Projects on new { projectmember.ProjectNumber, projectmember.CompanyId } equals new { project.ProjectNumber, project.CompanyId }
-                           select new { user.UserKey, project.Name };
+        [Fact]
+        public async Task JoinWithMultipleComparisons_CrossKeyBoundsValidation()
+        {
+            void Validate()
+            {
+                var expected = from pm in ProjectMembers
+                               where pm.ProjectNumber != null && pm.CompanyId != null
+                               join p in Projects on new { pm.ProjectNumber, pm.CompanyId } equals new { p.ProjectNumber, p.CompanyId }
+                               select new { pm.ProjectMemberKey, p.Name, p.ProjectKey };
+                var expectedList = expected.ToList();
 
-            var expectedList = expected.ToList();
+                AssertCurrentDataEqual(expectedList);
+            }
 
-            AssertCurrentDataEqual(expectedList);
+            SourceImmutable();
+            WaitForUpdateDoesNotRequireDataChange();
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    pm.ProjectMemberKey, p.name, p.ProjectKey
+                FROM projectmembers pm
+                INNER JOIN projects p
+                ON pm.projectnumber = p.projectnumber AND pm.companyid = p.companyid
+                ", pageSize: 64);
+
+            EnterDataWriteLock();
+            AddProjectMembers(new ProjectMember { ProjectMemberKey = 163, ProjectNumber = "izo7s-oqn", CompanyId = "5jf7u3fsn" });
+            AddProjectMembers(new ProjectMember { ProjectMemberKey = 11, ProjectNumber = "cqxa2-qak", CompanyId = "zyr2tik8x" });
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+            Validate();
+
+            EnterDataWriteLock();
+            AddProjectMembers(new ProjectMember { ProjectMemberKey = 14, ProjectNumber = "cqxa2-qak", CompanyId = "zyr2tik8x" });
+            AddProjectMembers(new ProjectMember { ProjectMemberKey = 316, ProjectNumber = "cqxa2-qak", CompanyId = "zyr2tik8x" });
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+            Validate();
+
+            EnterDataWriteLock();
+            AddProjects(new Project { ProjectNumber = "cqxa2-qak", Name = "Practical Soft Bacon", ProjectKey = 386, CompanyId = "zyr2tik8x" });
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+
+            Validate();
         }
 
         [Fact]

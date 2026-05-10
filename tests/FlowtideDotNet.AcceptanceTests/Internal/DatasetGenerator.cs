@@ -56,12 +56,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void Generate(int count = 1000, int seed = 8675309)
         {
-            Randomizer.Seed = new Random(seed);
-            GenerateCompanies(10);
-            GenerateUsers(count);
-            GenerateOrders(count);
-            GenerateProjects(count);
-            GenerateProjectMembers(count);
+            mockDatabase.RwLock.Wait();
+            try
+            {
+                Randomizer.Seed = new Random(seed);
+                GenerateCompanies(10);
+                GenerateUsers(count);
+                GenerateOrders(count);
+                GenerateProjects(count);
+                GenerateProjectMembers(count);
+            }
+            finally
+            {
+                mockDatabase.RwLock.Release();
+            }
         }
 
         public void AddOrUpdateUser(User user)
@@ -78,6 +86,34 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             var mockTable = mockDatabase.GetOrCreateTable<User>("users");
             mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
+        public void AddUser(User user)
+        {
+            Users.Add(user);
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.AddOrUpdate(new List<User>() { user });
+        }
+
+        public void AddOrder(Order order)
+        {
+            Orders.Add(order);
+            var mockTable = mockDatabase.GetOrCreateTable<Order>("orders");
+            mockTable.AddOrUpdate(new List<Order>() { order });
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            ProjectMembers.AddRange(projectMembers);
+            var mockTable = mockDatabase.GetOrCreateTable<ProjectMember>("projectmembers");
+            mockTable.AddOrUpdate(projectMembers);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            Projects.AddRange(projects);
+            var mockTable = mockDatabase.GetOrCreateTable<Project>("projects");
+            mockTable.AddOrUpdate(projects);
         }
 
         public void AddOrUpdateOrder(Order order)

@@ -26,6 +26,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         where TComparer : IBplusTreeComparer<K ,TKeyContainer>
     {
         private int[] _sortedIndices = Array.Empty<int>();
+        private int[] _lowerBounds = Array.Empty<int>();
+        private int[] _upperBounds = Array.Empty<int>();
+        private int[] _lookupBuffer = Array.Empty<int>();
         private readonly BPlusTree<K, V, TKeyContainer, TValueContainer> _tree;
         private readonly TComparer _comparer;
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
@@ -71,6 +74,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             if (keyLength > _sortedIndices.Length)
             {
                 _sortedIndices = new int[keyLength];
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
             }
 
             for (int i = 0; i < keyLength; i++)
@@ -98,7 +104,13 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _currentLeaf = null;
             }
             _mappings.Clear();
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings);
+            if (keyLength > _lowerBounds.Length)
+            {
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
+                _lookupBuffer = new int[keyLength];
+            }
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         /// <summary>
@@ -246,26 +258,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _currentResults.Add(result);
             }
 
-            var end = mapping.Offset + mapping.Length;
-            int lowerBound = 0;
-            for (int i = mapping.Offset; i < end; i++)
-            {
-                var keyIndex = _sortedIndices[i];
-                var boundries = comparer.FindBoundries(_keys[keyIndex], leaf.keys, lowerBound, lastIndex);
+            var sortedIndicesSpan = _sortedIndices.AsSpan(mapping.Offset, mapping.Length);
+            var lowerBoundsSpan = _lowerBounds.AsSpan(0, mapping.Length);
+            var upperBoundsSpan = _upperBounds.AsSpan(0, mapping.Length);
+            var lookupBufferSpan = _lookupBuffer.AsSpan(0, mapping.Length);
+            _comparer.FindBoundriesBulk(_keys, sortedIndicesSpan, leaf.keys, lowerBoundsSpan, upperBoundsSpan, lookupBufferSpan);
 
-                lowerBound = boundries.lowerBounds < 0 ? ~boundries.lowerBounds : boundries.lowerBounds;
+            for (int i = 0; i < mapping.Length; i++)
+            {
+                var keyIndex = sortedIndicesSpan[i];
+                var foundLowerBound = lowerBoundsSpan[i];
+                var foundUpperBound = upperBoundsSpan[i];
 
                 var result = new BulkSearchKeyResult
                 {
                     KeyIndex = keyIndex,
-                    LowerBound = boundries.lowerBounds,
-                    UpperBound = boundries.upperBounds,
+                    LowerBound = foundLowerBound,
+                    UpperBound = foundUpperBound,
                     ContinuesToNextLeaf = false
                 };
-
+                
                 if (leaf.next != 0 &&
-                    ((boundries.lowerBounds >= 0 && boundries.upperBounds == lastIndex) ||
-                     (boundries.lowerBounds < 0 && (~boundries.lowerBounds) > lastIndex)))
+                    ((foundLowerBound >= 0 && foundUpperBound == lastIndex) ||
+                     (foundLowerBound < 0 && (~foundUpperBound) > lastIndex)))
                 {
                     result.ContinuesToNextLeaf = true;
                     _carryOverWrite.Add(keyIndex);

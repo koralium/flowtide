@@ -71,6 +71,16 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.AssertCurrentDataEqual(data);
         }
 
+        public void EnterDataWriteLock()
+        {
+            flowtideTestStream.EnterDataWriteLock();
+        }
+
+        public void ExitDataWriteLock()
+        {
+            flowtideTestStream.ExitDataWriteLock();
+        }
+
         protected void GenerateData(int count = 1000)
         {
             flowtideTestStream.Generate(count);
@@ -116,6 +126,11 @@ namespace FlowtideDotNet.AcceptanceTests
             return flowtideTestStream.WaitForUpdate();
         }
 
+        public void WaitForUpdateDoesNotRequireDataChange()
+        {
+            flowtideTestStream.WaitForUpdateDoesNotRequireDataChange();
+        }
+
         protected Task Crash()
         {
             return flowtideTestStream.Crash();
@@ -149,6 +164,26 @@ namespace FlowtideDotNet.AcceptanceTests
         public void AddOrUpdateOrder(Order order)
         {
             flowtideTestStream.AddOrUpdateOrder(order);
+        }
+
+        public void AddUser(User user)
+        {
+            flowtideTestStream.AddUser(user);
+        }
+
+        public void AddOrder(Order order)
+        {
+            flowtideTestStream.AddOrder(order);
+        }
+
+        public void AddProjects(params Project[] projects)
+        {
+            flowtideTestStream.AddProjects(projects);
+        }
+
+        public void AddProjectMembers(params ProjectMember[] projectMembers)
+        {
+            flowtideTestStream.AddProjectMembers(projectMembers);
         }
 
         public void AddOrUpdateProject(Project project)
@@ -189,6 +224,11 @@ namespace FlowtideDotNet.AcceptanceTests
         public void GenerateDailyMarkets(int dailyMarketDays)
         {
             flowtideTestStream.GenerateDailyMarkets(dailyMarketDays);
+        }
+
+        public void SourceImmutable()
+        {
+            flowtideTestStream.SourceImmutable();
         }
 
         public FlowtideAcceptanceBase(ITestOutputHelper testOutputHelper, bool usePersistentStorage = false)

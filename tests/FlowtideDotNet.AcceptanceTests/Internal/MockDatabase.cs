@@ -25,6 +25,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public Dictionary<string, MockTable> Tables { get; set; }
 
+        public SemaphoreSlim RwLock { get; } = new SemaphoreSlim(10, 10);
+
         public MockTable GetOrCreateTable<T>(string tableName, bool immutable = false)
         {
             if (!Tables.TryGetValue(tableName, out var mockTable))

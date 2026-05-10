@@ -55,6 +55,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         private int[] _lookupBuffer = Array.Empty<int>();
         private int[] _prefixSumBuffer = Array.Empty<int>();
         private SplitBoundary[] _splitPointsBuffer = Array.Empty<SplitBoundary>();
+        private int[] _lowerBounds = Array.Empty<int>();
+        private int[] _upperBounds = Array.Empty<int>();
         private readonly List<BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping> _mappings;
         private K[]? _keys;
         private V[]? _values;
@@ -119,8 +121,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
                 _lookupBuffer = new int[keyLength];
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
             }
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings);
+            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         private ValueTask StartBatch(K[] keys, V[] values, int keyLength)
@@ -135,6 +139,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _insertTargetPositions = new int[keyLength];
                 _deletePositions = new int[keyLength];
                 _lookupBuffer = new int[keyLength];
+                _lowerBounds = new int[keyLength];
+                _upperBounds = new int[keyLength];
             }
 
             // Sort the keys and values by keys
@@ -148,7 +154,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys,keyComparer));
 
-            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings);
+            return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
 
         private async ValueTask MutateBatch<TMutator>(TMutator mutator)
@@ -233,16 +239,28 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // deferred modifications). Needed to correctly cancel pending inserts:
             // if the key was never in the leaf, canceling is a no-op on the leaf.
             bool prevKeyExistsInLeaf = false;
+
+            var lowerBoundsSpan = _lowerBounds.AsSpan(0, mapping.Length);
+            var upperBoundsSpan = _upperBounds.AsSpan(0, mapping.Length);
+            var lookupBufferSpanSearch = _lookupBuffer.AsSpan(0, mapping.Length);
+            searchComparer.FindBoundriesBulk(
+                _keys, 
+                _sortedIndices.AsSpan(mapping.Offset, mapping.Length), 
+                leaf.keys, 
+                lowerBoundsSpan, 
+                upperBoundsSpan,
+                lookupBufferSpanSearch);
             bool updated = false;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
                 var key = _keys[keyIndex];
-
+                
                 // Detect duplicate: current key equals previous key in sorted order.
                 if (prevSortedKeyIndex >= 0
                     && searchComparer.CompareTo(key, _keys[prevSortedKeyIndex]) == 0)
                 {
+                    //throw new InvalidOperationException("Duplicate");
                     if (prevWasPendingInsert)
                     {
                         // The previous duplicate queued a pending insert.
@@ -353,7 +371,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     continue;
                 }
 
-                var leafIndex = searchComparer.FindIndex(key, leaf.keys);
+                var leafIndex = _lowerBounds[i];
 
                 if (leafIndex < 0)
                 {

@@ -34,7 +34,7 @@ CREATE TABLE other (
 
 INSERT INTO output
 SELECT t.val, o.val FROM testtable t
-LEFT JOIN other o
+INNER JOIN other o
 ON t.val = o.val;
 ";
 
