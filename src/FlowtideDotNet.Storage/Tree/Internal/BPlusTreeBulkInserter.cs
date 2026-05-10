@@ -233,7 +233,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // deferred modifications). Needed to correctly cancel pending inserts:
             // if the key was never in the leaf, canceling is a no-op on the leaf.
             bool prevKeyExistsInLeaf = false;
-
+            bool updated = false;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
@@ -289,6 +289,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                             leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
                             prevWasPendingInsert = false;
                             prevWasPendingDelete = false;
+                            updated = true;
                         }
                     }
                     else if (prevKeyExistsInLeaf)
@@ -301,6 +302,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         if (operation == GenericWriteOperation.Upsert)
                         {
                             leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
+                            updated = true;
                         }
                         else if (operation == GenericWriteOperation.Delete)
                         {
@@ -385,6 +387,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         leaf.UpdateValueAt(leafIndex, _values[keyIndex]);
                         prevWasPendingInsert = false;
                         prevWasPendingDelete = false;
+                        updated = true;
                     }
                     else if (operation == GenericWriteOperation.Delete)
                     {
@@ -406,7 +409,6 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 prevSortedKeyIndex = keyIndex;
             }
 
-            bool updated = false;
             if (deleteCounter > 0)
             {
                 var deleteSpan = _deletePositions.AsSpan(0, deleteCounter);
