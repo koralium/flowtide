@@ -25,11 +25,13 @@ namespace FlowtideDotNet.Storage.Memory
         private long _freedMemory;
         private long _allocationCount;
         private long _freeCount;
+        private readonly StreamMemoryManager _streamMemoryManager;
 
-        public OperatorMemoryManager(string streamName, string operatorName, Meter meter)
+        public OperatorMemoryManager(string streamName, string operatorName, Meter meter, StreamMemoryManager streamMemoryManager)
         {
             this.m_streamName = streamName;
             this.m_operatorName = operatorName;
+            _streamMemoryManager = streamMemoryManager;
 
             meter.CreateObservableGauge("flowtide.memory.allocated_bytes", () =>
             {
@@ -70,15 +72,14 @@ namespace FlowtideDotNet.Storage.Memory
                     return memory;
                 }
 
-                if (allocated.ptr == oldPtr)
+                var diff = allocated.length - previousLength;
+                if (diff > 0)
                 {
-                    var diff = allocated.length - previousLength;
                     RegisterAllocationToMetrics(diff);
                 }
-                else
+                else if (diff < 0)
                 {
-                    RegisterAllocationToMetrics(allocated.length);
-                    RegisterFreeToMetrics(previousLength);
+                    RegisterFreeToMetrics(-diff);
                 }
 
                 native.ptr = allocated.ptr;
@@ -106,12 +107,14 @@ namespace FlowtideDotNet.Storage.Memory
         {
             Interlocked.Add(ref _allocatedMemory, size);
             Interlocked.Increment(ref _allocationCount);
+            _streamMemoryManager.AddMemoryDelta(size);
         }
 
         public void RegisterFreeToMetrics(int size)
         {
             Interlocked.Add(ref _freedMemory, size);
             Interlocked.Increment(ref _freeCount);
+            _streamMemoryManager.AddMemoryDelta(-size);
         }
     }
 }

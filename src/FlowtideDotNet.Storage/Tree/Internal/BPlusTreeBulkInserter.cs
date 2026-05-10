@@ -229,7 +229,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             int insertCounter = 0;
             int deleteCounter = 0;
             int insertOffset = 0;
-
+            leaf.EnterWriteLock();
             // Track the previous key's state for duplicate detection.
             // Since keys are sorted, duplicates are always adjacent.
             int prevSortedKeyIndex = -1;
@@ -250,6 +250,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 lowerBoundsSpan, 
                 upperBoundsSpan,
                 lookupBufferSpanSearch);
+            bool updated = false;
             for (int i = 0; i < mapping.Length; i++)
             {
                 var keyIndex = _sortedIndices[mapping.Offset + i];
@@ -306,6 +307,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                             leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
                             prevWasPendingInsert = false;
                             prevWasPendingDelete = false;
+                            updated = true;
                         }
                     }
                     else if (prevKeyExistsInLeaf)
@@ -318,6 +320,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         if (operation == GenericWriteOperation.Upsert)
                         {
                             leaf.UpdateValueAt(previousIndex, _values[keyIndex]);
+                            updated = true;
                         }
                         else if (operation == GenericWriteOperation.Delete)
                         {
@@ -402,6 +405,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         leaf.UpdateValueAt(leafIndex, _values[keyIndex]);
                         prevWasPendingInsert = false;
                         prevWasPendingDelete = false;
+                        updated = true;
                     }
                     else if (operation == GenericWriteOperation.Delete)
                     {
@@ -428,6 +432,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 var deleteSpan = _deletePositions.AsSpan(0, deleteCounter);
                 leaf.keys.DeleteBatch(deleteSpan);
                 leaf.values.DeleteBatch(deleteSpan);
+                updated = true;
             }
             var byteSize = leaf.ByteSize;
             if (insertCounter > 0)
@@ -445,17 +450,25 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     // There will be a split
                     if (expectedSize > _tree.m_stateClient.Metadata!.PageSizeBytes)
                     {
+                        leaf.ExitWriteLock();
+                        // Dont need to do add or update here since nway split will do it
                         return insertCounter;
                     }
                 }
-                
+
 
                 var insertTargetPositionsSpan = _insertTargetPositions.AsSpan(0, insertCounter);
                 var lookupBufferSpan = _lookupBuffer.AsSpan(0, insertCounter);
                 leaf.keys.InsertFrom(_keys, insertSortedIndicesSpan, insertTargetPositionsSpan, lookupBufferSpan);
                 leaf.values.InsertFrom(_values, insertSortedIndicesSpan, insertTargetPositionsSpan);
+
+                updated = true;
             }
 
+            if (updated)
+            {
+                _tree.m_stateClient.AddOrUpdate(leaf.Id, leaf);
+            }
             
             if (byteSize > _tree.m_stateClient.Metadata!.PageSizeBytes &&
                 leaf.keys.Count > BPlusTree<K, V, TKeyContainer, TValueContainer>.minPageSizeBeforeSplit)
@@ -469,7 +482,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 _requireMergeMappings.Add(mapping);
             }
-
+            leaf.ExitWriteLock();
             return 0;
         }
 

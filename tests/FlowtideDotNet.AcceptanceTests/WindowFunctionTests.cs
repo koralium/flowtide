@@ -195,7 +195,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
             INSERT INTO output
             SELECT CAST(sum(u.doublevalue) OVER(PARTITION BY CompanyId ORDER BY UserKey) AS INT) FROM users u
-            ");
+            ", ignoreSameDataCheck: true);
 
             await WaitForUpdate();
 

@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Memory
     /// Memory manager that is global in a process, should not be used as much as possible since
     /// the memory allocated with this does not contribute to metric gathering from a stream.
     /// </summary>
-    public unsafe class GlobalMemoryManager : IMemoryAllocator
+    public unsafe class GlobalMemoryManager : IMemoryAllocator, IMemoryAllocationStats
     {
         internal static readonly void* NullPtr = (void*)0;
 
@@ -72,16 +72,15 @@ namespace FlowtideDotNet.Storage.Memory
                 {
                     return memory;
                 }
+                var diff = allocated.length - previousLength;
 
-                if (allocated.ptr == oldPtr)
+                if (diff > 0)
                 {
-                    var diff = allocated.length - previousLength;
                     RegisterAllocationToMetrics(diff);
                 }
-                else
+                else if (diff < 0)
                 {
-                    RegisterAllocationToMetrics(allocated.length);
-                    RegisterFreeToMetrics(previousLength);
+                    RegisterFreeToMetrics(-diff);
                 }
 
                 native.ptr = allocated.ptr;
@@ -115,6 +114,11 @@ namespace FlowtideDotNet.Storage.Memory
         {
             Interlocked.Add(ref _freedMemory, size);
             Interlocked.Increment(ref _freeCount);
+        }
+
+        public long GetAllocatedMemory()
+        {
+            return _allocatedMemory - _freedMemory;
         }
     }
 }

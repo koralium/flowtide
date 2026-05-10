@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Storage.Tests.Queue
                 {
                     FileProvider = new MemoryFileProvider()
                 })
-            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage");
+            }, NullLoggerFactory.Instance, new Meter($"storage"), "storage", GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
 
             var stateManagerClient = stateManager.GetOrCreateClient("test");

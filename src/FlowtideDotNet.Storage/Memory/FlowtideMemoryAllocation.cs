@@ -110,14 +110,16 @@ namespace FlowtideDotNet.Storage.Memory
         private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-
+            
             var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
             alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
             if (alignedsize == oldSize)
             {
                 return new FlowtideAllocatedMemory() { ptr = ptr, length = oldSize };
             }
-            var newPtr = MiMalloc.mi_realloc_aligned(ptr, (nuint)alignedsize, (nuint)alignment);
+
+            void* newPtr = MiMalloc.mi_realloc_aligned(ptr, (nuint)alignedsize, (nuint)alignment);
+
             if (newPtr == GlobalMemoryManager.NullPtr)
             {
                 throw new InvalidOperationException("Could not reallocate memory");
@@ -140,7 +142,8 @@ namespace FlowtideDotNet.Storage.Memory
             var alignedsize = (size + alignment - 1) & ~(alignment - 1);
             var goodSize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
 
-            var ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
+            void* ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
+
             if (ptr == GlobalMemoryManager.NullPtr)
             {
                 throw new InvalidOperationException("Could not allocate memory");
