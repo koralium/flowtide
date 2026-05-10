@@ -304,6 +304,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 leafTransitionsCount++;
                 var leafNode = _rightSearcher.CurrentLeaf;
+                leafNode.EnterWriteLock();
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
@@ -372,14 +373,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                         if (foundOffsets.Count >= MaxRowSize)
                         {
+                            leafNode.ExitWriteLock();
                             var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, null, rightColumns, true);
                             _eventsCounter.Add(outputBatch.Data.Weights.Count);
                             yield return outputBatch;
                             ResetOutputLists(ref foundOffsets, ref weights, ref iterations, null, rightColumns);
+                            leafNode.EnterWriteLock();
                         }
                     }
                 }
-
+                leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
                     var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_rightTree;
@@ -480,10 +483,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             await _leftSearcher.Start(keys, keyLength, sortedIndices);
 
             bool emitRightAlways = _mergeJoinRelation.Type == JoinType.Right || _mergeJoinRelation.Type == JoinType.Outer;
-
             while (await _leftSearcher.MoveNextLeaf())
             {
                 var leafNode = _leftSearcher.CurrentLeaf;
+                leafNode.EnterWriteLock();
                 var pageKeyStorage = leafNode.keys;
                 var pageValues = leafNode.values;
                 bool pageUpdated = false;
@@ -552,14 +555,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                         if (foundOffsets.Count >= MaxRowSize)
                         {
+                            leafNode.ExitWriteLock();
                             var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, leftColumns, null, false);
                             _eventsCounter.Add(outputBatch.Data.Weights.Count);
                             yield return outputBatch;
                             ResetOutputLists(ref foundOffsets, ref weights, ref iterations, leftColumns, null);
+                            leafNode.EnterWriteLock();
                         }
                     }
                 }
-
+                leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
                     var bTree = (BPlusTree<ColumnRowReference, JoinWeights, ColumnKeyStorageContainer, JoinWeightsValueContainer>)_leftTree;
