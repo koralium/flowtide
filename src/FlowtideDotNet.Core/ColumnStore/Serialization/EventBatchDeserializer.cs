@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -318,6 +318,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 case ArrowType.Bool:
                     return new DataColumnResult(DeserializeBoolColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Boolean);
                 case ArrowType.Utf8:
+                case ArrowType.Utf8View:
                     return new DataColumnResult(DeserializeStringColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.String);
                 case ArrowType.Binary:
                     return new DataColumnResult(DeserializeBinaryColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Binary);
@@ -598,7 +599,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 return new StringColumn(memoryAllocator);
             }
-            return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator);
+            
+            if (fieldStruct.TypeType == ArrowType.Utf8View)
+            {
+                return new StringColumn(offsetMemory!, length, dataMemory, memoryAllocator);
+            }
+            else
+            {
+                return new StringColumn(offsetMemory!, length + 1, dataMemory, memoryAllocator, true);
+            }
         }
 
         private StructColumn DeserializeStructColumn(

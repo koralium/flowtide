@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 {
     public class StringColumn : IDataColumn, IEnumerable<string>
     {
-        private BinaryList _binaryList;
+        private BinaryViewList _binaryList;
         private bool disposedValue;
 
         public int Count => _binaryList.Count;
@@ -43,20 +43,35 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public StringColumn(IMemoryAllocator memoryAllocator)
         {
-            _binaryList = new BinaryList(memoryAllocator);
+            _binaryList = new BinaryViewList(memoryAllocator);
         }
 
         public StringColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _binaryList = new BinaryList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
+            _binaryList = new BinaryViewList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
         }
 
-        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        public StringColumn(IMemoryOwner<byte> viewMemory, int viewCount, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
         {
-            _binaryList = new BinaryList(offsetMemory, offsetLength, dataMemory, memoryAllocator);
+            _binaryList = new BinaryViewList(viewMemory, viewCount, dataMemory, memoryAllocator);
         }
 
-        private StringColumn(BinaryList binaryList)
+        public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator, bool isLegacyUtf8)
+        {
+            _binaryList = new BinaryViewList(memoryAllocator, offsetLength - 1, dataMemory?.Memory.Length ?? 0);
+            var offsets = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, int>(offsetMemory.Memory.Span);
+            var dataSpan = dataMemory != null ? dataMemory.Memory.Span : default;
+            for (int i = 0; i < offsetLength - 1; i++)
+            {
+                int start = offsets[i];
+                int end = offsets[i + 1];
+                _binaryList.Add(dataSpan.Slice(start, end - start));
+            }
+            offsetMemory.Dispose();
+            if (dataMemory != null) dataMemory.Dispose();
+        }
+
+        private StringColumn(BinaryViewList binaryList)
         {
             _binaryList = binaryList;
         }
@@ -146,9 +161,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            var offsetBuffer = new ArrowBuffer(_binaryList.OffsetMemory);
-            var dataBuffer = new ArrowBuffer(_binaryList.DataMemory);
-            return (new StringArray(Count, offsetBuffer, dataBuffer, nullBuffer, nullCount), StringType.Default);
+            throw new NotImplementedException();
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
@@ -268,13 +281,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
-            var typePointer = arrowSerializer.AddUtf8Type();
-            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8, typePointer);
+            var typePointer = arrowSerializer.AddUtf8ViewType();
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8View, typePointer);
         }
 
         public SerializationEstimation GetSerializationEstimate()
         {
-            return new SerializationEstimation(1, 2, GetByteSize());
+            return new SerializationEstimation(1, 2, _binaryList.ViewsMemory.Length + _binaryList.DataMemory.Length);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -284,14 +297,13 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_binaryList.OffsetMemory.Length);
+            arrowSerializer.AddBufferForward(_binaryList.ViewsMemory.Length);
             arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
-
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_binaryList.OffsetMemory.Span);
+            dataWriter.WriteArrowBuffer(_binaryList.ViewsMemory.Span);
             dataWriter.WriteArrowBuffer(_binaryList.DataMemory.Span);
         }
 
@@ -318,19 +330,19 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 DataType = ArrowTypeId.String,
                 TotalRows = Count,
-                TotalVariableBytes = _binaryList.DataMemory.Length
+                TotalVariableBytes = 0
             };
         }
 
         unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
+            selfComparePointers.secondaryPointer = _binaryList.GetViewsPointer_Unsafe();
             selfComparePointers.dataPointer = _binaryList.GetDataPointer_Unsafe();
-            selfComparePointers.secondaryPointer = _binaryList.GetOffsetPointer_Unsafe();
         }
 
         System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
         {
-            return NativeSortHelpers.CallCompareBinary(selfComparePointerExpression, xExpression, yExpression);
+            return NativeSortHelpers.CallCompareBinaryView(selfComparePointerExpression, xExpression, yExpression);
         }
 
         bool IDataColumn.SupportSelfCompareExpression => true;

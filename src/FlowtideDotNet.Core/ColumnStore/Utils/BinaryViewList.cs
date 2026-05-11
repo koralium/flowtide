@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
     internal unsafe sealed class BinaryViewList : IDisposable
     {
         [StructLayout(LayoutKind.Explicit, Size = 16)]
-        private struct ArrowBinaryView
+        internal struct ArrowBinaryView
         {
             /// <summary>Byte length of the value.</summary>
             [FieldOffset(0)]
@@ -128,6 +128,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         }
 
         public int Count => _views.Count;
+
+        public ReadOnlyMemory<byte> ViewsMemory => _views.SlicedMemory;
+
+        public ReadOnlyMemory<byte> DataMemory => _memoryOwner == null ? ReadOnlyMemory<byte>.Empty : _memoryOwner.Memory.Slice(0, _insertPointer);
 
         private Span<byte> DataSpan => new Span<byte>(_data, _dataCapacity);
 
@@ -681,6 +685,18 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             DisposeCore(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void* GetViewsPointer_Unsafe()
+        {
+            return _views.GetPointer_Unsafe();
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void* GetDataPointer_Unsafe()
+        {
+            return _data;
         }
     }
 }

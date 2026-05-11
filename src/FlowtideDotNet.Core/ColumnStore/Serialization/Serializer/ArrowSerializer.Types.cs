@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -61,6 +61,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 #pragma warning restore CS0282 // There is no defined ordering between fields in multiple declarations of partial struct
     {
         public int AddUtf8Type()
+        {
+            StartTable(0);
+            return EndTable();
+        }
+
+        public int AddUtf8ViewType()
         {
             StartTable(0);
             return EndTable();

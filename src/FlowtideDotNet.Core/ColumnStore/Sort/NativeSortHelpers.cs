@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -16,8 +16,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 
 namespace FlowtideDotNet.Core.ColumnStore.Sort
 {
@@ -285,6 +287,66 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             var dataPtrExpression = Expression.Field(selfComparePointers, dataPointerField);
             var offsetPtrExpression = Expression.Field(selfComparePointers, offsetPointerField);
             return Expression.Call(methodInfo, dataPtrExpression, offsetPtrExpression, x, y);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareBinaryView(void* viewsPointer, void* dataPointer, int x, int y)
+        {
+            if (x == y) return 0;
+
+            BinaryViewList.ArrowBinaryView* views = (BinaryViewList.ArrowBinaryView*)viewsPointer;
+            
+            var viewX = views[x];
+            var viewY = views[y];
+
+            if (viewX.PrefixInt != viewY.PrefixInt)
+            {
+                uint valX = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewX.PrefixInt) : viewX.PrefixInt;
+                uint valY = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewY.PrefixInt) : viewY.PrefixInt;
+                return valX.CompareTo(valY);
+            }
+
+            byte* data = (byte*)dataPointer;
+
+            ReadOnlySpan<byte> spanX;
+            if (viewX.Length <= 12)
+            {
+                spanX = new ReadOnlySpan<byte>((byte*)(views + x) + 4, viewX.Length);
+            }
+            else
+            {
+                spanX = new ReadOnlySpan<byte>(data + viewX.Offset, viewX.Length);
+            }
+
+            ReadOnlySpan<byte> spanY;
+            if (viewY.Length <= 12)
+            {
+                spanY = new ReadOnlySpan<byte>((byte*)(views + y) + 4, viewY.Length);
+            }
+            else
+            {
+                spanY = new ReadOnlySpan<byte>(data + viewY.Offset, viewY.Length);
+            }
+
+            return spanX.SequenceCompareTo(spanY);
+        }
+
+        public static Expression CallCompareBinaryView(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareBinaryView), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareBinaryView));
+            }
+            var dataPointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            var viewsPointerField = typeof(SelfComparePointers).GetField("secondaryPointer");
+            if (dataPointerField == null || viewsPointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer or secondaryPointer");
+            }
+            var dataPtrExpression = Expression.Field(selfComparePointers, dataPointerField);
+            var viewsPtrExpression = Expression.Field(selfComparePointers, viewsPointerField);
+            return Expression.Call(methodInfo, viewsPtrExpression, dataPtrExpression, x, y);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
