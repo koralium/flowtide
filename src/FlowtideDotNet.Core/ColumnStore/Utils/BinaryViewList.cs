@@ -92,6 +92,41 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             }
         }
 
+        /// <summary>
+        /// Creates a <see cref="BinaryViewList"/> from pre-existing memory.
+        /// Takes ownership of both memory owners; they will be disposed when this list is disposed.
+        /// </summary>
+        /// <param name="viewMemory">Memory containing the serialized <see cref="ArrowBinaryView"/> array.</param>
+        /// <param name="viewCount">Number of logical elements (views) in <paramref name="viewMemory"/>.</param>
+        /// <param name="dataMemory">Memory containing the backing data for out-of-line values, or null if all values are inline.</param>
+        /// <param name="memoryAllocator">Allocator to use for future mutations.</param>
+        public BinaryViewList(IMemoryOwner<byte> viewMemory, int viewCount, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        {
+            _memoryAllocator = memoryAllocator;
+            _views = new PrimitiveList<ArrowBinaryView>(viewMemory, viewCount, memoryAllocator);
+
+            if (dataMemory != null)
+            {
+                _memoryOwner = dataMemory;
+                _data = dataMemory.Memory.Pin().Pointer;
+                _dataCapacity = dataMemory.Memory.Length;
+
+                // Calculate _insertPointer as the end of the last out-of-line value.
+                int maxEnd = 0;
+                for (int i = 0; i < viewCount; i++)
+                {
+                    var view = _views[i];
+                    if (!view.IsInline)
+                    {
+                        int end = view.Offset + view.Length;
+                        if (end > maxEnd)
+                            maxEnd = end;
+                    }
+                }
+                _insertPointer = maxEnd;
+            }
+        }
+
         public int Count => _views.Count;
 
         private Span<byte> DataSpan => new Span<byte>(_data, _dataCapacity);
