@@ -283,6 +283,15 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
         public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
+            InsertFrom(keys.AsSpan(), sortedLookup, insertPositions);
+        }
+
+        /// <summary>
+        /// Special case insert that allows inserting a subset of elements from a span at specific positions.
+        /// Same as the array overload but accepts a <see cref="ReadOnlySpan{T}"/> so callers can use stackalloc.
+        /// </summary>
+        public void InsertFrom(ReadOnlySpan<T> keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
+        {
             Debug.Assert(sortedLookup.Length == insertPositions.Length);
             int otherCount = sortedLookup.Length;
             if (otherCount == 0) return;
@@ -292,7 +301,6 @@ namespace FlowtideDotNet.Storage.DataStructures
             EnsureCapacity(oldCount + otherCount);
 
             var selfData = AccessSpan;
-            var otherData = keys.AsSpan();
 
             int currentReadIdx = oldCount;
             int currentWriteIdx = oldCount + otherCount;
@@ -313,7 +321,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
                 int oIdx = sortedLookup[i];
                 currentWriteIdx--;
-                selfData[currentWriteIdx] = otherData[oIdx];
+                selfData[currentWriteIdx] = keys[oIdx];
 
                 currentReadIdx = targetInsertIdx;
             }
