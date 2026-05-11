@@ -27,7 +27,7 @@
     <PackageVersion Include="Polly.Core" Version="8.6.4" />
     <PackageVersion Include="Polly.RateLimiting" Version="8.5.2" />
     <!-- Apache Arrow -->
-    <PackageVersion Include="Apache.Arrow" Version="22.1.0" />
+    <PackageVersion Include="Apache.Arrow" Version="23.0.0" />
     <PackageVersion Include="Apache.Arrow.Compression" Version="22.1.0" />
     <!-- FasterKV -->
     <PackageVersion Include="Microsoft.FASTER.Core" Version="2.6.5" />
