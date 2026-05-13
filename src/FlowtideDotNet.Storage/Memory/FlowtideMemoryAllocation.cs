@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Storage.Memory
         private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-            
+
             var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
             alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
             if (alignedsize == oldSize)
