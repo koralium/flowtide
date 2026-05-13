@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new StringValue("2"));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.StringArray)result.Item1;
+            var arrowArray = (Apache.Arrow.StringViewArray)result.Item1;
             Assert.Equal("1", arrowArray.GetString(0));
             Assert.Null(arrowArray.GetString(1));
             Assert.Equal("2", arrowArray.GetString(2));
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             column.Add(new StringValue("2"));
 
             var result = column.ToArrowArray();
-            var arrowArray = (Apache.Arrow.StringArray)result.Item1;
+            var arrowArray = (Apache.Arrow.StringViewArray)result.Item1;
             Assert.Null(arrowArray.GetString(0));
             Assert.Equal("1", arrowArray.GetString(1));
             Assert.Equal("2", arrowArray.GetString(2));

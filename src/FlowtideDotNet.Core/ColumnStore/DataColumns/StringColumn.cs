@@ -167,7 +167,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var viewsBuffer = new ArrowBuffer(_binaryList.ViewsMemory);
+            var dataBuffer = new ArrowBuffer(_binaryList.DataMemory);
+            var array = new Apache.Arrow.StringViewArray(Count, viewsBuffer, dataBuffer, nullBuffer, nullCount, 0);
+            return (array, Apache.Arrow.Types.StringViewType.Default);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
