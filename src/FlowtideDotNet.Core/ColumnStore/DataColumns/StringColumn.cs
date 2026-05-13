@@ -51,9 +51,15 @@ namespace FlowtideDotNet.Core.ColumnStore
             _binaryList = new BinaryViewList(memoryAllocator, columnSizeInfo.TotalRows, columnSizeInfo.TotalVariableBytes);
         }
 
-        public StringColumn(IMemoryOwner<byte> viewMemory, int viewCount, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        public StringColumn(
+            IMemoryOwner<byte> viewMemory, 
+            int viewCount, 
+            IMemoryOwner<byte>? dataMemory, 
+            IMemoryAllocator memoryAllocator,
+            int deletedSize,
+            int insertPointer = -1)
         {
-            _binaryList = new BinaryViewList(viewMemory, viewCount, dataMemory, memoryAllocator);
+            _binaryList = new BinaryViewList(viewMemory, viewCount, dataMemory, memoryAllocator, deletedSize, insertPointer);
         }
 
         public StringColumn(IMemoryOwner<byte> offsetMemory, int offsetLength, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator, bool isLegacyUtf8)
@@ -239,7 +245,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int GetByteSize()
         {
-            return _binaryList.GetByteSize(0, Count - 1);
+            return _binaryList.GetByteSize();
         }
 
         public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
@@ -281,8 +287,23 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
+            var insertPointerKeyPointer = arrowSerializer.CreateStringUtf8("insertPointer"u8);
+
+            Span<byte> buffer = stackalloc byte[64];
+            int written = Encoding.UTF8.GetBytes(_binaryList.InsertPointer.ToString(), buffer);
+            ReadOnlySpan<byte> readOnlyBuffer = buffer.Slice(0, written);
+            var insertPointerValuePointer = arrowSerializer.CreateStringUtf8(readOnlyBuffer);
+            pointerStack[0] = arrowSerializer.CreateKeyValue(insertPointerKeyPointer, insertPointerValuePointer);
+
+            var deletedSizeKeyPointer = arrowSerializer.CreateStringUtf8("deletedSize"u8);
+            written = Encoding.UTF8.GetBytes(_binaryList.DeletedDataSize.ToString(), buffer);
+            readOnlyBuffer = buffer.Slice(0, written);
+            var deletedSizeValuePointer = arrowSerializer.CreateStringUtf8(readOnlyBuffer);
+            pointerStack[1] = arrowSerializer.CreateKeyValue(deletedSizeKeyPointer, deletedSizeValuePointer);
+
+            var customMetadataPointer = arrowSerializer.CreateCustomMetadataVector(pointerStack.Slice(0, 2));
             var typePointer = arrowSerializer.AddUtf8ViewType();
-            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8View, typePointer);
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.Utf8View, typePointer, custom_metadataOffset: customMetadataPointer);
         }
 
         public SerializationEstimation GetSerializationEstimate()

@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             var offsetMemoryOwner = GetMemoryOwner(array.ValueOffsetsBuffer);
             var dataMemoryOwner = GetMemoryOwner(array.ValueBuffer);
-            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, preAllocatedMemoryManager);
+            var stringColumn = new StringColumn(offsetMemoryOwner, array.ValueOffsets.Length, dataMemoryOwner, preAllocatedMemoryManager, -1, -1);
 
             _dataColumn = stringColumn;
             _typeId = ArrowTypeId.String;

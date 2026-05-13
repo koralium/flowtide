@@ -74,6 +74,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         private bool _disposedValue;
         private readonly IMemoryAllocator _memoryAllocator;
 
+        internal int InsertPointer => _insertPointer;
+        internal int DeletedDataSize => _deletedDataSize;
+
         public BinaryViewList(IMemoryAllocator memoryAllocator)
         {
             _views = new PrimitiveList<ArrowBinaryView>(memoryAllocator);
@@ -100,12 +103,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         /// <param name="viewCount">Number of logical elements (views) in <paramref name="viewMemory"/>.</param>
         /// <param name="dataMemory">Memory containing the backing data for out-of-line values, or null if all values are inline.</param>
         /// <param name="memoryAllocator">Allocator to use for future mutations.</param>
-        public BinaryViewList(IMemoryOwner<byte> viewMemory, int viewCount, IMemoryOwner<byte>? dataMemory, IMemoryAllocator memoryAllocator)
+        public BinaryViewList(
+            IMemoryOwner<byte> viewMemory, 
+            int viewCount, 
+            IMemoryOwner<byte>? dataMemory, 
+            IMemoryAllocator memoryAllocator,
+            int deletedSize,
+            int insertPointer = -1)
         {
             _memoryAllocator = memoryAllocator;
             _views = new PrimitiveList<ArrowBinaryView>(viewMemory, viewCount, memoryAllocator);
 
-            if (dataMemory != null)
+            _insertPointer = insertPointer;
+            _deletedDataSize = deletedSize;
+            if (dataMemory != null && _insertPointer == -1)
             {
                 _memoryOwner = dataMemory;
                 _data = dataMemory.Memory.Pin().Pointer;
@@ -394,6 +405,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
             for (int i = start; i <= end; i++)
                 total += _views[i].Length + sizeof(int);   // match BinaryList: data bytes + 4-byte offset entry
             return total;
+        }
+
+        public int GetByteSize()
+        {
+            return _insertPointer - _deletedDataSize + _views.Count * sizeof(int);
         }
 
         /// <summary>

@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return EndVector();
         }
 
-        public int CreateStringUtf8(ReadOnlySpan<byte> value)
+        public int CreateStringUtf8(scoped ReadOnlySpan<byte> value)
         {
             AddByte(0);
             StartVector(1, value.Length, 1);

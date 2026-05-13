@@ -599,10 +599,56 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 return new StringColumn(memoryAllocator);
             }
+
+            bool foundInsertPointer = false;
+            ReadOnlySpan<byte> valueBytes = default;
+            for (int i = 0; i < fieldStruct.CustomMetadataLength; i++)
+            {
+                var customMetadata = fieldStruct.CustomMetadata(i);
+
+                if (customMetadata.KeyBytes.SequenceEqual("insertPointer"u8))
+                {
+                    valueBytes = customMetadata.ValueBytes;
+                    foundInsertPointer = true;
+                }
+            }
+
+            int insertPointer = -1;
+            if (foundInsertPointer)
+            {
+                // Parse utf8 to int
+                if (!int.TryParse(Encoding.UTF8.GetString(valueBytes), out insertPointer))
+                {
+                    throw new InvalidOperationException("Invalid insert pointer value");
+                }
+            }
             
+            bool foundDeletedSize = false;
+            valueBytes = default;
+            for (int i = 0; i < fieldStruct.CustomMetadataLength; i++)
+            {
+                var customMetadata = fieldStruct.CustomMetadata(i);
+
+                if (customMetadata.KeyBytes.SequenceEqual("deletedSize"u8))
+                {
+                    valueBytes = customMetadata.ValueBytes;
+                    foundDeletedSize = true;
+                }
+            }
+
+            int deletedSize = -1;
+            if (foundDeletedSize)
+            {
+                // Parse utf8 to int
+                if (!int.TryParse(Encoding.UTF8.GetString(valueBytes), out deletedSize))
+                {
+                    throw new InvalidOperationException("Invalid deleted size value");
+                }
+            }
+
             if (fieldStruct.TypeType == ArrowType.Utf8View)
             {
-                return new StringColumn(offsetMemory!, length, dataMemory, memoryAllocator);
+                return new StringColumn(offsetMemory!, length, dataMemory, memoryAllocator,deletedSize, insertPointer);
             }
             else
             {
