@@ -150,5 +150,13 @@ namespace FlowtideDotNet.Storage.Memory
             }
             return new FlowtideAllocatedMemory { ptr = ptr, length = goodSize };
         }
+
+        public static void Collect()
+        {
+            if (_isMimallocAvailable)
+            {
+                MiMalloc.mi_collect(true);
+            }
+        }
     }
 }

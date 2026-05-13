@@ -512,7 +512,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             if (isCleanup)
             {
-                MiMalloc.mi_collect(true);
+                FlowtideMemoryAllocation.Collect();
             }
         }
 
