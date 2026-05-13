@@ -378,9 +378,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var recordBatch = reader.ReadNextRecordBatch();
             Assert.NotNull(recordBatch);
 
-            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StringType);
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StringViewType);
 
-            var deserializedColumn = (Apache.Arrow.StringArray)recordBatch.Column(0);
+            var deserializedColumn = (Apache.Arrow.StringViewArray)recordBatch.Column(0);
 
             Assert.Equal("a", deserializedColumn.GetString(0));
             Assert.True(deserializedColumn.IsNull(1));
