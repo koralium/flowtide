@@ -35,6 +35,10 @@ jobs:
       env:
         MIMALLOC_SHOW_ERRORS: 1
         MIMALLOC_VERBOSE: 1
+        MIMALLOC_PURGE_DELAY: 0
+        MIMALLOC_PAGE_RESET: 1
+        MIMALLOC_PURGE_DECOMMITS: 1
+        MIMALLOC_ABANDONED_PAGE_PURGE: 1
       # 2. Add --blame-crash, --diag, and set a specific --results-directory
       run: >
         dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj 
