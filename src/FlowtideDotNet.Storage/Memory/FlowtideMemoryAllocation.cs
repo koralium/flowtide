@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Storage.Memory
         private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-            
+
             var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
             alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
             if (alignedsize == oldSize)
@@ -139,50 +139,16 @@ namespace FlowtideDotNet.Storage.Memory
 
         private static FlowtideAllocatedMemory AllocateMimalloc(int size, int alignment)
         {
-            if (size < 0) throw new ArgumentOutOfRangeException(nameof(size), size, "Allocation size cannot be negative.");
-            if (alignment <= 0) throw new ArgumentOutOfRangeException(nameof(alignment), alignment, "Alignment must be strictly positive.");
-            if ((alignment & (alignment - 1)) != 0) throw new ArgumentException("Alignment must be a power of two.", nameof(alignment));
+            var alignedsize = (size + alignment - 1) & ~(alignment - 1);
+            var goodSize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
 
-            long maximumRequiredCapacity = (long)size + alignment;
-            if (maximumRequiredCapacity > int.MaxValue)
-            {
-                throw new OutOfMemoryException($"Requested size plus alignment exceeds 32-bit capacity.");
-            }
-
-            // --- 2. Safe Native Interop ---
-            nuint nSize = (nuint)size;
-            nuint nAlign = (nuint)alignment;
-
-            // Base aligned size
-            nuint alignedSize = (nSize + nAlign - 1) & ~(nAlign - 1);
-
-            // Get mimalloc's preferred block size
-            nuint goodSize = MiMalloc.mi_good_size(alignedSize);
-
-            // --- 3. The Alignment Enforcement ---
-            // If mi_good_size rounded us to a value that is no longer a multiple of the alignment,
-            // we must re-align the goodSize upwards to prevent native assertion crashes.
-            if (goodSize % nAlign != 0)
-            {
-                Console.WriteLine("Missaligned goodsize");
-                goodSize = (goodSize + nAlign - 1) & ~(nAlign - 1);
-            }
-
-            // --- 4. Allocation ---
-            void* ptr = MiMalloc.mi_aligned_alloc(nAlign, goodSize);
+            void* ptr = MiMalloc.mi_aligned_alloc((nuint)alignment, (nuint)goodSize);
 
             if (ptr == GlobalMemoryManager.NullPtr)
             {
-                throw new OutOfMemoryException($"mimalloc failed to allocate {goodSize} bytes.");
+                throw new InvalidOperationException("Could not allocate memory");
             }
-
-            if (goodSize > int.MaxValue)
-            {
-                MiMalloc.mi_free(ptr);
-                throw new OutOfMemoryException($"mimalloc allocated {goodSize} bytes, which exceeds .NET's 32-bit length constraints.");
-            }
-
-            return new FlowtideAllocatedMemory { ptr = ptr, length = (int)goodSize };
+            return new FlowtideAllocatedMemory { ptr = ptr, length = goodSize };
         }
 
         public static void Collect()
