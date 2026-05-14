@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -92,6 +92,15 @@ namespace FlowtideDotNet.Core.ColumnStore
         internal void AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount);
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
+
+        /// <summary>
+        /// Adds variadic buffer counts for this column to the ArrowSerializer.
+        /// Only variadic-width columns (e.g. StringView/BinaryView) need to override this.
+        /// </summary>
+        internal void AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            // Default: no variadic buffers
+        }
 
         internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 

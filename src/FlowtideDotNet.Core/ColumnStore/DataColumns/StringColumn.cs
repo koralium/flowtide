@@ -311,7 +311,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public SerializationEstimation GetSerializationEstimate()
         {
-            return new SerializationEstimation(1, 2, _binaryList.ViewsMemory.Length + _binaryList.DataMemory.Length);
+            return new SerializationEstimation(1, 2, _binaryList.ViewsMemory.Length + _binaryList.DataMemory.Length, variadicColumnCount: 1);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -323,6 +323,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             arrowSerializer.AddBufferForward(_binaryList.ViewsMemory.Length);
             arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            // StringView/BinaryView has 1 variadic data buffer
+            arrowSerializer.AddVariadicCount(1);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

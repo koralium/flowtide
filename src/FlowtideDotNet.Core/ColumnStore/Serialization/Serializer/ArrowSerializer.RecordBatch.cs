@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -68,6 +68,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         public void RecordBatchStartBuffersVector(int numElems)
         {
             StartVector(16, numElems, 8);
+        }
+
+        private int variadicCountForwardPosition = 0;
+
+        public void StartVariadicCountsVectorForward(int numElems)
+        {
+            StartVector(8, numElems, 8);
+            m_space -= 8 * numElems;
+            variadicCountForwardPosition = 0;
+        }
+
+        public void AddVariadicCount(long count)
+        {
+            Span<byte> span = m_destination.Slice(m_space + (variadicCountForwardPosition * 8));
+            BinaryPrimitives.WriteInt64LittleEndian(span, count);
+            variadicCountForwardPosition++;
         }
 
         public static void UpdateBufferLengthAndOffsetAtIndex(Span<byte> data, int buffersOffset, int index, long offset, long length)
