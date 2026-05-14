@@ -391,12 +391,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             using var column = new Column(GlobalMemoryManager.Instance);
             column.Add(new StringValue("hello"));
             column.Add(new StringValue("world"));
+            column.Add(new StringValue("abcdefghijklmnopq"));
 
             var info = column.GetColumnSizeInfo();
 
             Assert.Equal(ArrowTypeId.String, info.DataType);
-            Assert.Equal(2, info.TotalRows);
-            Assert.True(info.TotalVariableBytes > 0);
+            Assert.Equal(3, info.TotalRows);
+            Assert.Equal(17, info.TotalVariableBytes);
         }
 
         [Fact]
@@ -967,7 +968,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             info1.Merge(info2);
 
             Assert.Equal(80, info1.TotalRows);
-            Assert.True(info1.TotalVariableBytes > 0);
+            Assert.Equal(0, info1.TotalVariableBytes);
 
             using var merged = new Column(GlobalMemoryManager.Instance, info1);
 

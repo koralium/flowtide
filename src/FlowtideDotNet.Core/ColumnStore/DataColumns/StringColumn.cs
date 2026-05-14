@@ -354,7 +354,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 DataType = ArrowTypeId.String,
                 TotalRows = Count,
-                TotalVariableBytes = 0
+                TotalVariableBytes = _binaryList.InsertPointer - _binaryList.DeletedDataSize
             };
         }
 

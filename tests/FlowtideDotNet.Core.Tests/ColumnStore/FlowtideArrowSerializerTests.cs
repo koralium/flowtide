@@ -200,7 +200,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var deserializedColumn = (Apache.Arrow.MapArray)recordBatch.Column(0);
             var offset = deserializedColumn.ValueOffsets[0];
-            var keys = (Apache.Arrow.StringArray)deserializedColumn.Keys;
+            var keys = (Apache.Arrow.StringViewArray)deserializedColumn.Keys;
             var values = (Apache.Arrow.Int8Array)deserializedColumn.Values;
 
             Assert.Equal(2, deserializedColumn.GetValueLength(0));
@@ -237,9 +237,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var recordBatch = reader.ReadNextRecordBatch();
 
-            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StringType);
+            Assert.True(recordBatch.Schema.FieldsList[0].DataType is StringViewType);
 
-            var deserializedColumn = (Apache.Arrow.StringArray)recordBatch.Column(0);
+            var deserializedColumn = (Apache.Arrow.StringViewArray)recordBatch.Column(0);
 
             Assert.Equal("a", deserializedColumn.GetString(0));
             Assert.Equal("b", deserializedColumn.GetString(1));
@@ -282,7 +282,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(0, deserializedColumn.ValueOffsets[3]);
 
             var nullArray = (Apache.Arrow.NullArray)deserializedColumn.Fields[0];
-            var stringArray = (Apache.Arrow.StringArray)deserializedColumn.Fields[1];
+            var stringArray = (Apache.Arrow.StringViewArray)deserializedColumn.Fields[1];
             var intArray = (Apache.Arrow.Int8Array)deserializedColumn.Fields[2];
 
             Assert.Equal(1, nullArray.NullCount);
@@ -413,10 +413,10 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.NotNull(recordBatch);
 
             Assert.True(recordBatch.Schema.FieldsList[0].DataType is Int8Type);
-            Assert.True(recordBatch.Schema.FieldsList[1].DataType is StringType);
+            Assert.True(recordBatch.Schema.FieldsList[1].DataType is StringViewType);
 
             var deserializedIntColumn = (Apache.Arrow.Int8Array)recordBatch.Column(0);
-            var deserializedStringColumn = (Apache.Arrow.StringArray)recordBatch.Column(1);
+            var deserializedStringColumn = (Apache.Arrow.StringViewArray)recordBatch.Column(1);
 
             Assert.Equal((sbyte)1, deserializedIntColumn.GetValue(0));
             Assert.Equal((sbyte)2, deserializedIntColumn.GetValue(1));
@@ -871,7 +871,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             var deserializedColumn = (Apache.Arrow.StructArray)recordBatch.Column(0);
             var intColumn = (Apache.Arrow.Int16Array)deserializedColumn.Fields[0];
-            var strColumn = (Apache.Arrow.StringArray)deserializedColumn.Fields[1];
+            var strColumn = (Apache.Arrow.StringViewArray)deserializedColumn.Fields[1];
 
             Assert.Equal(123, (int)intColumn.GetValue(0)!);
             Assert.Equal(321, (int)intColumn.GetValue(1)!);
