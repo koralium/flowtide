@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Storage.Memory;
 using Microsoft.Extensions.Logging;
 
 namespace FlowtideDotNet.Storage.Persistence
@@ -21,11 +22,13 @@ namespace FlowtideDotNet.Storage.Persistence
         public StreamVersionInformation? StreamVersion { get;  }
 
         public ILoggerFactory LoggerFactory { get; }
+        public IStreamMemoryManager StreamMemoryManager { get; }
 
-        public StorageInitializationMetadata(string streamName, ILoggerFactory loggerFactory, StreamVersionInformation? streamVersion = null)
+        public StorageInitializationMetadata(string streamName, ILoggerFactory loggerFactory, IStreamMemoryManager streamMemoryManager, StreamVersionInformation? streamVersion = null)
         {
             StreamName = streamName;
             LoggerFactory = loggerFactory;
+            StreamMemoryManager = streamMemoryManager;
             StreamVersion = streamVersion;
         }
     }

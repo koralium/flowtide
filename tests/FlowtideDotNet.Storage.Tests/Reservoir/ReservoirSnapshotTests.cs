@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             for (int i = 0; i < 6; i++)
@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 // Check that we restored so current version is 6, (previous storage was at 7, but restore failed to that version).
                 Assert.Equal(6, persistentStorage2.CurrentVersion);
@@ -127,7 +127,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -153,7 +153,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 await persistentStorage2.RecoverAsync(persistentStorage.CurrentVersion - 1);
                 var session2 = persistentStorage2.CreateSession();
                 var data = await session2.Read(100);
@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
                 await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -196,7 +196,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     SnapshotCheckpointInterval = 5
                 });
-                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 var session2 = persistentStorage2.CreateSession();
 
                 // Create enough checkpoints to have a snapshot and some history
@@ -231,7 +231,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider,
                 SnapshotCheckpointInterval = 5
             });
-            await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage2.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var lastData = (await provider.GetStoredDataFileIdsAsync()).Last();
 
