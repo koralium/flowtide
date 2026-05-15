@@ -243,8 +243,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     {
                         return await _localCache.GetMemoryAsync(fileId, offset, length, crc32);
                     }
-                    catch (FlowtideChecksumMismatchException)
+                    catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                     {
+                        _logger.LogWarning(e, $"Cache read failed for file {fileId} with offset {offset} and length {length}, evicting from cache and retrying. This can be caused by external factors such as disk issues or antivirus interference, or internal factors such as bugs in the cache management logic. If you see this warning frequently, it may indicate an underlying issue that needs to be investigated.");
                         rentHeld = false;
                         quickState.TryMarkEvicted();
                         if (quickState.Return() && quickState.TrySetDeleted())
@@ -305,8 +306,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     {
                         return await _localCache.ReadAsync(fileId, offset, length, crc32, stateSerializer);
                     }
-                    catch (FlowtideChecksumMismatchException)
+                    catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                     {
+                        _logger.LogWarning(e, $"Cache read failed for file {fileId} with offset {offset} and length {length}, evicting from cache and retrying. This can be caused by external factors such as disk issues or antivirus interference, or internal factors such as bugs in the cache management logic. If you see this warning frequently, it may indicate an underlying issue that needs to be investigated.");
                         rentHeld = false;
                         quickState.TryMarkEvicted();
                         if (quickState.Return() && quickState.TrySetDeleted())
@@ -367,8 +369,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     {
                         return await _localCache.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
                     }
-                    catch (FlowtideChecksumMismatchException)
+                    catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                     {
+                        _logger.LogWarning(e, $"Cache read failed for file {fileId} with size {fileSize}, evicting from cache and retrying. This can be caused by external factors such as disk issues or antivirus interference, or internal factors such as bugs in the cache management logic. If you see this warning frequently, it may indicate an underlying issue that needs to be investigated.");
                         rentHeld = false;
                         state.TryMarkEvicted();
                         if (state.Return() && state.TrySetDeleted())
