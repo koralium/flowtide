@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = persistentData,
                 CacheProvider = cacheData
             });
-            blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance)).GetAwaiter().GetResult();
+            blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance)).GetAwaiter().GetResult();
             var provider = blobPersistentStorage.CacheProvider;
             Assert.NotNull(provider);
             cacheProvider = provider;
@@ -297,7 +297,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 });
                 var newProvider = blobPersistentStorage.CacheProvider;
                 Assert.NotNull(newProvider);
-                await newStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance));
+                await newStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var newMemory = await newProvider.ReadAsync(0, offset, 3, crc32, new LocalCacheTestSerializer());
                 Assert.Equal(new byte[] { 1, 2, 3 }, newMemory.Data);
@@ -312,7 +312,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         public async Task EnsureZombieFileAreClearedFromCache()
         {
             await cacheData.WriteDataFileAsync(15, 0, 1, false, PipeReader.Create(new ReadOnlySequence<byte>([1])));
-            await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance));
+            await blobPersistentStorage.InitializeAsync(new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var fileExists = cacheData.TryGetFileData(15, out _);
             Assert.False(fileExists);

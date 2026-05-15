@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.StateManager
 {
     public class StateManagerSync<TMetadata> : StateManagerSync
     {
-        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName, IMemoryAllocationStats memoryAllocationStats) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName, memoryAllocationStats)
+        public StateManagerSync(StateManagerOptions options, ILoggerFactory loggerFactory, Meter meter, string streamName, IStreamMemoryManager streamMemoryManager) : base(new StateManagerMetadataSerializer<TMetadata>(), options, loggerFactory, meter, streamName, streamMemoryManager)
         {
         }
 
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Storage.StateManager
         private readonly ILogger logger;
         private readonly Meter meter;
         private readonly string streamName;
-        private readonly IMemoryAllocationStats memoryAllocationStats;
+        private readonly IStreamMemoryManager _streamMemoryManager;
         private readonly object m_lock = new object();
         internal StateManagerMetadata? m_metadata;
         //private Functions m_functions;
@@ -111,7 +111,7 @@ namespace FlowtideDotNet.Storage.StateManager
             ILoggerFactory loggerFactory, 
             Meter meter, 
             string streamName,
-            IMemoryAllocationStats memoryAllocationStats)
+            IStreamMemoryManager streamMemoryManager)
         {
             this.m_metadataSerializer = metadataSerializer;
             this.options = options;
@@ -119,14 +119,14 @@ namespace FlowtideDotNet.Storage.StateManager
             this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
             this.streamName = streamName;
-            this.memoryAllocationStats = memoryAllocationStats;
+            this._streamMemoryManager = streamMemoryManager;
         }
 
         private void Setup()
         {
             if (m_lruTable == null)
             {
-                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(memoryAllocationStats))
+                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,
@@ -413,7 +413,7 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
             m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, streamVersionInformation)).ConfigureAwait(false);
+            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
             // Check that metadata exist, also that the checkpoint version is larger than 0
             // If zero we revert back to an empty state
