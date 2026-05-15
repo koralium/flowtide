@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Connector.Sharepoint.Internal
         private string? listId;
         private ICounter<long>? _eventsCounter;
 
-        public SharepointSink(SharepointSinkOptions sinkOptions, WriteRelation writeRelation, ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
+        public SharepointSink(SharepointSinkOptions sinkOptions, WriteRelation writeRelation, Core.Operators.Write.ExecutionMode executionMode, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionMode, executionDataflowBlockOptions)
         {
             this.primaryKeys = sinkOptions.PrimaryKeyColumnNames;
             this.sinkOptions = sinkOptions;
