@@ -371,7 +371,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     }
                     catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                     {
-                        _logger.LogWarning(e, $"Cache read failed for file {fileId} with size {fileSize}, evicting from cache and retrying. This can be caused by external factors such as disk issues or antivirus interference, or internal factors such as bugs in the cache management logic. If you see this warning frequently, it may indicate an underlying issue that needs to be investigated.");
+                        _logger.LogWarning(e, "Cache read failed for file {FileId} with size {FileSize}, evicting from cache and retrying. This can be caused by external factors such as disk issues or antivirus interference, or internal factors such as bugs in the cache management logic. If you see this warning frequently, it may indicate an underlying issue that needs to be investigated.", fileId, fileSize);
                         rentHeld = false;
                         state.TryMarkEvicted();
                         if (state.Return() && state.TrySetDeleted())
