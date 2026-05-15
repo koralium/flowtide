@@ -128,7 +128,8 @@ namespace FlowtideDotNet.Storage.Memory
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            // Global singleton manager: disposing via the interface should be safe,
+            // but there is no per-instance state to tear down here.
         }
     }
 }
