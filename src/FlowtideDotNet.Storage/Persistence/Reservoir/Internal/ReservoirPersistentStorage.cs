@@ -32,9 +32,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private readonly int _maxFileSize;
         private IReservoirStorageProvider _fileProvider;
         private readonly MemoryPool<byte> _memoryPool;
-        private readonly IMemoryAllocator _memoryAllocator;
+        private IMemoryAllocator? _memoryAllocator;
         private readonly ReservoirStorageOptions _blobStorageOptions;
-        private MergedBlobFileWriter _mergedBlobFileWriter;
+        private MergedBlobFileWriter? _mergedBlobFileWriter;
         private CheckpointHandler? _checkpointHandler;
         private ReservoirPersistentSession? _adminSession;
         private SemaphoreSlim _mergedBlobLock = new SemaphoreSlim(1);
@@ -87,9 +87,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             this._memoryPool = blobStorageOptions.MemoryPool;
-            this._memoryAllocator = blobStorageOptions.MemoryAllocator;
             this._maxFileSize = blobStorageOptions.MaxFileSize;
-            _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
             this._blobStorageOptions = blobStorageOptions;
         }
 
@@ -125,6 +123,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         internal async Task AddNonCompletedBlobFile(BlobFileWriter blobFileWriter)
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding blob files");
+            Debug.Assert(_mergedBlobFileWriter != null, "Merged blob file writer must be initialized before adding blob files");
+            Debug.Assert(_memoryAllocator != null, "Memory allocator must be initialized before adding blob files");
 
             if (Volatile.Read(ref _takingCheckpoint))
             {
@@ -163,6 +163,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private async Task CompactFiles()
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before compacting files");
+            Debug.Assert(_mergedBlobFileWriter != null, "Merged blob file writer must be initialized before compacting files");
             // Fetch all files that where added in previous versions
             var files = _checkpointHandler.GetAllFileInformation()
                 .Where(x => x.AddedAtVersion < _checkpointHandler.CheckpointVersion)
@@ -246,6 +247,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         internal async Task CompactFile(ulong fileId, int fileSize, ulong crc64)
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before compacting files");
+            Debug.Assert(_memoryAllocator != null, "Memory allocator must be initialized before compacting files");
+            Debug.Assert(_mergedBlobFileWriter != null, "Merged blob file writer must be initialized before compacting files");
 
             var reader = await _fileProvider.ReadDataFileAsync(fileId, fileSize);
 
@@ -318,6 +321,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before checkpointing");
             Debug.Assert(_adminSession != null, "Persistent storage must be initialized before checkpointing");
+            Debug.Assert(_memoryAllocator != null, "Memory allocator must be initialized before checkpointing");
+            Debug.Assert(_mergedBlobFileWriter != null, "Merged blob file writer must be initialized before checkpointing");
 
             await _adminSession.Write(1, new SerializableObject(metadata));
             await _adminSession.Commit();
@@ -453,6 +458,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             {
                 throw new InvalidOperationException("Persistent storage must be initialized before creating sessions");
             }
+            if (_memoryAllocator == null)
+            {
+                throw new InvalidOperationException("Memory allocator must be initialized before creating sessions");
+            }
             var session = new ReservoirPersistentSession(this, _memoryAllocator, _maxFileSize);
             lock (_sessionsLock)
             {
@@ -463,7 +472,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Dispose()
         {
-            _mergedBlobFileWriter.Return(); // Return file, will dispose when counter is 0, might be others dependent on the file still
+            if (_mergedBlobFileWriter != null)
+            {
+                _mergedBlobFileWriter.Return(); // Return file, will dispose when counter is 0, might be others dependent on the file still
+            }
             
             if (_checkpointHandler != null)
             {
@@ -538,6 +550,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _loggerFactory = metadata.LoggerFactory;
             _meter = new Meter($"flowtide.{metadata.StreamName}.storage");
 
+            if (_memoryAllocator == null)
+            {
+                _memoryAllocator = metadata.StreamMemoryManager.CreateOperatorMemoryManager("reservoir");
+            }
+
             if (_checkpointHandler != null)
             {
                 await _checkpointHandler.DisposeAsync();
@@ -554,7 +571,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             try
             {
                 // Create a new merged blob file writer to make sure there is no old data in it, and return the old one so it can be disposed when all readers are done with it
-                _mergedBlobFileWriter.Return();
+                if (_mergedBlobFileWriter != null)
+                {
+                    _mergedBlobFileWriter.Return();
+                }
                 _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
             }
             finally
@@ -608,6 +628,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public async ValueTask ResetAsync()
         {
+            if (_memoryAllocator == null)
+            {
+                throw new InvalidOperationException("Memory allocator must be initialized before resetting persistent storage");
+            }
             if (_checkpointHandler != null)
             {
                 await _checkpointHandler.DisposeAsync();
