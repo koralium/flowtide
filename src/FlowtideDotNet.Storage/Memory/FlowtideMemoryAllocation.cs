@@ -51,6 +51,14 @@ namespace FlowtideDotNet.Storage.Memory
             {
                 Console.WriteLine("[Flowtide Warning] 'mimalloc' native library could not be loaded. Falling back to standard NativeMemory. Performance may be degraded.");
             }
+
+            // Check that linux is operating system
+            if (_isMimallocAvailable && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                // Set linux settings to reduce memory usage
+                MiMalloc.mi_option_set_default(mi_option_t.mi_option_allow_thp, 0);
+                MiMalloc.mi_option_set_default(mi_option_t.mi_option_purge_decommits, 1);
+            }
         }
 
         public static FlowtideAllocatedMemory AllocateAligned(int size, int alignment)
