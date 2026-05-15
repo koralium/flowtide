@@ -23,8 +23,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir
 
         public MemoryPool<byte> MemoryPool { get; set; } = MemoryPool<byte>.Shared;
 
-        public IMemoryAllocator MemoryAllocator { get; set; } = GlobalMemoryManager.Instance;
-
         /// <summary>
         /// Gets or sets the maximum allowed file size, in bytes.
         /// </summary>

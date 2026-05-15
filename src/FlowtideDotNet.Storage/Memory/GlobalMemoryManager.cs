@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Storage.Memory
     /// Memory manager that is global in a process, should not be used as much as possible since
     /// the memory allocated with this does not contribute to metric gathering from a stream.
     /// </summary>
-    public unsafe class GlobalMemoryManager : IMemoryAllocator, IMemoryAllocationStats
+    public unsafe class GlobalMemoryManager : IMemoryAllocator, IStreamMemoryManager, IMemoryAllocationStats, IOperatorMemoryManager
     {
         internal static readonly void* NullPtr = (void*)0;
 
@@ -119,6 +119,17 @@ namespace FlowtideDotNet.Storage.Memory
         public long GetAllocatedMemory()
         {
             return _allocatedMemory - _freedMemory;
+        }
+
+        public IOperatorMemoryManager CreateOperatorMemoryManager(string operatorName)
+        {
+            return this;
+        }
+
+        public void Dispose()
+        {
+            // Global singleton manager: disposing via the interface should be safe,
+            // but there is no per-instance state to tear down here.
         }
     }
 }

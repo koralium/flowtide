@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var provider = new MemoryFileProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
                 await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -59,7 +59,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 await persistentStorage.RecoverAsync(1);
 
                 var session = persistentStorage.CreateSession();
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
                 
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 // Explicitly recover checkpoint version 1
                 await persistentStorage.RecoverAsync(1);
 
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new MemoryFileProvider();
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
                 await session.Write(100, new SerializableObject(new byte[] { 1, 2, 3, 4 }));
@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
                 await persistentStorage.RecoverAsync(2);
 
                 var session = persistentStorage.CreateSession();
@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var provider = new MemoryFileProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(200, new SerializableObject(new byte[] { 5, 5 }));
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         {
             var provider = new MemoryFileProvider();
             var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = persistentStorage.CreateSession();
             await session.Write(100, new SerializableObject(new byte[] { 9 }));
@@ -192,7 +192,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                 FileProvider = provider ,
                 MaxFileSize = 10
             });
-            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
             var session = (ReservoirPersistentSession)persistentStorage.CreateSession();
 
@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var provider = new TestDataProvider();
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
 
@@ -256,7 +256,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
 
             {
                 var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
                 var data = await session.Read(100);
@@ -276,7 +276,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     CacheProvider = cacheProvider
                 });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
 
@@ -330,7 +330,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     FileProvider = provider,
                     CacheProvider = cacheProvider
                 });
-                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance));
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
 
                 var session = persistentStorage.CreateSession();
 

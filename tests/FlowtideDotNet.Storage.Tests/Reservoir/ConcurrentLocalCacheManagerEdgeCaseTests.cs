@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
                     CacheProvider = new MemoryFileProvider()
                 });
             storage.InitializeAsync(
-                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance))
+                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance))
                 .GetAwaiter().GetResult();
 
             var metrics = new LocalCacheMetricValues();
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var cclm = new ConcurrentLocalCacheManager(
                 storage, localData, remoteData, maxCacheSizeBytes, metrics, timeProvider: timeProvider);
             cclm.InitializeAsync(
-                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance),
+                    new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
                     meter, DefaultCtx, CancellationToken.None)
                 .GetAwaiter().GetResult();
 
@@ -430,7 +430,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             _ = await s.Cclm.ReadMemoryAsync(0, offset, 3, crc32);
             int fetchesBeforeReinit = s.RemoteData.NumberOfReadDataFile;
             await s.Cclm.InitializeAsync(
-                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance),
+                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
                 new Meter("cclm-reinit"), DefaultCtx, CancellationToken.None);
 
             Assert.Equal(fetchesBeforeReinit, s.RemoteData.NumberOfReadDataFile);
@@ -446,7 +446,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             long sizeAfterPopulate = s.Cclm.CurrentSize;
 
             await s.Cclm.InitializeAsync(
-                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance),
+                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
                 new Meter("cclm-reinit2"), DefaultCtx, CancellationToken.None);
 
             Assert.Equal(sizeAfterPopulate, s.Cclm.CurrentSize);
@@ -465,7 +465,7 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             s.LocalData.SetFileData(9999, new byte[] { 0xDE, 0xAD });
 
             await s.Cclm.InitializeAsync(
-                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance),
+                new Persistence.StorageInitializationMetadata("test", NullLoggerFactory.Instance, GlobalMemoryManager.Instance),
                 new Meter("cclm-zombie"), DefaultCtx, CancellationToken.None);
 
             Assert.Equal(sizeAfterLegit, s.Cclm.CurrentSize);
