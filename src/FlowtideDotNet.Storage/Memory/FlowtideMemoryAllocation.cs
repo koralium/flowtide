@@ -35,6 +35,19 @@ namespace FlowtideDotNet.Storage.Memory
 
         static FlowtideMemoryAllocation()
         {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (Environment.GetEnvironmentVariable("MIMALLOC_ALLOW_THP") == null)
+                {
+                    Environment.SetEnvironmentVariable("MIMALLOC_ALLOW_THP", "0");
+                }
+
+                if (Environment.GetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS") == null)
+                {
+                    Environment.SetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS", "1");
+                }
+            }
+
             _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
                 typeof(FlowtideMemoryAllocation).Assembly,
                 DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
@@ -50,14 +63,6 @@ namespace FlowtideDotNet.Storage.Memory
             if (!_isMimallocAvailable)
             {
                 Console.WriteLine("[Flowtide Warning] 'mimalloc' native library could not be loaded. Falling back to standard NativeMemory. Performance may be degraded.");
-            }
-
-            // Check that linux is operating system
-            if (_isMimallocAvailable && RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-            {
-                // Set linux settings to reduce memory usage
-                MiMalloc.mi_option_set_default(mi_option_t.mi_option_allow_thp, 0);
-                MiMalloc.mi_option_set_default(mi_option_t.mi_option_purge_decommits, 1);
             }
         }
 
