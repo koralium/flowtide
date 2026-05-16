@@ -295,37 +295,37 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             if (x == y) return 0;
 
             BinaryViewList.ArrowBinaryView* views = (BinaryViewList.ArrowBinaryView*)viewsPointer;
-            
-            var viewX = views[x];
-            var viewY = views[y];
 
-            if (viewX.PrefixInt != viewY.PrefixInt)
+            BinaryViewList.ArrowBinaryView* viewX = views + x;
+            BinaryViewList.ArrowBinaryView* viewY = views + y;
+
+            if (viewX->PrefixInt != viewY->PrefixInt)
             {
-                uint valX = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewX.PrefixInt) : viewX.PrefixInt;
-                uint valY = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewY.PrefixInt) : viewY.PrefixInt;
+                uint valX = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewX->PrefixInt) : viewX->PrefixInt;
+                uint valY = BitConverter.IsLittleEndian ? System.Buffers.Binary.BinaryPrimitives.ReverseEndianness(viewY->PrefixInt) : viewY->PrefixInt;
                 return valX.CompareTo(valY);
             }
 
             byte* data = (byte*)dataPointer;
 
             ReadOnlySpan<byte> spanX;
-            if (viewX.Length <= 12)
+            if (viewX->Length <= 12)
             {
-                spanX = new ReadOnlySpan<byte>((byte*)(views + x) + 4, viewX.Length);
+                spanX = new ReadOnlySpan<byte>((byte*)(viewX) + 4, viewX->Length);
             }
             else
             {
-                spanX = new ReadOnlySpan<byte>(data + viewX.Offset, viewX.Length);
+                spanX = new ReadOnlySpan<byte>(data + viewX->Offset, viewX->Length);
             }
 
             ReadOnlySpan<byte> spanY;
-            if (viewY.Length <= 12)
+            if (viewY->Length <= 12)
             {
-                spanY = new ReadOnlySpan<byte>((byte*)(views + y) + 4, viewY.Length);
+                spanY = new ReadOnlySpan<byte>((byte*)(viewY) + 4, viewY->Length);
             }
             else
             {
-                spanY = new ReadOnlySpan<byte>(data + viewY.Offset, viewY.Length);
+                spanY = new ReadOnlySpan<byte>(data + viewY->Offset, viewY->Length);
             }
 
             return spanX.SequenceCompareTo(spanY);
