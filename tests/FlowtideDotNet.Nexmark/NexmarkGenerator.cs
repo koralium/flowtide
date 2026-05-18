@@ -4,43 +4,40 @@
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
 
-using System.Collections;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Nexmark.Internal;
 using FlowtideDotNet.Nexmark.Models;
+using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Nexmark;
 
 /// <summary>
 /// A C# port of the NEXMark XMLAuctionStreamGenerator.
-/// Produces a deterministic stream of Person, Auction, and Bid events.
+/// Produces a deterministic stream of EventBatchData arrays.
 /// </summary>
-public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
+public sealed class NexmarkGenerator
 {
     private readonly int _numGenCalls;
     private readonly int _seed;
+    private readonly int _batchSize;
+    private readonly IMemoryAllocator _memoryAllocator;
 
     /// <summary>
     /// Initializes a new instance of the NexmarkGenerator.
     /// </summary>
     /// <param name="genCalls">The number of generation loops to run. Defaults to 1000.</param>
     /// <param name="seed">The random seed to use. Defaults to 103984 (from the original Java code).</param>
-    public NexmarkGenerator(int genCalls = 1000, int seed = 103984)
+    /// <param name="batchSize">The maximum number of rows per EventBatchData list. Defaults to 1000.</param>
+    /// <param name="memoryAllocator">Memory allocator for columnar data. Uses GlobalMemoryManager if null.</param>
+    public NexmarkGenerator(int genCalls = 1000, int seed = 103984, int batchSize = 1000, IMemoryAllocator? memoryAllocator = null)
     {
         _numGenCalls = genCalls;
         _seed = seed;
+        _batchSize = batchSize;
+        _memoryAllocator = memoryAllocator ?? GlobalMemoryManager.Instance;
     }
 
-    public IEnumerator<NexmarkEvent> GetEnumerator()
-    {
-        return GenerateEvents().GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-    private IEnumerable<NexmarkEvent> GenerateEvents()
+    public NexmarkStream Generate()
     {
         var rnd = new JavaRandom(_seed);
         var cal = new SimpleCalendar(rnd);
@@ -51,6 +48,14 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
         var openAuctions = new AuctionManager(cal, new JavaRandom(_seed ^ 18394));
         var personGen = new PersonGenerator(new JavaRandom(_seed ^ 20934));
 
+        var personBatches = new List<EventBatchData>();
+        var auctionBatches = new List<EventBatchData>();
+        var bidBatches = new List<EventBatchData>();
+
+        var personBuilder = new PersonBatchBuilder(_memoryAllocator, _batchSize, personBatches);
+        var auctionBuilder = new AuctionBatchBuilder(_memoryAllocator, _batchSize, auctionBatches);
+        var bidBuilder = new BidBatchBuilder(_memoryAllocator, _batchSize, bidBatches);
+
         // Startup phase: generate 50 persons
         for (int i = 0; i < 5; i++)
         {
@@ -59,7 +64,7 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
                 cal.IncrementTime();
                 int personId = persons.GetNewId();
                 var person = personGen.Generate(personId, openAuctions, cal.TimeInSecs);
-                yield return NexmarkEvent.ForPerson(person);
+                personBuilder.Add(person);
             }
         }
 
@@ -69,7 +74,8 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
             for (int j = 0; j < 10; j++)
             {
                 cal.IncrementTime();
-                yield return GenerateOpenAuction(openAuctions, persons, cal, rnd);
+                var auction = GenerateOpenAuction(openAuctions, persons, cal, rnd);
+                auctionBuilder.Add(auction);
             }
         }
 
@@ -78,12 +84,12 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
         while (count < _numGenCalls)
         {
             // Generating a person approximately 10th time will give us ~10 items/person
-            if (rnd.Next(10) == 0)
+            if (rnd.NextBoolean())
             {
                 cal.IncrementTime();
                 int personId = persons.GetNewId();
                 var person = personGen.Generate(personId, openAuctions, cal.TimeInSecs);
-                yield return NexmarkEvent.ForPerson(person);
+                personBuilder.Add(person);
             }
 
             // Generate on average 1 item
@@ -93,7 +99,8 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
                 cal.IncrementTime();
                 for (int i = 0; i < numItems; i++)
                 {
-                    yield return GenerateOpenAuction(openAuctions, persons, cal, rnd);
+                    var auction = GenerateOpenAuction(openAuctions, persons, cal, rnd);
+                    auctionBuilder.Add(auction);
                 }
             }
 
@@ -112,15 +119,30 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
                         Price = openAuctions.IncreasePrice(itemId),
                         DateTime = cal.TimeInSecs
                     };
-                    yield return NexmarkEvent.ForBid(bid);
+                    bidBuilder.Add(bid);
                 }
             }
 
             count++;
         }
+
+        // Flush remaining records
+        personBuilder.Flush();
+        auctionBuilder.Flush();
+        bidBuilder.Flush();
+
+        return new NexmarkStream
+        {
+            PersonSchema = NexmarkSchema.PersonSchema,
+            PersonBatches = personBatches,
+            AuctionSchema = NexmarkSchema.AuctionSchema,
+            AuctionBatches = auctionBatches,
+            BidSchema = NexmarkSchema.BidSchema,
+            BidBatches = bidBatches
+        };
     }
 
-    private static NexmarkEvent GenerateOpenAuction(AuctionManager openAuctions, PersonIdManager persons, SimpleCalendar cal, JavaRandom rnd)
+    private static Auction GenerateOpenAuction(AuctionManager openAuctions, PersonIdManager persons, SimpleCalendar cal, JavaRandom rnd)
     {
         int auctionId = openAuctions.GetNewId();
         
@@ -145,7 +167,7 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
             type += ", Dutch";
         }
 
-        var auction = new Auction
+        return new Auction
         {
             Id = auctionId,
             ItemId = auctionId,
@@ -160,7 +182,5 @@ public sealed class NexmarkGenerator : IEnumerable<NexmarkEvent>
             EndTime = openAuctions.GetEndTime(auctionId),
             DateTime = cal.TimeInSecs
         };
-
-        return NexmarkEvent.ForAuction(auction);
     }
 }
