@@ -137,7 +137,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var result = column.ToArrowArray();
             var arrowArray = (Apache.Arrow.ListArray)result.Item1;
 
-            var slice1 = (Apache.Arrow.StringArray)arrowArray.GetSlicedValues(0);
+            var slice1 = (Apache.Arrow.StringViewArray)arrowArray.GetSlicedValues(0);
             Assert.Equal(2, slice1.Length);
             Assert.Equal("1", slice1.GetString(0));
             Assert.Equal("2", slice1.GetString(1));
@@ -145,7 +145,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var nullSlice = arrowArray.GetSlicedValues(1);
             Assert.Null(nullSlice);
 
-            var slice2 = (Apache.Arrow.StringArray)arrowArray.GetSlicedValues(2);
+            var slice2 = (Apache.Arrow.StringViewArray)arrowArray.GetSlicedValues(2);
             Assert.Equal(2, slice2.Length);
             Assert.Equal("3", slice2.GetString(0));
             Assert.Equal("4", slice2.GetString(1));
@@ -333,7 +333,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(1, arr.TypeIds[3]);
             Assert.Equal(2, arr.TypeIds[4]);
 
-            var stringColumn = (Apache.Arrow.StringArray)arr.Fields[1];
+            var stringColumn = (Apache.Arrow.StringViewArray)arr.Fields[1];
             var nullColumn = (Apache.Arrow.NullArray)arr.Fields[0];
             var intColumn = (Apache.Arrow.Int8Array)arr.Fields[2];
 
@@ -438,23 +438,23 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Null(nullVal);
             Assert.Equal(2, secondMap.Length);
 
-            var firstMapKeys = (Apache.Arrow.StringArray)firstMap.Fields[0];
+            var firstMapKeys = (Apache.Arrow.StringViewArray)firstMap.Fields[0];
             var firstMapValues = (Apache.Arrow.DenseUnionArray)firstMap.Fields[1];
             Assert.Equal("key", firstMapKeys.GetString(0));
             Assert.Equal("value", firstMapKeys.GetString(1));
 
-            var firstMapStringColumn = (Apache.Arrow.StringArray)firstMapValues.Fields[2];
+            var firstMapStringColumn = (Apache.Arrow.StringViewArray)firstMapValues.Fields[2];
             var firstMapIntColumn = (Apache.Arrow.Int8Array)firstMapValues.Fields[1];
 
             Assert.Equal(1, (long)firstMapIntColumn.GetValue(firstMapValues.ValueOffsets[0])!);
             Assert.Equal("hello1", firstMapStringColumn.GetString(firstMapValues.ValueOffsets[1]));
 
-            var secondMapKeys = (Apache.Arrow.StringArray)secondMap.Fields[0];
+            var secondMapKeys = (Apache.Arrow.StringViewArray)secondMap.Fields[0];
             var secondMapValues = (Apache.Arrow.DenseUnionArray)secondMap.Fields[1];
             Assert.Equal("key", secondMapKeys.GetString(0));
             Assert.Equal("value", secondMapKeys.GetString(1));
 
-            var secondMapStringColumn = (Apache.Arrow.StringArray)secondMapValues.Fields[2];
+            var secondMapStringColumn = (Apache.Arrow.StringViewArray)secondMapValues.Fields[2];
             var secondMapIntColumn = (Apache.Arrow.Int8Array)secondMapValues.Fields[1];
 
             Assert.Equal(2, (long)secondMapIntColumn.GetValue(secondMapValues.ValueOffsets[0])!);

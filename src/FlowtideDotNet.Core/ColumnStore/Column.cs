@@ -1188,7 +1188,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             var estimate = _dataColumn!.GetSerializationEstimate();
-            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1));
+            return new SerializationEstimation(estimate.fieldNodeCount, 1 + estimate.bufferCount, estimate.bodyLength + _validityList!.GetByteSize(0, Count - 1), estimate.variadicColumnCount);
         }
 
         void IColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer)
@@ -1225,6 +1225,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             _dataColumn!.AddBuffers(ref arrowSerializer);
+        }
+
+        void IColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            AddVariadicBufferCounts(ref arrowSerializer);
+        }
+
+        internal void AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            _dataColumn!.AddVariadicBufferCounts(ref arrowSerializer);
         }
 
         void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

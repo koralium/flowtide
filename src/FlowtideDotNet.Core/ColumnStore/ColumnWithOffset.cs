@@ -267,6 +267,11 @@ namespace FlowtideDotNet.Core.ColumnStore
             throw new NotSupportedException();
         }
 
+        void IColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            throw new NotSupportedException();
+        }
+
         void IColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
             throw new NotSupportedException();

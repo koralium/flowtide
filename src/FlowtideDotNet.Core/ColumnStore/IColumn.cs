@@ -66,6 +66,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         internal void AddBuffers(ref ArrowSerializer arrowSerializer);
 
+        internal void AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer);
+
         internal void WriteDataToBuffer(ref ArrowDataWriter dataWriter);
 
         void Rent(int count);

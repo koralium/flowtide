@@ -953,15 +953,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             int bodyLength = Count * 5;
             int fieldCount = 1;
             int bufferCount = 2;
+            int variadicColumnCount = 0;
             for (int i = 0; i < _valueColumns.Count; i++)
             {
                 var estimate = _valueColumns[i].GetSerializationEstimate();
                 bodyLength += estimate.bodyLength;
                 fieldCount += estimate.fieldNodeCount;
                 bufferCount += estimate.bufferCount;
+                variadicColumnCount += estimate.variadicColumnCount;
             }
             bufferCount += _valueColumns.Count - 1; // Add validity buffers, except for the null array in the start
-            return new SerializationEstimation(fieldCount, bufferCount, bodyLength);
+            return new SerializationEstimation(fieldCount, bufferCount, bodyLength, variadicColumnCount);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -986,6 +988,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 {
                     arrowSerializer.AddBufferForward(0); // Empty validity buffer
                     _valueColumns[i].AddBuffers(ref arrowSerializer);
+                }
+            }
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            for (int i = 1; i < _valueColumns.Count; i++)
+            {
+                if (_valueColumns[i] != null)
+                {
+                    _valueColumns[i].AddVariadicBufferCounts(ref arrowSerializer);
                 }
             }
         }

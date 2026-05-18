@@ -167,7 +167,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
         {
-            throw new NotImplementedException();
+            var viewsBuffer = new ArrowBuffer(_binaryList.ViewsMemory);
+            var dataBuffer = new ArrowBuffer(_binaryList.DataMemory);
+            var array = new Apache.Arrow.StringViewArray(Count, viewsBuffer, dataBuffer, nullBuffer, nullCount, 0);
+            return (array, Apache.Arrow.Types.StringViewType.Default);
         }
 
         public int Update<T>(in int index, in T value) where T : IDataValue
@@ -308,7 +311,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public SerializationEstimation GetSerializationEstimate()
         {
-            return new SerializationEstimation(1, 2, _binaryList.ViewsMemory.Length + _binaryList.DataMemory.Length);
+            return new SerializationEstimation(1, 2, _binaryList.ViewsMemory.Length + _binaryList.DataMemory.Length, variadicColumnCount: 1);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -320,6 +323,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             arrowSerializer.AddBufferForward(_binaryList.ViewsMemory.Length);
             arrowSerializer.AddBufferForward(_binaryList.DataMemory.Length);
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            // StringView/BinaryView has 1 variadic data buffer
+            arrowSerializer.AddVariadicCount(1);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
@@ -351,7 +360,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 DataType = ArrowTypeId.String,
                 TotalRows = Count,
-                TotalVariableBytes = 0
+                TotalVariableBytes = _binaryList.InsertPointer - _binaryList.DeletedDataSize
             };
         }
 

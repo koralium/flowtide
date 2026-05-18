@@ -705,7 +705,8 @@ namespace FlowtideDotNet.Core.ColumnStore
             return new SerializationEstimation(
                 2 + keyEstimate.fieldNodeCount + valueEstimate.fieldNodeCount,
                 2 + keyEstimate.bufferCount + valueEstimate.bufferCount,
-                keyEstimate.bodyLength + valueEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+                keyEstimate.bodyLength + valueEstimate.bodyLength + (_offsets.Count * sizeof(int)),
+                keyEstimate.variadicColumnCount + valueEstimate.variadicColumnCount);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -729,6 +730,12 @@ namespace FlowtideDotNet.Core.ColumnStore
             arrowSerializer.AddBufferForward(0); // Struct validity, it is not used so we set it to 0
             _keyColumn.AddBuffers(ref arrowSerializer);
             _valueColumn.AddBuffers(ref arrowSerializer);
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            _keyColumn.AddVariadicBufferCounts(ref arrowSerializer);
+            _valueColumn.AddVariadicBufferCounts(ref arrowSerializer);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

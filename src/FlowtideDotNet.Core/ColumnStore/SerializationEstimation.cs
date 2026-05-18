@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,11 +18,18 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int bufferCount;
         public int bodyLength;
 
-        public SerializationEstimation(int fieldNodeCount, int bufferCount, int bodyLength)
+        /// <summary>
+        /// Number of variadic-width columns (e.g. StringView/BinaryView) that require
+        /// a variadic_buffer_counts entry in the Arrow IPC RecordBatch message.
+        /// </summary>
+        public int variadicColumnCount;
+
+        public SerializationEstimation(int fieldNodeCount, int bufferCount, int bodyLength, int variadicColumnCount = 0)
         {
             this.fieldNodeCount = fieldNodeCount;
             this.bufferCount = bufferCount;
             this.bodyLength = bodyLength;
+            this.variadicColumnCount = variadicColumnCount;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 serializationEstimation.fieldNodeCount += estimate.fieldNodeCount;
                 serializationEstimation.bodyLength += estimate.bodyLength;
                 serializationEstimation.bufferCount += estimate.bufferCount;
+                serializationEstimation.variadicColumnCount += estimate.variadicColumnCount;
             }
             return serializationEstimation;
         }
@@ -54,6 +55,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 serializationEstimation.fieldNodeCount += estimate.fieldNodeCount;
                 serializationEstimation.bodyLength += estimate.bodyLength;
                 serializationEstimation.bufferCount += estimate.bufferCount;
+                serializationEstimation.variadicColumnCount += estimate.variadicColumnCount;
             }
             return serializationEstimation;
         }
@@ -259,13 +261,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var buffersPointer = arrowSerializer.EndVector();
 
+            // Build variadic_buffer_counts vector if any variadic columns exist
+            int variadicCountsOffset = 0;
+            if (serializationEstimation.variadicColumnCount > 0)
+            {
+                arrowSerializer.StartVariadicCountsVectorForward(serializationEstimation.variadicColumnCount);
+                for (int i = 0; i < eventBatchData.Columns.Count; i++)
+                {
+                    eventBatchData.Columns[i].AddVariadicBufferCounts(ref arrowSerializer);
+                }
+                variadicCountsOffset = arrowSerializer.EndVector();
+            }
+
             int compressionOffset = 0;
             if (compressed)
             {
                 compressionOffset = arrowSerializer.CreateBodyCompression(CompressionType.ZSTD, BodyCompressionMethod.BUFFER);
             }
 
-            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer, compressionOffset);
+            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer, compressionOffset, variadicCountsOffset);
 
             var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, arrowSerializer.BufferBodyLength);
 
@@ -317,13 +331,25 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             var buffersPointer = arrowSerializer.EndVector();
 
+            // Build variadic_buffer_counts vector if any variadic columns exist
+            int variadicCountsOffset = 0;
+            if (serializationEstimation.variadicColumnCount > 0)
+            {
+                arrowSerializer.StartVariadicCountsVectorForward(serializationEstimation.variadicColumnCount);
+                for (int i = 0; i < dataColumns.Length; i++)
+                {
+                    dataColumns[i].AddVariadicBufferCounts(ref arrowSerializer);
+                }
+                variadicCountsOffset = arrowSerializer.EndVector();
+            }
+
             int compressionOffset = 0;
             if (compressed)
             {
                 compressionOffset = arrowSerializer.CreateBodyCompression(CompressionType.ZSTD, BodyCompressionMethod.BUFFER);
             }
 
-            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer, compressionOffset);
+            var recordBatchPointer = arrowSerializer.CreateRecordBatch(count, nodesPointer, buffersPointer, compressionOffset, variadicCountsOffset);
 
             var messagePointer = arrowSerializer.CreateMessage(4, MessageHeader.RecordBatch, recordBatchPointer, arrowSerializer.BufferBodyLength);
 

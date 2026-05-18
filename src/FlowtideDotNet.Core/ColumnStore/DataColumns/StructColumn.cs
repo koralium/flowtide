@@ -269,6 +269,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 estimate.bodyLength += columnEstimate.bodyLength;
                 estimate.bufferCount += columnEstimate.bufferCount;
                 estimate.fieldNodeCount += columnEstimate.fieldNodeCount;
+                estimate.variadicColumnCount += columnEstimate.variadicColumnCount;
             }
             return estimate;
         }
@@ -543,6 +544,14 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             for (int i = 0; i < _columns.Length; i++)
             {
                 _columns[i].AddBuffers(ref arrowSerializer);
+            }
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                _columns[i].AddVariadicBufferCounts(ref arrowSerializer);
             }
         }
 

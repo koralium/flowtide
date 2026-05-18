@@ -116,25 +116,28 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
 
             _insertPointer = insertPointer;
             _deletedDataSize = deletedSize;
-            if (dataMemory != null && _insertPointer == -1)
+            if (dataMemory != null)
             {
                 _memoryOwner = dataMemory;
                 _data = dataMemory.Memory.Pin().Pointer;
                 _dataCapacity = dataMemory.Memory.Length;
 
-                // Calculate _insertPointer as the end of the last out-of-line value.
-                int maxEnd = 0;
-                for (int i = 0; i < viewCount; i++)
+                if (_insertPointer == -1)
                 {
-                    var view = _views[i];
-                    if (!view.IsInline)
+                    // Calculate _insertPointer as the end of the last out-of-line value.
+                    int maxEnd = 0;
+                    for (int i = 0; i < viewCount; i++)
                     {
-                        int end = view.Offset + view.Length;
-                        if (end > maxEnd)
-                            maxEnd = end;
+                        var view = _views[i];
+                        if (!view.IsInline)
+                        {
+                            int end = view.Offset + view.Length;
+                            if (end > maxEnd)
+                                maxEnd = end;
+                        }
                     }
+                    _insertPointer = maxEnd;
                 }
-                _insertPointer = maxEnd;
             }
         }
 

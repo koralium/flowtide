@@ -572,7 +572,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         public SerializationEstimation GetSerializationEstimate()
         {
             var innerEstimate = _internalColumn.GetSerializationEstimate();
-            return new SerializationEstimation(innerEstimate.fieldNodeCount + 1, innerEstimate.bufferCount + 1, innerEstimate.bodyLength + (_offsets.Count * sizeof(int)));
+            return new SerializationEstimation(innerEstimate.fieldNodeCount + 1, innerEstimate.bufferCount + 1, innerEstimate.bodyLength + (_offsets.Count * sizeof(int)), innerEstimate.variadicColumnCount);
         }
 
         void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
@@ -585,6 +585,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             arrowSerializer.AddBufferForward(_offsets.Memory.Length);
             _internalColumn.AddBuffers(ref arrowSerializer);
+        }
+
+        void IDataColumn.AddVariadicBufferCounts(ref ArrowSerializer arrowSerializer)
+        {
+            _internalColumn.AddVariadicBufferCounts(ref arrowSerializer);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)

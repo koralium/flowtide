@@ -44,7 +44,8 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
         IArrowArrayVisitor<Int8Array>,
         IArrowArrayVisitor<Int16Array>,
         IArrowArrayVisitor<Int32Array>,
-        IArrowArrayVisitor<StructArray>
+        IArrowArrayVisitor<StructArray>,
+        IArrowArrayVisitor<StringViewArray>
     {
         private readonly IMemoryOwner<byte> recordBatchMemoryOwner;
         private readonly PreAllocatedMemoryManager preAllocatedMemoryManager;
@@ -435,6 +436,26 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
 
             _dataColumn = new StructColumn(header, columns, array.Length);
             _typeId = ArrowTypeId.Struct;
+        }
+
+        public void Visit(StringViewArray array)
+        {
+            _nullCount = array.NullCount;
+            if (array.NullCount > 0)
+            {
+                var bitmapMemoryOwner = GetMemoryOwner(array.NullBitmapBuffer);
+                _bitmapList = BitmapListFactory.Get(bitmapMemoryOwner, array.Length, preAllocatedMemoryManager);
+            }
+            else
+            {
+                _bitmapList = null;
+            }
+            var offsetMemoryOwner = GetMemoryOwner(array.ViewsBuffer);
+            var dataMemoryOwner = array.DataBufferCount > 0 ? GetMemoryOwner(array.DataBuffer(0)) : null;
+            var stringColumn = new StringColumn(offsetMemoryOwner, array.Length, dataMemoryOwner, preAllocatedMemoryManager, 0, -1);
+            _dataColumn = stringColumn;
+            _typeId = ArrowTypeId.String;
+
         }
     }
 }
