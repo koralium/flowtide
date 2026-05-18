@@ -11,15 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Sort;
-using Microsoft.Win32;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Runtime.Intrinsics;
-using System.Runtime.Intrinsics.X86;
 
 namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
 {
@@ -48,6 +41,10 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long>;
+
+            // String
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.String, ArrowTypeId.String)] = BoundarySearchString.RunStringBoundarySearchNoNull;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.String, ArrowTypeId.String)] = BoundarySearchString.BoundarySearchStringNoNullWithInputOffsets;
         }
 
         private static int GetKeyFromTypeNoNull(ArrowTypeId key1, ArrowTypeId key2)
