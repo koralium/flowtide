@@ -84,7 +84,7 @@ public sealed class NexmarkGenerator
         while (count < _numGenCalls)
         {
             // Generating a person approximately 10th time will give us ~10 items/person
-            if (rnd.NextBoolean())
+            if (rnd.Next(10) == 0)
             {
                 cal.IncrementTime();
                 int personId = persons.GetNewId();

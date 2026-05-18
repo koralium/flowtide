@@ -9,11 +9,13 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Nexmark;
 
-public class NexmarkSourceFactory : RegexConnectorSourceFactory
+public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider, IConnectorTableProviderFactory
 {
     private readonly NexmarkDataStream _stream;
 
@@ -24,6 +26,15 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory
 
     public override Relation ModifyPlan(ReadRelation readRelation)
     {
+        if (readRelation.Filter != null)
+        {
+            return new FilterRelation()
+            {
+                Input = readRelation,
+                Emit = readRelation.Emit,
+                Condition = readRelation.Filter,
+            };
+        }
         return readRelation;
     }
 
@@ -54,15 +65,10 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory
         }
 
         List<int> emitIndices = new List<int>();
-        var emitList = readRelation.Emit;
-        if (emitList == null)
-        {
-            emitList = Enumerable.Range(0, readRelation.BaseSchema.Names.Count).ToList();
-        }
 
-        for (int i = 0; i < emitList.Count; i++)
+        for (int i = 0; i < readRelation.BaseSchema.Names.Count; i++)
         {
-            int baseSchemaIndex = emitList[i];
+            int baseSchemaIndex = i;
             string colName = readRelation.BaseSchema.Names[baseSchemaIndex];
             
             int nexmarkIndex = schema.Names.FindIndex(x => string.Equals(x, colName, StringComparison.OrdinalIgnoreCase));
@@ -79,5 +85,40 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory
     public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
     {
         return new TableLineageMetadata("nexmark", readRelation.NamedTable.DotSeperated, default);
+    }
+
+    public bool TryGetTableInformation(IReadOnlyList<string> tableName, [NotNullWhen(true)] out TableMetadata? tableMetadata)
+    {
+        var dotSeparated = string.Join(".", tableName).ToLowerInvariant();
+
+        if (dotSeparated.Contains("person"))
+        {
+            tableMetadata = new TableMetadata(dotSeparated, NexmarkSchema.PersonSchema);
+            return true;
+        }
+        else if (dotSeparated.Contains("auction"))
+        {
+            tableMetadata = new TableMetadata(dotSeparated, NexmarkSchema.AuctionSchema);
+            return true;
+        }
+        else if (dotSeparated.Contains("bid"))
+        {
+            tableMetadata = new TableMetadata(dotSeparated, NexmarkSchema.BidSchema);
+            return true;
+        }
+
+        tableMetadata = null;
+        return false;
+    }
+
+    public bool TryHandleTableFunction(IReadOnlyList<string> functionName, TableProviderTableFunctionArguments sqlTableFunction, [NotNullWhen(true)] out TableProviderTableFunctionResult? relation)
+    {
+        relation = null;
+        return false;
+    }
+
+    public ITableProvider Create()
+    {
+        return this;
     }
 }

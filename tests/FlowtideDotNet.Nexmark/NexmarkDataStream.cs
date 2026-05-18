@@ -19,4 +19,10 @@ public sealed class NexmarkDataStream
 
     public required NamedStruct BidSchema { get; init; }
     public required List<EventBatchData> BidBatches { get; init; }
+
+    public int NumberOfBids => BidBatches.Sum(batch => batch.Columns[0].Count);
+
+    public int NumberOfAuctions => AuctionBatches.Sum(batch => batch.Columns[0].Count);
+
+    public int NumberOfPersons => PersonBatches.Sum(batch => batch.Columns[0].Count);
 }

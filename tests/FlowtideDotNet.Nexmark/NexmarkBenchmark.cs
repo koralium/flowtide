@@ -17,7 +17,7 @@ using System.Text;
 
 namespace FlowtideDotNet.Nexmark
 {
-    internal class NexmarkBenchmark
+    public class NexmarkBenchmark
     {
         private int iterationId = 0;
         private NexmarkQueryStream? _stream;
@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Nexmark
         [GlobalSetup]
         public void Setup()
         {
-            _generator = new NexmarkGenerator();
+            _generator = new NexmarkGenerator(1_00_000);
             _dataStream = _generator.Generate();
         }
 
@@ -47,12 +47,15 @@ namespace FlowtideDotNet.Nexmark
             await _stream!.StartStream(@"
             INSERT INTO output
             SELECT
-                P.name, P.city, P.state, A.id
+                P.name, A.id
             FROM
-                auction AS A INNER JOIN person AS P on A.seller = P.id
+                auction AS A INNER JOIN person AS P on A.sellerId = P.id
             WHERE
-                A.category = 10 and (P.state = 'OR' OR P.state = 'ID' OR P.state = 'CA');
-            ", 1);
+                A.category = 10;
+            ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
+            {
+                Parallelization = 4
+            });
             await _stream.WaitForUpdate();
         }
     }
