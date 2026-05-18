@@ -9,7 +9,7 @@ using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Nexmark;
 
-public sealed class NexmarkStream
+public sealed class NexmarkDataStream
 {
     public required NamedStruct PersonSchema { get; init; }
     public required List<EventBatchData> PersonBatches { get; init; }

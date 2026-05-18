@@ -37,7 +37,7 @@ public sealed class NexmarkGenerator
         _memoryAllocator = memoryAllocator ?? GlobalMemoryManager.Instance;
     }
 
-    public NexmarkStream Generate()
+    public NexmarkDataStream Generate()
     {
         var rnd = new JavaRandom(_seed);
         var cal = new SimpleCalendar(rnd);
@@ -131,7 +131,7 @@ public sealed class NexmarkGenerator
         auctionBuilder.Flush();
         bidBuilder.Flush();
 
-        return new NexmarkStream
+        return new NexmarkDataStream
         {
             PersonSchema = NexmarkSchema.PersonSchema,
             PersonBatches = personBatches,

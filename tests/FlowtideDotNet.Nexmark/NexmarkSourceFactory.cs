@@ -15,9 +15,9 @@ namespace FlowtideDotNet.Nexmark;
 
 public class NexmarkSourceFactory : RegexConnectorSourceFactory
 {
-    private readonly NexmarkStream _stream;
+    private readonly NexmarkDataStream _stream;
 
-    public NexmarkSourceFactory(string regexPattern, NexmarkStream stream) : base(regexPattern)
+    public NexmarkSourceFactory(string regexPattern, NexmarkDataStream stream) : base(regexPattern)
     {
         _stream = stream;
     }
@@ -31,25 +31,49 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory
     {
         var tableName = readRelation.NamedTable.DotSeperated.ToLowerInvariant();
         List<FlowtideDotNet.Core.ColumnStore.EventBatchData>? batches = null;
+        FlowtideDotNet.Substrait.Type.NamedStruct? schema = null;
 
         if (tableName.Contains("person"))
         {
             batches = _stream.PersonBatches;
+            schema = NexmarkSchema.PersonSchema;
         }
         else if (tableName.Contains("auction"))
         {
             batches = _stream.AuctionBatches;
+            schema = NexmarkSchema.AuctionSchema;
         }
         else if (tableName.Contains("bid"))
         {
             batches = _stream.BidBatches;
+            schema = NexmarkSchema.BidSchema;
         }
         else
         {
             throw new ArgumentException($"Unknown table name: {tableName}");
         }
 
-        return new NexmarkDataSourceOperator(readRelation, batches, dataflowBlockOptions);
+        List<int> emitIndices = new List<int>();
+        var emitList = readRelation.Emit;
+        if (emitList == null)
+        {
+            emitList = Enumerable.Range(0, readRelation.BaseSchema.Names.Count).ToList();
+        }
+
+        for (int i = 0; i < emitList.Count; i++)
+        {
+            int baseSchemaIndex = emitList[i];
+            string colName = readRelation.BaseSchema.Names[baseSchemaIndex];
+            
+            int nexmarkIndex = schema.Names.FindIndex(x => string.Equals(x, colName, StringComparison.OrdinalIgnoreCase));
+            if (nexmarkIndex == -1)
+            {
+                throw new InvalidOperationException($"Column '{colName}' not found in Nexmark schema for {tableName}");
+            }
+            emitIndices.Add(nexmarkIndex);
+        }
+
+        return new NexmarkDataSourceOperator(readRelation, batches, emitIndices, dataflowBlockOptions);
     }
 
     public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

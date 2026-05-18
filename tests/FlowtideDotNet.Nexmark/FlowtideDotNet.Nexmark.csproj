@@ -3,12 +3,16 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Substrait\FlowtideDotNet.Substrait.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.AcceptanceTests\FlowtideDotNet.AcceptanceTests.csproj" />
+    <ProjectReference Include="..\FlowtideDotNet.Benchmarks\FlowtideDotNet.Benchmarks.csproj" />
   </ItemGroup>
 
-  <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+	</PropertyGroup>
 
 </Project>

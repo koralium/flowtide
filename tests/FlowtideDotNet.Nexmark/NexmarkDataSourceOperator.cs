@@ -26,13 +26,15 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 {
     private readonly ReadRelation _readRelation;
     private readonly List<EventBatchData> _batches;
+    private readonly List<int> _emitIndices;
     private IObjectState<NexmarkDataSourceState>? _state;
     private HashSet<string> _watermarkNames;
 
-    public NexmarkDataSourceOperator(ReadRelation readRelation, List<EventBatchData> batches, DataflowBlockOptions options) : base(options)
+    public NexmarkDataSourceOperator(ReadRelation readRelation, List<EventBatchData> batches, List<int> emitIndices, DataflowBlockOptions options) : base(options)
     {
         _readRelation = readRelation;
         _batches = batches;
+        _emitIndices = emitIndices;
         _watermarkNames = new HashSet<string>() { readRelation.NamedTable.DotSeperated };
     }
 
@@ -64,6 +66,12 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             var batchData = _batches[_state.Value.SentBatches];
             int rowCount = batchData.Count;
 
+            IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
+            for (int i = 0; i < _emitIndices.Count; i++)
+            {
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]].Copy(MemoryAllocator);
+            }
+
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
@@ -75,7 +83,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 iterations.Add(1);
             }
 
-            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, batchData));
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
             await output.SendAsync(outputBatch);
             
             _state.Value.SentBatches++;
@@ -123,6 +131,12 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             var batchData = _batches[_state.Value.SentBatches];
             int rowCount = batchData.Count;
 
+            IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
+            for (int i = 0; i < _emitIndices.Count; i++)
+            {
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]].Copy(MemoryAllocator);
+            }
+
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
@@ -132,7 +146,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 iterations.Add(1);
             }
 
-            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, batchData));
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
             await output.SendAsync(outputBatch);
 
             _state.Value.SentBatches++;
