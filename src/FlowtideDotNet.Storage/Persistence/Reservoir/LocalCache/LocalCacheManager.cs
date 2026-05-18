@@ -189,9 +189,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     Interlocked.Increment(ref _cacheHits);
                     return await _localCache.ReadAsync(fileId, offset, length, crc32, stateSerializer);
                 }
-                catch (FlowtideChecksumMismatchException)
+                catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                 {
-                    // If there is a CRC missmatch, we delete the file once and try and redownload it, if that does not work, it will cause a crash
+                    // If there is a CRC missmatch or an IO exception, we delete the file once and try and redownload it, if that does not work, it will cause a crash
                     await EvictDataFileAsync(fileId);
                     return await ReadAsync_FetchSlow(fileId, offset, length, crc32, stateSerializer);
                 }

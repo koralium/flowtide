@@ -23,23 +23,45 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 10.0.x
-    - uses: actions/cache@v3
-      with:
-        path: ~/.nuget/packages
-        # Look to see if there is a cache hit for the corresponding requirements file
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget
+        
     - name: Restore dependencies
       run: dotnet restore
+      
     - name: Build
       run: dotnet build --no-restore -p:FeatureFlags=#DEBUG_WRITE
+      
     - name: Test
-      run: dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj --no-build --verbosity normal -p:ParallelizeTestCollections=false --framework net10.0
+      # 1. Inject the mimalloc environment variables here
+      env:
+        MIMALLOC_SHOW_ERRORS: 1
+        MIMALLOC_VERBOSE: 1
+        MIMALLOC_PURGE_DELAY: 0
+        MIMALLOC_PAGE_RESET: 1
+        MIMALLOC_PURGE_DECOMMITS: 1
+        MIMALLOC_ABANDONED_PAGE_PURGE: 1
+      # 2. Add --blame-crash, --diag, and set a specific --results-directory
+      run: >
+        dotnet test ./tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj 
+        --no-build 
+        --verbosity normal 
+        -p:ParallelizeTestCollections=false 
+        --framework net10.0 
+        --blame-crash 
+        --blame-crash-dump-type full 
+        --diag:./CrashDiagnostics/test-diag.txt
+        --results-directory ./CrashDiagnostics
+
+    # 3. Add a new step to upload the crash dumps and VSTest diagnostics
+    - name: Upload Crash Dumps and Diagnostics
+      if: failure() # Only upload the heavy dump files if the tests fail/crash
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-crash-dumps
+        path: ./CrashDiagnostics/
+        
     - name: Upload logs
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: debugwrites
         path: ./tests/FlowtideDotNet.AcceptanceTests/bin/Debug/net10.0/debugwrite
-

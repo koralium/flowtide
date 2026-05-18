@@ -35,6 +35,19 @@ namespace FlowtideDotNet.Storage.Memory
 
         static FlowtideMemoryAllocation()
         {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (Environment.GetEnvironmentVariable("MIMALLOC_ALLOW_THP") == null)
+                {
+                    Environment.SetEnvironmentVariable("MIMALLOC_ALLOW_THP", "0");
+                }
+
+                if (Environment.GetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS") == null)
+                {
+                    Environment.SetEnvironmentVariable("MIMALLOC_PURGE_DECOMMITS", "1");
+                }
+            }
+
             _isMimallocAvailable = NativeLibrary.TryLoad(MiMalloc.NATIVE_LIBRARY,
                 typeof(FlowtideMemoryAllocation).Assembly,
                 DllImportSearchPath.AssemblyDirectory | DllImportSearchPath.ApplicationDirectory,
@@ -110,7 +123,7 @@ namespace FlowtideDotNet.Storage.Memory
         private static FlowtideAllocatedMemory ReallocMimalloc(void* ptr, int oldSize, int newSize, int alignment)
         {
             Debug.Assert(BitOperations.IsPow2(alignment), "Alignment must be a power of 2");
-            
+
             var alignedsize = (newSize + alignment - 1) & ~(alignment - 1);
             alignedsize = (int)MiMalloc.mi_good_size((nuint)alignedsize);
             if (alignedsize == oldSize)
@@ -149,6 +162,14 @@ namespace FlowtideDotNet.Storage.Memory
                 throw new InvalidOperationException("Could not allocate memory");
             }
             return new FlowtideAllocatedMemory { ptr = ptr, length = goodSize };
+        }
+
+        public static void Collect()
+        {
+            if (_isMimallocAvailable)
+            {
+                MiMalloc.mi_collect(true);
+            }
         }
     }
 }

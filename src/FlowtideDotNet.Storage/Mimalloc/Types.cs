@@ -135,99 +135,60 @@ namespace FlowtideDotNet.Storage.Mimalloc
     /// Runtime options.
     public enum mi_option_t
     {
-        // stable options
-
-        // Print error messages.
-        mi_option_show_errors,
-
-        // Print statistics on termination.
-        mi_option_show_stats,
-
-        // Print verbose messages.
-        mi_option_verbose,
-
-        // issue at most N error messages
-        mi_option_max_errors,
-
-        // issue at most N warning messages
-        mi_option_max_warnings,
-
-
-        // advanced options
-
-        // reserve N huge OS pages (1GiB pages) at startup
-        mi_option_reserve_huge_os_pages,
-
-        // Reserve N huge OS pages at a specific NUMA node N.
-        mi_option_reserve_huge_os_pages_at,
-
-        // reserve specified amount of OS memory in an arena at startup (internally, this value is in KiB; use `mi_option_get_size`)
-        mi_option_reserve_os_memory,
-
-        // allow large (2 or 4 MiB) OS pages, implies eager commit. If false, also disables THP for the process.
-        mi_option_allow_large_os_pages,
-
-        // should a memory purge decommit? (=1). Set to 0 to use memory reset on a purge (instead of decommit)
-        mi_option_purge_decommits,
-
-        // initial memory size for arena reservation (= 1 GiB on 64-bit) (internally, this value is in KiB; use `mi_option_get_size`)
-        mi_option_arena_reserve,
-
-        // tag used for OS logging (macOS only for now) (=100)
-        mi_option_os_tag,
-
-        // retry on out-of-memory for N milli seconds (=400), set to 0 to disable retries. (only on windows)
-        mi_option_retry_on_oom,
-
-
-        // experimental options
-
-        // eager commit segments? (after `eager_commit_delay` segments) (enabled by default).
-        mi_option_eager_commit,
-
-        // the first N segments per thread are not eagerly committed (but per page in the segment on demand)
-        mi_option_eager_commit_delay,
-
-        // eager commit arenas? Use 2 to enable just on overcommit systems (=2)
-        mi_option_arena_eager_commit,
-
-        // immediately purge delayed purges on thread termination
-        mi_option_abandoned_page_purge,
-
-        // memory purging is delayed by N milli seconds; use 0 for immediate purging or -1 for no purging at all. (=10)
-        mi_option_purge_delay,
-
-        // 0 = use all available numa nodes, otherwise use at most N nodes.
-        mi_option_use_numa_nodes,
-
-        // 1 = do not use OS memory for allocation (but only programmatically reserved arenas)
-        mi_option_disallow_os_alloc,
-
-        // If set to 1, do not use OS memory for allocation (but only pre-reserved arenas)
-        mi_option_limit_os_alloc,
-
-        // max. percentage of the abandoned segments can be reclaimed per try (=10%)
-        mi_option_max_segment_reclaim,
-
-        // if set, release all memory on exit; sometimes used for dynamic unloading but can be unsafe
-        mi_option_destroy_on_exit,
-
-        // multiplier for `purge_delay` for the purging delay for arenas (=10)
-        mi_option_arena_purge_mult,
-
-        // allow to reclaim an abandoned segment on a free (=1)
-        mi_option_abandoned_reclaim_on_free,
-
-        // extend purge delay on each subsequent delay (=1)
-        mi_option_purge_extend_delay,
-
-        // 1 = do not use arena's for allocation (except if using specific arena id's)
-        mi_option_disallow_arena_alloc,
-
-        // allow visiting heap blocks from abandoned threads (=0)
-        mi_option_visit_abandoned,
-
-
-        _mi_option_last
+        mi_option_show_errors,                // print error messages
+        mi_option_show_stats,                 // print statistics on termination
+        mi_option_verbose,                    // print verbose messages
+                                              // advanced options
+        mi_option_deprecated_eager_commit,
+        mi_option_arena_eager_commit,         // eager commit arenas? Use 2 to enable just on overcommit systems (=2)
+        mi_option_purge_decommits,            // should a memory purge decommit? (=1). Set to 0 to use memory reset on a purge (instead of decommit)
+        mi_option_allow_large_os_pages,       // allow use of large (2 or 4 MiB) OS pages, implies eager commit.
+        mi_option_reserve_huge_os_pages,      // reserve N huge OS pages (1GiB pages) at startup
+        mi_option_reserve_huge_os_pages_at,   // reserve huge OS pages at a specific NUMA node
+        mi_option_reserve_os_memory,          // reserve specified amount of OS memory in an arena at startup (internally, this value is in KiB; use `mi_option_get_size`)
+        mi_option_deprecated_segment_cache,
+        mi_option_deprecated_page_reset,
+        mi_option_deprecated_abandoned_page_purge,
+        mi_option_deprecated_segment_reset,
+        mi_option_deprecated_eager_commit_delay,
+        mi_option_purge_delay,                // memory purging is delayed by N milli seconds; use 0 for immediate purging or -1 for no purging at all. (=10)
+        mi_option_use_numa_nodes,             // 0 = use all available numa nodes, otherwise use at most N nodes.
+        mi_option_disallow_os_alloc,          // 1 = do not use OS memory for allocation (but only programmatically reserved arenas)
+        mi_option_os_tag,                     // tag used for OS logging (macOS only for now) (=100)
+        mi_option_max_errors,                 // issue at most N error messages
+        mi_option_max_warnings,               // issue at most N warning messages
+        mi_option_deprecated_max_segment_reclaim,  // max. percentage of the abandoned segments can be reclaimed per try (=10%)
+        mi_option_destroy_on_exit,            // if set, release all memory on exit; sometimes used for dynamic unloading but can be unsafe
+        mi_option_arena_reserve,              // initial memory size for arena reservation (= 1 GiB on 64-bit) (internally, this value is in KiB; use `mi_option_get_size`)
+        mi_option_arena_purge_mult,           // multiplier for `purge_delay` for the purging delay for arenas (=10)
+        mi_option_deprecated_purge_extend_delay,
+        mi_option_disallow_arena_alloc,       // 1 = do not use arena's for allocation (except if using specific arena id's)
+        mi_option_retry_on_oom,               // retry on out-of-memory for N milli seconds (=400), set to 0 to disable retries. (only on windows)
+        mi_option_visit_abandoned,            // allow visiting theap blocks from abandoned threads (=0)
+        mi_option_guarded_min,                // only used when building with MI_GUARDED: minimal rounded object size for guarded objects (=0)
+        mi_option_guarded_max,                // only used when building with MI_GUARDED: maximal rounded object size for guarded objects (=0)
+        mi_option_guarded_precise,            // disregard minimal alignment requirement to always place guarded blocks exactly in front of a guard page (=0)
+        mi_option_guarded_sample_rate,        // 1 out of N allocations in the min/max range will be guarded (=1000)
+        mi_option_guarded_sample_seed,        // can be set to allow for a (more) deterministic re-execution when a guard page is triggered (=0)
+        mi_option_generic_collect,            // collect theaps every N (=10000) generic allocation calls
+        mi_option_page_reclaim_on_free,       // reclaim abandoned pages on a free (=0). -1 disallowr always, 0 allows if the page originated from the current theap, 1 allow always
+        mi_option_page_full_retain,           // retain N full (small) pages per size class (=2)
+        mi_option_page_max_candidates,        // max candidate pages to consider for allocation (=4)
+        mi_option_max_vabits,                 // max user space virtual address bits to consider (=48)
+        mi_option_pagemap_commit,             // commit the full pagemap (to always catch invalid pointer uses) (=0)
+        mi_option_page_commit_on_demand,      // commit page memory on-demand
+        mi_option_page_max_reclaim,           // don't reclaim pages of the same originating theap if we already own N pages (in that size class) (=-1 (unlimited))
+        mi_option_page_cross_thread_max_reclaim, // don't reclaim pages across threads if we already own N pages (in that size class) (=16)
+        mi_option_allow_thp,                  // allow transparent huge pages? (=1) (on Android =0 by default). Set to 0 to disable THP for the process.
+        mi_option_minimal_purge_size,         // set minimal purge size (in KiB) (=0). By default set to either 64 or 2048 if THP is enabled.
+        mi_option_arena_max_object_size,      // set maximal object size that can be allocated in an arena (in KiB) (=2GiB on 64-bit). 
+        mi_option_arena_is_numa_local,        // experimental
+        _mi_option_last,
+        // legacy option names
+        mi_option_large_os_pages = mi_option_allow_large_os_pages,
+        mi_option_eager_region_commit = mi_option_arena_eager_commit,
+        mi_option_reset_decommits = mi_option_purge_decommits,
+        mi_option_reset_delay = mi_option_purge_delay,
+        mi_option_limit_os_alloc = mi_option_disallow_os_alloc
     }
 }
