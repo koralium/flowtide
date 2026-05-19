@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Nexmark
         [GlobalSetup]
         public void Setup()
         {
-            _generator = new NexmarkGenerator(1_00_000);
+            _generator = new NexmarkGenerator(1_000_000);
             _dataStream = _generator.Generate();
         }
 
@@ -47,14 +47,14 @@ namespace FlowtideDotNet.Nexmark
             await _stream!.StartStream(@"
             INSERT INTO output
             SELECT
-                P.name, A.id
+                P.name, P.city, P.state, A.id
             FROM
-                auction AS A INNER JOIN person AS P on A.sellerId = P.id
+                auction AS A INNER JOIN person AS P on A.seller = P.id
             WHERE
-                A.category = 10;
+                A.category = 10 and (P.state = 'or' OR P.state = 'id' OR P.state = 'ca');
             ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 4
+                Parallelization = 1
             });
             await _stream.WaitForUpdate();
         }

@@ -1,13 +1,8 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Nexmark.Models;
 using FlowtideDotNet.Storage.Memory;
+using System.Collections.Generic;
 
 namespace FlowtideDotNet.Nexmark.Internal;
 
@@ -16,7 +11,6 @@ internal sealed class BidBatchBuilder
     private readonly IMemoryAllocator _memoryAllocator;
     private readonly int _batchSize;
     private readonly List<EventBatchData> _batches;
-    
     private IColumn[] _currentColumns;
     private int _currentRowCount;
 
@@ -26,26 +20,21 @@ internal sealed class BidBatchBuilder
         _batchSize = batchSize;
         _batches = batches;
         _currentColumns = CreateColumns();
+        _currentRowCount = 0;
     }
 
-    private IColumn[] CreateColumns()
-    {
-        var cols = new IColumn[4];
-        for (int i = 0; i < 4; i++)
-        {
-            cols[i] = Column.Create(_memoryAllocator);
-        }
-        return cols;
-    }
-
-    public void Add(Bid bid)
+    public void Add(in Bid bid)
     {
         _currentColumns[0].Add(new Int64Value(bid.AuctionId));
         _currentColumns[1].Add(new Int64Value(bid.BidderId));
         _currentColumns[2].Add(new Int64Value(bid.Price));
-        _currentColumns[3].Add(new Int64Value(bid.DateTime));
+        _currentColumns[3].Add(new StringValue(bid.Channel));
+        _currentColumns[4].Add(new StringValue(bid.Url));
+        _currentColumns[5].Add(new StringValue(bid.DateTime));
+        _currentColumns[6].Add(new StringValue(bid.Extra));
 
         _currentRowCount++;
+
         if (_currentRowCount >= _batchSize)
         {
             Flush();
@@ -60,5 +49,15 @@ internal sealed class BidBatchBuilder
             _currentColumns = CreateColumns();
             _currentRowCount = 0;
         }
+    }
+
+    private IColumn[] CreateColumns()
+    {
+        var columns = new IColumn[7];
+        for (int i = 0; i < 7; i++)
+        {
+            columns[i] = Column.Create(_memoryAllocator);
+        }
+        return columns;
     }
 }

@@ -1,24 +1,60 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
+using FlowtideDotNet.Nexmark.Config;
+using System;
 
 namespace FlowtideDotNet.Nexmark.Models;
 
-/// <summary>
-/// Represents a person in the NEXMark benchmark.
-/// </summary>
-public sealed class Person
+public struct Person
 {
-    public required int Id { get; init; }
-    public required string Name { get; init; }
-    public required string EmailAddress { get; init; }
-    public string? Phone { get; init; }
-    public Address? Address { get; init; }
-    public string? Homepage { get; init; }
-    public string? CreditCard { get; init; }
-    public Profile? Profile { get; init; }
-    public IReadOnlyList<string>? Watches { get; init; }
-    public required long DateTime { get; init; }
+    public long Id { get; set; }
+    public string Name { get; set; }
+    public string EmailAddress { get; set; }
+    public string CreditCard { get; set; }
+    public string City { get; set; }
+    public string State { get; set; }
+    public string DateTime { get; set; }
+    public string Extra { get; set; }
+
+    public static Person Generate(long eventId, long time, NexmarkConfig nex)
+    {
+        var rng = new Random((int)(eventId & 0xFFFFFFFF));
+        long id = LastId(eventId, nex) + nex.FirstPersonId;
+        string name = $"{rng.Choose(nex.FirstNames)} {rng.Choose(nex.LastNames)}";
+        string emailAddress = $"{rng.GenString(7)}@{rng.GenString(5)}.com";
+        string creditCard = $"{rng.Next(0, 10000):0000} {rng.Next(0, 10000):0000} {rng.Next(0, 10000):0000} {rng.Next(0, 10000):0000}";
+        string city = rng.Choose(nex.UsCities);
+        string state = rng.Choose(nex.UsStates);
+
+        int currentSize = 8 + name.Length + emailAddress.Length + creditCard.Length + city.Length + state.Length;
+        string extra = rng.GenNextExtra(currentSize, nex.AvgPersonByteSize);
+
+        return new Person
+        {
+            Id = id,
+            Name = name,
+            EmailAddress = emailAddress,
+            CreditCard = creditCard,
+            City = city,
+            State = state,
+            DateTime = NexmarkUtils.MilliTsToTimestampString(time),
+            Extra = extra
+        };
+    }
+
+    public static long NextId(long eventId, Random rng, NexmarkConfig nex)
+    {
+        long people = LastId(eventId, nex) + 1;
+        long active = Math.Min(people, nex.ActivePeople);
+        return people - active + rng.Next(0, (int)(active + nex.PersonIdLead));
+    }
+
+    public static long LastId(long eventId, NexmarkConfig nex)
+    {
+        long epoch = eventId / nex.ProportionDenominator;
+        long offset = eventId % nex.ProportionDenominator;
+        if (nex.PersonProportion <= offset)
+        {
+            offset = nex.PersonProportion - 1;
+        }
+        return epoch * nex.PersonProportion + offset;
+    }
 }
