@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
+using nietras.SeparatedValues;
 using System.Diagnostics;
 using System.Globalization;
 using System.Threading.Tasks.Dataflow;
@@ -64,8 +65,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles
             {
                 deltaCsvRowsToOutput.Add(FindOutputSchemaNameIndex(fileOptions.DeltaCsvColumns[i]));
             }
-
-
+            
             // Map the emit data against the output schema
             emitList = new List<int>();
             if (readRelation.EmitSet)

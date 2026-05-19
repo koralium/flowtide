@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="CsvHelper" />
+    <PackageReference Include="Sep" />
     <PackageReference Include="Stowage" />
   </ItemGroup>
 
