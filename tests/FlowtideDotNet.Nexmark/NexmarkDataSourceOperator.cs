@@ -79,22 +79,14 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 break;
             }
 
-            if (buffer.Length < 4)
-            {
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                continue;
-            }
-
-            int length = GetMessageLength(buffer);
-
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
-            if (!CheckAndDeserializeBatch(buffer, length, _emitIndices, out batchData))
+            if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
             }
 
-            pipeReader.SkipForward(length + 4);
+            pipeReader.SkipForward(totalLength);
 
             if (currentBatchIndex < _state.Value.SentBatches)
             {
@@ -138,41 +130,34 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
     private bool CheckAndDeserializeBatch(
         System.Buffers.ReadOnlySequence<byte> buffer,
-        int length,
         System.Collections.Generic.IReadOnlyList<int> emitIndices,
-        out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
+        out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData,
+        out int totalLength)
     {
-        var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer.Slice(4));
+        var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
         var deserializer = new FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
 
         if (!deserializer.HasEnoughBytesForProjection(ref sequenceReader, emitIndices))
         {
-            if (buffer.Length < length + 4)
-            {
-                batchData = null;
-                return false;
-            }
+            batchData = null;
+            totalLength = 0;
+            return false;
         }
 
-        sequenceReader = new System.Buffers.SequenceReader<byte>(buffer.Slice(4));
+        sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
         try
         {
             var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader, emitIndices);
             batchData = deserializeResult.EventBatch;
+            totalLength = deserializeResult.TotalLength;
             return true;
         }
         catch (Exception e) when (e.Message.Contains("Not enough data") || e.Message.Contains("Failed to read"))
         {
             batchData = null;
+            totalLength = 0;
             return false;
         }
-    }
-
-    private int GetMessageLength(System.Buffers.ReadOnlySequence<byte> buffer)
-    {
-        var reader = new System.Buffers.SequenceReader<byte>(buffer);
-        reader.TryReadLittleEndian(out int length);
-        return length;
     }
 
     protected override Task<IReadOnlySet<string>> GetWatermarkNames()
@@ -217,28 +202,14 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 break;
             }
 
-            if (buffer.Length < 4)
-            {
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                continue;
-            }
-
-            int length = GetMessageLength(buffer);
-
-            //if (buffer.Length < length + 4)
-            //{
-            //    pipeReader.AdvanceTo(buffer.Start, buffer.End);
-            //    continue;
-            //}
-
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
-            if (!CheckAndDeserializeBatch(buffer, length, _emitIndices, out batchData))
+            if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
             }
 
-            pipeReader.SkipForward(length + 4);
+            pipeReader.SkipForward(totalLength);
 
             if (currentBatchIndex < _state.Value.SentBatches)
             {

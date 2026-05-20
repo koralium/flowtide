@@ -61,12 +61,6 @@ internal sealed class AuctionBatchBuilder
             _eventBatchSerializer.SerializeEventBatch(bufferWriter, b, b.Count);
             
             var span = bufferWriter.WrittenSpan;
-            int length = span.Length;
-            
-            Span<byte> lengthBytes = stackalloc byte[4];
-            System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(lengthBytes, length);
-            
-            _fileStream.Write(lengthBytes);
             _fileStream.Write(span);
 
             _currentColumns = CreateColumns();

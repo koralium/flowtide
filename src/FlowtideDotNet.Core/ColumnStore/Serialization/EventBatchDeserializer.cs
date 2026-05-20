@@ -257,6 +257,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
         public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
+            var initialPosition = data.Consumed;
             if (!_schemaRead)
             {
                 ReadSchemaFromSequence(ref data);
@@ -264,6 +265,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
 
             ReadRecordBatchHeaderFromSequence(ref data);
+            long headerBytes = data.Consumed - initialPosition;
 
             var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);
 
@@ -360,7 +362,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 _rentedSchemaBytes = null;
             }
 
-            return new EventBatchDeserializeResult(new EventBatchData(columns), batchLength);
+            int totalLength = (int)headerBytes + (int)recordBatchMessage.BodyLength;
+            return new EventBatchDeserializeResult(new EventBatchData(columns), batchLength, totalLength);
         }
 
         public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
