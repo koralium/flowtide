@@ -17,15 +17,9 @@ public struct Bid
     {
         var rng = new Random((int)(eventId & 0xFFFFFFFF));
         
-        long auction;
-        if (rng.Next(0, nex.HotAuctionRatio) > 0)
-        {
-            auction = (Auction.LastId(eventId, nex) / nex.HotAuctionRatio2) * nex.HotAuctionRatio2;
-        }
-        else
-        {
-            auction = Auction.NextId(eventId, rng, nex);
-        }
+        long auction = rng.Next(0, nex.HotAuctionRatio) > 0
+            ? (Auction.LastId(eventId, nex) / nex.HotAuctionRatio2) * nex.HotAuctionRatio2
+            : Auction.NextId(eventId, rng, nex);
 
         long bidder;
         if (rng.Next(0, nex.HotBidderRatio) > 0)
