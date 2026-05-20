@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using BenchmarkDotNet.Attributes;
 using FlowtideDotNet.Nexmark.Internal.Diagnosers;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,7 @@ namespace FlowtideDotNet.Nexmark
     [EventCountDiagnoser]
     public class Query2 : QueryBase
     {
+        [Benchmark]
         public async Task Q2()
         {
             await Stream.StartStream(@"

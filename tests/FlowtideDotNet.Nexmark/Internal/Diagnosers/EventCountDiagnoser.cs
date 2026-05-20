@@ -82,10 +82,10 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
             public string Id => "IngressFrequency";
             public string DisplayName => "Ingress rows / s";
             public string Legend => "";
-            public string NumberFormat => "#0.0000";
+            public string NumberFormat => "#0.00";
             public UnitType UnitType => UnitType.Dimensionless;
             public string Unit => "Count";
-            public bool TheGreaterTheBetter => false;
+            public bool TheGreaterTheBetter => true;
             public int PriorityInCategory => 0;
             public bool GetIsAvailable(Metric metric)
                 => true;
