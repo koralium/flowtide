@@ -11,7 +11,8 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
-using FlowtideDotNet.Nexmark.Diagnosers;
+using FlowtideDotNet.Nexmark.Internal;
+using FlowtideDotNet.Nexmark.Internal.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -19,35 +20,12 @@ using System.Text;
 namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
-    public class NexmarkBenchmark
+    public class Query3 : QueryBase
     {
-        private int iterationId = 0;
-        private NexmarkQueryStream? _stream;
-        private NexmarkGenerator _generator = null!;
-        private NexmarkDataStream _dataStream = null!;
-
-        [GlobalSetup]
-        public void Setup()
-        {
-            Console.WriteLine("// Generating data...");
-            _generator = new NexmarkGenerator(10_000_000, batchSize: 10_000);
-            _dataStream = _generator.Generate();
-        }
-
-        [IterationSetup]
-        public void IterationSetup()
-        {
-            _stream = new NexmarkQueryStream(_dataStream, iterationId.ToString())
-            {
-                CachePageCount = 100_000
-            };
-            iterationId++;
-        }
-
         [Benchmark]
         public async Task Q3()
         {
-            await _stream!.StartStream(@"
+            await Stream.StartStream(@"
             INSERT INTO output
             SELECT
                 P.name, P.city, P.state, A.id
@@ -55,11 +33,8 @@ namespace FlowtideDotNet.Nexmark
                 auction AS A INNER JOIN person AS P on A.seller = P.id
             WHERE
                 A.category = 10 and (P.state = 'or' OR P.state = 'id' OR P.state = 'ca');
-            ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
-            {
-                Parallelization = 1
-            });
-            await _stream.WaitForUpdate();
+            ");
+            await Stream.WaitForUpdate();
         }
     }
 }

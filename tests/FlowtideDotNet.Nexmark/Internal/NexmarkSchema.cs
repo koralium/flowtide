@@ -1,7 +1,7 @@
 using FlowtideDotNet.Substrait.Type;
 using System.Collections.Generic;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 public static class NexmarkSchema
 {
@@ -47,7 +47,7 @@ public static class NexmarkSchema
 
     public static NamedStruct BidSchema => new NamedStruct
     {
-        Names = new List<string> { "auction", "bidder", "price", "channel", "url", "dateTime", "extra" },
+        Names = new List<string> { "auction", "bidder", "price", "channel", "url", "date_time", "extra" },
         Struct = new Struct
         {
             Types = new List<SubstraitBaseType>

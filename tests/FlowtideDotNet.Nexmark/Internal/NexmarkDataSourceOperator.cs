@@ -6,10 +6,10 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
-using FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Nexmark.Internal.Builders;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
@@ -19,7 +19,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 internal class NexmarkDataSourceState
 {
@@ -83,7 +83,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 break;
             }
 
-            FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
+            EventBatchData? batchData = null;
             if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
@@ -135,11 +135,11 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
     private bool CheckAndDeserializeBatch(
         System.Buffers.ReadOnlySequence<byte> buffer,
         System.Collections.Generic.IReadOnlyList<int> emitIndices,
-        out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData,
+        out EventBatchData? batchData,
         out int totalLength)
     {
         var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
-        var deserializer = new FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
+        var deserializer = new Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
 
         if (!deserializer.HasEnoughBytesForProjection(ref sequenceReader, emitIndices))
         {
@@ -206,7 +206,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
                 break;
             }
 
-            FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
+            EventBatchData? batchData = null;
             if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);

@@ -7,7 +7,7 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Substrait.Type;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 public sealed class NexmarkDataStream
 {

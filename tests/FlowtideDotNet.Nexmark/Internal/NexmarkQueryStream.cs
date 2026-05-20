@@ -21,9 +21,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace FlowtideDotNet.Nexmark
+namespace FlowtideDotNet.Nexmark.Internal
 {
-    internal class NexmarkQueryStream : FlowtideTestStream
+    public class NexmarkQueryStream : FlowtideTestStream
     {
         private int checkpointCounter = 0;
 

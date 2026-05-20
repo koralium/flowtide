@@ -1,4 +1,4 @@
-using FlowtideDotNet.Nexmark.Config;
+using FlowtideDotNet.Nexmark.Internal.Config;
 using System;
 
 namespace FlowtideDotNet.Nexmark.Models;

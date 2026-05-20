@@ -7,9 +7,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 
-namespace FlowtideDotNet.Nexmark.Internal;
+namespace FlowtideDotNet.Nexmark.Internal.Builders;
 
-internal sealed class AuctionBatchBuilder
+internal sealed class PersonBatchBuilder
 {
     private readonly IMemoryAllocator _memoryAllocator;
     private readonly int _batchSize;
@@ -20,28 +20,26 @@ internal sealed class AuctionBatchBuilder
 
     public int EventCount { get; private set; }
 
-    public AuctionBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize)
+    public PersonBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize)
     {
         _memoryAllocator = memoryAllocator;
         _batchSize = batchSize;
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        _fileStream = File.OpenWrite("auction_batches.bin");
+        _fileStream = File.OpenWrite("person_batches.bin");
     }
 
-    public void Add(in Auction auction)
+    public void Add(in Person person)
     {
-        _currentColumns[0].Add(new Int64Value(auction.Id));
-        _currentColumns[1].Add(new StringValue(auction.ItemName));
-        _currentColumns[2].Add(new StringValue(auction.Description));
-        _currentColumns[3].Add(new Int64Value(auction.InitialBid));
-        _currentColumns[4].Add(new Int64Value(auction.Reserve));
-        _currentColumns[5].Add(new StringValue(auction.DateTime));
-        _currentColumns[6].Add(new StringValue(auction.Expires));
-        _currentColumns[7].Add(new Int64Value(auction.Seller));
-        _currentColumns[8].Add(new Int64Value(auction.Category));
-        _currentColumns[9].Add(new StringValue(auction.Extra));
+        _currentColumns[0].Add(new Int64Value(person.Id));
+        _currentColumns[1].Add(new StringValue(person.Name));
+        _currentColumns[2].Add(new StringValue(person.EmailAddress));
+        _currentColumns[3].Add(new StringValue(person.CreditCard));
+        _currentColumns[4].Add(new StringValue(person.City));
+        _currentColumns[5].Add(new StringValue(person.State));
+        _currentColumns[6].Add(new StringValue(person.DateTime));
+        _currentColumns[7].Add(new StringValue(person.Extra));
 
         _currentRowCount++;
         EventCount++;
@@ -62,7 +60,7 @@ internal sealed class AuctionBatchBuilder
             
             var span = bufferWriter.WrittenSpan;
             _fileStream.Write(span);
-
+            
             _currentColumns = CreateColumns();
             _currentRowCount = 0;
         }
@@ -76,8 +74,8 @@ internal sealed class AuctionBatchBuilder
 
     private IColumn[] CreateColumns()
     {
-        var columns = new IColumn[10];
-        for (int i = 0; i < 10; i++)
+        var columns = new IColumn[8];
+        for (int i = 0; i < 8; i++)
         {
             columns[i] = Column.Create(_memoryAllocator);
         }

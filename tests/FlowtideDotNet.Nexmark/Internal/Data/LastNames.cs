@@ -1,5 +1,5 @@
 ﻿// Licensed under the Apache License, Version 2.0
-namespace FlowtideDotNet.Nexmark.Data;
+namespace FlowtideDotNet.Nexmark.Internal.Data;
 
 /// <summary>
 /// Static array of 5000 last names for the NEXMark generator.

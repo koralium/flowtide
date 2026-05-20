@@ -10,24 +10,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnosers;
+using FlowtideDotNet.Nexmark.Internal.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Nexmark.Diagnosers
+namespace FlowtideDotNet.Nexmark
 {
-    internal class EventCountDiagnoserAttribute : Attribute, IConfigSource
+    [EventCountDiagnoser]
+    public class Query2 : QueryBase
     {
-        public IConfig Config { get; }
-
-        public EventCountDiagnoserAttribute(bool displayExceptionsIfZeroValue = true)
+        public async Task Q2()
         {
-            Config = ManualConfig.CreateEmpty().AddDiagnoser(new EventCountDiagnoser());
+            await Stream.StartStream(@"
+            INSERT INTO output
+            SELECT auction, price FROM bid WHERE (auction % 123) = 0;
+            ");
+            await Stream.WaitForUpdate();
         }
     }
 }

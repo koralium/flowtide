@@ -1,13 +1,13 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
-using FlowtideDotNet.Nexmark.Config;
-using FlowtideDotNet.Nexmark.Internal;
+using FlowtideDotNet.Nexmark.Internal.Builders;
+using FlowtideDotNet.Nexmark.Internal.Config;
 using FlowtideDotNet.Nexmark.Models;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 /// <summary>
 /// A C# port of the modern stateless Nexmark generator (similar to Apache Beam / RisingWave).

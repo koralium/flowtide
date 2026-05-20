@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace FlowtideDotNet.Nexmark.Config;
+namespace FlowtideDotNet.Nexmark.Internal.Config;
 
 public static class NexmarkUtils
 {

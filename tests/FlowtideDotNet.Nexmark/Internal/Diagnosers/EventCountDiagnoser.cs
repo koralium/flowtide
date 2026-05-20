@@ -27,7 +27,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Nexmark.Diagnosers
+namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
 {
     internal class EventCountDiagnoser : IInProcessDiagnoser
     {

@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 using static SqlParser.Ast.DataType;
 using static SqlParser.Ast.MatchRecognizeSymbol;
 
-namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
+namespace FlowtideDotNet.Nexmark.Internal.Builders
 {
     internal class PipeSegment : ReadOnlySequenceSegment<byte>
     {

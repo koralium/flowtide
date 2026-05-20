@@ -2,7 +2,7 @@ using FlowtideDotNet.Core.ColumnStore.Serialization;
 using System;
 using ZstdSharp;
 
-namespace FlowtideDotNet.Nexmark.Internal;
+namespace FlowtideDotNet.Nexmark.Internal.Builders;
 
 internal class ZstdBatchCompressor : IBatchCompressor, IDisposable
 {

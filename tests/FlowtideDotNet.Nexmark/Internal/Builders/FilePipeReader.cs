@@ -14,7 +14,7 @@ using Microsoft.Win32.SafeHandles;
 using System.Buffers;
 using System.IO.Pipelines;
 
-namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
+namespace FlowtideDotNet.Nexmark.Internal.Builders
 {
     public sealed class FilePipeReader : PipeReader
     {

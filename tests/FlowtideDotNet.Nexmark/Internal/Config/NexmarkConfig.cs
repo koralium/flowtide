@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace FlowtideDotNet.Nexmark.Config;
+namespace FlowtideDotNet.Nexmark.Internal.Config;
 
 public class NexmarkConfig
 {

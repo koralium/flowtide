@@ -6,7 +6,7 @@
 
 using FlowtideDotNet.Nexmark.Models;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 /// <summary>
 /// The type of a NEXMark event.

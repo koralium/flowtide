@@ -13,7 +13,7 @@ using FlowtideDotNet.Substrait.Sql;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Nexmark;
+namespace FlowtideDotNet.Nexmark.Internal;
 
 public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider, IConnectorTableProviderFactory
 {
@@ -42,7 +42,7 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
     {
         var tableName = readRelation.NamedTable.DotSeperated.ToLowerInvariant();
         string fileName = "";
-        FlowtideDotNet.Substrait.Type.NamedStruct? schema = null;
+        Substrait.Type.NamedStruct? schema = null;
 
         if (tableName.Contains("person"))
         {

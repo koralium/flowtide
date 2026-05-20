@@ -11,11 +11,5 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Running;
-using FlowtideDotNet.Nexmark;
 
-//NexmarkBenchmark nexmarkBenchmark = new NexmarkBenchmark();
-//nexmarkBenchmark.Setup();
-//nexmarkBenchmark.IterationSetup();
-//await nexmarkBenchmark.Q3();
-
-var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: [.. args, "--join"]);
