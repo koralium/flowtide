@@ -16,7 +16,7 @@ internal sealed class BidBatchBuilder
     private IColumn[] _currentColumns;
     private int _currentRowCount;
     private readonly EventBatchSerializer _eventBatchSerializer;
-    private FileStream _fileStream;
+    private readonly FileStream _fileStream;
 
     public int EventCount { get; private set; }
 
