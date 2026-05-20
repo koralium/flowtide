@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Nexmark
         [GlobalSetup]
         public void Setup()
         {
-            _generator = new NexmarkGenerator(1_000_000, batchSize: 10_000);
+            _generator = new NexmarkGenerator(10_000_000, batchSize: 10_000);
             _dataStream = _generator.Generate();
         }
 
