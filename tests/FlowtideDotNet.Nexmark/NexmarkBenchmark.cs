@@ -11,12 +11,14 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FlowtideDotNet.Nexmark.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace FlowtideDotNet.Nexmark
 {
+    [EventCountDiagnoser]
     public class NexmarkBenchmark
     {
         private int iterationId = 0;
@@ -27,7 +29,7 @@ namespace FlowtideDotNet.Nexmark
         [GlobalSetup]
         public void Setup()
         {
-            _generator = new NexmarkGenerator(10_000_000, batchSize: 10_000);
+            _generator = new NexmarkGenerator(1_000_000, batchSize: 10_000);
             _dataStream = _generator.Generate();
         }
 

@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Win32.SafeHandles;
 using System.Buffers;
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Nexmark;
@@ -27,11 +28,13 @@ internal class NexmarkDataSourceState
 
 public class NexmarkDataSourceOperator : ReadBaseOperator
 {
+    private static Meter meter = new Meter("FlowtideDotNet.Nexmark", "1.0");
     private readonly ReadRelation _readRelation;
     private readonly string _fileName;
     private readonly List<int> _emitIndices;
     private IObjectState<NexmarkDataSourceState>? _state;
     private HashSet<string> _watermarkNames;
+    private Counter<int> _rowCounter;
 
     public NexmarkDataSourceOperator(ReadRelation readRelation, string fileName, List<int> emitIndices, DataflowBlockOptions options) : base(options)
     {
@@ -39,6 +42,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         _fileName = fileName;
         _emitIndices = emitIndices;
         _watermarkNames = new HashSet<string>() { readRelation.NamedTable.DotSeperated };
+        _rowCounter = meter.CreateCounter<int>("IngressRowCount");
     }
 
     public override string DisplayName => $"Nexmark Data Source ({_readRelation.NamedTable.DotSeperated})";
@@ -191,7 +195,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         var pipeReader = new FilePipeReader(handle, 4 * 1024 * 1024);
 
         int currentBatchIndex = 0;
-
+        int totalRowCount = 0;
         while (true)
         {
             var result = await pipeReader.ReadAsync();
@@ -219,6 +223,8 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
             int rowCount = batchData.Count;
 
+            totalRowCount += rowCount;
+
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
             for (int i = 0; i < _emitIndices.Count; i++)
             {
@@ -242,6 +248,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             sentData = true;
         }
 
+        _rowCounter.Add(totalRowCount, new KeyValuePair<string, object?>("operator", Name));
         if (sentData)
         {
             await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(_state.Value.SentBatches)));

@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Benchmarks -->
+    <PackageVersion Include="BenchmarkDotNet" Version="0.16.0-nightly.20260518.538" />
+  </ItemGroup>
+</Project>
