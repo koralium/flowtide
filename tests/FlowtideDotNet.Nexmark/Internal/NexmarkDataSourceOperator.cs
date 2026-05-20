@@ -33,7 +33,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
     private readonly string _fileName;
     private readonly List<int> _emitIndices;
     private IObjectState<NexmarkDataSourceState>? _state;
-    private HashSet<string> _watermarkNames;
+    private readonly HashSet<string> _watermarkNames;
     private Counter<int> _rowCounter;
 
     public NexmarkDataSourceOperator(ReadRelation readRelation, string fileName, List<int> emitIndices, DataflowBlockOptions options) : base(options)
