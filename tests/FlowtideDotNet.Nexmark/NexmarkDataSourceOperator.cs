@@ -244,7 +244,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
             for (int i = 0; i < _emitIndices.Count; i++)
             {
-                selectedColumns[i] = batchData.Columns[_emitIndices[i]].Copy(MemoryAllocator);
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]]; //.Copy(MemoryAllocator);
             }
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
@@ -273,6 +273,6 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         output.ExitCheckpointLock();
         
         // Register changes trigger in case more data is appended later
-        await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
+        //await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
     }
 }

@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     {
         private ReadOnlySpan<byte> _schemaBytes;
         private ReadOnlySpan<byte> _recordBatchHeaderBytes;
+        private byte[]? _rentedHeaderBytes;
+        private byte[]? _rentedSchemaBytes;
 
         private readonly IMemoryAllocator memoryAllocator;
         private readonly IBatchDecompressor? decompressor;
@@ -62,12 +64,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 throw new Exception("Failed to read message length");
             }
-            if (data.UnreadSpan.Length < messageLength)
+            if (data.UnreadSequence.Length < messageLength)
             {
                 throw new Exception($"Not enough data to read schema message, have {data.UnreadSpan.Length} bytes left but expected {messageLength} bytes.");
             }
 
-            _schemaBytes = data.UnreadSpan.Slice(0, messageLength);
+            if (data.UnreadSpan.Length < messageLength)
+            {
+                _rentedSchemaBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                data.UnreadSequence.Slice(0, messageLength).CopyTo(_rentedSchemaBytes);
+                _schemaBytes = _rentedSchemaBytes.AsSpan(0, messageLength);
+            }
+            else
+            {
+                _schemaBytes = data.UnreadSpan.Slice(0, messageLength);
+            }
+            
             data.Advance(messageLength);
         }
 
@@ -93,13 +105,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
             if (data.UnreadSpan.Length < messageLength)
             {
+                _rentedHeaderBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                data.UnreadSequence.Slice(0, messageLength).CopyTo(_rentedHeaderBytes);
+                _recordBatchHeaderBytes = _rentedHeaderBytes.AsSpan(0, messageLength);
             }
             else
             {
-
+                _recordBatchHeaderBytes = data.UnreadSpan.Slice(0, messageLength);
             }
-
-            _recordBatchHeaderBytes = data.UnreadSpan.Slice(0, messageLength);
+            
             data.Advance(messageLength);
         }
 
@@ -181,7 +195,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Not all field nodes were read");
             }
 
-            return new EventBatchDeserializeResult(new EventBatchData(columns), (int)recordBatchHeader.Length);
+            var batchLength = (int)recordBatchHeader.Length;
+            if (_rentedHeaderBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
+                _rentedHeaderBytes = null;
+            }
+            if (_rentedSchemaBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedSchemaBytes);
+                _rentedSchemaBytes = null;
+            }
+
+            return new EventBatchDeserializeResult(new EventBatchData(columns), batchLength);
         }
 
         public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data)
@@ -253,7 +279,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Not all field nodes were read");
             }
 
-            return new DataColumnsDeserializeResult(columns, (int)recordBatchHeader.Length);
+            var batchLength = (int)recordBatchHeader.Length;
+            if (_rentedHeaderBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
+                _rentedHeaderBytes = null;
+            }
+            if (_rentedSchemaBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedSchemaBytes);
+                _rentedSchemaBytes = null;
+            }
+
+            return new DataColumnsDeserializeResult(columns, batchLength);
         }
 
         private FieldNodeStruct ReadNextFieldNode(ref readonly RecordBatchStruct recordBatchStruct)
