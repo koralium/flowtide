@@ -27,15 +27,9 @@ public struct Auction
         string dateTime = NexmarkUtils.MilliTsToTimestampString(time);
         string expires = NexmarkUtils.MilliTsToTimestampString(time + NextLength(eventsSoFar, rng, time, nex));
         
-        long seller;
-        if (rng.Next(0, nex.HotSellerRatio) > 0)
-        {
-            seller = (Person.LastId(eventId, nex) / nex.HotSellerRatio2) * nex.HotSellerRatio2;
-        }
-        else
-        {
-            seller = Person.NextId(eventId, rng, nex);
-        }
+        long seller = rng.Next(0, nex.HotSellerRatio) > 0
+            ? (Person.LastId(eventId, nex) / nex.HotSellerRatio2) * nex.HotSellerRatio2
+            : Person.NextId(eventId, rng, nex);
         seller += nex.FirstPersonId;
         
         long category = nex.FirstCategoryId + rng.Next(0, nex.NumCategories);
