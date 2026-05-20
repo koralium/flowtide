@@ -329,8 +329,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 // Padding at the end of the record batch, advance past the padding
                 var padding = recordBatchMessage.BodyLength - readDataIndex;
-                data.Advance(padding);
-                readDataIndex += (int)padding;
+                if (data.Remaining >= padding)
+                {
+                    data.Advance(padding);
+                    readDataIndex += (int)padding;
+                }
+                else
+                {
+                    readDataIndex += (int)data.Remaining;
+                    data.Advance(data.Remaining);
+                }
             }
             if (readDataIndex > recordBatchMessage.BodyLength)
             {
@@ -430,8 +438,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 // Padding at the end of the record batch, advance past the padding
                 var padding = recordBatchMessage.BodyLength - readDataIndex;
-                data.Advance(padding);
-                readDataIndex += (int)padding;
+                if (data.Remaining >= padding)
+                {
+                    data.Advance(padding);
+                    readDataIndex += (int)padding;
+                }
+                else
+                {
+                    readDataIndex += (int)data.Remaining;
+                    data.Advance(data.Remaining);
+                }
             }
             if (readDataIndex > recordBatchMessage.BodyLength)
             {

@@ -64,8 +64,8 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         
         bool sentData = false;
 
-        using var fileStream = System.IO.File.OpenRead(_fileName);
-        var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
+        using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
+        var pipeReader = new FilePipeReader(handle, 16 * 1024 * 1024);
 
         int currentBatchIndex = 0;
 
@@ -87,22 +87,14 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
             int length = GetMessageLength(buffer);
 
-            if (buffer.Length < length + 4)
-            {
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                continue;
-            }
-
-            var batchBuffer = buffer.Slice(4, length);
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
-
-            if (!TryDeserializeBatch(batchBuffer, _emitIndices, out batchData))
+            if (!CheckAndDeserializeBatch(buffer, length, _emitIndices, out batchData))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
             }
 
-            pipeReader.AdvanceTo(buffer.GetPosition(length + 4));
+            pipeReader.SkipForward(length + 4);
 
             if (currentBatchIndex < _state.Value.SentBatches)
             {
@@ -144,20 +136,28 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         output.ExitCheckpointLock();
     }
 
-    private int GetMessageLength(System.Buffers.ReadOnlySequence<byte> buffer)
+    private bool CheckAndDeserializeBatch(
+        System.Buffers.ReadOnlySequence<byte> buffer,
+        int length,
+        System.Collections.Generic.IReadOnlyList<int> emitIndices,
+        out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
     {
-        var reader = new System.Buffers.SequenceReader<byte>(buffer);
-        reader.TryReadLittleEndian(out int length);
-        return length;
-    }
-
-    private bool TryDeserializeBatch(System.Buffers.ReadOnlySequence<byte> buffer, System.Collections.Generic.IReadOnlyList<int>? includeColumns, out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
-    {
+        var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer.Slice(4));
         var deserializer = new FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
+
+        if (!deserializer.HasEnoughBytesForProjection(ref sequenceReader, emitIndices))
+        {
+            if (buffer.Length < length + 4)
+            {
+                batchData = null;
+                return false;
+            }
+        }
+
+        sequenceReader = new System.Buffers.SequenceReader<byte>(buffer.Slice(4));
         try
         {
-            var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
-            var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader, includeColumns);
+            var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader, emitIndices);
             batchData = deserializeResult.EventBatch;
             return true;
         }
@@ -166,6 +166,13 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             batchData = null;
             return false;
         }
+    }
+
+    private int GetMessageLength(System.Buffers.ReadOnlySequence<byte> buffer)
+    {
+        var reader = new System.Buffers.SequenceReader<byte>(buffer);
+        reader.TryReadLittleEndian(out int length);
+        return length;
     }
 
     protected override Task<IReadOnlySet<string>> GetWatermarkNames()
@@ -196,7 +203,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         bool sentData = false;
 
         using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
-        var pipeReader = new FilePipeReader(handle, 16 * 1024 * 1024);
+        var pipeReader = new FilePipeReader(handle, 4 * 1024 * 1024);
 
         int currentBatchIndex = 0;
 
@@ -218,22 +225,20 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
             int length = GetMessageLength(buffer);
 
-            if (buffer.Length < length + 4)
-            {
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                continue;
-            }
+            //if (buffer.Length < length + 4)
+            //{
+            //    pipeReader.AdvanceTo(buffer.Start, buffer.End);
+            //    continue;
+            //}
 
-            var batchBuffer = buffer.Slice(4, length);
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
-
-            if (!TryDeserializeBatch(batchBuffer, _emitIndices, out batchData))
+            if (!CheckAndDeserializeBatch(buffer, length, _emitIndices, out batchData))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
             }
 
-            pipeReader.AdvanceTo(buffer.GetPosition(length + 4));
+            pipeReader.SkipForward(length + 4);
 
             if (currentBatchIndex < _state.Value.SentBatches)
             {
