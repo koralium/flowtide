@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Nexmark
         [GlobalSetup]
         public void Setup()
         {
-            _generator = new NexmarkGenerator(1_000_000);
+            _generator = new NexmarkGenerator(10_000_000);
             _dataStream = _generator.Generate();
         }
 
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Nexmark
                 A.category = 10 and (P.state = 'or' OR P.state = 'id' OR P.state = 'ca');
             ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 1
+                Parallelization = 4
             });
             await _stream.WaitForUpdate();
         }

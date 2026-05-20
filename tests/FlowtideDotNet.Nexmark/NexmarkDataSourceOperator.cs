@@ -196,9 +196,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         bool sentData = false;
 
         using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
-        //using var fileStream = System.IO.File.OpenRead(_fileName);
-        var pipeReader = new FilePipeReader(handle);
-        //var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
+        var pipeReader = new FilePipeReader(handle, 16 * 1024 * 1024);
 
         int currentBatchIndex = 0;
 
