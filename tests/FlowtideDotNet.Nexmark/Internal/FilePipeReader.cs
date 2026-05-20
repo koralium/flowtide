@@ -16,30 +16,20 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
 {
-    public sealed class FilePipeReader : PipeReader, IDisposable
+    public sealed class FilePipeReader : PipeReader
     {
         private readonly SafeFileHandle _fileHandle;
         private readonly ArrayPool<byte> _pool;
         private readonly int _bufferSize;
-        private readonly CancellationTokenSource _internalCts;
 
-        // Sequence State (Only contains fully completed reads)
         private PipeSegment? _activeHead;
         private PipeSegment? _activeTail;
         private PipeSegment? _freeSegments;
 
-        // Prefetch State (The background worker)
-        private ValueTask<int> _prefetchTask;
-        private PipeSegment? _prefetchSegment;
-        private Memory<byte> _prefetchTargetBuffer;
-        private bool _hasPrefetchStarted;
-
-        // Cursors
         private int _headIndex;
         private long _fileOffset;
         private bool _isCompleted;
         private bool _needsMoreData;
-        private bool _isDisposed;
 
         public FilePipeReader(SafeFileHandle fileHandle, int bufferSize = 4 * 1024 * 1024)
         {
@@ -49,8 +39,6 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
             _fileOffset = 0;
             _isCompleted = false;
             _needsMoreData = true;
-            _hasPrefetchStarted = false;
-            _internalCts = new CancellationTokenSource();
         }
 
         private PipeSegment AllocateSegment()
@@ -62,22 +50,14 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
                 segment.Reset();
                 return segment;
             }
-
             return new PipeSegment(_pool, _bufferSize);
         }
 
         public override async ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
         {
-            ObjectDisposedException.ThrowIf(_isDisposed, this);
-
             if (_isCompleted && _activeHead == null)
             {
                 return new ReadResult(default, isCanceled: false, isCompleted: true);
-            }
-
-            if (!_hasPrefetchStarted && !_isCompleted)
-            {
-                StartNextPrefetch();
             }
 
             if (!_needsMoreData && _activeHead != null)
@@ -85,87 +65,129 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
                 return new ReadResult(CreateSequence(), isCanceled: false, isCompleted: false);
             }
 
-            if (_hasPrefetchStarted)
+            var newSegment = AllocateSegment();
+            Memory<byte> targetBuffer = newSegment.AvailableMemory.Slice(newSegment.End);
+
+            int bytesRead = await RandomAccess.ReadAsync(_fileHandle, targetBuffer, _fileOffset, cancellationToken);
+
+            if (bytesRead == 0)
             {
-                int bytesRead;
-                var completedSegment = _prefetchSegment!;
+                _isCompleted = true;
+                newSegment.ReturnToPool();
+            }
+            else
+            {
+                _fileOffset += bytesRead;
+                newSegment.Advance(bytesRead);
 
-                try
-                {
-                    // Link the user's cancellation token with our internal one
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _internalCts.Token);
-
-                    // Note: RandomAccess.ReadAsync might ignore cancellation if it's deeply queued in the OS, 
-                    // but this ensures we try to abort at the framework level.
-                    bytesRead = await _prefetchTask.AsTask().WaitAsync(linkedCts.Token);
-                }
-                catch (Exception)
-                {
-                    // If it fails or cancels, the memory is unsafe. We abort and safely orphan/clean it.
-                    _hasPrefetchStarted = false;
-                    _prefetchSegment = null;
-                    _isCompleted = true;
-
-                    // Return to pool to prevent leak. 
-                    // (If the OS is still holding it, we rely on the internal Complete() logic or process crash anyway)
-                    completedSegment.ReturnToPool();
-                    throw;
-                }
-
-                _hasPrefetchStarted = false;
-                _prefetchSegment = null;
-
-                if (bytesRead == 0)
+                if (bytesRead < targetBuffer.Length)
                 {
                     _isCompleted = true;
-                    completedSegment.Reset();
-                    completedSegment._next = _freeSegments;
-                    _freeSegments = completedSegment;
+                }
+
+                if (_activeTail != null)
+                {
+                    _activeTail.SetNext(newSegment);
+                    _activeTail = newSegment;
                 }
                 else
                 {
-                    _fileOffset += bytesRead;
-                    completedSegment.Advance(bytesRead);
-
-                    if (bytesRead < _prefetchTargetBuffer.Length)
-                    {
-                        _isCompleted = true;
-                    }
-
-                    if (_activeTail != null)
-                    {
-                        _activeTail.SetNext(completedSegment);
-                        _activeTail = completedSegment;
-                    }
-                    else
-                    {
-                        _activeHead = _activeTail = completedSegment;
-                        _headIndex = 0;
-                    }
+                    _activeHead = _activeTail = newSegment;
+                    _headIndex = 0;
                 }
             }
 
-            if (!_isCompleted && !_hasPrefetchStarted)
+            _needsMoreData = false;
+            return new ReadResult(CreateSequence(), isCanceled: false, isCompleted: _isCompleted);
+        }
+
+        // ─── THE NEW SKIP MAGIC ──────────────────────────────────────────
+
+        public void SkipForward(long bytesToSkip)
+        {
+            if (bytesToSkip <= 0) return;
+
+            long bufferedBytes = GetBufferedBytes();
+
+            if (bytesToSkip <= bufferedBytes)
             {
-                StartNextPrefetch();
+                // The junk data is already in RAM. Just advance our cursors over it.
+                AdvanceInternal(bytesToSkip);
             }
+            else
+            {
+                // The junk data extends past our memory. 
+                // 1. Calculate what is still on the disk.
+                long bytesStillOnDisk = bytesToSkip - bufferedBytes;
 
-            return new ReadResult(CreateSequence(), isCanceled: false, isCompleted: _isCompleted && !_hasPrefetchStarted);
+                // 2. Trash all current memory buffers (they only contain junk anyway)
+                ClearActiveSegments();
+
+                // 3. Jump the physical NVMe file pointer!
+                _fileOffset += bytesStillOnDisk;
+
+                // 4. Force the next ReadAsync to pull fresh data from the new offset
+                _needsMoreData = true;
+
+                // If we hit EOF via skip, we should ideally check file length, 
+                // but the next ReadAsync returning 0 bytes will handle it naturally.
+            }
         }
 
-        private void StartNextPrefetch()
+        private long GetBufferedBytes()
         {
-            _prefetchSegment = AllocateSegment();
-            _prefetchTargetBuffer = _prefetchSegment.AvailableMemory.Slice(_prefetchSegment.End);
+            long count = 0;
+            var current = _activeHead;
+            bool isFirst = true;
 
-            _prefetchTask = RandomAccess.ReadAsync(_fileHandle, _prefetchTargetBuffer, _fileOffset, _internalCts.Token);
-            _hasPrefetchStarted = true;
+            while (current != null)
+            {
+                count += isFirst ? (current.Length - _headIndex) : current.Length;
+                isFirst = false;
+                current = (PipeSegment?)current.Next;
+            }
+            return count;
         }
 
-        public override void AdvanceTo(SequencePosition consumed)
+        private void AdvanceInternal(long bytesToConsume)
         {
-            AdvanceTo(consumed, consumed);
+            long remaining = bytesToConsume;
+
+            while (_activeHead != null && remaining > 0)
+            {
+                int availableInHead = _activeHead.Length - _headIndex;
+
+                if (remaining >= availableInHead)
+                {
+                    // Consume this entire segment
+                    remaining -= availableInHead;
+
+                    var oldHead = _activeHead;
+                    _activeHead = (PipeSegment?)oldHead.Next;
+                    _headIndex = 0;
+
+                    oldHead.Reset();
+                    oldHead._next = _freeSegments;
+                    _freeSegments = oldHead;
+
+                    if (_activeHead == null)
+                    {
+                        _activeTail = null;
+                        _needsMoreData = true;
+                    }
+                }
+                else
+                {
+                    // Consume partial segment
+                    _headIndex += (int)remaining;
+                    remaining = 0;
+                }
+            }
         }
+
+        // ─────────────────────────────────────────────────────────────────
+
+        public override void AdvanceTo(SequencePosition consumed) => AdvanceTo(consumed, consumed);
 
         public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
         {
@@ -199,99 +221,46 @@ namespace FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser
                 oldHead._next = _freeSegments;
                 _freeSegments = oldHead;
 
-                if (_activeHead == null)
-                {
-                    _activeTail = null;
-                }
+                if (_activeHead == null) _activeTail = null;
             }
         }
 
         private ReadOnlySequence<byte> CreateSequence()
         {
-            if (_activeHead == null || _activeTail == null)
-            {
-                return default;
-            }
-
-            return new ReadOnlySequence<byte>(
-                _activeHead,
-                _headIndex,
-                _activeTail,
-                _activeTail.Length
-            );
+            if (_activeHead == null || _activeTail == null) return default;
+            return new ReadOnlySequence<byte>(_activeHead, _headIndex, _activeTail, _activeTail.Length);
         }
 
-        public override bool TryRead(out ReadResult result) => throw new NotSupportedException();
-
-        public override void CancelPendingRead()
+        private void ClearActiveSegments()
         {
-            _internalCts.Cancel();
-        }
-
-        public override void Complete(Exception? exception = null)
-        {
-            if (_isCompleted) return;
-            _isCompleted = true;
-
-            // 1. Cancel any ongoing OS read immediately
-            _internalCts.Cancel();
-
-            // 2. Safe async handoff for the prefetch memory
-            if (_hasPrefetchStarted)
-            {
-                var orphanedTask = _prefetchTask;
-                var orphanedSegment = _prefetchSegment;
-
-                _hasPrefetchStarted = false;
-                _prefetchSegment = null;
-
-                // Fire-and-forget background task to wait for the OS to release the memory
-                Task.Run(async () =>
-                {
-                    try
-                    {
-                        await orphanedTask;
-                    }
-                    catch
-                    {
-                        // Ignore cancellation/I/O errors from the aborted task
-                    }
-                    finally
-                    {
-                        // ONLY return to the pool once we are 100% certain the OS is done with the pointer
-                        orphanedSegment?.ReturnToPool();
-                    }
-                });
-            }
-
-            // 3. Synchronous cleanup for memory we know the OS isn't touching
             var current = _activeHead;
             while (current != null)
             {
                 var next = (PipeSegment?)current.Next;
-                current.ReturnToPool();
+                current.Reset();
+                current._next = _freeSegments;
+                _freeSegments = current;
                 current = next;
             }
-
-            current = _freeSegments;
-            while (current != null)
-            {
-                var next = current._next;
-                current.ReturnToPool();
-                current = next;
-            }
-
-            _activeHead = _activeTail = _freeSegments = null;
+            _activeHead = _activeTail = null;
+            _headIndex = 0;
         }
 
-        public void Dispose()
+        public override bool TryRead(out ReadResult result) => throw new NotSupportedException();
+        public override void CancelPendingRead() { }
+
+        public override void Complete(Exception? exception = null)
         {
-            if (!_isDisposed)
+            ClearActiveSegments();
+
+            var currentFree = _freeSegments;
+            while (currentFree != null)
             {
-                Complete();
-                _internalCts.Dispose();
-                _isDisposed = true;
+                var next = currentFree._next;
+                currentFree.ReturnToPool();
+                currentFree = next;
             }
+            _freeSegments = null;
         }
     }
 }

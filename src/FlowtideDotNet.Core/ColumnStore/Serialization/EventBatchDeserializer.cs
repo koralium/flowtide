@@ -128,6 +128,133 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             _schemaRead = true;
         }
 
+        public bool HasEnoughBytesForProjection(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
+        {
+            var initialPosition = data.Consumed;
+            byte[]? rentedSchemaBytes = null;
+            byte[]? rentedRbBytes = null;
+
+            int originalFieldNodeIndex = fieldNodeIndex;
+            int originalBufferIndex = bufferIndex;
+
+            try
+            {
+                ReadOnlySpan<byte> schemaSpan;
+
+                if (!_schemaRead)
+                {
+                    if (!data.TryReadLittleEndian(out int magicNumber) || magicNumber != -1) return false;
+                    if (!data.TryReadLittleEndian(out int messageLength)) return false;
+                    if (data.Remaining < messageLength) return false;
+
+                    var schemaData = data.Sequence.Slice(data.Position, messageLength);
+                    if (schemaData.IsSingleSegment)
+                    {
+                        schemaSpan = schemaData.FirstSpan;
+                    }
+                    else
+                    {
+                        rentedSchemaBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                        schemaData.CopyTo(rentedSchemaBytes);
+                        schemaSpan = rentedSchemaBytes.AsSpan(0, messageLength);
+                    }
+                    data.Advance(messageLength);
+                }
+                else
+                {
+                    schemaSpan = _schemaBytes;
+                }
+
+                if (!data.TryReadLittleEndian(out int rbMagicNumber) || rbMagicNumber != -1) return false;
+                if (!data.TryReadLittleEndian(out int rbMessageLength)) return false;
+                if (data.Remaining < rbMessageLength) return false;
+
+                var rbData = data.Sequence.Slice(data.Position, rbMessageLength);
+                ReadOnlySpan<byte> rbSpan;
+                if (rbData.IsSingleSegment)
+                {
+                    rbSpan = rbData.FirstSpan;
+                }
+                else
+                {
+                    rentedRbBytes = ArrayPool<byte>.Shared.Rent(rbMessageLength);
+                    rbData.CopyTo(rentedRbBytes);
+                    rbSpan = rentedRbBytes.AsSpan(0, rbMessageLength);
+                }
+
+                var rbMessage = MessageStruct.GetRootAsMessage(ref rbSpan, 0);
+                if (rbMessage.HeaderType != MessageHeader.RecordBatch || includeColumns == null)
+                {
+                    return data.Remaining >= rbMessageLength + rbMessage.BodyLength;
+                }
+
+                var recordBatchHeader = new RecordBatchStruct(rbSpan, rbMessage.HeaderPosition());
+                
+                var schemaMessage = MessageStruct.GetRootAsMessage(ref schemaSpan, 0);
+                var schema = new SchemaStruct(schemaSpan, schemaMessage.HeaderPosition());
+
+                long maxRequiredBodyBytes = 0;
+                
+                fieldNodeIndex = 0;
+                bufferIndex = 0;
+
+                for (int i = 0; i < schema.FieldsLength; i++)
+                {
+                    var field = new FieldStruct(schemaSpan, schema.FieldPosition(i));
+                    
+                    bool include = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            include = true;
+                            break;
+                        }
+                    }
+
+                    int startBufferIndex = bufferIndex;
+                    SkipColumn(in field);
+                    
+                    if (include)
+                    {
+                        for (int j = startBufferIndex; j < bufferIndex; j++)
+                        {
+                            var bufferInfoSpan = rbSpan.Slice(recordBatchHeader.BuffersStartIndex + (j * 16));
+                            var bufferOffset = BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);
+                            var bufferLength = BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan.Slice(8));
+                            long end = bufferOffset + bufferLength;
+                            if (end > maxRequiredBodyBytes)
+                            {
+                                maxRequiredBodyBytes = end;
+                            }
+                        }
+                    }
+                }
+                
+                return data.Remaining >= rbMessageLength + maxRequiredBodyBytes;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                fieldNodeIndex = originalFieldNodeIndex;
+                bufferIndex = originalBufferIndex;
+
+                if (rentedSchemaBytes != null)
+                {
+                    ArrayPool<byte>.Shared.Return(rentedSchemaBytes);
+                }
+                if (rentedRbBytes != null)
+                {
+                    ArrayPool<byte>.Shared.Return(rentedRbBytes);
+                }
+                
+                data.Rewind(data.Consumed - initialPosition);
+            }
+        }
+
         public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
             if (!_schemaRead)
