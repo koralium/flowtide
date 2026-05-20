@@ -28,7 +28,7 @@ internal class NexmarkDataSourceState
 
 public class NexmarkDataSourceOperator : ReadBaseOperator
 {
-    private static Meter meter = new Meter("FlowtideDotNet.Nexmark", "1.0");
+    private static readonly Meter meter = new Meter("FlowtideDotNet.Nexmark", "1.0");
     private readonly ReadRelation _readRelation;
     private readonly string _fileName;
     private readonly List<int> _emitIndices;
