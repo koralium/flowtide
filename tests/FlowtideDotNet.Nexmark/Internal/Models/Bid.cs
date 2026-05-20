@@ -21,15 +21,9 @@ public struct Bid
             ? (Auction.LastId(eventId, nex) / nex.HotAuctionRatio2) * nex.HotAuctionRatio2
             : Auction.NextId(eventId, rng, nex);
 
-        long bidder;
-        if (rng.Next(0, nex.HotBidderRatio) > 0)
-        {
-            bidder = (Person.LastId(eventId, nex) / nex.HotBidderRatio2) * nex.HotBidderRatio2 + 1;
-        }
-        else
-        {
-            bidder = Person.NextId(eventId, rng, nex);
-        }
+        long bidder = rng.Next(0, nex.HotBidderRatio) > 0
+            ? (Person.LastId(eventId, nex) / nex.HotBidderRatio2) * nex.HotBidderRatio2 + 1
+            : Person.NextId(eventId, rng, nex);
 
         long price = rng.GenPrice();
 
