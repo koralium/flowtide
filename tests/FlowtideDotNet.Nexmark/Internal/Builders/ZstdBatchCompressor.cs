@@ -6,7 +6,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Builders;
 
 internal class ZstdBatchCompressor : IBatchCompressor, IDisposable
 {
-    private Compressor _compressor;
+    private readonly Compressor _compressor;
 
     public ZstdBatchCompressor()
     {
