@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
+using System.Buffers;
 
 namespace FlowtideDotNet.Nexmark;
 
@@ -25,15 +26,15 @@ internal class NexmarkDataSourceState
 public class NexmarkDataSourceOperator : ReadBaseOperator
 {
     private readonly ReadRelation _readRelation;
-    private readonly List<EventBatchData> _batches;
+    private readonly string _fileName;
     private readonly List<int> _emitIndices;
     private IObjectState<NexmarkDataSourceState>? _state;
     private HashSet<string> _watermarkNames;
 
-    public NexmarkDataSourceOperator(ReadRelation readRelation, List<EventBatchData> batches, List<int> emitIndices, DataflowBlockOptions options) : base(options)
+    public NexmarkDataSourceOperator(ReadRelation readRelation, string fileName, List<int> emitIndices, DataflowBlockOptions options) : base(options)
     {
         _readRelation = readRelation;
-        _batches = batches;
+        _fileName = fileName;
         _emitIndices = emitIndices;
         _watermarkNames = new HashSet<string>() { readRelation.NamedTable.DotSeperated };
     }
@@ -61,9 +62,52 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         
         bool sentData = false;
 
-        while (_state.Value.SentBatches < _batches.Count)
+        using var fileStream = System.IO.File.OpenRead(_fileName);
+        var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
+
+        int currentBatchIndex = 0;
+
+        while (true)
         {
-            var batchData = _batches[_state.Value.SentBatches];
+            var result = await pipeReader.ReadAsync();
+            var buffer = result.Buffer;
+
+            if (buffer.IsEmpty && result.IsCompleted)
+            {
+                break;
+            }
+
+            if (buffer.Length < 4)
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            int length = GetMessageLength(buffer);
+
+            if (buffer.Length < length + 4)
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            var batchBuffer = buffer.Slice(4, length);
+            FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
+
+            if (!TryDeserializeBatch(batchBuffer, out batchData))
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            pipeReader.AdvanceTo(buffer.GetPosition(length + 4));
+
+            if (currentBatchIndex < _state.Value.SentBatches)
+            {
+                currentBatchIndex++;
+                continue;
+            }
+
             int rowCount = batchData.Count;
 
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
@@ -75,8 +119,6 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
-            // Add weights and iterations for all rows in this batch
-            // The primitive lists will grow automatically
             for (int i = 0; i < rowCount; i++)
             {
                 weights.Add(1);
@@ -87,6 +129,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             await output.SendAsync(outputBatch);
             
             _state.Value.SentBatches++;
+            currentBatchIndex++;
             sentData = true;
         }
 
@@ -97,6 +140,30 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         }
 
         output.ExitCheckpointLock();
+    }
+
+    private int GetMessageLength(System.Buffers.ReadOnlySequence<byte> buffer)
+    {
+        var reader = new System.Buffers.SequenceReader<byte>(buffer);
+        reader.TryReadLittleEndian(out int length);
+        return length;
+    }
+
+    private bool TryDeserializeBatch(System.Buffers.ReadOnlySequence<byte> buffer, out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
+    {
+        var deserializer = new FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
+        try
+        {
+            var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
+            var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader);
+            batchData = deserializeResult.EventBatch;
+            return true;
+        }
+        catch (Exception e) when (e.Message.Contains("Not enough data") || e.Message.Contains("Failed to read"))
+        {
+            batchData = null;
+            return false;
+        }
     }
 
     protected override Task<IReadOnlySet<string>> GetWatermarkNames()
@@ -126,9 +193,52 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
         bool sentData = false;
 
-        while (_state.Value.SentBatches < _batches.Count)
+        using var fileStream = System.IO.File.OpenRead(_fileName);
+        var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
+
+        int currentBatchIndex = 0;
+
+        while (true)
         {
-            var batchData = _batches[_state.Value.SentBatches];
+            var result = await pipeReader.ReadAsync();
+            var buffer = result.Buffer;
+
+            if (buffer.IsEmpty && result.IsCompleted)
+            {
+                break;
+            }
+
+            if (buffer.Length < 4)
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            int length = GetMessageLength(buffer);
+
+            if (buffer.Length < length + 4)
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            var batchBuffer = buffer.Slice(4, length);
+            FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
+
+            if (!TryDeserializeBatch(batchBuffer, out batchData))
+            {
+                pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                continue;
+            }
+
+            pipeReader.AdvanceTo(buffer.GetPosition(length + 4));
+
+            if (currentBatchIndex < _state.Value.SentBatches)
+            {
+                currentBatchIndex++;
+                continue;
+            }
+
             int rowCount = batchData.Count;
 
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
@@ -150,6 +260,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             await output.SendAsync(outputBatch);
 
             _state.Value.SentBatches++;
+            currentBatchIndex++;
             sentData = true;
         }
 
@@ -161,7 +272,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
         output.ExitCheckpointLock();
         
-        // Register changes trigger in case more data is appended to _batches later
+        // Register changes trigger in case more data is appended later
         await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
     }
 }

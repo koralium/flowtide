@@ -1,9 +1,11 @@
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Nexmark.Config;
 using FlowtideDotNet.Nexmark.Internal;
 using FlowtideDotNet.Nexmark.Models;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Nexmark;
 
@@ -37,13 +39,9 @@ public sealed class NexmarkGenerator
 
     public NexmarkDataStream Generate()
     {
-        var personBatches = new List<EventBatchData>();
-        var auctionBatches = new List<EventBatchData>();
-        var bidBatches = new List<EventBatchData>();
-
-        var personBuilder = new PersonBatchBuilder(_memoryAllocator, _batchSize, personBatches);
-        var auctionBuilder = new AuctionBatchBuilder(_memoryAllocator, _batchSize, auctionBatches);
-        var bidBuilder = new BidBatchBuilder(_memoryAllocator, _batchSize, bidBatches);
+        var personBuilder = new PersonBatchBuilder(_memoryAllocator, _batchSize);
+        var auctionBuilder = new AuctionBatchBuilder(_memoryAllocator, _batchSize);
+        var bidBuilder = new BidBatchBuilder(_memoryAllocator, _batchSize);
 
         for (long eventsSoFar = 0; eventsSoFar < _numGenCalls; eventsSoFar++)
         {
@@ -67,19 +65,23 @@ public sealed class NexmarkGenerator
                 bidBuilder.Add(in bid);
             }
         }
-
+        
         personBuilder.Flush();
         auctionBuilder.Flush();
         bidBuilder.Flush();
 
+        personBuilder.Complete();
+        auctionBuilder.Complete();
+        bidBuilder.Complete();
+
         return new NexmarkDataStream
         {
             PersonSchema = NexmarkSchema.PersonSchema,
-            PersonBatches = personBatches,
+            NumberOfPersons = personBuilder.EventCount,
             AuctionSchema = NexmarkSchema.AuctionSchema,
-            AuctionBatches = auctionBatches,
+            NumberOfAuctions = auctionBuilder.EventCount,
             BidSchema = NexmarkSchema.BidSchema,
-            BidBatches = bidBatches
+            NumberOfBids = bidBuilder.EventCount
         };
     }
 }

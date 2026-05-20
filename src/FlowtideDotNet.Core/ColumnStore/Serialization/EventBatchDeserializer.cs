@@ -86,9 +86,17 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Failed to read message length");
             }
 
-            if (data.UnreadSpan.Length < messageLength)
+            if (data.UnreadSequence.Length < messageLength)
             {
                 throw new Exception("Not enough data to read record batch message");
+            }
+
+            if (data.UnreadSpan.Length < messageLength)
+            {
+            }
+            else
+            {
+
             }
 
             _recordBatchHeaderBytes = data.UnreadSpan.Slice(0, messageLength);

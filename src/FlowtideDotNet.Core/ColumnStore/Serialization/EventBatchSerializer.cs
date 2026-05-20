@@ -17,7 +17,7 @@ using ZstdSharp;
 
 namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
-    internal class EventBatchSerializer
+    public class EventBatchSerializer
     {
         private int[] vtable;
         private int[] vtables;

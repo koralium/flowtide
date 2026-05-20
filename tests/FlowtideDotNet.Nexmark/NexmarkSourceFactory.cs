@@ -41,22 +41,22 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
     public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
     {
         var tableName = readRelation.NamedTable.DotSeperated.ToLowerInvariant();
-        List<FlowtideDotNet.Core.ColumnStore.EventBatchData>? batches = null;
+        string fileName = "";
         FlowtideDotNet.Substrait.Type.NamedStruct? schema = null;
 
         if (tableName.Contains("person"))
         {
-            batches = _stream.PersonBatches;
+            fileName = "person_batches.bin";
             schema = NexmarkSchema.PersonSchema;
         }
         else if (tableName.Contains("auction"))
         {
-            batches = _stream.AuctionBatches;
+            fileName = "auction_batches.bin";
             schema = NexmarkSchema.AuctionSchema;
         }
         else if (tableName.Contains("bid"))
         {
-            batches = _stream.BidBatches;
+            fileName = "bid_batches.bin";
             schema = NexmarkSchema.BidSchema;
         }
         else
@@ -79,7 +79,7 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
             emitIndices.Add(nexmarkIndex);
         }
 
-        return new NexmarkDataSourceOperator(readRelation, batches, emitIndices, dataflowBlockOptions);
+        return new NexmarkDataSourceOperator(readRelation, fileName, emitIndices, dataflowBlockOptions);
     }
 
     public override TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)

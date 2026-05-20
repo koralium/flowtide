@@ -1,8 +1,11 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Nexmark.Models;
 using FlowtideDotNet.Storage.Memory;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Nexmark.Internal;
 
@@ -10,17 +13,21 @@ internal sealed class PersonBatchBuilder
 {
     private readonly IMemoryAllocator _memoryAllocator;
     private readonly int _batchSize;
-    private readonly List<EventBatchData> _batches;
     private IColumn[] _currentColumns;
     private int _currentRowCount;
+    private readonly EventBatchSerializer _eventBatchSerializer;
+    private FileStream _fileStream;
 
-    public PersonBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize, List<EventBatchData> batches)
+    public int EventCount { get; private set; }
+
+    public PersonBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize)
     {
         _memoryAllocator = memoryAllocator;
         _batchSize = batchSize;
-        _batches = batches;
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
+        _eventBatchSerializer = new EventBatchSerializer();
+        _fileStream = File.OpenWrite("person_batches.bin");
     }
 
     public void Add(in Person person)
@@ -35,6 +42,7 @@ internal sealed class PersonBatchBuilder
         _currentColumns[7].Add(new StringValue(person.Extra));
 
         _currentRowCount++;
+        EventCount++;
 
         if (_currentRowCount >= _batchSize)
         {
@@ -46,10 +54,28 @@ internal sealed class PersonBatchBuilder
     {
         if (_currentRowCount > 0)
         {
-            _batches.Add(new EventBatchData(_currentColumns));
+            var b = new EventBatchData(_currentColumns);
+            var bufferWriter = new System.Buffers.ArrayBufferWriter<byte>();
+            _eventBatchSerializer.SerializeEventBatch(bufferWriter, b, b.Count);
+            
+            var span = bufferWriter.WrittenSpan;
+            int length = span.Length;
+            
+            Span<byte> lengthBytes = stackalloc byte[4];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt32LittleEndian(lengthBytes, length);
+            
+            _fileStream.Write(lengthBytes);
+            _fileStream.Write(span);
+            
             _currentColumns = CreateColumns();
             _currentRowCount = 0;
         }
+    }
+
+    public void Complete()
+    {
+        Flush();
+        _fileStream.Dispose();
     }
 
     private IColumn[] CreateColumns()

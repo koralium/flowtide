@@ -12,17 +12,14 @@ namespace FlowtideDotNet.Nexmark;
 public sealed class NexmarkDataStream
 {
     public required NamedStruct PersonSchema { get; init; }
-    public required List<EventBatchData> PersonBatches { get; init; }
 
     public required NamedStruct AuctionSchema { get; init; }
-    public required List<EventBatchData> AuctionBatches { get; init; }
 
     public required NamedStruct BidSchema { get; init; }
-    public required List<EventBatchData> BidBatches { get; init; }
 
-    public int NumberOfBids => BidBatches.Sum(batch => batch.Columns[0].Count);
+    public int NumberOfBids { get; init; }
 
-    public int NumberOfAuctions => AuctionBatches.Sum(batch => batch.Columns[0].Count);
+    public int NumberOfAuctions { get; init; }
 
-    public int NumberOfPersons => PersonBatches.Sum(batch => batch.Columns[0].Count);
+    public int NumberOfPersons { get; init; }
 }
