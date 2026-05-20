@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             _schemaRead = true;
         }
 
-        public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data)
+        public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
             if (!_schemaRead)
             {
@@ -167,6 +167,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 isCompressed = true;
             }
 
+            var batchLength = (int)recordBatchHeader.Length;
             bufferStart = recordBatchHeader.BuffersStartIndex;
             IColumn[] columns = new IColumn[fieldsLength];
             for (int i = 0; i < fieldsLength; i++)
@@ -175,6 +176,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 if (decompressor != null)
                 {
                     decompressor.ColumnChange(i);
+                }
+                if (includeColumns != null)
+                {
+                    bool found = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        SkipColumn(in field);
+                        columns[i] = new Column(batchLength, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+                        continue;
+                    }
                 }
                 columns[i] = DeserializeColumn(ref data, in field, in recordBatchHeader);
             }
@@ -195,7 +214,6 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Not all field nodes were read");
             }
 
-            var batchLength = (int)recordBatchHeader.Length;
             if (_rentedHeaderBytes != null)
             {
                 ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
@@ -210,7 +228,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             return new EventBatchDeserializeResult(new EventBatchData(columns), batchLength);
         }
 
-        public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data)
+        public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
             if (!_schemaRead)
             {
@@ -257,6 +275,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 if (decompressor != null)
                 {
                     decompressor.ColumnChange(i);
+                }
+                if (includeColumns != null)
+                {
+                    bool found = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        SkipColumn(in field);
+                        columns[i] = new NullColumn(0); // Dummy column for data columns
+                        continue;
+                    }
                 }
                 var fieldNode = ReadNextFieldNode(in recordBatchHeader);
                 var dataColumnResult = DeserializeDataColumn(ref data, in field, in recordBatchHeader, (int)fieldNode.Length);
@@ -746,6 +782,76 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
 
             return true;
+        }
+
+        private void SkipColumn(ref readonly FieldStruct fieldStruct)
+        {
+            fieldNodeIndex++;
+
+            if (fieldStruct.TypeType == ArrowType.Null)
+            {
+                return;
+            }
+
+            if (fieldStruct.TypeType != ArrowType.Union)
+            {
+                bufferIndex++; // validity
+            }
+
+            SkipDataColumn(in fieldStruct);
+        }
+
+        private void SkipDataColumn(ref readonly FieldStruct fieldStruct)
+        {
+            switch (fieldStruct.TypeType)
+            {
+                case ArrowType.Null:
+                    break;
+                case ArrowType.Int:
+                case ArrowType.Bool:
+                case ArrowType.FloatingPoint:
+                case ArrowType.FixedSizeBinary:
+                    bufferIndex++;
+                    break;
+                case ArrowType.Utf8:
+                case ArrowType.Binary:
+                    bufferIndex += 2;
+                    break;
+                case ArrowType.List:
+                    bufferIndex++;
+                    var listChild = fieldStruct.Children(0);
+                    SkipColumn(in listChild);
+                    break;
+                case ArrowType.Map:
+                    var mapChild = fieldStruct.Children(0);
+                    fieldNodeIndex++;
+                    bufferIndex += 2; // offset and ExceptEmptyBuffer
+                    var keyField = mapChild.Children(0);
+                    var valueField = mapChild.Children(1);
+                    SkipColumn(in keyField);
+                    SkipColumn(in valueField);
+                    break;
+                case ArrowType.Union:
+                    bufferIndex += 2;
+                    fieldNodeIndex++; // null field node
+                    for (int i = 1; i < fieldStruct.ChildrenLength; i++)
+                    {
+                        var child = fieldStruct.Children(i);
+                        fieldNodeIndex++;
+                        bufferIndex++;
+                        SkipDataColumn(in child);
+                    }
+                    break;
+                case ArrowType.Struct_:
+                    for (int i = 0; i < fieldStruct.ChildrenLength; i++)
+                    {
+                        var child = fieldStruct.Children(i);
+                        SkipColumn(in child);
+                    }
+                    break;
+                default:
+                    throw new NotImplementedException(fieldStruct.TypeType.ToString());
+            }
         }
     }
 }

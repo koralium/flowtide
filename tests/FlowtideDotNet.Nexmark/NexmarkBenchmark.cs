@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Nexmark
                 A.category = 10 and (P.state = 'or' OR P.state = 'id' OR P.state = 'ca');
             ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 4
+                Parallelization = 1
             });
             await _stream.WaitForUpdate();
         }

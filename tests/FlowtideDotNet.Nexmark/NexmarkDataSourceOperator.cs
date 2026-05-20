@@ -96,7 +96,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             var batchBuffer = buffer.Slice(4, length);
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
 
-            if (!TryDeserializeBatch(batchBuffer, out batchData))
+            if (!TryDeserializeBatch(batchBuffer, _emitIndices, out batchData))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
@@ -115,7 +115,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
             for (int i = 0; i < _emitIndices.Count; i++)
             {
-                selectedColumns[i] = batchData.Columns[_emitIndices[i]].Copy(MemoryAllocator);
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]];
             }
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
@@ -151,13 +151,13 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         return length;
     }
 
-    private bool TryDeserializeBatch(System.Buffers.ReadOnlySequence<byte> buffer, out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
+    private bool TryDeserializeBatch(System.Buffers.ReadOnlySequence<byte> buffer, System.Collections.Generic.IReadOnlyList<int>? includeColumns, out FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData)
     {
         var deserializer = new FlowtideDotNet.Core.ColumnStore.Serialization.EventBatchDeserializer(MemoryAllocator);
         try
         {
             var sequenceReader = new System.Buffers.SequenceReader<byte>(buffer);
-            var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader);
+            var deserializeResult = deserializer.DeserializeBatch(ref sequenceReader, includeColumns);
             batchData = deserializeResult.EventBatch;
             return true;
         }
@@ -227,7 +227,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             var batchBuffer = buffer.Slice(4, length);
             FlowtideDotNet.Core.ColumnStore.EventBatchData? batchData = null;
 
-            if (!TryDeserializeBatch(batchBuffer, out batchData))
+            if (!TryDeserializeBatch(batchBuffer, _emitIndices, out batchData))
             {
                 pipeReader.AdvanceTo(buffer.Start, buffer.End);
                 continue;
@@ -246,7 +246,7 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
             IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
             for (int i = 0; i < _emitIndices.Count; i++)
             {
-                selectedColumns[i] = batchData.Columns[_emitIndices[i]]; //.Copy(MemoryAllocator);
+                selectedColumns[i] = batchData.Columns[_emitIndices[i]];
             }
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
@@ -273,8 +273,5 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
         }
 
         output.ExitCheckpointLock();
-        
-        // Register changes trigger in case more data is appended later
-        //await this.RegisterTrigger("changes", TimeSpan.FromMilliseconds(50));
     }
 }
