@@ -6,15 +6,17 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Connector.Files.Internal.CsvFiles.Parser;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Win32.SafeHandles;
+using System.Buffers;
 using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
-using System.Buffers;
 
 namespace FlowtideDotNet.Nexmark;
 
@@ -193,8 +195,10 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
         bool sentData = false;
 
-        using var fileStream = System.IO.File.OpenRead(_fileName);
-        var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
+        using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
+        //using var fileStream = System.IO.File.OpenRead(_fileName);
+        var pipeReader = new FilePipeReader(handle);
+        //var pipeReader = System.IO.Pipelines.PipeReader.Create(fileStream);
 
         int currentBatchIndex = 0;
 
