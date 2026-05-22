@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Nexmark
         private int iterationId = 0;
         private NexmarkQueryStream _stream = null!;
         private readonly NexmarkGenerator _generator = null!;
-        private NexmarkDataStream _dataStream = null!;
+        private readonly NexmarkDataStream _dataStream = null!;
 
         protected NexmarkQueryStream Stream => _stream;
 
