@@ -25,7 +25,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     {
         public delegate void SortDelegate(SortCompareContext context, ref Span<int> indices);
 
+        public delegate void SortWithTagsDelegate(SortCompareContext context, ref Span<int> indices, ref Span<int> tags);
+
         private static readonly ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
+
+        private static readonly ConcurrentDictionary<UInt128, SortWithTagsDelegate> _tagsCache = new ConcurrentDictionary<UInt128, SortWithTagsDelegate>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static UInt128 CreateKey(IColumn[] columns)
@@ -76,5 +80,48 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             IntroSort.Sort(indices, ref comparer);
         }
 
+        public static SortWithTagsDelegate GetOrCompileWithTags(UInt128 key, IColumn[] columns)
+        {
+            return _tagsCache.GetOrAdd(key, static (key, args) => CompileWithTags(args), columns);
+        }
+
+        private static SortWithTagsDelegate CompileWithTags(IColumn[] columns)
+        {
+            var comparerType = ComparerStructCompiler.Compile(columns);
+
+            var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
+            var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
+            var tagsParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "tags");
+
+            var newExpr = Expression.New(comparerType.GetConstructor([typeof(SortCompareContext)]), parameter);
+
+            var doSort = typeof(SortCompiler).GetMethod(nameof(DoSortWithTags), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+
+            var callSort = Expression.Call(doSort.MakeGenericMethod(comparerType), indicesParameter, tagsParameter, newExpr);
+
+            var lambda = Expression.Lambda<SortWithTagsDelegate>(callSort, parameter, indicesParameter, tagsParameter);
+
+            return lambda.Compile();
+        }
+
+        public static void DoSortWithTags<TComparer>(ref Span<int> indices, ref Span<int> tags, TComparer comparer) where TComparer : struct, IComparer<int>
+        {
+            IntroSort.Sort(indices, ref comparer);
+
+            if (indices.Length == 0) return;
+
+            // After sorting indices, we need to find tags
+            int currentGroup = 0;
+            tags[0] = 0;
+
+            for (int i = 1; i < indices.Length; i++)
+            {
+                if (comparer.Compare(indices[i - 1], indices[i]) != 0)
+                {
+                    currentGroup++;
+                }
+                tags[i] = currentGroup;
+            }
+        }
     }
 }

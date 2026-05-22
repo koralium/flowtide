@@ -30,6 +30,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         private readonly SelfComparePointers[] _pointers;
         private UInt128 _lastKey = 0;
         private SortCompiler.SortDelegate? _lastSort;
+        private SortCompiler.SortWithTagsDelegate? _lastSortWithTags;
         public BatchSorter(int columnCount)
         {
             _pointers = new SelfComparePointers[columnCount];
@@ -55,6 +56,33 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             }
 
             _lastSort(new SortCompareContext(columns, _pointers), ref indirect);
+        }
+
+        /// <summary>
+        /// Does a sort and an extra pass to find duplicate rows.
+        /// These are created as tags, 0 0 1 1 1 1 etc, where if they share the same value in the sort columns, they get the same tag.
+        /// This is helpful to to create at this step since columns are already in cache.
+        /// </summary>
+        /// <param name="columns"></param>
+        /// <param name="indirect"></param>
+        /// <param name="tags"></param>
+        public void SortDataWithTags(IColumn[] columns, ref Span<int> indirect, ref Span<int> tags)
+        {
+            Debug.Assert(columns.Length == _pointers.Length);
+            var key = SortCompiler.CreateKey(columns);
+            if (key != _lastKey || _lastSortWithTags == null)
+            {
+                _lastSortWithTags = SortCompiler.GetOrCompileWithTags(key, columns);
+                _lastKey = key;
+            }
+            for (int i = 0; i < columns.Length; i++)
+            {
+                if (columns[i].SupportSelfCompareExpression)
+                {
+                    columns[i].SetSelfComparePointers(ref _pointers[i]);
+                }
+            }
+            _lastSortWithTags(new SortCompareContext(columns, _pointers), ref indirect, ref tags);
         }
     }
 }
