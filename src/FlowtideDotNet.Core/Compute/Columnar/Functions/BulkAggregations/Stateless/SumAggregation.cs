@@ -15,6 +15,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -30,6 +31,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         {
             var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
             throw new NotImplementedException();
+        }
+
+        public static void Register(IFunctionsRegister functionsRegister)
+        {
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new SumAggregationDefinition());
         }
     }
 
@@ -49,7 +55,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             return Task.CompletedTask;
         }
 
-        public bool Compute<TValue>(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
+        public bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
         {
             groupState.GetValue(_dataValueContainer);
             for (int i = groupStartIndex; i < groupEndIndex; i++)

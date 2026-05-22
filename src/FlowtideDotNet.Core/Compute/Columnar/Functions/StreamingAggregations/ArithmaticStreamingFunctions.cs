@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateless;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -26,6 +27,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             ColumnMinMaxAggregation.RegisterMax(functionsRegister);
             ColumnMinMaxByAggregation.RegisterMinBy(functionsRegister);
             ColumnMinMaxByAggregation.RegisterMaxBy(functionsRegister);
+
+            // Bulk
+            SumAggregationDefinition.Register(functionsRegister);
 
             functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>

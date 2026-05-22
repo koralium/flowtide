@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             return _bulkInserter!.ApplyBatch(rowReferences, weightArray, weights.Count, new MinRowMutator(), totalBatchSize);
         }
 
-        public bool Compute<TValue>(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
+        public bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
         {
             // Could compare values here, issue is if we get a delete.
             // Fetching the new value should be possible in GetValuesAsync

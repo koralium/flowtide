@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
 {
-    internal interface IColumnBulkAggregation
+    public interface IColumnBulkAggregation
     {
         /// <summary>
         /// A new incoming batch of data, use this method to do any projections for arguments to the aggregate method.
@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         void NewBatch(PrimitiveList<int> weights, EventBatchData batchData);
 
         /// <summary>
-        /// If the measure needs to store any data to its own state handling, if stateles this can return just a ValueTask.CompletedTask
+        /// If the measure needs to store any data to its own state handling, if stateless this can return just a ValueTask.CompletedTask
         /// </summary>
         /// <param name="weights"></param>
         /// <param name="groupValueColumns"></param>
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         /// <param name="indices"></param>
         /// <param name="data"></param>
         /// <param name="groupState"></param>
-        bool Compute<TValue>(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState);
+        bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState);
 
         /// <summary>
         /// Fetches the current value, the grouping values are sorted by group key in ascending order.

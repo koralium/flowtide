@@ -19,7 +19,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
 {
-    internal interface IBulkAggregationDefinition
+    public interface IBulkAggregationDefinition
     {
         IColumnBulkAggregation Create(AggregateFunction aggregateFunction, IFunctionsRegister functionsRegister);
     }
