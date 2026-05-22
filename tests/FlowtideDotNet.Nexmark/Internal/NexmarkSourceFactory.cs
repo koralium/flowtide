@@ -28,11 +28,14 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
     {
         if (readRelation.Filter != null)
         {
+            var filter = readRelation.Filter;
+            readRelation.Filter = null;
+
             return new FilterRelation()
             {
                 Input = readRelation,
                 Emit = readRelation.Emit,
-                Condition = readRelation.Filter,
+                Condition = filter,
             };
         }
         return readRelation;
