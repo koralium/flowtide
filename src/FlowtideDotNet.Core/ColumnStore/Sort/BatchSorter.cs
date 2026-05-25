@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
         /// <summary>
         /// Does a sort and an extra pass to find duplicate rows.
         /// These are created as tags, 0 0 1 1 1 1 etc, where if they share the same value in the sort columns, they get the same tag.
-        /// This is helpful to to create at this step since columns are already in cache.
+        /// This is helpful to create at this step since columns are already in cache.
         /// </summary>
         /// <param name="columns"></param>
         /// <param name="indirect"></param>
