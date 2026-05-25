@@ -125,7 +125,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void InsertFrom(ColumnAggregateStateReference[] values, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions)
         {
-            throw new NotImplementedException();
+            var valuesBatch = values[0].referenceBatch;
+            for (int i = 0; i < columnCount; i++)
+            {
+                var col = valuesBatch.Columns[i];
+                _eventBatch.Columns[i].InsertFrom(col, ref sortedLookup, ref targetPositions, -1);
+            }
+            for (int i = 0; i < values.Length; i++)
+            {
+                _weights.InsertAt(targetPositions[i], values[i].weight);
+                _previousValueSent.InsertAt(targetPositions[i], values[i].valueSent);
+            }
         }
 
         public void RemoveAt(int index)

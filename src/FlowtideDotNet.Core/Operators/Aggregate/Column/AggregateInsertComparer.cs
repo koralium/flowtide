@@ -91,6 +91,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     end = high;
                 }
             }
+            if (columnCount == 0)
+            {
+                if (keyContainer.Count > 0)
+                {
+                    return new FindBoundriesResult(0, 0);
+                }
+                return new FindBoundriesResult(-1, -1);
+            }
             return new FindBoundriesResult(start, end);
         }
     }

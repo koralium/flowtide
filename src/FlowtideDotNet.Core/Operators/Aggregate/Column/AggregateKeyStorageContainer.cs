@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -121,7 +122,30 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
-            throw new NotImplementedException();
+            var batchReference = keys[0].referenceBatch;
+
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                var sourceColumn = batchReference.Columns[i];
+
+                if (sourceColumn is ColumnWithOffset columnWithOffset)
+                {
+                    var offsets = columnWithOffset.Offsets;
+                    for (int j = 0; j < sortedLookup.Length; j++)
+                    {
+                        var key = keys[sortedLookup[j]];
+                        lookupBuffer[j] = offsets[key.RowIndex];
+                    }
+                    ReadOnlySpan<int> lb = lookupBuffer;
+                    column.InsertFrom(columnWithOffset.InnerColumn, in lb, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+                else
+                {
+                    column.InsertFrom(sourceColumn, in sortedLookup, in targetPositions, ColumnWithOffset.NullValueIndex);
+                }
+            }
+            _length += sortedLookup.Length;
         }
 
         public void Insert_Internal(int index, ColumnRowReference key)
