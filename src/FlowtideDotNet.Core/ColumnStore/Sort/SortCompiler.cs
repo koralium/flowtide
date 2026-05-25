@@ -64,9 +64,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
 
-            var newExpr = Expression.New(comparerType.GetConstructor([typeof(SortCompareContext)]), parameter);
+            var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
+            if (ctor == null)
+            {
+                throw new InvalidOperationException($"Comparer struct {comparerType.FullName} does not have the expected constructor.");
+            }
+            var newExpr = Expression.New(ctor, parameter);
 
             var doSort = typeof(SortCompiler).GetMethod(nameof(DoSort), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+
+            if (doSort == null)
+            {
+                throw new InvalidOperationException($"Could not find method {nameof(DoSort)} on {typeof(SortCompiler).FullName}.");
+            }
 
             var callSort = Expression.Call(doSort.MakeGenericMethod(comparerType), indicesParameter, newExpr);
 
@@ -93,9 +103,21 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
             var tagsParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "tags");
 
-            var newExpr = Expression.New(comparerType.GetConstructor([typeof(SortCompareContext)]), parameter);
+            var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
+
+            if (ctor == null)
+            {
+                throw new InvalidOperationException($"Comparer struct {comparerType.FullName} does not have the expected constructor.");
+            }
+
+            var newExpr = Expression.New(ctor, parameter);
 
             var doSort = typeof(SortCompiler).GetMethod(nameof(DoSortWithTags), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+
+            if (doSort == null)
+            {
+                throw new InvalidOperationException($"Could not find method {nameof(DoSortWithTags)} on {typeof(SortCompiler).FullName}.");
+            }
 
             var callSort = Expression.Call(doSort.MakeGenericMethod(comparerType), indicesParameter, tagsParameter, newExpr);
 
