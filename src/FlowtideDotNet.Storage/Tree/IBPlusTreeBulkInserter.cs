@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Tree
         ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>;
 
-        ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, TMutator mutator, int totalBatchByteSize)
+        ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, int[] duplicateTags, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>;
 
         int LeafHitCount { get; }
