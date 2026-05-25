@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -143,6 +142,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _lookupBuffer = new int[keyLength];
                 _lowerBounds = new int[keyLength];
                 _upperBounds = new int[keyLength];
+                _duplicateTags = new int[keyLength];
             }
 
             // Sort the keys and values by keys
@@ -155,6 +155,21 @@ namespace FlowtideDotNet.Storage.Tree.Internal
 
             var indicesSpan = _sortedIndices.AsSpan().Slice(0, keyLength);
             indicesSpan.Sort(new ExternalKeyComparer<K, TKeyContainer, IBplusTreeComparer<K, TKeyContainer>>(keys,keyComparer));
+
+            if (indicesSpan.Length > 0)
+            {
+                int currentGroup = 0;
+                _duplicateTags[0] = 0;
+
+                for (int i = 1; i < keyLength; i++)
+                {
+                    if (keyComparer.CompareTo(_keys[_sortedIndices[i - 1]], _keys[_sortedIndices[i]]) != 0)
+                    {
+                        currentGroup++;
+                    }
+                    _duplicateTags[i] = currentGroup;
+                }
+            }
 
             return _tree.RouteBatchRootAsync(keys, keyLength, _sortedIndices, _tree.m_keyComparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
         }
