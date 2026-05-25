@@ -35,6 +35,7 @@ using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System.Threading.Tasks.Dataflow;
 using FlowtideDotNet.Core.Operators.Exchange;
+using FlowtideDotNet.Core.Operators.Aggregate.Bulk;
 
 namespace FlowtideDotNet.Core.Engine
 {
@@ -243,7 +244,7 @@ namespace FlowtideDotNet.Core.Engine
                 UnaryVertex<StreamEventBatch>? op;
                 if (_useColumnStore)
                 {
-                    op = new ColumnAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
+                    op = new BulkAggregateOperator(aggregateRelation, functionsRegister, DefaultBlockOptions);
                 }
                 else
                 {

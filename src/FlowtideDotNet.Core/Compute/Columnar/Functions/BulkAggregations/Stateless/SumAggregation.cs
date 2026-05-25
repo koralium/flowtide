@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         public IColumnBulkAggregation Create(AggregateFunction aggregateFunction, IFunctionsRegister functionsRegister)
         {
             var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
-            throw new NotImplementedException();
+            return new SumAggregation(compiledValue);
         }
 
         public static void Register(IFunctionsRegister functionsRegister)

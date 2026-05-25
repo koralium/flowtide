@@ -43,14 +43,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 incoming.weight += existing.weight;
                 incoming.valueSent = existing.valueSent;
-
+                
                 for (int i = 0; i < measures.Length; i++)
                 {
                     var stateCol = existing.referenceBatch.Columns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     // Compute should be called here for each row, need alot of extra input here though.
 
-                    //measures[i].Compute(0, 0,)
+                    //measures[i].Compute(0, 0)
                 }
                 
                 if (incoming.weight == 0)

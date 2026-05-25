@@ -71,9 +71,27 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             return index;
         }
 
-        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in AggregateKeyStorageContainer keyContainer, int startIndex, int length)
+        public FindBoundriesResult FindBoundries(in ColumnRowReference key, in AggregateKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            throw new NotImplementedException();
+            int start = startIndex;
+            int end = endIndex;
+            for (int i = 0; i < columnCount; i++)
+            {
+                var column = i;
+                key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                else
+                {
+                    start = low;
+                    end = high;
+                }
+            }
+            return new FindBoundriesResult(start, end);
         }
     }
 }

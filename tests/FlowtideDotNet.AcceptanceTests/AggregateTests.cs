@@ -35,6 +35,19 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task AggregateSum()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    sum(orderkey)
+                FROM orders o");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = Orders.Sum(x => x.OrderKey) } });
+        }
+
+        [Fact]
         public async Task AggregateCountDistinct()
         {
             GenerateData();
