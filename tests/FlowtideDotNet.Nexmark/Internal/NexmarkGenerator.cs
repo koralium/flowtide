@@ -4,8 +4,9 @@ using FlowtideDotNet.Nexmark.Internal.Builders;
 using FlowtideDotNet.Nexmark.Internal.Config;
 using FlowtideDotNet.Nexmark.Models;
 using FlowtideDotNet.Storage.Memory;
-using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipelines;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Nexmark.Internal;
 
@@ -20,6 +21,9 @@ public sealed class NexmarkGenerator
     private readonly IMemoryAllocator _memoryAllocator;
     private readonly NexmarkConfig _config;
 
+    private readonly string _baseDir;
+    private readonly int _seed;
+
     /// <summary>
     /// Initializes a new instance of the NexmarkGenerator.
     /// </summary>
@@ -27,11 +31,14 @@ public sealed class NexmarkGenerator
     /// <param name="seed">The random seed/start offset to use. Defaults to 103984.</param>
     /// <param name="batchSize">The maximum number of rows per EventBatchData list. Defaults to 1000.</param>
     /// <param name="memoryAllocator">Memory allocator for columnar data. Uses GlobalMemoryManager if null.</param>
-    public NexmarkGenerator(int genCalls = 1000, int seed = 103984, int batchSize = 1000, IMemoryAllocator? memoryAllocator = null)
+    /// <param name="baseDir">The directory to store generated batches. Defaults to current directory.</param>
+    public NexmarkGenerator(int genCalls = 1000, int seed = 103984, int batchSize = 1000, IMemoryAllocator? memoryAllocator = null, string? baseDir = null)
     {
         _numGenCalls = genCalls;
         _batchSize = batchSize;
         _memoryAllocator = memoryAllocator ?? GlobalMemoryManager.Instance;
+        _baseDir = string.IsNullOrEmpty(baseDir) ? Directory.GetCurrentDirectory() : baseDir;
+        _seed = seed;
         
         _config = NexmarkConfig.Default();
         _config.FirstEventId = seed;
@@ -39,9 +46,10 @@ public sealed class NexmarkGenerator
 
     public NexmarkDataStream Generate()
     {
-        var personBuilder = new PersonBatchBuilder(_memoryAllocator, _batchSize);
-        var auctionBuilder = new AuctionBatchBuilder(_memoryAllocator, _batchSize);
-        var bidBuilder = new BidBatchBuilder(_memoryAllocator, _batchSize);
+        Directory.CreateDirectory(_baseDir);
+        var personBuilder = new PersonBatchBuilder(_memoryAllocator, _batchSize, _baseDir);
+        var auctionBuilder = new AuctionBatchBuilder(_memoryAllocator, _batchSize, _baseDir);
+        var bidBuilder = new BidBatchBuilder(_memoryAllocator, _batchSize, _baseDir);
 
         for (long eventsSoFar = 0; eventsSoFar < _numGenCalls; eventsSoFar++)
         {

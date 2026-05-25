@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,13 +21,18 @@ namespace FlowtideDotNet.Nexmark.Internal
     internal static class FileDataGenerator
     {
 
-        public static void GenerateData(int genCalls, int batchSize)
+        public static void GenerateData(int genCalls, int batchSize, string baseDir)
         {
-            bool dataFilesExist = File.Exists("auction_batches.bin") && File.Exists("bid_batches.bin") && File.Exists("person_batches.bin");
+            string auctionPath = Path.Combine(baseDir, "auction_batches.bin");
+            string bidPath = Path.Combine(baseDir, "bid_batches.bin");
+            string personPath = Path.Combine(baseDir, "person_batches.bin");
+            string metaPath = Path.Combine(baseDir, "metadata.txt");
+
+            bool dataFilesExist = File.Exists(auctionPath) && File.Exists(bidPath) && File.Exists(personPath);
             // Check metadata file that values are correct, if not regenerate. If files don't exist, generate.
-            if (File.Exists("metadata.txt"))
+            if (File.Exists(metaPath))
             {
-                var lines = File.ReadAllLines("metadata.txt");
+                var lines = File.ReadAllLines(metaPath);
                 if (lines.Length == 2 &&
                     long.TryParse(lines[0].Split(':')[1].Trim(), out var existingGenCalls) &&
                     int.TryParse(lines[1].Split(':')[1].Trim(), out var existingBatchSize) &&
@@ -39,12 +44,13 @@ namespace FlowtideDotNet.Nexmark.Internal
                 }
             }
 
-            Console.WriteLine($"// Generating {genCalls} rows of data...");
-            var generator = new NexmarkGenerator(genCalls: genCalls, batchSize: batchSize);
+            Console.WriteLine($"// Generating {genCalls} rows of data into {baseDir}...");
+            var generator = new NexmarkGenerator(genCalls: genCalls, batchSize: batchSize, baseDir: baseDir);
             generator.Generate();
+            Console.WriteLine($"// Done generating");
 
             // Write metadata to file
-            File.WriteAllLines("metadata.txt", new[]
+            File.WriteAllLines(metaPath, new[]
             {
                 $"GenCalls: {genCalls}",
                 $"BatchSize: {batchSize}"

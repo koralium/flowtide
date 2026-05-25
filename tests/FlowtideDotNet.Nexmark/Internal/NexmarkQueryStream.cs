@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -27,16 +27,16 @@ namespace FlowtideDotNet.Nexmark.Internal
     {
         private int checkpointCounter = 0;
 
-        private readonly NexmarkDataStream nexmarkDataStream;
+        private readonly string _baseDir;
 
-        public NexmarkQueryStream(NexmarkDataStream nexmarkDataStream, string testName) : base(testName)
+        public NexmarkQueryStream(string baseDir, string testName) : base(testName)
         {
-            this.nexmarkDataStream = nexmarkDataStream;
+            _baseDir = baseDir;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddSource(new NexmarkSourceFactory(".*", nexmarkDataStream));
+            connectorManger.AddSource(new NexmarkSourceFactory(".*", _baseDir));
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManger)

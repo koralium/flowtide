@@ -17,11 +17,11 @@ namespace FlowtideDotNet.Nexmark.Internal;
 
 public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider, IConnectorTableProviderFactory
 {
-    private readonly NexmarkDataStream _stream;
+    private readonly string _baseDir;
 
-    public NexmarkSourceFactory(string regexPattern, NexmarkDataStream stream) : base(regexPattern)
+    public NexmarkSourceFactory(string regexPattern, string baseDir) : base(regexPattern)
     {
-        _stream = stream;
+        _baseDir = baseDir;
     }
 
     public override Relation ModifyPlan(ReadRelation readRelation)
@@ -49,17 +49,17 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
 
         if (tableName.Contains("person"))
         {
-            fileName = "person_batches.bin";
+            fileName = System.IO.Path.Combine(_baseDir, "person_batches.bin");
             schema = NexmarkSchema.PersonSchema;
         }
         else if (tableName.Contains("auction"))
         {
-            fileName = "auction_batches.bin";
+            fileName = System.IO.Path.Combine(_baseDir, "auction_batches.bin");
             schema = NexmarkSchema.AuctionSchema;
         }
         else if (tableName.Contains("bid"))
         {
-            fileName = "bid_batches.bin";
+            fileName = System.IO.Path.Combine(_baseDir, "bid_batches.bin");
             schema = NexmarkSchema.BidSchema;
         }
         else

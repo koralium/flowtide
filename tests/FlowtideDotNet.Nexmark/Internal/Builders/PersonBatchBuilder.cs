@@ -20,14 +20,15 @@ internal sealed class PersonBatchBuilder
 
     public int EventCount { get; private set; }
 
-    public PersonBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize)
+    public PersonBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize, string baseDir)
     {
         _memoryAllocator = memoryAllocator;
         _batchSize = batchSize;
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        _fileStream = File.OpenWrite("person_batches.bin");
+        string filePath = Path.Combine(baseDir, "person_batches.bin");
+        _fileStream = File.OpenWrite(filePath);
     }
 
     public void Add(in Person person)

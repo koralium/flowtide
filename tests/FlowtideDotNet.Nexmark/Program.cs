@@ -11,5 +11,16 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Running;
+using FlowtideDotNet.Nexmark;
+
+//Query3 query3 = new Query3();
+//query3.Setup();
+
+//for (int i = 0; i < 10000; i++)
+//{
+//    query3.IterationSetup();
+//    await query3.Q3();
+//}
+
 
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: [.. args, "--join"]);

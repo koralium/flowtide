@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -24,21 +24,37 @@ namespace FlowtideDotNet.Nexmark
     {
         private int iterationId = 0;
         private NexmarkQueryStream _stream = null!;
-        private readonly NexmarkGenerator _generator = null!;
-        private readonly NexmarkDataStream _dataStream = null!;
 
         protected NexmarkQueryStream Stream => _stream;
 
         [GlobalSetup]
         public void Setup()
         {
-            FileDataGenerator.GenerateData(10_000_000, 10_000);
+            string baseDir = GetBaseDir();
+            FileDataGenerator.GenerateData(10_000_000, 10_000, baseDir);
+        }
+
+        private static string GetBaseDir()
+        {
+            string path = AppContext.BaseDirectory;
+            string search = $"{System.IO.Path.DirectorySeparatorChar}bin{System.IO.Path.DirectorySeparatorChar}Release{System.IO.Path.DirectorySeparatorChar}";
+            int index = path.IndexOf(search, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                int endOfTfm = path.IndexOf(System.IO.Path.DirectorySeparatorChar, index + search.Length);
+                if (endOfTfm >= 0)
+                {
+                    return path.Substring(0, endOfTfm);
+                }
+            }
+            return path;
         }
 
         [IterationSetup]
         public void IterationSetup()
         {
-            _stream = new NexmarkQueryStream(_dataStream, iterationId.ToString())
+            string baseDir = GetBaseDir();
+            _stream = new NexmarkQueryStream(baseDir, iterationId.ToString())
             {
                 CachePageCount = 100_000
             };

@@ -20,14 +20,15 @@ internal sealed class BidBatchBuilder
 
     public int EventCount { get; private set; }
 
-    public BidBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize)
+    public BidBatchBuilder(IMemoryAllocator memoryAllocator, int batchSize, string baseDir)
     {
         _memoryAllocator = memoryAllocator;
         _batchSize = batchSize;
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        _fileStream = File.OpenWrite("bid_batches.bin");
+        string filePath = Path.Combine(baseDir, "bid_batches.bin");
+        _fileStream = File.OpenWrite(filePath);
     }
 
     public void Add(in Bid bid)
