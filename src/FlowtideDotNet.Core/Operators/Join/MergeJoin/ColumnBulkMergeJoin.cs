@@ -85,6 +85,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
         private readonly IColumn[] _leftSortColumns;
         private readonly IColumn[] _rightSortColumns;
         private int[] _sortedIndicesBuffer = Array.Empty<int>();
+        private int[] _duplicatesTagBuffer = Array.Empty<int>();
 
         private readonly MergeJoinRelation _mergeJoinRelation;
         private readonly MergeJoinInsertComparer _leftInsertComparer;
@@ -446,7 +447,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
 
 
-            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
+            await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
         }
 
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveRight(StreamEventBatch msg, long time)
@@ -627,9 +628,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 iterations.Dispose();
             }
 
-
-
-            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
+            await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
         }
 
         private StreamEventBatch BuildOutputBatch(StreamEventBatch msg, PrimitiveList<int> foundOffsets, PrimitiveList<int> weights, PrimitiveList<uint> iterations, List<Column>? leftColumns, List<Column>? rightColumns, bool isLeft)
@@ -778,6 +777,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             {
                 _sortedIndicesBuffer = new int[keyLength];
             }
+            if (keyLength > _duplicatesTagBuffer.Length)
+            {
+                _duplicatesTagBuffer = new int[keyLength];
+            }
             for (int i = 0; i < comparer.ColumnOrder.Count; i++)
             {
                 sortColumns[i] = batchData.Columns[comparer.ColumnOrder[i]];
@@ -787,7 +790,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 _sortedIndicesBuffer[i] = i;
             }
             var indirectSpan = _sortedIndicesBuffer.AsSpan(0, keyLength);
-            batchSorter.SortData(sortColumns, ref indirectSpan);
+            var tagsSpan = _duplicatesTagBuffer.AsSpan(0, keyLength);
+            batchSorter.SortDataWithTags(sortColumns, ref indirectSpan, ref tagsSpan);
             return _sortedIndicesBuffer;
         }
     }
