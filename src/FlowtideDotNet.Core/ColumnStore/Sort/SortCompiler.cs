@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -470,8 +470,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             }
 
             int availableBytes = AvailableBytesRadix;
-            int currentBytePosition = 0;
-
+            
+            // First pass: calculate total bytes used and list bytes used per column
+            int totalBytes = 0;
+            var listBytesUsed = new List<int>();
             for (int i = 0; i < columns.Length; i++)
             {
                 var column = columns[i];
@@ -479,24 +481,34 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
                 if (capability.Support == RadixSupport.Full || capability.Support == RadixSupport.Partial)
                 {
-                    var columnInstanceExpr = Expression.ArrayIndex(columnsExpression, Expression.Constant(i));
-                    var positionExpr = Expression.Constant(currentBytePosition, typeof(int));
-                    var callExpr = Expression.Call(
-                        columnInstanceExpr,
-                        setRadixMethod,
-                        workspaceExpression,
-                        positionExpr);
-
-                    methodCalls.Add(callExpr);
-
                     int bytesUsed = capability.BytesConsumed;
+                    listBytesUsed.Add(bytesUsed);
                     availableBytes -= bytesUsed;
-                    currentBytePosition += bytesUsed;
+                    totalBytes += bytesUsed;
                 }
                 else
                 {
                     break;
                 }
+            }
+
+            // Second pass: generate expressions with correct reverse byte positions
+            int cumulativeBytes = 0;
+            for (int i = 0; i < listBytesUsed.Count; i++)
+            {
+                int bytesUsed = listBytesUsed[i];
+                cumulativeBytes += bytesUsed;
+                int currentBytePosition = totalBytes - cumulativeBytes;
+
+                var columnInstanceExpr = Expression.ArrayIndex(columnsExpression, Expression.Constant(i));
+                var positionExpr = Expression.Constant(currentBytePosition, typeof(int));
+                var callExpr = Expression.Call(
+                    columnInstanceExpr,
+                    setRadixMethod,
+                    workspaceExpression,
+                    positionExpr);
+
+                methodCalls.Add(callExpr);
             }
 
             var block = Expression.Block(methodCalls);
