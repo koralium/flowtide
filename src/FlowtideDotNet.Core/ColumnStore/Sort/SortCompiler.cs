@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     {
         public delegate void SortDelegate(SortCompareContext context, ref Span<int> indices, ref Span<RadixItem> radixItems);
 
-        public delegate void SortWithTagsDelegate(SortCompareContext context, ref Span<int> indices, ref Span<int> tags);
+        public delegate void SortWithTagsDelegate(SortCompareContext context, ref Span<int> indices, ref Span<int> tags, ref Span<RadixItem> radixItems);
 
         private static readonly ConcurrentDictionary<UInt128, SortDelegate> _cache = new ConcurrentDictionary<UInt128, SortDelegate>();
 
@@ -215,11 +215,49 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         private static SortWithTagsDelegate CompileWithTags(IColumn[] columns)
         {
+            int availableBytes = AvailableBytesRadix;
+            int quicksortStartIndex = 0;
+            bool usedRadix = false;
+
+            // --- STEP 1: CAPABILITY ROUTING ---
+            for (int i = 0; i < columns.Length; i++)
+            {
+                var capability = columns[i].SupportsRadixSort(availableBytes, false);
+                availableBytes -= capability.BytesConsumed;
+
+                if (capability.Support == RadixSupport.Full)
+                {
+                    quicksortStartIndex = i + 1;
+                    usedRadix = true;
+                }
+                else if (capability.Support == RadixSupport.Partial)
+                {
+                    // Radix grouped the prefix. Quicksort MUST start here to resolve string ties
+                    quicksortStartIndex = i;
+                    usedRadix = true;
+                    break;
+                }
+                else
+                {
+                    // RadixSupport.None. Quicksort starts here.
+                    quicksortStartIndex = i;
+                    break;
+                }
+            }
+
+            if (usedRadix)
+            {
+                int bytePasses = AvailableBytesRadix - availableBytes;
+                return CompileWithTagsRadix(columns, quicksortStartIndex, bytePasses);
+            }
+
             var comparerType = ComparerStructCompiler.Compile(columns, 0);
 
             var parameter = Expression.Parameter(typeof(SortCompareContext), "context");
             var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
             var tagsParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "tags");
+
+            var radixWorkspaceParam = Expression.Parameter(typeof(Span<RadixItem>).MakeByRefType(), "workspace");
 
             var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
 
@@ -230,7 +268,9 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             var newExpr = Expression.New(ctor, parameter);
 
-            var doSort = typeof(SortCompiler).GetMethod(nameof(DoSortWithTags), System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+            var doSort = typeof(SortCompiler).GetMethod(
+                nameof(DoSortWithTags),
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
 
             if (doSort == null)
             {
@@ -239,7 +279,72 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
             var callSort = Expression.Call(doSort.MakeGenericMethod(comparerType), indicesParameter, tagsParameter, newExpr);
 
-            var lambda = Expression.Lambda<SortWithTagsDelegate>(callSort, parameter, indicesParameter, tagsParameter);
+            var lambda = Expression.Lambda<SortWithTagsDelegate>(
+                callSort,
+                parameter,
+                indicesParameter,
+                tagsParameter,
+                radixWorkspaceParam
+            );
+
+            return lambda.Compile();
+        }
+
+        private static SortWithTagsDelegate CompileWithTagsRadix(IColumn[] columns, int quicksortStartIndex, int bytePasses)
+        {
+            var comparerType = ComparerStructCompiler.Compile(columns, quicksortStartIndex);
+
+            var contextParam = Expression.Parameter(typeof(SortCompareContext), "context");
+            var indicesParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "indices");
+            var tagsParameter = Expression.Parameter(typeof(Span<int>).MakeByRefType(), "tags");
+
+            var radixWorkspaceParam = Expression.Parameter(typeof(Span<RadixItem>).MakeByRefType(), "workspace");
+
+            var columnsField = Expression.Field(contextParam, nameof(SortCompareContext.columns));
+            var executionSteps = new List<Expression>();
+
+            executionSteps.Add(CallResetRadixItems(radixWorkspaceParam, indicesParameter));
+
+            Expression invokeExtractor = CompileRadixExtractor(columns, radixWorkspaceParam, columnsField);
+            executionSteps.Add(invokeExtractor);
+
+            var ctor = comparerType.GetConstructor([typeof(SortCompareContext)]);
+            if (ctor == null)
+            {
+                throw new InvalidOperationException($"Comparer struct {comparerType.FullName} does not have the expected constructor.");
+            }
+            var newComparerExpr = Expression.New(ctor, contextParam);
+
+            var doSortRadixMethod = typeof(SortCompiler).GetMethod(
+                nameof(DoSortRadixWithTags),
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public);
+
+            if (doSortRadixMethod == null)
+            {
+                throw new InvalidOperationException($"Could not find method {nameof(DoSortRadixWithTags)}.");
+            }
+
+            var callSortRadix = Expression.Call(
+                doSortRadixMethod.MakeGenericMethod(comparerType),
+                Expression.Constant(bytePasses),
+                Expression.Constant(quicksortStartIndex < columns.Length),
+                radixWorkspaceParam,
+                indicesParameter,
+                tagsParameter,
+                newComparerExpr
+            );
+
+            executionSteps.Add(callSortRadix);
+
+            var masterBlock = Expression.Block(executionSteps);
+
+            var lambda = Expression.Lambda<SortWithTagsDelegate>(
+                masterBlock,
+                contextParam,
+                indicesParameter,
+                tagsParameter,
+                radixWorkspaceParam
+            );
 
             return lambda.Compile();
         }

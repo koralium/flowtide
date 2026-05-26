@@ -90,7 +90,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                     columns[i].SetSelfComparePointers(ref _pointers[i]);
                 }
             }
-            _lastSortWithTags(new SortCompareContext(columns, _pointers), ref indirect, ref tags);
+
+            if (_radixItems.Length < indirect.Length)
+            {
+                _radixItems = new RadixItem[indirect.Length];
+            }
+
+            var radixItemsSpan = _radixItems.AsSpan(0, indirect.Length);
+            _lastSortWithTags(new SortCompareContext(columns, _pointers), ref indirect, ref tags, ref radixItemsSpan);
         }
     }
 }
