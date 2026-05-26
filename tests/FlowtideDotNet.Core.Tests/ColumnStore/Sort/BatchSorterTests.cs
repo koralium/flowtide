@@ -140,15 +140,15 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
                 var col = new Column(GlobalMemoryManager.Instance);
                 if (i < numColumns - 1)
                 {
-                    col.Add(new DoubleValue(1));
-                    col.Add(new DoubleValue(1));
-                    col.Add(new DoubleValue(1));
+                    col.Add(new Int64Value(1));
+                    col.Add(new Int64Value(1));
+                    col.Add(new Int64Value(1));
                 }
                 else
                 {
-                    col.Add(new DoubleValue(2));
-                    col.Add(new DoubleValue(0));
-                    col.Add(new DoubleValue(1));
+                    col.Add(new Int64Value(2));
+                    col.Add(new Int64Value(0));
+                    col.Add(new Int64Value(1));
                 }
                 columns[i] = col;
             }

@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return builder;
         }
 
-        public static Type Compile(IColumn[] columns)
+        public static Type Compile(IColumn[] columns, int columnStartIndex)
         {
             lock (s_lock)
             {
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 var x = Expression.Parameter(typeof(int), "x");
                 var y = Expression.Parameter(typeof(int), "y");
 
-                var block = BatchSortCompiler.Compile(columns, ctxParam, x, y);
+                var block = BatchSortCompiler.Compile(columns, ctxParam, x, y, columnStartIndex);
 
                 var success = Expression.Lambda(block, ctxParam, x, y).CompileFastToIL(staticGen);
                 if (!success) throw new InvalidOperationException("FEC failed to compile.");
