@@ -695,5 +695,41 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Sort
             Assert.Equal(5000000000L, column.GetValueAt(indirect[2], default).AsLong);
             Assert.Equal(1000000000000L, column.GetValueAt(indirect[3], default).AsLong);
         }
+
+        [Fact]
+        public void TestSortIntegerTwoColumnsRadix()
+        {
+            // Column 1 is integers not sorted
+            var column1 = new Column(GlobalMemoryManager.Instance);
+            column1.Add(new Int64Value(50));
+            column1.Add(new Int64Value(10));
+            column1.Add(new Int64Value(50));
+            column1.Add(new Int64Value(10));
+
+            // Column 2 is integers sorted
+            var column2 = new Column(GlobalMemoryManager.Instance);
+            column2.Add(new Int64Value(10));
+            column2.Add(new Int64Value(20));
+            column2.Add(new Int64Value(30));
+            column2.Add(new Int64Value(40));
+
+            IColumn[] columns = new IColumn[] { column1, column2 };
+            var batchSorter = new BatchSorter(2);
+
+            int[] indirect = new int[] { 0, 1, 2, 3 };
+            var span = indirect.AsSpan();
+
+            batchSorter.SortData(columns, ref span);
+
+            // Sorting by Col 1, then Col 2:
+            // Col 1 has 10 (at index 1 and 3) -> Col 2: index 1 has 20, index 3 has 40. Since 20 < 40, index 1 comes first, then 3.
+            // Col 1 has 50 (at index 0 and 2) -> Col 2: index 0 has 10, index 2 has 30. Since 10 < 30, index 0 comes first, then 2.
+            // Expected sorted indices: 1, 3, 0, 2
+            Assert.Equal(1, indirect[0]);
+            Assert.Equal(3, indirect[1]);
+            Assert.Equal(0, indirect[2]);
+            Assert.Equal(2, indirect[3]);
+        }
     }
 }
+
