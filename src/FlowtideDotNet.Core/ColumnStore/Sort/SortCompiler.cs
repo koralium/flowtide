@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             int quicksortStartIndex = 0;
             bool usedRadix = false;
 
-            for (int i = 0; i < columns.Length; i++)
+            for (int i = 0; i < columns.Length && i < 7; i++)
             {
                 var capability = columns[i].SupportsRadixSort(availableBytes, false);
                 availableBytes -= capability.BytesConsumed;
