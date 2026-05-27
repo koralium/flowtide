@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -40,6 +40,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private MockTable _table;
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
+
+        public static Dictionary<string, TimeSpan> TableInitialDelay { get; } = new Dictionary<string, TimeSpan>();
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -226,6 +228,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            var tableName = readRelation.NamedTable.DotSeperated;
+            if (TableInitialDelay.TryGetValue(tableName, out var delay))
+            {
+                await Task.Delay(delay);
+            }
+
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
