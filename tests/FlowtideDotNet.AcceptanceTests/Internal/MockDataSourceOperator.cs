@@ -41,7 +41,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
 
-        public static Dictionary<string, TimeSpan> TableInitialDelay { get; } = new Dictionary<string, TimeSpan>();
+        public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
+        public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -229,9 +230,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             var tableName = readRelation.NamedTable.DotSeperated;
-            if (TableInitialDelay.TryGetValue(tableName, out var delay))
+            if (TableWaitSignals.TryGetValue(tableName, out var waitTableName))
             {
-                await Task.Delay(delay);
+                if (TableInitialSignals.TryGetValue(waitTableName, out var waitTcs))
+                {
+                    await waitTcs.Task;
+                }
             }
 
             Debug.Assert(_state?.Value != null);
@@ -315,6 +319,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await allOutput!.FlushAsync();
 #endif
 
+            if (TableInitialSignals.TryGetValue(tableName, out var myTcs))
+            {
+                myTcs.TrySetResult();
+            }
         }
     }
 }

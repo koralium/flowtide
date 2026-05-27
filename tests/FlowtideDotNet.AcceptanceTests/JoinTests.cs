@@ -485,8 +485,10 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task LeftJoinBlockLoopModulusUsersFirstDeterministicFail()
         {
-            Internal.MockDataSourceOperator.TableInitialDelay.Clear();
-            Internal.MockDataSourceOperator.TableInitialDelay["orders"] = TimeSpan.FromMilliseconds(500);
+            Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+            Internal.MockDataSourceOperator.TableWaitSignals.Clear();
+            Internal.MockDataSourceOperator.TableInitialSignals["users"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Internal.MockDataSourceOperator.TableWaitSignals["orders"] = "users";
 
             try
             {
@@ -524,7 +526,8 @@ namespace FlowtideDotNet.AcceptanceTests
             }
             finally
             {
-                Internal.MockDataSourceOperator.TableInitialDelay.Clear();
+                Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+                Internal.MockDataSourceOperator.TableWaitSignals.Clear();
             }
         }
 
