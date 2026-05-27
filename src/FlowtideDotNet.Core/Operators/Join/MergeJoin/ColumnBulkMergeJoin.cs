@@ -129,8 +129,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             _leftInsertComparer = new MergeJoinInsertComparer(leftColumns, mergeJoinRelation.Left.OutputLength);
             _rightInsertComparer = new MergeJoinInsertComparer(rightColumns, mergeJoinRelation.Right.OutputLength);
 
-            _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns);
-            _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns);
+            List<JoinComparisonType>? flippedComparisonTypes = null;
+            if (mergeJoinRelation.ComparisonTypes != null)
+            {
+                flippedComparisonTypes = new List<JoinComparisonType>();
+                foreach (var op in mergeJoinRelation.ComparisonTypes)
+                {
+                    var flipped = op switch
+                    {
+                        JoinComparisonType.LessThan => JoinComparisonType.GreaterThan,
+                        JoinComparisonType.LessThanOrEqual => JoinComparisonType.GreaterThanOrEqual,
+                        JoinComparisonType.GreaterThan => JoinComparisonType.LessThan,
+                        JoinComparisonType.GreaterThanOrEqual => JoinComparisonType.LessThanOrEqual,
+                        _ => JoinComparisonType.Equal
+                    };
+                    flippedComparisonTypes.Add(flipped);
+                }
+            }
+
+            _searchLeftComparer = new MergeJoinSearchComparer(leftColumns, rightColumns, mergeJoinRelation.ComparisonTypes);
+            _searchRightComparer = new MergeJoinSearchComparer(rightColumns, leftColumns, flippedComparisonTypes);
 
             _leftBatchSorter = new BatchSorter(_leftInsertComparer.ColumnOrder.Count);
             _rightBatchSorter = new BatchSorter(_rightInsertComparer.ColumnOrder.Count);

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1648,6 +1648,146 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Validate();
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinLessThan()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey < u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey < u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinLessThanOrEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey <= u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey <= u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinGreaterThan()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinGreaterThanOrEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey >= u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey >= u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinEqualityAndInequality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey = u.userkey AND o.orderkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey == u.UserKey && o.OrderKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinInequalityAndEquality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.orderkey > u.userkey AND o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.OrderKey > u.UserKey && o.UserKey == u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinInequalityAndInequality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey > u.userkey AND o.orderkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey > u.UserKey && o.OrderKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
         }
     }
 }
