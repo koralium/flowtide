@@ -474,7 +474,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             // First pass: calculate total bytes used and list bytes used per column
             int totalBytes = 0;
             var listBytesUsed = new List<int>();
-            for (int i = 0; i < columns.Length; i++)
+            for (int i = 0; i < columns.Length && i < 7; i++)
             {
                 var column = columns[i];
                 var capability = column.SupportsRadixSort(availableBytes, false);
