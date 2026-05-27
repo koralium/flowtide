@@ -220,7 +220,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             bool usedRadix = false;
 
             // --- STEP 1: CAPABILITY ROUTING ---
-            for (int i = 0; i < columns.Length; i++)
+            for (int i = 0; i < columns.Length && i < 7; i++)
             {
                 var capability = columns[i].SupportsRadixSort(availableBytes, false);
                 availableBytes -= capability.BytesConsumed;
