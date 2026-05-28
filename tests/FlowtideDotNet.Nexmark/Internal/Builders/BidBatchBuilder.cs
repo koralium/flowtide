@@ -27,7 +27,7 @@ internal sealed class BidBatchBuilder
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        string filePath = Path.Combine(baseDir, "bid_batches.bin");
+        string filePath = Path.Join(baseDir, "bid_batches.bin");
         _fileStream = File.OpenWrite(filePath);
     }
 

@@ -27,7 +27,7 @@ internal sealed class AuctionBatchBuilder
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        string filePath = Path.Combine(baseDir, "auction_batches.bin");
+        string filePath = Path.Join(baseDir, "auction_batches.bin");
         _fileStream = File.OpenWrite(filePath);
     }
 
