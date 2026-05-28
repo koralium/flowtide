@@ -27,7 +27,7 @@ internal sealed class AuctionBatchBuilder
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        _fileStream = File.OpenWrite("auction_batches.bin");
+        _fileStream = File.Create("auction_batches.bin");
     }
 
     public void Add(in Auction auction)
