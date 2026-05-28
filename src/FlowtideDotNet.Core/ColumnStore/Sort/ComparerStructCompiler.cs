@@ -38,17 +38,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 s_assemblyName,
                 AssemblyBuilderAccess.Run
             );
-            var ignoresAccessChecksTo = new CustomAttributeBuilder
-            (
-                typeof(IgnoresAccessChecksToAttribute).GetConstructor(new Type[] { typeof(string) }),
-                new object[] { typeof(ComparerStructCompiler).Assembly.GetName().Name }
-            );
+            var ctor = typeof(IgnoresAccessChecksToAttribute).GetConstructor(new Type[] { typeof(string) });
+            var assemblyName = typeof(ComparerStructCompiler).Assembly.GetName().Name;
 
-            builder.SetCustomAttribute(ignoresAccessChecksTo);
+            if (ctor != null && assemblyName != null)
+            {
+                var ignoresAccessChecksTo = new CustomAttributeBuilder
+                (
+                    ctor,
+                    new object[] { assemblyName }
+                );
+
+                builder.SetCustomAttribute(ignoresAccessChecksTo);
+            }
+           
             return builder;
         }
 
-        public static Type Compile(IColumn[] columns)
+        public static Type Compile(IColumn[] columns, int columnStartIndex)
         {
             lock (s_lock)
             {
@@ -94,7 +101,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 var x = Expression.Parameter(typeof(int), "x");
                 var y = Expression.Parameter(typeof(int), "y");
 
-                var block = BatchSortCompiler.Compile(columns, ctxParam, x, y);
+                var block = BatchSortCompiler.Compile(columns, ctxParam, x, y, columnStartIndex);
 
                 var success = Expression.Lambda(block, ctxParam, x, y).CompileFastToIL(staticGen);
                 if (!success) throw new InvalidOperationException("FEC failed to compile.");

@@ -414,6 +414,59 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotSupportedException();
             }
         }
+
+        public RadixCapability SupportsRadixSort(int bytesLeft, bool hasNullByte)
+        {
+            if (hasNullByte)
+            {
+                throw new InvalidOperationException("Column with offset should be the outer most layer, otherwise there is a risk for multiple selection vectors.");
+            }
+            if (bytesLeft < 1)
+            {
+                return RadixCapability.None();
+            }
+
+            var innerCapability = this.innerColumn.SupportsRadixSort(bytesLeft - 1, true);
+
+            if (innerCapability.Support == RadixSupport.None)
+            {
+                return RadixCapability.None();
+            }
+            else if (innerCapability.Support == RadixSupport.Partial)
+            {
+                // We can only support partial if we have at least 2 bytes left, since we need 1 byte for the null from offset
+                return RadixCapability.Partial(innerCapability.BytesConsumed + 1);
+            }
+            else
+            {
+                return RadixCapability.Full(innerCapability.BytesConsumed + 1);
+            }
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition)
+        {
+            Span<int> offsetsSpan = this.offsets.Span;
+            ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                int physicalOffset = offsetsSpan[item.Index];
+                ref byte nullIndicatorByte = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                nullIndicatorByte = (byte)(physicalOffset >= 0 ? 0x01 : 0x00);
+            }
+
+            innerColumn.SetRadixPrefix(items, insertBytePosition + 1, insertBytePosition, offsetsSpan);
+            return 0;
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition,  Span<int> selectionVector)
+        {
+            // Selection vector on selection vector is an anti-pattern, if you find yourself needing this,
+            // you should probably create a new column with offset on top of this column with the new selection vector,
+            // instead of trying to apply multiple selection vectors on top of each other.
+            throw new NotSupportedException("ColumnWithOffset does not support SetRadixPrefix with selection vector since it already has a selection vector.");
+        }
     }
 }
 

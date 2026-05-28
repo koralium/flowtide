@@ -27,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task InnerJoinMergeJoin()
         {
-            GenerateData();
+            GenerateData(5);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
