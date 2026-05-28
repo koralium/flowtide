@@ -125,5 +125,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             throw new NotImplementedException();
         }
+
+        RadixCapability SupportsRadixSort(int bytesLeft) => RadixCapability.None();
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="items"></param>
+        /// <param name="insertBytePosition"></param>
+        /// <param name="selectionVector">The indices of the items that should be inserted. This is used to only insert a subset of the items, for example when only a subset of the column is sorted.
+        /// If empty, all data should be copied, -1 is a special value meaning the row is null, so 0 should be set on bytes</param>
+        /// <returns>How many bytes where used up</returns>
+        int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+        {
+            throw new InvalidOperationException(
+                "This column does not support Radix packing. The Query Planner should have halted extraction.");
+        }
     }
 }

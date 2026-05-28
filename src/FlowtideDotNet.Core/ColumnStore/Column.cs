@@ -27,6 +27,8 @@ using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 
@@ -1582,6 +1584,116 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
 
             return dataColumnCompare;
+        }
+
+        public RadixCapability SupportsRadixSort(int bytesLeft, bool hasNullByte)
+        {
+            if (_dataColumn == null)
+            {
+                return RadixCapability.None();
+            }
+            if (_nullCounter > 0)
+            {
+                if (hasNullByte)
+                {
+                    return _dataColumn.SupportsRadixSort(bytesLeft);
+                }
+                else
+                {
+                    if (bytesLeft < 1)
+                    {
+                        return RadixCapability.None();
+                    }
+                    var innerCapability = _dataColumn.SupportsRadixSort(bytesLeft - 1);
+                    if (innerCapability.Support == RadixSupport.None)
+                    {
+                        return RadixCapability.None();
+                    }
+                    else if (innerCapability.Support == RadixSupport.Partial)
+                    {
+                        return RadixCapability.Partial(innerCapability.BytesConsumed + 1);
+                    }
+                    else
+                    {
+                        return RadixCapability.Full(innerCapability.BytesConsumed + 1);
+                    }
+                }
+            }
+            return _dataColumn.SupportsRadixSort(bytesLeft);
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition)
+        {
+            return SetRadixPrefix(items, insertBytePosition, -1, Span<int>.Empty);
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition, Span<int> selectionVector)
+        {
+            if (_dataColumn == null)
+            {
+                return 0;
+            }
+
+            if (_nullCounter == 0)
+            {
+                return _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
+            }
+
+            Debug.Assert(_validityList != null);
+            ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+            bool createdNullByte = false;
+
+            if (nullBytePosition == -1)
+            {
+                nullBytePosition = insertBytePosition;
+                insertBytePosition = insertBytePosition + 1;
+                createdNullByte = true;
+            }
+
+            if (selectionVector.IsEmpty)
+            {
+                for (int i = 0; i < items.Length; i++)
+                {
+                    ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                    bool isNotNull = _validityList.Get(item.Index);
+
+                    ref byte nullByte = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), nullBytePosition);
+
+                    if (createdNullByte)
+                    {
+                        nullByte = (byte)(isNotNull ? 0x01 : 0x00);
+                    }
+                    else if (!isNotNull)
+                    {
+                        nullByte = 0x00;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < items.Length; i++)
+                {
+                    ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                    int physicalIndex = selectionVector[item.Index];
+
+                    ref byte nullByte = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), nullBytePosition);
+
+                    bool isNotNull = physicalIndex >= 0 && _validityList.Get(physicalIndex);
+
+                    if (createdNullByte)
+                    {
+                        nullByte = (byte)(isNotNull ? 0x01 : 0x00);
+                    }
+                    else if (!isNotNull)
+                    {
+                        nullByte = 0x00;
+                    }
+                }
+            }
+
+            int innerBytes = _dataColumn.SetRadixPrefix(items, insertBytePosition, selectionVector);
+
+            return (createdNullByte ? 1 : 0) + innerBytes;
         }
     }
 }

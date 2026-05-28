@@ -57,6 +57,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
+            bool _notEmitted = false;
             var data = msg.Data;
             for (int i = 0; i < data.Count; i++)
             {
@@ -65,6 +66,10 @@ namespace FlowtideDotNet.Core.Operators.Filter
                     weights.Add(data.Weights[i]);
                     iterations.Add(data.Iterations[i]);
                     offsets.Add(i);
+                }
+                else
+                {
+                    _notEmitted = true;
                 }
             }
 
@@ -75,10 +80,19 @@ namespace FlowtideDotNet.Core.Operators.Filter
                 for (int i = 0; i < _filterRelation.Emit.Count; i++)
                 {
                     var emitIndex = _filterRelation.Emit[i];
-                    outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[emitIndex], offsets, MemoryAllocator, out var offsetUsed);
-                    if (offsetUsed)
+                    if (!_notEmitted)
                     {
-                        shouldDisposeOffset = false;
+                        // if all rows are emitted, we can reuse the original column without flattening
+                        outputColumns[i] = data.EventBatchData.Columns[emitIndex];
+                        continue;
+                    }
+                    else
+                    {
+                        outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[emitIndex], offsets, MemoryAllocator, out var offsetUsed);
+                        if (offsetUsed)
+                        {
+                            shouldDisposeOffset = false;
+                        }
                     }
                 }
                 if (shouldDisposeOffset)

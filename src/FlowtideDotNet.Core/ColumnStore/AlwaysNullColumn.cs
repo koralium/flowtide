@@ -213,6 +213,21 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             // Nothing required
         }
+
+        public RadixCapability SupportsRadixSort(int bytesLeft, bool hasNullByte)
+        {
+            return RadixCapability.None();
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition)
+        {
+            return 0;
+        }
+
+        public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition, Span<int> selectionVector)
+        {
+            return 0;
+        }
     }
 }
 
