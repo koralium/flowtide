@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
             if (data.UnreadSequence.Length < messageLength)
             {
-                throw new Exception($"Not enough data to read schema message, have {data.UnreadSpan.Length} bytes left but expected {messageLength} bytes.");
+                throw new Exception($"Not enough data to read schema message, have {data.UnreadSequence.Length} bytes left but expected {messageLength} bytes.");
             }
 
             if (data.UnreadSpan.Length < messageLength)

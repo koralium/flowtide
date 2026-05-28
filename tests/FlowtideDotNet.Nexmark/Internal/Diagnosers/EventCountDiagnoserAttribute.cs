@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Nexmark.Internal.Diagnosers
     {
         public IConfig Config { get; }
 
-        public EventCountDiagnoserAttribute(bool displayExceptionsIfZeroValue = true)
+        public EventCountDiagnoserAttribute()
         {
             Config = ManualConfig.CreateEmpty().AddDiagnoser(new EventCountDiagnoser());
         }
