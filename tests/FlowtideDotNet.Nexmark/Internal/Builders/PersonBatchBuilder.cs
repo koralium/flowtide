@@ -27,7 +27,7 @@ internal sealed class PersonBatchBuilder
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        _fileStream = File.OpenWrite("person_batches.bin");
+        _fileStream = new FileStream("person_batches.bin", FileMode.Create, FileAccess.Write, FileShare.None);
     }
 
     public void Add(in Person person)
