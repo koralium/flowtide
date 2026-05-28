@@ -203,7 +203,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     };
                 }
 
-                await _measures[0].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[0]);
+                for (int m = 0; m < _measures.Length; m++)
+                {
+                    await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[groupLength + m]);
+                }
+                
                 // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
                 // TODO: Fix row references and indices
                 await _treeBulkSearch.Start(rowReferences, currentLeaf.keys.Count, indices);
@@ -428,10 +432,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             Debug.Assert(_treeBulkInserter != null);
             
+            // TODO: Might need to handle deleted rows here, if valueSent is set, output directly
             var mutator = new BulkAggregateMutator(_measures, data.Weights, data.EventBatchData, _groupedSortIndices, computeRanges);
             // Apply the batch, mutator handles calling compute on measures for a group of values
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
+            // TODO: If deleted is handled in apply batch, it needs to be removed here from temp tree
             var tempMutator = new BulkTemporaryMutator();
             await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _noDuplicateIndices, uniqueCounter, tempMutator, totalBatchSize);
             yield break;
