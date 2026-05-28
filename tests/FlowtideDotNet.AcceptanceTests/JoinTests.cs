@@ -483,7 +483,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task LeftJoinBlockLoopModulusUsersFirstDeterministicFail()
+        public async Task LeftJoinBlockLoopModulusUsersFirstOrdersWaitForUsers()
         {
             Internal.MockDataSourceOperator.TableInitialSignals.Clear();
             Internal.MockDataSourceOperator.TableWaitSignals.Clear();
