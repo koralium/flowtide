@@ -27,7 +27,7 @@ internal sealed class PersonBatchBuilder
         _currentColumns = CreateColumns();
         _currentRowCount = 0;
         _eventBatchSerializer = new EventBatchSerializer();
-        string filePath = Path.Combine(baseDir, "person_batches.bin");
+        string filePath = Path.Join(baseDir, "person_batches.bin");
         _fileStream = File.OpenWrite(filePath);
     }
 
