@@ -13,6 +13,7 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
+using System.Linq;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -508,13 +509,10 @@ namespace FlowtideDotNet.AcceptanceTests
                 foreach (var user in Users)
                 {
                     bool joinFound = false;
-                    foreach (var order in Orders)
+                    foreach (var order in Orders.Where(order => order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0))
                     {
-                        if (order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0)
-                        {
-                            joinFound = true;
-                            expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
-                        }
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
                     }
                     if (!joinFound)
                     {
