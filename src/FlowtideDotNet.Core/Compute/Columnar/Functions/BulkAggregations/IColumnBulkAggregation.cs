@@ -52,7 +52,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         /// <param name="indices"></param>
         /// <param name="data"></param>
         /// <param name="groupState"></param>
-        bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState);
+        bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState);
+
+        ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn);
 
         /// <summary>
         /// Fetches the current value, the grouping values are sorted by group key in ascending order.
@@ -62,7 +64,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         /// <param name="groupStates"></param>
         /// <param name="outputColumn"></param>
         /// <returns></returns>
-        ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, Column outputColumn);
+        ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn);
 
         /// <summary>
         /// Initializes the measurement, allows creating of custom state handling mechanisms.

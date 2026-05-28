@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Tree;
 using System;
 using System.Collections.Generic;
@@ -26,10 +27,23 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
     internal struct BulkAggregateMutator : IRowMutator<ColumnRowReference, ColumnAggregateStateReference>
     {
         private readonly IColumnBulkAggregation[] measures;
+        private readonly PrimitiveList<int> weights;
+        private readonly EventBatchData incomingData;
+        private readonly int[] indices;
+        private readonly List<AggregateComputeRange> computeRanges;
 
-        public BulkAggregateMutator(IColumnBulkAggregation[] measures)
+        public BulkAggregateMutator(
+            IColumnBulkAggregation[] measures, 
+            PrimitiveList<int> weights, 
+            EventBatchData incomingData,
+            int[] indices,
+            List<AggregateComputeRange> computeRanges)
         {
             this.measures = measures;
+            this.weights = weights;
+            this.incomingData = incomingData;
+            this.indices = indices;
+            this.computeRanges = computeRanges;
         }
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
@@ -37,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             throw new NotImplementedException();
         }
 
-        public GenericWriteOperation Process(ColumnRowReference key, bool exists, in ColumnAggregateStateReference existing, ref ColumnAggregateStateReference incoming)
+        public GenericWriteOperation Process(ColumnRowReference key, bool exists, in ColumnAggregateStateReference existing, ref ColumnAggregateStateReference incoming, int sortedIndex)
         {
             if (exists)
             {
@@ -49,7 +63,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var stateCol = existing.referenceBatch.Columns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     // Compute should be called here for each row, need alot of extra input here though.
-
+                    var computeRange = computeRanges[i];
+                    var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
+                    measures[i].Compute(indiceSpan, weights, incomingData, colReference);
                     //measures[i].Compute(0, 0)
                 }
                 
@@ -60,6 +76,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 else
                 {
                     return GenericWriteOperation.Upsert;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < measures.Length; i++)
+                {
+                    var stateCol = incoming.referenceBatch.Columns[i];
+                    var colReference = new ColumnReference(stateCol, incoming.RowIndex, default);
+                    // Compute should be called here for each row, need alot of extra input here though.
+                    var computeRange = computeRanges[i];
+                    var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
+                    measures[i].Compute(indiceSpan, weights, incomingData, colReference);
+                    //measures[i].Compute(0, 0)
                 }
             }
             return GenericWriteOperation.Upsert;

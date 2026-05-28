@@ -131,10 +131,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var col = valuesBatch.Columns[i];
                 _eventBatch.Columns[i].InsertFrom(col, ref sortedLookup, ref targetPositions, -1);
             }
-            for (int i = 0; i < values.Length; i++)
+            for (int i = 0; i < sortedLookup.Length; i++)
             {
-                _weights.InsertAt(targetPositions[i], values[i].weight);
-                _previousValueSent.InsertAt(targetPositions[i], values[i].valueSent);
+                _weights.InsertAt(targetPositions[i], values[sortedLookup[i]].weight);
+                _previousValueSent.InsertAt(targetPositions[i], values[sortedLookup[i]].valueSent);
             }
         }
 
@@ -160,10 +160,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void Update(int index, ColumnAggregateStateReference value)
         {
-            for (int i = 0; i < columnCount; i++)
-            {
-                _eventBatch.Columns[i].UpdateAt(index, value.referenceBatch.Columns[i].GetValueAt(value.RowIndex, default));
-            }
+            //for (int i = 0; i < columnCount; i++)
+            //{
+            //    _eventBatch.Columns[i].UpdateAt(index, value.referenceBatch.Columns[i].GetValueAt(value.RowIndex, default));
+            //}
             _weights.Update(index, value.weight);
             _previousValueSent.Update(index, value.valueSent);
         }

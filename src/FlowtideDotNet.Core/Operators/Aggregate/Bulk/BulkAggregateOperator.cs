@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -18,6 +19,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
@@ -42,6 +44,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
         private ColumnStore.Column[]? m_groupValues;
         private readonly BatchSorter _batchSorter;
+        private readonly int m_outputCount;
+
+        private ColumnStore.Column[]? m_temporaryStateValues;
+        private EventBatchData? m_temporaryStateBatch;
 
         private int[] _groupedSortIndices = Array.Empty<int>();
         private int[] _duplicateTags = Array.Empty<int>();
@@ -53,9 +59,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _tree;
         private IBPlusTreeBulkInserter<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeBulkInserter;
+        private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private IBPlusTreeBulkInserter<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeBulkInserter;
+        private IBplusTreeBulkSearch<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer, AggregateSearchComparer>? _treeBulkSearch;
 
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
+            m_outputCount = aggregateRelation.OutputLength;
             this._aggregateRelation = aggregateRelation;
             this._functionsRegister = functionsRegister;
             _measures = new IColumnBulkAggregation[aggregateRelation.Measures?.Count ?? 0];
@@ -128,12 +138,122 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         public override Task OnCheckpoint()
         {
+            Debug.Assert(m_groupValues != null);
+            Debug.Assert(m_temporaryStateValues != null);
+
+            for (int i = 0; i < m_groupValues.Length; i++)
+            {
+                m_groupValues[i].Dispose();
+                m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i].Dispose();
+                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+
             return Task.CompletedTask;
+        }
+
+        protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
+        {
+            Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_treeBulkSearch != null);
+            Debug.Assert(m_groupValues != null);
+
+            // TODO: Have this be reused between watermarks
+            ColumnRowReference[] rowReferences = Array.Empty<ColumnRowReference>();
+            ColumnReference[] columnReferences = Array.Empty<ColumnReference>();
+            int[] indices = Array.Empty<int>();
+
+            var outputColumnCount = m_outputCount;
+            ColumnStore.Column[] outputColumns = new ColumnStore.Column[outputColumnCount];
+
+            for (int i = 0; i < outputColumnCount; i++)
+            {
+                outputColumns[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+            int groupLength = m_groupValues.Length;
+
+            using var iterator = _temporaryTree.CreateIterator();
+            await iterator.SeekFirst();
+            await foreach(var page in iterator)
+            {
+                var currentLeaf = page.CurrentPage;
+
+                if (rowReferences.Length < currentLeaf.keys.Count)
+                {
+                    rowReferences = new ColumnRowReference[currentLeaf.keys.Count];
+                    columnReferences = new ColumnReference[currentLeaf.keys.Count];
+                    indices = new int[currentLeaf.keys.Count];
+                    // indices will always just be incremented since data is always sorted from the tree
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        indices[i] = i;
+                    }
+                }
+
+                for (int i = 0; i < currentLeaf.keys.Count; i++)
+                {
+                    // Map row references, this is simply for the bulk search interface
+                    rowReferences[i] = new ColumnRowReference()
+                    {
+                        referenceBatch = currentLeaf.keys._data,
+                        RowIndex = i
+                    };
+                }
+
+                await _measures[0].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[0]);
+                // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
+                // TODO: Fix row references and indices
+                await _treeBulkSearch.Start(rowReferences, currentLeaf.keys.Count, indices);
+
+                while(await _treeBulkSearch.MoveNextLeaf())
+                {
+                    var persistedLeaf = _treeBulkSearch.CurrentLeaf;
+                    var currentResults = _treeBulkSearch.CurrentResults;
+                    var previousValueSent = persistedLeaf.values._previousValueSent;
+
+                    var firstIndex = currentResults[0].KeyIndex;
+                    var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
+
+                    for (int m = 0; m < _measures.Length; m++)
+                    {
+                        for (int c = 0; c < currentResults.Count; c++)
+                        {
+                            var stateCol = persistedLeaf.values._eventBatch.GetColumn(m * 2);
+                            columnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
+                        }
+                        
+                        // TODO: Fix here 
+                        await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), columnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
+
+                        
+                    }
+
+                    for (int i = 0; i < currentResults.Count; i++)
+                    {
+                        var lower = currentResults[i].LowerBound;
+                        var valueSent = previousValueSent[lower];
+                        if (valueSent)
+                        {
+                            // Previous value has been sent, so we need to send a retraction
+
+                        }
+                    }
+
+                }
+            }
+
+            yield break;
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(m_groupValues != null);
+            Debug.Assert(m_temporaryStateValues != null);
+            Debug.Assert(m_temporaryStateBatch != null);
+            Debug.Assert(_temporaryTreeBulkInserter != null);
 
             // Call each measure to initialize the new batch
             for (int i = 0; i< _measures.Length; i++)
@@ -146,6 +266,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 m_groupValues[i].Clear();
             }
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i].Clear();
+                // add null for all temporary state values, so if its a new value it can update the state during compute
+                m_temporaryStateValues[i].InsertNullRange(0, msg.Data.Count);
+            }
+
             var data = msg.Data;
             var dataCount = data.Count;
 
@@ -224,6 +351,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _rowValuesBuffer = new ColumnAggregateStateReference[dataCount];
             }
 
+            List<AggregateComputeRange> computeRanges = new List<AggregateComputeRange>();
+
             int uniqueCounter = 0;
             if (dataCount > 0)
             {
@@ -254,11 +383,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         _noDuplicateIndices[uniqueCounter] = uniqueIndex;
                         _duplicateTags[uniqueCounter] = uniqueCounter;
 
+                        computeRanges.Add(new AggregateComputeRange()
+                        {
+                            start = uniqueIndex,
+                            length = i - uniqueIndex
+                        });
                         uniqueCounter++;
 
                         weightCounter = data.Weights[i];
                         lastTag = _duplicateTags[i];
                         uniqueIndex = i;
+                        
                     }
                 }
 
@@ -269,13 +404,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 };
                 _rowValuesBuffer[uniqueCounter] = new ColumnAggregateStateReference()
                 {
-                    referenceBatch = data.EventBatchData,
+                    referenceBatch = m_temporaryStateBatch,
                     RowIndex = uniqueIndex,
                     valueSent = false,
                     weight = weightCounter
                 };
                 _noDuplicateIndices[uniqueCounter] = uniqueIndex;
                 _duplicateTags[uniqueCounter] = uniqueCounter;
+                computeRanges.Add(new AggregateComputeRange()
+                {
+                    start = uniqueIndex,
+                    length = dataCount - uniqueIndex
+                });
 
                 uniqueCounter++;
             }
@@ -288,10 +428,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             Debug.Assert(_treeBulkInserter != null);
             
-            var mutator = new BulkAggregateMutator(_measures);
+            var mutator = new BulkAggregateMutator(_measures, data.Weights, data.EventBatchData, _groupedSortIndices, computeRanges);
             // Apply the batch, mutator handles calling compute on measures for a group of values
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
+            var tempMutator = new BulkTemporaryMutator();
+            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _noDuplicateIndices, uniqueCounter, tempMutator, totalBatchSize);
             yield break;
         }
 
@@ -327,6 +469,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_groupValues = Array.Empty<ColumnStore.Column>();
             }
 
+            m_temporaryStateValues = new ColumnStore.Column[(_aggregateRelation.Measures?.Count ?? 0) * 2];
+
+            for (int i = 0; i < m_temporaryStateValues.Length; i++)
+            {
+                m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
+            }
+            m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+
             for (int i = 0; i < _measures.Length; i++)
             {
                 // Initialize all mesures
@@ -343,7 +493,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     MemoryAllocator = MemoryAllocator
                 });
 
+            _temporaryTree = await stateManagerClient.GetOrCreateTree("grouping_set_1_v1_temp",
+                new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>()
+                {
+                    KeySerializer = new AggregateKeySerializer(m_groupValues.Length, MemoryAllocator),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
+                    Comparer = new AggregateInsertComparer(m_groupValues.Length),
+                    UseByteBasedPageSizes = true,
+                    MemoryAllocator = MemoryAllocator
+                });
+
             _treeBulkInserter = _tree.CreateBulkInserter();
+            _temporaryTreeBulkInserter = _temporaryTree.CreateBulkInserter();
+            _treeBulkSearch = _tree.CreateBulkSearcher(new AggregateSearchComparer(m_groupValues.Length));
         }
 
         private void SortData(int dataCount)

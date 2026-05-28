@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 // TODO: Fix later, just initial
             }
 
-            public GenericWriteOperation Process(ListAggColumnRowReference key, bool exists, in int input, ref int existing)
+            public GenericWriteOperation Process(ListAggColumnRowReference key, bool exists, in int input, ref int existing, int sortedIndex)
             {
                 if (exists)
                 {
@@ -103,14 +103,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             return _bulkInserter!.ApplyBatch(rowReferences, weightArray, weights.Count, new MinRowMutator(), totalBatchSize);
         }
 
-        public bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
+        public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState)
         {
             // Could compare values here, issue is if we get a delete.
             // Fetching the new value should be possible in GetValuesAsync
             return true;
         }
 
-        public async ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, Column outputColumn)
+        public async ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);
             ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[groupStates.Length];
@@ -179,6 +179,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 var value = _projectionFunction(batchData, i);
                 _projectedDataColumn.Append(value);
             }
+        }
+
+        public ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn)
+        {
+            return ValueTask.CompletedTask;
         }
     }
 }

@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Benchmarks
                 }
             }
 
-            public GenericWriteOperation Process(ColumnRowReference key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(ColumnRowReference key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return GenericWriteOperation.Upsert;
             }

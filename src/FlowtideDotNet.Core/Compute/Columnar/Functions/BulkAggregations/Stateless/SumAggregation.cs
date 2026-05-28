@@ -55,10 +55,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             return Task.CompletedTask;
         }
 
-        public bool Compute(int groupStartIndex, int groupEndIndex, PrimitiveList<int> weights, ReadOnlySpan<int> indices, EventBatchData data, ColumnReference groupState)
+        public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState)
         {
             groupState.GetValue(_dataValueContainer);
-            for (int i = groupStartIndex; i < groupEndIndex; i++)
+            for (int i = 0; i < indices.Length; i++)
             {
                 var value = projectionFunction(data, indices[i]);
                 DoSum(value, _dataValueContainer, weights[indices[i]]);
@@ -156,9 +156,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             }
         }
 
-        public ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, Column outputColumn)
+        public ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn)
         {
-            for (int i = 0; i < groupStates.Length; i++)
+            for (int i = startIndex; i < startIndex + length; i++)
             {
                 groupStates[i].GetValue(_dataValueContainer);
                 outputColumn.Add(_dataValueContainer);
@@ -176,6 +176,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         }
 
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, EventBatchData incoming, ReadOnlySpan<int> sortedByGroupIndices)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn)
         {
             return ValueTask.CompletedTask;
         }

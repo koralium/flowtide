@@ -16,12 +16,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace FlowtideDotNet.Storage.Tree
+namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 {
-    public interface IRowMutator<K, V>
+    internal struct AggregateComputeRange
     {
-        void GetSizePrefixSum(K[] keys, ReadOnlySpan<int> indices, Span<int> sizes);
-
-        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData, int sortedIndex);
+        public int start;
+        public int length;
     }
 }
