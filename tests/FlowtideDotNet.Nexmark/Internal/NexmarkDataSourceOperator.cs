@@ -200,68 +200,73 @@ public class NexmarkDataSourceOperator : ReadBaseOperator
 
         using SafeFileHandle handle = File.OpenHandle(_fileName, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.Asynchronous);
         var pipeReader = new FilePipeReader(handle, 4 * 1024 * 1024);
-
-        int currentBatchIndex = 0;
-        int totalRowCount = 0;
-        while (true)
+        try
         {
-            var result = await pipeReader.ReadAsync();
-            var buffer = result.Buffer;
-
-            if (buffer.IsEmpty && result.IsCompleted)
+            int currentBatchIndex = 0;
+            int totalRowCount = 0;
+            while (true)
             {
-                break;
-            }
+                var result = await pipeReader.ReadAsync();
+                var buffer = result.Buffer;
 
-            EventBatchData? batchData = null;
-            if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
-            {
-                pipeReader.AdvanceTo(buffer.Start, buffer.End);
-                continue;
-            }
+                if (buffer.IsEmpty && result.IsCompleted)
+                {
+                    break;
+                }
 
-            pipeReader.SkipForward(totalLength);
+                EventBatchData? batchData = null;
+                if (!CheckAndDeserializeBatch(buffer, _emitIndices, out batchData, out int totalLength))
+                {
+                    pipeReader.AdvanceTo(buffer.Start, buffer.End);
+                    continue;
+                }
 
-            if (currentBatchIndex < _state.Value.SentBatches)
-            {
+                pipeReader.SkipForward(totalLength);
+
+                if (currentBatchIndex < _state.Value.SentBatches)
+                {
+                    currentBatchIndex++;
+                    continue;
+                }
+
+                int rowCount = batchData.Count;
+
+                totalRowCount += rowCount;
+
+                IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
+                for (int i = 0; i < _emitIndices.Count; i++)
+                {
+                    selectedColumns[i] = batchData.Columns[_emitIndices[i]];
+                }
+
+                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+
+                for (int i = 0; i < rowCount; i++)
+                {
+                    weights.Add(1);
+                    iterations.Add(1);
+                }
+
+                var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
+                await output.SendAsync(outputBatch);
+
+                _state.Value.SentBatches++;
                 currentBatchIndex++;
-                continue;
+                sentData = true;
             }
 
-            int rowCount = batchData.Count;
-
-            totalRowCount += rowCount;
-
-            IColumn[] selectedColumns = new IColumn[_emitIndices.Count];
-            for (int i = 0; i < _emitIndices.Count; i++)
+            _rowCounter.Add(totalRowCount, new KeyValuePair<string, object?>("operator", Name));
+            if (sentData)
             {
-                selectedColumns[i] = batchData.Columns[_emitIndices[i]];
+                await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(_state.Value.SentBatches)));
+                this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             }
-
-            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-
-            for (int i = 0; i < rowCount; i++)
-            {
-                weights.Add(1);
-                iterations.Add(1);
-            }
-
-            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(selectedColumns)));
-            await output.SendAsync(outputBatch);
-
-            _state.Value.SentBatches++;
-            currentBatchIndex++;
-            sentData = true;
         }
-
-        _rowCounter.Add(totalRowCount, new KeyValuePair<string, object?>("operator", Name));
-        if (sentData)
+        finally
         {
-            await output.SendWatermark(new Base.Watermark(_readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(_state.Value.SentBatches)));
-            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            pipeReader.Complete();
+            output.ExitCheckpointLock();
         }
-
-        output.ExitCheckpointLock();
     }
 }
