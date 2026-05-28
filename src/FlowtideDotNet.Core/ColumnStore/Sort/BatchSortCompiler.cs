@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return lambda;
         }
 
-        public static BlockExpression Compile(IColumn[] columns, Expression contextParameter, Expression xParameter, Expression yParameter)
+        public static BlockExpression Compile(IColumn[] columns, Expression contextParameter, Expression xParameter, Expression yParameter, int startColumnIndex)
         {
             var pointersField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.pointers))!;
             var columnsField = typeof(SortCompareContext).GetField(nameof(SortCompareContext.columns))!;
@@ -164,7 +164,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             var compareResultVar = Expression.Variable(typeof(int), "compareResult");
             var bodyExpressions = new List<Expression>();
 
-            for (int i = 0; i < columns.Length && i < 7; i++)
+            for (int i = startColumnIndex; i < columns.Length && i < 7; i++)
             {
                 var column = columns[i];
 

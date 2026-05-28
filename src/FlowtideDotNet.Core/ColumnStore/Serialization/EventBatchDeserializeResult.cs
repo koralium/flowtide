@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,14 +14,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 {
     public struct EventBatchDeserializeResult
     {
-        public EventBatchDeserializeResult(EventBatchData eventBatch, int count)
+        public EventBatchDeserializeResult(EventBatchData eventBatch, int count, int totalLength)
         {
             EventBatch = eventBatch;
             Count = count;
+            TotalLength = totalLength;
         }
 
         public EventBatchData EventBatch { get; }
         public int Count { get; }
+        public int TotalLength { get; }
     }
 
     public struct DataColumnsDeserializeResult

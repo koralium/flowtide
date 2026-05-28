@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
     internal class BatchSorter
     {
         private readonly SelfComparePointers[] _pointers;
+        private RadixItem[] _radixItems = Array.Empty<RadixItem>();
         private UInt128 _lastKey = 0;
         private SortCompiler.SortDelegate? _lastSort;
         private SortCompiler.SortWithTagsDelegate? _lastSortWithTags;
@@ -55,7 +56,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 }
             }
 
-            _lastSort(new SortCompareContext(columns, _pointers), ref indirect);
+            if (_radixItems.Length < indirect.Length)
+            {
+                _radixItems = new RadixItem[indirect.Length];
+            }
+
+            var radixItemsSpan = _radixItems.AsSpan(0, indirect.Length);
+
+            _lastSort(new SortCompareContext(columns, _pointers), ref indirect, ref radixItemsSpan);
         }
 
         /// <summary>
@@ -82,7 +90,14 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                     columns[i].SetSelfComparePointers(ref _pointers[i]);
                 }
             }
-            _lastSortWithTags(new SortCompareContext(columns, _pointers), ref indirect, ref tags);
+
+            if (_radixItems.Length < indirect.Length)
+            {
+                _radixItems = new RadixItem[indirect.Length];
+            }
+
+            var radixItemsSpan = _radixItems.AsSpan(0, indirect.Length);
+            _lastSortWithTags(new SortCompareContext(columns, _pointers), ref indirect, ref tags, ref radixItemsSpan);
         }
     }
 }

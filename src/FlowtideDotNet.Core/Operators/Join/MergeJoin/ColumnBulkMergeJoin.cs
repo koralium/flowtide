@@ -266,6 +266,46 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             return targetId == 0 ? OnRecieveLeft(msg, time) : OnRecieveRight(msg, time);
         }
 
+        private void CopyCollectedIndices(
+            List<Column> columns,
+            List<int> outputColumns,
+            EventBatchData leafData,
+            PrimitiveList<int> leafIndicesToCopy,
+            PrimitiveList<int> targetPositions)
+        {
+            if (leafIndicesToCopy.Count == 0) return;
+
+            if (columns.Count == 0)
+            {
+                leafIndicesToCopy.Clear();
+                return;
+            }
+
+            int count = leafIndicesToCopy.Count;
+            int initialCount = columns[0].Count;
+
+            targetPositions.Clear();
+            targetPositions.EnsureCapacity(count);
+            for (int i = 0; i < count; i++)
+            {
+                targetPositions.Add(initialCount);
+            }
+
+            ReadOnlySpan<int> sortedLookupSpan = leafIndicesToCopy.Span;
+            ReadOnlySpan<int> targetPositionsSpan = targetPositions.Span;
+
+            for (int z = 0; z < columns.Count; z++)
+            {
+                columns[z].InsertFrom(
+                    leafData.Columns[outputColumns[z]],
+                    in sortedLookupSpan,
+                    in targetPositionsSpan,
+                    ColumnWithOffset.NullValueIndex);
+            }
+
+            leafIndicesToCopy.Clear();
+        }
+
         private async IAsyncEnumerable<StreamEventBatch> OnRecieveLeft(StreamEventBatch msg, long time)
         {
             Debug.Assert(_rightTree != null);
@@ -280,6 +320,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
+
+            PrimitiveList<int> leafIndicesToCopy = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> targetPositions = new PrimitiveList<int>(memoryManager, keyLength);
 
             for (int i = 0; i < _rightOutputColumns.Count; i++)
             {
@@ -340,11 +383,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         int outWeight = joinStorageValue.weight * weight;
                         insertValues[keyIndex].joinWeight += outWeight;
 
-                        for (int z = 0; z < rightColumns.Count; z++)
-                        {
-                            pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                            rightColumns[z].Add(_dataValueContainer);
-                        }
+                        leafIndicesToCopy.Add(k);
                         foundOffsets.Add(keyIndex);
                         iterations.Add(msg.Data.Iterations[keyIndex]);
                         weights.Add(outWeight);
@@ -354,11 +393,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             pageUpdated = true;
                             if (joinStorageValue.joinWeight == 0)
                             {
-                                for (int z = 0; z < rightColumns.Count; z++)
-                                {
-                                    pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                                    rightColumns[z].Add(_dataValueContainer);
-                                }
+                                leafIndicesToCopy.Add(k);
                                 foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                                 weights.Add(-joinStorageValue.weight);
                                 iterations.Add(msg.Data.Iterations[keyIndex]);
@@ -368,11 +403,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                             if (joinStorageValue.joinWeight == 0)
                             {
-                                for (int z = 0; z < rightColumns.Count; z++)
-                                {
-                                    pageKeyStorage._data.Columns[_rightOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                                    rightColumns[z].Add(_dataValueContainer);
-                                }
+                                leafIndicesToCopy.Add(k);
                                 foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                                 weights.Add(joinStorageValue.weight);
                                 iterations.Add(msg.Data.Iterations[keyIndex]);
@@ -380,18 +411,22 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             
                             pageValues.Update(k, joinStorageValue);
                         }
-
-                        if (foundOffsets.Count >= MaxRowSize)
-                        {
-                            leafNode.ExitWriteLock();
-                            var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, null, rightColumns, true);
-                            _eventsCounter.Add(outputBatch.Data.Weights.Count);
-                            yield return outputBatch;
-                            ResetOutputLists(ref foundOffsets, ref weights, ref iterations, null, rightColumns);
-                            leafNode.EnterWriteLock();
-                        }
                     }
                 }
+
+                CopyCollectedIndices(rightColumns, _rightOutputColumns, pageKeyStorage._data, leafIndicesToCopy, targetPositions);
+
+                // We output when a leaf is done
+                if (foundOffsets.Count >= MaxRowSize)
+                {
+                    leafNode.ExitWriteLock();
+                    var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, null, rightColumns, true);
+                    _eventsCounter.Add(outputBatch.Data.Weights.Count);
+                    yield return outputBatch;
+                    ResetOutputLists(ref foundOffsets, ref weights, ref iterations, null, rightColumns);
+                    leafNode.EnterWriteLock();
+                }
+
                 leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
@@ -446,6 +481,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 iterations.Dispose();
             }
 
+            leafIndicesToCopy.Dispose();
+            targetPositions.Dispose();
 
             await _leftInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_leftInputColumnCount), batchSize);
         }
@@ -464,6 +501,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager, keyLength);
+
+            PrimitiveList<int> leafIndicesToCopy = new PrimitiveList<int>(memoryManager, keyLength);
+            PrimitiveList<int> targetPositions = new PrimitiveList<int>(memoryManager, keyLength);
 
             for (int i = 0; i < _leftOutputColumns.Count; i++)
             {
@@ -522,11 +562,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                         int outWeight = joinStorageValue.weight * weight;
                         insertValues[keyIndex].joinWeight += outWeight;
 
-                        for (int z = 0; z < leftColumns.Count; z++)
-                        {
-                            pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                            leftColumns[z].Add(_dataValueContainer);
-                        }
+                        leafIndicesToCopy.Add(k);
                         foundOffsets.Add(keyIndex);
                         iterations.Add(msg.Data.Iterations[keyIndex]);
                         weights.Add(outWeight);
@@ -536,11 +572,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             pageUpdated = true;
                             if (joinStorageValue.joinWeight == 0)
                             {
-                                for (int z = 0; z < leftColumns.Count; z++)
-                                {
-                                    pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                                    leftColumns[z].Add(_dataValueContainer);
-                                }
+                                leafIndicesToCopy.Add(k);
                                 foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                                 weights.Add(-joinStorageValue.weight);
                                 iterations.Add(msg.Data.Iterations[keyIndex]);
@@ -550,11 +582,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
                             if (joinStorageValue.joinWeight == 0)
                             {
-                                for (int z = 0; z < leftColumns.Count; z++)
-                                {
-                                    pageKeyStorage._data.Columns[_leftOutputColumns[z]].GetValueAt(k, _dataValueContainer, default);
-                                    leftColumns[z].Add(_dataValueContainer);
-                                }
+                                leafIndicesToCopy.Add(k);
                                 foundOffsets.Add(ColumnWithOffset.NullValueIndex);
                                 weights.Add(joinStorageValue.weight);
                                 iterations.Add(msg.Data.Iterations[keyIndex]);
@@ -562,18 +590,22 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                             
                             pageValues.Update(k, joinStorageValue);
                         }
-
-                        if (foundOffsets.Count >= MaxRowSize)
-                        {
-                            leafNode.ExitWriteLock();
-                            var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, leftColumns, null, false);
-                            _eventsCounter.Add(outputBatch.Data.Weights.Count);
-                            yield return outputBatch;
-                            ResetOutputLists(ref foundOffsets, ref weights, ref iterations, leftColumns, null);
-                            leafNode.EnterWriteLock();
-                        }
                     }
                 }
+
+                CopyCollectedIndices(leftColumns, _leftOutputColumns, pageKeyStorage._data, leafIndicesToCopy, targetPositions);
+
+                // We output when a leaf is done, matching OnRecieveLeft
+                if (foundOffsets.Count >= MaxRowSize)
+                {
+                    leafNode.ExitWriteLock();
+                    var outputBatch = BuildOutputBatch(msg, foundOffsets, weights, iterations, leftColumns, null, false);
+                    _eventsCounter.Add(outputBatch.Data.Weights.Count);
+                    yield return outputBatch;
+                    ResetOutputLists(ref foundOffsets, ref weights, ref iterations, leftColumns, null);
+                    leafNode.EnterWriteLock();
+                }
+
                 leafNode.ExitWriteLock();
                 if (pageUpdated)
                 {
@@ -627,6 +659,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 weights.Dispose();
                 iterations.Dispose();
             }
+
+            leafIndicesToCopy.Dispose();
+            targetPositions.Dispose();
 
             await _rightInserter.ApplyBatch(keys, insertValues, keyLength, sortedIndices, _duplicatesTagBuffer, new JoinWeightsMutator(_rightInputColumnCount), batchSize);
         }

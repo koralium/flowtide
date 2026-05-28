@@ -106,6 +106,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             System.Linq.Expressions.Expression selfComparePointerExpression,
             System.Linq.Expressions.Expression xExpression,
             System.Linq.Expressions.Expression yExpression);
+
+        RadixCapability SupportsRadixSort(int bytesLeft, bool hasNullByte);
+
+        int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition);
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="items"></param>
+        /// <param name="insertBytePosition"></param>
+        /// <param name="nullBytePosition">-1 if null byte has not been assigned, otherwise the position of the null byte.</param>
+        /// <param name="selectionVector"></param>
+        /// <returns></returns>
+        int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, int nullBytePosition, Span<int> selectionVector);
     }
 }
 

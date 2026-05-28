@@ -89,6 +89,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 System.Linq.Expressions.Expression yExpression);
 
             CompareColumnState GetColumnState();
+
+            int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector);
         }
 
         private sealed class Int8Data : IIntData
@@ -258,6 +260,46 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 return CompareColumnStateBuilder.Create(ArrowTypeId.Int8);
             }
+
+            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+            {
+                ReadOnlySpan<sbyte> span = _list.Span;
+                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+                if (selectionVector.IsEmpty)
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        sbyte rawValue = span[item.Index];
+                        byte alignedValue = (byte)(rawValue ^ 0x80);
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        byteOffset = alignedValue;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        int selectedIndex = selectionVector[item.Index];
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+
+                        if (selectedIndex >= 0)
+                        {
+                            sbyte rawValue = span[selectedIndex];
+                            byteOffset = (byte)(rawValue ^ 0x80);
+                        }
+                        else
+                        {
+                            byteOffset = 0;
+                        }
+                    }
+                }
+
+                return 1;
+            }
         }
 
         private sealed class Int16Data : IIntData
@@ -426,6 +468,48 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public CompareColumnState GetColumnState()
             {
                 return CompareColumnStateBuilder.Create(ArrowTypeId.Int16);
+            }
+
+            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+            {
+                ReadOnlySpan<short> span = _list.Span;
+                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+                if (selectionVector.IsEmpty)
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        short rawValue = span[item.Index];
+                        ushort alignedValue = (ushort)(rawValue ^ 0x8000);
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        Unsafe.As<byte, ushort>(ref byteOffset) = alignedValue;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        int selectedIndex = selectionVector[item.Index];
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+
+                        if (selectedIndex >= 0)
+                        {
+                            short rawValue = span[selectedIndex];
+                            ushort alignedValue = (ushort)(rawValue ^ 0x8000);
+                            Unsafe.As<byte, ushort>(ref byteOffset) = alignedValue;
+                        }
+                        else
+                        {
+                            Unsafe.As<byte, ushort>(ref byteOffset) = 0;
+                        }
+                    }
+                }
+
+                return 2;
             }
         }
 
@@ -597,6 +681,49 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 return CompareColumnStateBuilder.Create(ArrowTypeId.Int32);
             }
+
+            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+            {
+                ReadOnlySpan<int> span = _list.Span;
+                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+                if (selectionVector.IsEmpty)
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        int rawValue = span[item.Index];
+
+                        uint alignedValue = (uint)rawValue ^ 0x80000000u;
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        Unsafe.As<byte, uint>(ref byteOffset) = alignedValue;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        int selectedIndex = selectionVector[item.Index];
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+
+                        if (selectedIndex >= 0)
+                        {
+                            int rawValue = span[selectedIndex];
+                            uint alignedValue = (uint)rawValue ^ 0x80000000u;
+                            Unsafe.As<byte, uint>(ref byteOffset) = alignedValue;
+                        }
+                        else
+                        {
+                            Unsafe.As<byte, uint>(ref byteOffset) = 0u;
+                        }
+                    }
+                }
+
+                return 4;
+            }
         }
 
         private sealed class Int64Data : IIntData
@@ -765,6 +892,49 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             public CompareColumnState GetColumnState()
             {
                 return CompareColumnStateBuilder.Create(ArrowTypeId.Int64);
+            }
+
+            public int SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+            {
+                ReadOnlySpan<long> span = _list.Span;
+                ref RadixItem itemsRef = ref MemoryMarshal.GetReference(items);
+
+                if (selectionVector.IsEmpty)
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        long rawValue = span[item.Index];
+
+                        ulong alignedValue = (ulong)rawValue ^ 0x8000000000000000ul;
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+                        Unsafe.As<byte, ulong>(ref byteOffset) = alignedValue;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < items.Length; i++)
+                    {
+                        ref RadixItem item = ref Unsafe.Add(ref itemsRef, i);
+                        int selectedIndex = selectionVector[item.Index];
+
+                        ref byte byteOffset = ref Unsafe.Add(ref Unsafe.As<RadixItem, byte>(ref item), insertBytePosition);
+
+                        if (selectedIndex >= 0)
+                        {
+                            long rawValue = span[selectedIndex];
+                            ulong alignedValue = (ulong)rawValue ^ 0x8000000000000000ul;
+                            Unsafe.As<byte, ulong>(ref byteOffset) = alignedValue;
+                        }
+                        else
+                        {
+                            Unsafe.As<byte, ulong>(ref byteOffset) = 0ul;
+                        }
+                    }
+                }
+
+                return 8;
             }
         }
 
@@ -1273,6 +1443,36 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     cumulativeMass += elementSize;
                 }
             }
+        }
+
+        RadixCapability IDataColumn.SupportsRadixSort(int bytesLeft)
+        {
+            if (_data != null)
+            {
+                switch (_data.BitWidth)
+                {
+                    case 8:
+                        return bytesLeft >= 1 ? RadixCapability.Full(1) : RadixCapability.None();
+                    case 16:
+                        return bytesLeft >= 2 ? RadixCapability.Full(2) : RadixCapability.None();
+                    case 32:
+                        return bytesLeft >= 4 ? RadixCapability.Full(4) : RadixCapability.None();
+                    case 64:
+                        return bytesLeft >= 8 ? RadixCapability.Full(8) : RadixCapability.None();
+                    default:
+                        return RadixCapability.None();
+                }
+            }
+            return RadixCapability.None();
+        }
+
+        int IDataColumn.SetRadixPrefix(Span<RadixItem> items, int insertBytePosition, ReadOnlySpan<int> selectionVector)
+        {
+            if (_data != null) 
+            { 
+                return _data.SetRadixPrefix(items, insertBytePosition, selectionVector);
+            }
+            return 0;
         }
     }
 }

@@ -145,21 +145,6 @@ namespace FlowtideDotNet.Benchmarks
         }
 
         [Benchmark]
-        public void SortMethod()
-        {
-            for (int i = 0; i < Count; i++)
-            {
-                indices[i] = i;
-            }
-            for (int i = 0; i < pointers.Length; i++)
-            {
-                columns[i].SetSelfComparePointers(ref pointers[i]);
-            }
-            var span = indices.AsSpan();
-            sortMethod(new SortCompareContext(columns, pointers), ref span);
-        }
-
-        [Benchmark]
         public void BatchSorter()
         {
             for (int i = 0; i < Count; i++)
