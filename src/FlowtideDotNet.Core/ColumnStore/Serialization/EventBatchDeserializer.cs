@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
     {
         private ReadOnlySpan<byte> _schemaBytes;
         private ReadOnlySpan<byte> _recordBatchHeaderBytes;
+        private byte[]? _rentedHeaderBytes;
+        private byte[]? _rentedSchemaBytes;
 
         private readonly IMemoryAllocator memoryAllocator;
         private readonly IBatchDecompressor? decompressor;
@@ -62,12 +64,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 throw new Exception("Failed to read message length");
             }
-            if (data.UnreadSpan.Length < messageLength)
+            if (data.UnreadSequence.Length < messageLength)
             {
-                throw new Exception($"Not enough data to read schema message, have {data.UnreadSpan.Length} bytes left but expected {messageLength} bytes.");
+                throw new Exception($"Not enough data to read schema message, have {data.UnreadSequence.Length} bytes left but expected {messageLength} bytes.");
             }
 
-            _schemaBytes = data.UnreadSpan.Slice(0, messageLength);
+            if (data.UnreadSpan.Length < messageLength)
+            {
+                _rentedSchemaBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                data.UnreadSequence.Slice(0, messageLength).CopyTo(_rentedSchemaBytes);
+                _schemaBytes = _rentedSchemaBytes.AsSpan(0, messageLength);
+            }
+            else
+            {
+                _schemaBytes = data.UnreadSpan.Slice(0, messageLength);
+            }
+            
             data.Advance(messageLength);
         }
 
@@ -86,12 +98,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Failed to read message length");
             }
 
-            if (data.UnreadSpan.Length < messageLength)
+            if (data.UnreadSequence.Length < messageLength)
             {
                 throw new Exception("Not enough data to read record batch message");
             }
 
-            _recordBatchHeaderBytes = data.UnreadSpan.Slice(0, messageLength);
+            if (data.UnreadSpan.Length < messageLength)
+            {
+                _rentedHeaderBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                data.UnreadSequence.Slice(0, messageLength).CopyTo(_rentedHeaderBytes);
+                _recordBatchHeaderBytes = _rentedHeaderBytes.AsSpan(0, messageLength);
+            }
+            else
+            {
+                _recordBatchHeaderBytes = data.UnreadSpan.Slice(0, messageLength);
+            }
+            
             data.Advance(messageLength);
         }
 
@@ -106,8 +128,136 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             _schemaRead = true;
         }
 
-        public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data)
+        public bool HasEnoughBytesForProjection(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
+            var initialPosition = data.Consumed;
+            byte[]? rentedSchemaBytes = null;
+            byte[]? rentedRbBytes = null;
+
+            int originalFieldNodeIndex = fieldNodeIndex;
+            int originalBufferIndex = bufferIndex;
+
+            try
+            {
+                ReadOnlySpan<byte> schemaSpan;
+
+                if (!_schemaRead)
+                {
+                    if (!data.TryReadLittleEndian(out int magicNumber) || magicNumber != -1) return false;
+                    if (!data.TryReadLittleEndian(out int messageLength)) return false;
+                    if (data.Remaining < messageLength) return false;
+
+                    var schemaData = data.Sequence.Slice(data.Position, messageLength);
+                    if (schemaData.IsSingleSegment)
+                    {
+                        schemaSpan = schemaData.FirstSpan;
+                    }
+                    else
+                    {
+                        rentedSchemaBytes = ArrayPool<byte>.Shared.Rent(messageLength);
+                        schemaData.CopyTo(rentedSchemaBytes);
+                        schemaSpan = rentedSchemaBytes.AsSpan(0, messageLength);
+                    }
+                    data.Advance(messageLength);
+                }
+                else
+                {
+                    schemaSpan = _schemaBytes;
+                }
+
+                if (!data.TryReadLittleEndian(out int rbMagicNumber) || rbMagicNumber != -1) return false;
+                if (!data.TryReadLittleEndian(out int rbMessageLength)) return false;
+                if (data.Remaining < rbMessageLength) return false;
+
+                var rbData = data.Sequence.Slice(data.Position, rbMessageLength);
+                ReadOnlySpan<byte> rbSpan;
+                if (rbData.IsSingleSegment)
+                {
+                    rbSpan = rbData.FirstSpan;
+                }
+                else
+                {
+                    rentedRbBytes = ArrayPool<byte>.Shared.Rent(rbMessageLength);
+                    rbData.CopyTo(rentedRbBytes);
+                    rbSpan = rentedRbBytes.AsSpan(0, rbMessageLength);
+                }
+
+                var rbMessage = MessageStruct.GetRootAsMessage(ref rbSpan, 0);
+                if (rbMessage.HeaderType != MessageHeader.RecordBatch || includeColumns == null)
+                {
+                    return data.Remaining >= rbMessageLength + rbMessage.BodyLength;
+                }
+
+                var recordBatchHeader = new RecordBatchStruct(rbSpan, rbMessage.HeaderPosition());
+                
+                var schemaMessage = MessageStruct.GetRootAsMessage(ref schemaSpan, 0);
+                var schema = new SchemaStruct(schemaSpan, schemaMessage.HeaderPosition());
+
+                long maxRequiredBodyBytes = 0;
+                
+                fieldNodeIndex = 0;
+                bufferIndex = 0;
+
+                for (int i = 0; i < schema.FieldsLength; i++)
+                {
+                    var field = new FieldStruct(schemaSpan, schema.FieldPosition(i));
+                    
+                    bool include = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            include = true;
+                            break;
+                        }
+                    }
+
+                    int startBufferIndex = bufferIndex;
+                    SkipColumn(in field);
+                    
+                    if (include)
+                    {
+                        for (int j = startBufferIndex; j < bufferIndex; j++)
+                        {
+                            var bufferInfoSpan = rbSpan.Slice(recordBatchHeader.BuffersStartIndex + (j * 16));
+                            var bufferOffset = BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan);
+                            var bufferLength = BinaryPrimitives.ReadInt64LittleEndian(bufferInfoSpan.Slice(8));
+                            long end = bufferOffset + bufferLength;
+                            if (end > maxRequiredBodyBytes)
+                            {
+                                maxRequiredBodyBytes = end;
+                            }
+                        }
+                    }
+                }
+                
+                return data.Remaining >= rbMessageLength + maxRequiredBodyBytes;
+            }
+            catch
+            {
+                return false;
+            }
+            finally
+            {
+                fieldNodeIndex = originalFieldNodeIndex;
+                bufferIndex = originalBufferIndex;
+
+                if (rentedSchemaBytes != null)
+                {
+                    ArrayPool<byte>.Shared.Return(rentedSchemaBytes);
+                }
+                if (rentedRbBytes != null)
+                {
+                    ArrayPool<byte>.Shared.Return(rentedRbBytes);
+                }
+                
+                data.Rewind(data.Consumed - initialPosition);
+            }
+        }
+
+        public EventBatchDeserializeResult DeserializeBatch(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
+        {
+            var initialPosition = data.Consumed;
             if (!_schemaRead)
             {
                 ReadSchemaFromSequence(ref data);
@@ -115,6 +265,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             }
 
             ReadRecordBatchHeaderFromSequence(ref data);
+            long headerBytes = data.Consumed - initialPosition;
 
             var message = MessageStruct.GetRootAsMessage(ref _schemaBytes, 0);
 
@@ -145,6 +296,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 isCompressed = true;
             }
 
+            var batchLength = (int)recordBatchHeader.Length;
             bufferStart = recordBatchHeader.BuffersStartIndex;
             IColumn[] columns = new IColumn[fieldsLength];
             for (int i = 0; i < fieldsLength; i++)
@@ -154,6 +306,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 {
                     decompressor.ColumnChange(i);
                 }
+                if (includeColumns != null)
+                {
+                    bool found = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        SkipColumn(in field);
+                        columns[i] = new Column(batchLength, default, new BitmapList(memoryAllocator), ArrowTypeId.Null, memoryAllocator);
+                        continue;
+                    }
+                }
                 columns[i] = DeserializeColumn(ref data, in field, in recordBatchHeader);
             }
 
@@ -161,8 +331,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 // Padding at the end of the record batch, advance past the padding
                 var padding = recordBatchMessage.BodyLength - readDataIndex;
-                data.Advance(padding);
-                readDataIndex += (int)padding;
+                if (data.Remaining >= padding)
+                {
+                    data.Advance(padding);
+                    readDataIndex += (int)padding;
+                }
+                else
+                {
+                    readDataIndex += (int)data.Remaining;
+                    data.Advance(data.Remaining);
+                }
             }
             if (readDataIndex > recordBatchMessage.BodyLength)
             {
@@ -173,10 +351,22 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Not all field nodes were read");
             }
 
-            return new EventBatchDeserializeResult(new EventBatchData(columns), (int)recordBatchHeader.Length);
+            if (_rentedHeaderBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
+                _rentedHeaderBytes = null;
+            }
+            if (_rentedSchemaBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedSchemaBytes);
+                _rentedSchemaBytes = null;
+            }
+
+            int totalLength = (int)headerBytes + (int)recordBatchMessage.BodyLength;
+            return new EventBatchDeserializeResult(new EventBatchData(columns), batchLength, totalLength);
         }
 
-        public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data)
+        public DataColumnsDeserializeResult DeserializeDataColumns(ref SequenceReader<byte> data, System.Collections.Generic.IReadOnlyList<int>? includeColumns = null)
         {
             if (!_schemaRead)
             {
@@ -224,6 +414,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 {
                     decompressor.ColumnChange(i);
                 }
+                if (includeColumns != null)
+                {
+                    bool found = false;
+                    for (int k = 0; k < includeColumns.Count; k++)
+                    {
+                        if (includeColumns[k] == i)
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found)
+                    {
+                        SkipColumn(in field);
+                        columns[i] = new NullColumn(0); // Dummy column for data columns
+                        continue;
+                    }
+                }
                 var fieldNode = ReadNextFieldNode(in recordBatchHeader);
                 var dataColumnResult = DeserializeDataColumn(ref data, in field, in recordBatchHeader, (int)fieldNode.Length);
                 columns[i] = dataColumnResult.dataColumn;
@@ -233,8 +441,16 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 // Padding at the end of the record batch, advance past the padding
                 var padding = recordBatchMessage.BodyLength - readDataIndex;
-                data.Advance(padding);
-                readDataIndex += (int)padding;
+                if (data.Remaining >= padding)
+                {
+                    data.Advance(padding);
+                    readDataIndex += (int)padding;
+                }
+                else
+                {
+                    readDataIndex += (int)data.Remaining;
+                    data.Advance(data.Remaining);
+                }
             }
             if (readDataIndex > recordBatchMessage.BodyLength)
             {
@@ -245,7 +461,19 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 throw new Exception("Not all field nodes were read");
             }
 
-            return new DataColumnsDeserializeResult(columns, (int)recordBatchHeader.Length);
+            var batchLength = (int)recordBatchHeader.Length;
+            if (_rentedHeaderBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedHeaderBytes);
+                _rentedHeaderBytes = null;
+            }
+            if (_rentedSchemaBytes != null)
+            {
+                ArrayPool<byte>.Shared.Return(_rentedSchemaBytes);
+                _rentedSchemaBytes = null;
+            }
+
+            return new DataColumnsDeserializeResult(columns, batchLength);
         }
 
         private FieldNodeStruct ReadNextFieldNode(ref readonly RecordBatchStruct recordBatchStruct)
@@ -700,6 +928,76 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
 
 
             return true;
+        }
+
+        private void SkipColumn(ref readonly FieldStruct fieldStruct)
+        {
+            fieldNodeIndex++;
+
+            if (fieldStruct.TypeType == ArrowType.Null)
+            {
+                return;
+            }
+
+            if (fieldStruct.TypeType != ArrowType.Union)
+            {
+                bufferIndex++; // validity
+            }
+
+            SkipDataColumn(in fieldStruct);
+        }
+
+        private void SkipDataColumn(ref readonly FieldStruct fieldStruct)
+        {
+            switch (fieldStruct.TypeType)
+            {
+                case ArrowType.Null:
+                    break;
+                case ArrowType.Int:
+                case ArrowType.Bool:
+                case ArrowType.FloatingPoint:
+                case ArrowType.FixedSizeBinary:
+                    bufferIndex++;
+                    break;
+                case ArrowType.Utf8:
+                case ArrowType.Binary:
+                    bufferIndex += 2;
+                    break;
+                case ArrowType.List:
+                    bufferIndex++;
+                    var listChild = fieldStruct.Children(0);
+                    SkipColumn(in listChild);
+                    break;
+                case ArrowType.Map:
+                    var mapChild = fieldStruct.Children(0);
+                    fieldNodeIndex++;
+                    bufferIndex += 2; // offset and ExceptEmptyBuffer
+                    var keyField = mapChild.Children(0);
+                    var valueField = mapChild.Children(1);
+                    SkipColumn(in keyField);
+                    SkipColumn(in valueField);
+                    break;
+                case ArrowType.Union:
+                    bufferIndex += 2;
+                    fieldNodeIndex++; // null field node
+                    for (int i = 1; i < fieldStruct.ChildrenLength; i++)
+                    {
+                        var child = fieldStruct.Children(i);
+                        fieldNodeIndex++;
+                        bufferIndex++;
+                        SkipDataColumn(in child);
+                    }
+                    break;
+                case ArrowType.Struct_:
+                    for (int i = 0; i < fieldStruct.ChildrenLength; i++)
+                    {
+                        var child = fieldStruct.Children(i);
+                        SkipColumn(in child);
+                    }
+                    break;
+                default:
+                    throw new NotImplementedException(fieldStruct.TypeType.ToString());
+            }
         }
     }
 }
