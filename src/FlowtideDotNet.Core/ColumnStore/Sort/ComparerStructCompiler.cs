@@ -38,13 +38,20 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
                 s_assemblyName,
                 AssemblyBuilderAccess.Run
             );
-            var ignoresAccessChecksTo = new CustomAttributeBuilder
-            (
-                typeof(IgnoresAccessChecksToAttribute).GetConstructor(new Type[] { typeof(string) }),
-                new object[] { typeof(ComparerStructCompiler).Assembly.GetName().Name }
-            );
+            var ctor = typeof(IgnoresAccessChecksToAttribute).GetConstructor(new Type[] { typeof(string) });
+            var assemblyName = typeof(ComparerStructCompiler).Assembly.GetName().Name;
 
-            builder.SetCustomAttribute(ignoresAccessChecksTo);
+            if (ctor != null && assemblyName != null)
+            {
+                var ignoresAccessChecksTo = new CustomAttributeBuilder
+                (
+                    ctor,
+                    new object[] { assemblyName }
+                );
+
+                builder.SetCustomAttribute(ignoresAccessChecksTo);
+            }
+           
             return builder;
         }
 
