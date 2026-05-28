@@ -456,13 +456,37 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RelationData? outNode = default;
             if (select.From != null)
             {
-                if (select.From.Count != 1)
-                {
-                    throw new InvalidOperationException("Only a single table in the FROM statement is supported");
-                }
-                var fromTable = select.From.First();
+                var firstTable = select.From[0];
+                outNode = Visit(firstTable, state);
 
-                outNode = Visit(fromTable, state);
+                if (outNode == null)
+                {
+                    throw new SubstraitParseException("Could not parse FROM statement");
+                }
+
+                for (int i = 1; i < select.From.Count; i++)
+                {
+                    var otherTable = select.From[i];
+                    var otherOut = Visit(otherTable, outNode.EmitData);
+
+                    if (otherOut == null)
+                    {
+                        throw new SubstraitParseException("Could not parse FROM statement");
+                    }
+
+                    var joinRel = new JoinRelation()
+                    {
+                        Left = outNode.Relation,
+                        Right = otherOut.Relation
+                    };
+
+                    EmitData joinEmitData = new EmitData();
+                    joinEmitData.Add(outNode.EmitData, 0);
+                    joinEmitData.Add(otherOut.EmitData, outNode.Relation.OutputLength);
+
+                    outNode = new RelationData(joinRel, joinEmitData);
+
+                }
             }
 
             if (outNode == null)

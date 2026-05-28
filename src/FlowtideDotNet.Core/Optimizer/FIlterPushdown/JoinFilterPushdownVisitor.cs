@@ -332,6 +332,48 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             }
         }
 
+        private static void AddToJoinExpression(JoinRelation joinRelation, Expression condition)
+        {
+            if (joinRelation.Expression == null || (joinRelation.Expression is BoolLiteral boolLit && boolLit.Value))
+            {
+                joinRelation.Expression = condition;
+            }
+            else if (joinRelation.Expression is ScalarFunction existingAnd &&
+                     existingAnd.ExtensionUri == FunctionsBoolean.Uri &&
+                     existingAnd.ExtensionName == FunctionsBoolean.And)
+            {
+                existingAnd.Arguments.Add(condition);
+            }
+            else
+            {
+                joinRelation.Expression = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.And,
+                    Arguments = new List<Expression> { joinRelation.Expression, condition }
+                };
+            }
+        }
+
+        /// <summary>
+        /// Remaps field indices in a condition from the join's emitted output indices to the raw (pre-emit) indices,
+        /// without subtracting leftSize (so right-side fields retain their absolute position for use in join expressions).
+        /// </summary>
+        private Expression RemapConditionForJoinExpression(Expression condition, JoinRelation joinRelation)
+        {
+            if (!joinRelation.EmitSet)
+                return condition;
+
+            Dictionary<int, int> mapping = new Dictionary<int, int>();
+            for (int i = 0; i < joinRelation.Emit.Count; i++)
+            {
+                mapping.Add(i, joinRelation.Emit[i]);
+            }
+            var replacer = new ExpressionFieldReplaceVisitor(mapping);
+            replacer.Visit(condition, null);
+            return condition;
+        }
+
         private Relation TryPushThroughJoin(FilterRelation filterRelation, JoinRelation joinRelation, object state)
         {
             // Check if the filter can be pushed down through the join
@@ -361,9 +403,16 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     SwitchEmit(filterRelation, joinRelation);
                     return Visit(joinRelation, state);
                 }
+                // Fields from both sides: push into the join expression so it can be used as a join condition
+                else if (visitor.fieldInLeft && visitor.fieldInRight)
+                {
+                    AddToJoinExpression(joinRelation, RemapConditionForJoinExpression(filterRelation.Condition, joinRelation));
+                    SwitchEmit(filterRelation, joinRelation);
+                    return Visit(joinRelation, state);
+                }
             }
 
-            // TODO: Check if it is an AND condition and if it can be split up
+            // Check if it is an AND condition and if it can be split up
             if (filterRelation.Condition is ScalarFunction scalarFunction &&
                 scalarFunction.ExtensionUri == FunctionsBoolean.Uri &&
                 scalarFunction.ExtensionName == FunctionsBoolean.And)
@@ -373,7 +422,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     var expr = scalarFunction.Arguments[i];
                     var andVisitor = new JoinExpressionVisitor(joinRelation.Left.OutputLength, joinRelation.Emit);
                     andVisitor.Visit(expr, state);
-                    if (andVisitor.fieldInLeft && !andVisitor.fieldInRight && (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left))
+                    if (!andVisitor.unknownCase && andVisitor.fieldInLeft && !andVisitor.fieldInRight && (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left))
                     {
                         joinRelation.Left = new FilterRelation()
                         {
@@ -384,13 +433,20 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                         i--;
                     }
                     // Only field in right is used
-                    else if (!andVisitor.fieldInLeft && andVisitor.fieldInRight && (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right))
+                    else if (!andVisitor.unknownCase && !andVisitor.fieldInLeft && andVisitor.fieldInRight && (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right))
                     {
                         joinRelation.Right = new FilterRelation()
                         {
                             Condition = RemapCondition(expr, joinRelation, joinRelation.Left.OutputLength),
                             Input = joinRelation.Right
                         };
+                        scalarFunction.Arguments.RemoveAt(i);
+                        i--;
+                    }
+                    // Fields from both sides: push into the join expression
+                    else if (!andVisitor.unknownCase && andVisitor.fieldInLeft && andVisitor.fieldInRight)
+                    {
+                        AddToJoinExpression(joinRelation, RemapConditionForJoinExpression(expr, joinRelation));
                         scalarFunction.Arguments.RemoveAt(i);
                         i--;
                     }
