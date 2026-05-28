@@ -23,10 +23,10 @@ namespace FlowtideDotNet.Nexmark.Internal
 
         public static void GenerateData(int genCalls, int batchSize, string baseDir)
         {
-            string auctionPath = Path.Combine(baseDir, "auction_batches.bin");
-            string bidPath = Path.Combine(baseDir, "bid_batches.bin");
-            string personPath = Path.Combine(baseDir, "person_batches.bin");
-            string metaPath = Path.Combine(baseDir, "metadata.txt");
+            string auctionPath = Path.Join(baseDir, "auction_batches.bin");
+            string bidPath = Path.Join(baseDir, "bid_batches.bin");
+            string personPath = Path.Join(baseDir, "person_batches.bin");
+            string metaPath = Path.Join(baseDir, "metadata.txt");
 
             bool dataFilesExist = File.Exists(auctionPath) && File.Exists(bidPath) && File.Exists(personPath);
             // Check metadata file that values are correct, if not regenerate. If files don't exist, generate.
