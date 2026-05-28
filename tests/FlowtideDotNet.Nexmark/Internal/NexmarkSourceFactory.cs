@@ -49,17 +49,17 @@ public class NexmarkSourceFactory : RegexConnectorSourceFactory, ITableProvider,
 
         if (tableName.Contains("person"))
         {
-            fileName = System.IO.Path.Combine(_baseDir, "person_batches.bin");
+            fileName = System.IO.Path.Join(_baseDir, "person_batches.bin");
             schema = NexmarkSchema.PersonSchema;
         }
         else if (tableName.Contains("auction"))
         {
-            fileName = System.IO.Path.Combine(_baseDir, "auction_batches.bin");
+            fileName = System.IO.Path.Join(_baseDir, "auction_batches.bin");
             schema = NexmarkSchema.AuctionSchema;
         }
         else if (tableName.Contains("bid"))
         {
-            fileName = System.IO.Path.Combine(_baseDir, "bid_batches.bin");
+            fileName = System.IO.Path.Join(_baseDir, "bid_batches.bin");
             schema = NexmarkSchema.BidSchema;
         }
         else
