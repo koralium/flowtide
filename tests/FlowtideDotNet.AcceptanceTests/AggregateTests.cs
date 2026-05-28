@@ -37,14 +37,15 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task AggregateSum()
         {
-            GenerateData();
+            GenerateData(100);
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
                     sum(orderkey)
-                FROM orders o");
+                FROM orders o
+                GROUP BY userkey");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = Orders.Sum(x => x.OrderKey) } });
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { Sum = x.Sum(y => y.OrderKey) }));
         }
 
         [Fact]
