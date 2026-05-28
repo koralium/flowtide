@@ -230,12 +230,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
             var tableName = readRelation.NamedTable.DotSeperated;
-            if (TableWaitSignals.TryGetValue(tableName, out var waitTableName))
+            if (TableWaitSignals.TryGetValue(tableName, out var waitTableName) &&
+                TableInitialSignals.TryGetValue(waitTableName, out var waitTcs))
             {
-                if (TableInitialSignals.TryGetValue(waitTableName, out var waitTcs))
-                {
-                    await waitTcs.Task;
-                }
+                await waitTcs.Task;
             }
 
             Debug.Assert(_state?.Value != null);
