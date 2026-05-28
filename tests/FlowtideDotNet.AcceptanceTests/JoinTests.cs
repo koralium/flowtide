@@ -55,6 +55,20 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
         }
 
+        [Fact]
+        public async Task JoinMultipleInFromNoCondition()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o, users u");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Join(Users, x => 1, x => 1, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
+
         /// <summary>
         /// Check that Kleene logic applies to merge joins
         /// </summary>

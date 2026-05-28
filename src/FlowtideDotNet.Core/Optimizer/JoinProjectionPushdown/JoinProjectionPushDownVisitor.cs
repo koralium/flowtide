@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
         {
             if (joinRelation.Expression == null)
             {
-                throw new Exceptions.FlowtideException("Join relation must have an expression");
+                return joinRelation;
             }
             joinRelation.Left = Visit(joinRelation.Left, state);
             joinRelation.Right = Visit(joinRelation.Right, state);

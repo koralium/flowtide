@@ -477,7 +477,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var joinRel = new JoinRelation()
                     {
                         Left = outNode.Relation,
-                        Right = otherOut.Relation
+                        Right = otherOut.Relation,
+                        Type = JoinType.Inner
                     };
 
                     EmitData joinEmitData = new EmitData();
