@@ -31,19 +31,31 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly EventBatchData incomingData;
         private readonly int[] indices;
         private readonly List<AggregateComputeRange> computeRanges;
+        private readonly ColumnStore.Column[] outputColumns;
+        private readonly PrimitiveList<int> outputWeights;
+        private readonly bool[] outputToTemp;
+        private readonly bool[] isDeleted;
 
         public BulkAggregateMutator(
             IColumnBulkAggregation[] measures, 
             PrimitiveList<int> weights, 
             EventBatchData incomingData,
             int[] indices,
-            List<AggregateComputeRange> computeRanges)
+            List<AggregateComputeRange> computeRanges,
+            ColumnStore.Column[] outputColumns,
+            PrimitiveList<int> outputWeights,
+            bool[] outputToTemp,
+            bool[] isDeleted)
         {
             this.measures = measures;
             this.weights = weights;
             this.incomingData = incomingData;
             this.indices = indices;
             this.computeRanges = computeRanges;
+            this.outputColumns = outputColumns;
+            this.outputWeights = outputWeights;
+            this.outputToTemp = outputToTemp;
+            this.isDeleted = isDeleted;
         }
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
@@ -57,24 +69,43 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 incoming.weight += existing.weight;
                 incoming.valueSent = existing.valueSent;
+
+                bool writeToTemp = false;
                 
                 for (int i = 0; i < measures.Length; i++)
                 {
                     var stateCol = existing.referenceBatch.Columns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
-                    // Compute should be called here for each row, need alot of extra input here though.
                     var computeRange = computeRanges[i];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
-                    measures[i].Compute(indiceSpan, weights, incomingData, colReference);
-                    //measures[i].Compute(0, 0)
+                    writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference);
                 }
                 
                 if (incoming.weight == 0)
                 {
+                    if (existing.valueSent)
+                    {
+                        var keylength = key.referenceBatch.Columns.Count;
+                        for (int i = 0; i < keylength; i++)
+                        {
+                            var col = key.referenceBatch.Columns[i];
+                            outputColumns[i].InsertRangeFrom(outputColumns[i].Count, col, key.RowIndex, 1);
+                        }
+
+                        for (int i = 0; i < measures.Length; i++)
+                        {
+                            var col = existing.referenceBatch.Columns[measures.Length + i];
+                            outputColumns[keylength + i].InsertRangeFrom(outputColumns[keylength + i].Count, col, existing.RowIndex, 1);
+                        }
+                        outputToTemp[sortedIndex] = false;
+                        isDeleted[sortedIndex] = true;
+                        outputWeights.Add(-1);
+                    }
                     return GenericWriteOperation.Delete;
                 }
                 else
                 {
+                    outputToTemp[sortedIndex] = writeToTemp;
                     return GenericWriteOperation.Upsert;
                 }
             }
@@ -88,8 +119,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var computeRange = computeRanges[i];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
                     measures[i].Compute(indiceSpan, weights, incomingData, colReference);
-                    //measures[i].Compute(0, 0)
                 }
+                // New data should always be output no matter what compute says
+                outputToTemp[sortedIndex] = true;
             }
             return GenericWriteOperation.Upsert;
         }

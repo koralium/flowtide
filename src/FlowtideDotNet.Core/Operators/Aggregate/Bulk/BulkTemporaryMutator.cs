@@ -32,6 +32,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         {
             if (exists)
             {
+                if (incomingData == -1)
+                {
+                    return GenericWriteOperation.Delete;
+                }
+                return GenericWriteOperation.None;
+            }
+            if (incomingData == -1)
+            {
                 return GenericWriteOperation.None;
             }
             return GenericWriteOperation.Upsert;

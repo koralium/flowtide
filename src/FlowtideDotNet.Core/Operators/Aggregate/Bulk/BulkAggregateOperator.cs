@@ -19,6 +19,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
@@ -53,6 +54,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private int[] _duplicateTags = Array.Empty<int>();
         private int[] _groupSortLookup = Array.Empty<int>();
         private int[] _noDuplicateIndices = Array.Empty<int>();
+        private bool[] _outputToTemp = Array.Empty<bool>();
+        private bool[] _isDeleted = Array.Empty<bool>();
         private int[][] _measureLookups;
         private ColumnRowReference[] _rowReferenceBuffer;
         private ColumnAggregateStateReference[] _rowValuesBuffer;
@@ -63,9 +66,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private IBPlusTreeBulkInserter<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeBulkInserter;
         private IBplusTreeBulkSearch<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer, AggregateSearchComparer>? _treeBulkSearch;
 
+        private ColumnStore.Column[] outputColumns;
+        private PrimitiveList<int>? weights;
+        private PrimitiveList<uint>? iterations;
+
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             m_outputCount = aggregateRelation.OutputLength;
+            outputColumns = new ColumnStore.Column[m_outputCount];
             this._aggregateRelation = aggregateRelation;
             this._functionsRegister = functionsRegister;
             _measures = new IColumnBulkAggregation[aggregateRelation.Measures?.Count ?? 0];
@@ -225,14 +233,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     {
                         for (int c = 0; c < currentResults.Count; c++)
                         {
-                            var stateCol = persistedLeaf.values._eventBatch.GetColumn(m * 2);
+                            var stateCol = persistedLeaf.values._eventBatch.GetColumn(m);
                             columnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
                         }
                         
                         // TODO: Fix here 
                         await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), columnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
-
-                        
                     }
 
                     for (int i = 0; i < currentResults.Count; i++)
@@ -250,6 +256,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             yield break;
+        }
+
+        public void InitOutputColumns()
+        {
+            outputColumns = new ColumnStore.Column[m_outputCount];
+            for (int i = 0; i < m_groupOutputIndices.Count; i++)
+            {
+                outputColumns[m_groupOutputIndices[i]] = new ColumnStore.Column(MemoryAllocator);
+            }
+            weights = new PrimitiveList<int>(MemoryAllocator);
+            iterations = new PrimitiveList<uint>(MemoryAllocator);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -300,6 +317,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _groupSortLookup = new int[dataCount];
                 _duplicateTags = new int[dataCount];
                 _noDuplicateIndices = new int[dataCount];
+                _outputToTemp = new bool[dataCount];
+                _isDeleted = new bool[dataCount];
             }
 
             for (int i = 0; i < dataCount; i++)
@@ -431,20 +450,77 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             Debug.Assert(_treeBulkInserter != null);
+            Debug.Assert(weights != null);
+
+            for (int i = 0; i < uniqueCounter; i++)
+            {
+                _outputToTemp[i] = false;
+                _isDeleted[i] = false;
+            }
             
             // TODO: Might need to handle deleted rows here, if valueSent is set, output directly
-            var mutator = new BulkAggregateMutator(_measures, data.Weights, data.EventBatchData, _groupedSortIndices, computeRanges);
+            var mutator = new BulkAggregateMutator(
+                _measures, 
+                data.Weights, 
+                data.EventBatchData, 
+                _groupedSortIndices, 
+                computeRanges, 
+                outputColumns, 
+                weights, 
+                _outputToTemp,
+                _isDeleted);
+
             // Apply the batch, mutator handles calling compute on measures for a group of values
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
-            // TODO: If deleted is handled in apply batch, it needs to be removed here from temp tree
+            // Temporary should be moved
+            int[] tempIndices = new int[uniqueCounter];
+            int[] tmpValues = new int[dataCount];
+            int[] tmpDuplicateTags = new int[uniqueCounter];
+
+            int count = 0;
+            for (int i = 0; i < uniqueCounter; i++)
+            {
+                if (_isDeleted[i])
+                {
+                    var lookupIndex = _noDuplicateIndices[i];
+                    tempIndices[count] = lookupIndex;
+                    tmpValues[lookupIndex] = -1;
+                    tmpDuplicateTags[count] = count;
+                    count++;
+                }
+                else if (_outputToTemp[i])
+                {
+                    var lookupIndex = _noDuplicateIndices[i];
+                    tempIndices[count] = lookupIndex;
+                    tmpValues[lookupIndex] = 1;
+                    tmpDuplicateTags[count] = count;
+                    count++;
+                }
+            }
+
+            // We now only insert 
             var tempMutator = new BulkTemporaryMutator();
-            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _noDuplicateIndices, uniqueCounter, tempMutator, totalBatchSize);
-            yield break;
+            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, tmpValues, count, tempIndices, tmpDuplicateTags, tempMutator, totalBatchSize);
+            
+            // If there is any output here directly, we output it
+            // This is deletes from persisted tree
+            // Watermark only handles existing values
+            if (weights.Count > 0)
+            {
+                Debug.Assert(iterations != null);
+                for (int i = 0; i < weights.Count; i++)
+                {
+                    iterations[i] = 1;
+                }
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                InitOutputColumns();
+            }
         }
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
+            InitOutputColumns();
             if (_aggregateRelation.Groupings != null && _aggregateRelation.Groupings.Count > 0)
             {
                 if (_aggregateRelation.Groupings.Count > 1)
