@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -77,7 +78,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void DeleteBatch(ReadOnlySpan<int> positions)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < columnCount; i++)
+            {
+                _eventBatch.Columns[i].DeleteBatch(positions);
+            }
+            _weights.DeleteBatch(positions);
+            _previousValueSent.DeleteBatch(positions);
         }
 
         public void Dispose()
@@ -131,10 +137,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var col = valuesBatch.Columns[i];
                 _eventBatch.Columns[i].InsertFrom(col, ref sortedLookup, ref targetPositions, -1);
             }
-            for (int i = 0; i < sortedLookup.Length; i++)
+            for (int i = sortedLookup.Length - 1; i >= 0; i--)
             {
-                _weights.InsertAt(targetPositions[i], values[sortedLookup[i]].weight);
-                _previousValueSent.InsertAt(targetPositions[i], values[sortedLookup[i]].valueSent);
+                var sortedIndex = sortedLookup[i];
+                _weights.InsertAt(targetPositions[i], values[sortedIndex].weight);
+                _previousValueSent.InsertAt(targetPositions[i], values[sortedIndex].valueSent);
             }
         }
 

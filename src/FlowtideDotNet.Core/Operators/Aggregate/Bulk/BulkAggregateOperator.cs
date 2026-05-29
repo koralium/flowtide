@@ -19,10 +19,12 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
+using FlowtideDotNet.Core.Operators.Join.MergeJoin;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.Tree.Internal;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
@@ -184,6 +186,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 var currentLeaf = page.CurrentPage;
 
+                if (currentLeaf.keys.Count == 0)
+                {
+                    continue;
+                }
+
                 if (rowReferences.Length < currentLeaf.keys.Count)
                 {
                     rowReferences = new ColumnRowReference[currentLeaf.keys.Count];
@@ -250,7 +257,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     }
 
                     // Add output for previously sent data for retraction
-
+                    persistedLeaf.EnterWriteLock();
                     for (int i = 0; i < currentResults.Count; i++)
                     {
                         var lower = currentResults[i].LowerBound;
@@ -269,6 +276,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                                 outputColumns[groupLength + m].Add(previousValueCol.GetValueAt(lower, default));
                             }
                         }
+                        previousValueSent[lower] = true;
                     }
 
                     // Update previous sent value column for all data
@@ -280,6 +288,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(firstIndex + c, default));
                         }
                     }
+
+                    persistedLeaf.ExitWriteLock();
+
+                    {
+                        // Save leaf
+                        var bTree = (BPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>)_tree;
+                        var isFull = bTree.m_stateClient.AddOrUpdate(persistedLeaf.Id, persistedLeaf);
+                        if (isFull)
+                        {
+                            await bTree.m_stateClient.WaitForNotFullAsync();
+                        }
+                    }
+                    
 
                     if (weights.Count >= 100)
                     {
@@ -294,6 +315,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
                 InitOutputColumns();
             }
+
+            await _temporaryTree.Clear();
         }
 
         public void InitOutputColumns()
@@ -420,29 +443,32 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 int lastTag = _duplicateTags[0];
                 int uniqueIndex = 0;
-                var weightCounter = data.Weights[0];
+                var weightCounter = data.Weights[_groupedSortIndices[uniqueIndex]];
 
                 for (int i = 1; i < dataCount; i++)
                 {
+                    
                     if (_duplicateTags[i] == lastTag)
                     {
-                        weightCounter += data.Weights[i];
+                        var sortedIndex = _groupedSortIndices[i];
+                        weightCounter += data.Weights[sortedIndex];
                     }
                     else
                     {
-                        _rowReferenceBuffer[uniqueIndex] = new ColumnRowReference()
+                        var sortedIndex = _groupedSortIndices[uniqueIndex];
+                        _rowReferenceBuffer[sortedIndex] = new ColumnRowReference()
                         {
                             referenceBatch = groupValuesBatch,
-                            RowIndex = uniqueIndex
+                            RowIndex = sortedIndex
                         };
-                        _rowValuesBuffer[uniqueIndex] = new ColumnAggregateStateReference()
+                        _rowValuesBuffer[sortedIndex] = new ColumnAggregateStateReference()
                         {
                             referenceBatch = m_temporaryStateBatch,
-                            RowIndex = uniqueIndex,
+                            RowIndex = sortedIndex,
                             valueSent = false,
                             weight = weightCounter
                         };
-                        _noDuplicateIndices[uniqueCounter] = uniqueIndex;
+                        _noDuplicateIndices[uniqueCounter] = sortedIndex;
                         _duplicateTags[uniqueCounter] = uniqueCounter;
 
                         computeRanges.Add(new AggregateComputeRange()
@@ -452,26 +478,25 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         });
                         uniqueCounter++;
 
-                        weightCounter = data.Weights[i];
+                        weightCounter = data.Weights[sortedIndex];
                         lastTag = _duplicateTags[i];
                         uniqueIndex = i;
-                        
                     }
                 }
-
-                _rowReferenceBuffer[uniqueIndex] = new ColumnRowReference()
+                var sortedIndexLast = _groupedSortIndices[uniqueIndex];
+                _rowReferenceBuffer[sortedIndexLast] = new ColumnRowReference()
                 {
                     referenceBatch = groupValuesBatch,
-                    RowIndex = uniqueIndex
+                    RowIndex = sortedIndexLast
                 };
-                _rowValuesBuffer[uniqueIndex] = new ColumnAggregateStateReference()
+                _rowValuesBuffer[sortedIndexLast] = new ColumnAggregateStateReference()
                 {
                     referenceBatch = m_temporaryStateBatch,
-                    RowIndex = uniqueIndex,
+                    RowIndex = sortedIndexLast,
                     valueSent = false,
                     weight = weightCounter
                 };
-                _noDuplicateIndices[uniqueCounter] = uniqueIndex;
+                _noDuplicateIndices[uniqueCounter] = sortedIndexLast;
                 _duplicateTags[uniqueCounter] = uniqueCounter;
                 computeRanges.Add(new AggregateComputeRange()
                 {
@@ -550,7 +575,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 Debug.Assert(iterations != null);
                 for (int i = 0; i < weights.Count; i++)
                 {
-                    iterations[i] = 1;
+                    iterations.Add(0);
                 }
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
                 InitOutputColumns();

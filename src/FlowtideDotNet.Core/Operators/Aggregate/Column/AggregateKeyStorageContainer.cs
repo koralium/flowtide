@@ -82,7 +82,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void DeleteBatch(ReadOnlySpan<int> positions)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                var column = _data.Columns[i];
+                column.DeleteBatch(positions);
+            }
+            _length -= positions.Length;
         }
 
         public void Dispose()

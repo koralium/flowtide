@@ -41,11 +41,23 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    sum(orderkey)
+                    userkey, sum(orderkey)
                 FROM orders o
                 GROUP BY userkey");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { Sum = x.Sum(y => y.OrderKey) }));
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
+
+            var firstOrder = Orders[0];
+            var toRemove = Orders.Where(x => x.UserKey == firstOrder.UserKey).ToList();
+            EnterDataWriteLock();
+            foreach(var r in toRemove)
+            {
+                DeleteOrder(r);
+            }
+            ExitDataWriteLock();
+
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
         }
 
         [Fact]

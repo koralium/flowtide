@@ -116,7 +116,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var stateCol = incoming.referenceBatch.Columns[i];
                     var colReference = new ColumnReference(stateCol, incoming.RowIndex, default);
                     // Compute should be called here for each row, need alot of extra input here though.
-                    var computeRange = computeRanges[i];
+                    var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
                     measures[i].Compute(indiceSpan, weights, incomingData, colReference);
                 }
