@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
 
@@ -20,6 +21,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
     {
         private DataValueContainer dataValueContainer;
         private readonly int columnCount;
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
 
         public int start;
         public int end;
@@ -31,6 +33,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
         {
             dataValueContainer = new DataValueContainer();
             this.columnCount = columnCount;
+            List<int> columnOrder = new List<int>();
+            for (int i = 0; i < columnCount; i++)
+            {
+                columnOrder.Add(i);
+            }
+            _columnBoundarySearch = new ColumnBoundarySearch(columnOrder, columnOrder);
         }
 
         public int CompareTo(in ColumnRowReference x, in ColumnRowReference y)
@@ -111,6 +119,32 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 return new FindBoundriesResult(-1, -1);
             }
             return new FindBoundriesResult(start, end);
+        }
+
+        void IBplusTreeComparer<ColumnRowReference, AggregateKeyStorageContainer>.FindBoundriesBulk(ReadOnlySpan<ColumnRowReference> keys, ReadOnlySpan<int> sortedLookup, in AggregateKeyStorageContainer keyContainer, Span<int> lowerBounds, Span<int> upperBounds, Span<int> lookupBuffer)
+        {
+            if (columnCount == 0)
+            {
+                if (keyContainer.Count > 0)
+                {
+                    for (int i = 0; i < lowerBounds.Length; i++)
+                    {
+                        lowerBounds[i] = 0;
+                        upperBounds[i] = 0;
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < lowerBounds.Length; i++)
+                    {
+                        lowerBounds[i] = -1;
+                        upperBounds[i] = -1;
+                    }
+                }
+            }
+
+            var incomingBatch = keys[0].referenceBatch.Columns;
+            _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false, lookupBuffer);
         }
     }
 }

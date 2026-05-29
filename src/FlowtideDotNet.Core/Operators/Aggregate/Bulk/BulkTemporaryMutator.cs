@@ -25,7 +25,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
     {
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            throw new NotImplementedException();
+            var batch = keys[0].referenceBatch;
+            for (int i = 0; i < batch.Columns.Count; i++)
+            {
+                batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
         }
 
         public GenericWriteOperation Process(ColumnRowReference key, bool exists, in int existingData, ref int incomingData, int sortedIndex)

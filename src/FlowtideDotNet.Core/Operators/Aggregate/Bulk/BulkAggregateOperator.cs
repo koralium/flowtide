@@ -244,6 +244,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     var firstIndex = currentResults[0].KeyIndex;
                     var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
+                    var outputCount = 0;
+                    if (_measures.Length > 0)
+                    {
+                        outputCount = outputColumns[m_groupValues.Length].Count;
+                    }
 
                     for (int m = 0; m < _measures.Length; m++)
                     {
@@ -285,7 +290,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
                         for (int c = 0; c < currentResults.Count; c++)
                         {
-                            previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(firstIndex + c, default));
+                            previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
                         }
                     }
 

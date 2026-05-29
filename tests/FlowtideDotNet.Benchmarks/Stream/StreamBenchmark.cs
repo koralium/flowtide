@@ -40,73 +40,74 @@ namespace FlowtideDotNet.Benchmarks.Stream
         public void IterationSetup()
         {
             _stream = new BenchmarkTestStream(iterationId.ToString());
-            _stream.Generate(1_00_000);
+            _stream.SourceImmutable();
+            _stream.Generate(1_000_000);
             _stream.CachePageCount = 100_000;
             iterationId++;
         }
 
-        [Benchmark]
-        public async Task InnerJoin()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT u.userkey FROM users u
-            INNER JOIN orders o
-            ON u.userkey = o.userkey
-            INNER JOIN companies c
-            ON u.companyid = c.companyid
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task InnerJoin()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT u.userkey FROM users u
+        //    INNER JOIN orders o
+        //    ON u.userkey = o.userkey
+        //    INNER JOIN companies c
+        //    ON u.companyid = c.companyid
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(InnerJoin))]
-        public void AfterInnerJoin()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(InnerJoin))]
+        //public void AfterInnerJoin()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(InnerJoin), _stream!.GetDiagnosticsGraph());
+        //}
 
-        [Benchmark]
-        public async Task LeftJoin()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT u.userkey FROM users u
-            LEFT JOIN orders o
-            ON u.userkey = o.userkey
-            LEFT JOIN companies c
-            ON u.companyid = c.companyid
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task LeftJoin()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT u.userkey FROM users u
+        //    LEFT JOIN orders o
+        //    ON u.userkey = o.userkey
+        //    LEFT JOIN companies c
+        //    ON u.companyid = c.companyid
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(LeftJoin))]
-        public void AfterLeftJoin()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(LeftJoin), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(LeftJoin))]
+        //public void AfterLeftJoin()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(LeftJoin), _stream!.GetDiagnosticsGraph());
+        //}
 
-        /// <summary>
-        /// Runs the following graph:
-        /// Read[Users] -> Normalization -> Projection -> Write[Output]
-        /// 
-        /// The main expected cost is the normalization
-        /// </summary>
-        /// <returns></returns>
-        [Benchmark]
-        public async Task ProjectionAndNormalization()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT u.userkey FROM users u
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        ///// <summary>
+        ///// Runs the following graph:
+        ///// Read[Users] -> Normalization -> Projection -> Write[Output]
+        ///// 
+        ///// The main expected cost is the normalization
+        ///// </summary>
+        ///// <returns></returns>
+        //[Benchmark]
+        //public async Task ProjectionAndNormalization()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT u.userkey FROM users u
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(ProjectionAndNormalization))]
-        public void AfterProjectionAndNormalization()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(ProjectionAndNormalization))]
+        //public void AfterProjectionAndNormalization()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(ProjectionAndNormalization), _stream!.GetDiagnosticsGraph());
+        //}
 
 
         /// <summary>
@@ -121,6 +122,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
             await _stream!.StartStream(@"
             INSERT INTO output
             SELECT sum(u.userkey) FROM users u
+            GROUP BY userkey
             ", 1);
             await _stream.WaitForUpdate();
         }
@@ -131,84 +133,84 @@ namespace FlowtideDotNet.Benchmarks.Stream
             StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
         }
 
-        [Benchmark]
-        public async Task ListAggWithMapAggregation()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT 
-            p.ProjectKey,
-            list_agg(map(
-              'userkey',
-              u.userkey,
-              'firstName',
-              u.firstName,
-              'lastName',
-              u.lastName,
-              'active',
-              u.active
-            )) FROM projects p
-            LEFT JOIN projectmembers pm
-            ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
-            LEFT JOIN users u
-            ON pm.userkey = u.userkey
-            GROUP BY p.ProjectKey
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task ListAggWithMapAggregation()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT 
+        //    p.ProjectKey,
+        //    list_agg(map(
+        //      'userkey',
+        //      u.userkey,
+        //      'firstName',
+        //      u.firstName,
+        //      'lastName',
+        //      u.lastName,
+        //      'active',
+        //      u.active
+        //    )) FROM projects p
+        //    LEFT JOIN projectmembers pm
+        //    ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
+        //    LEFT JOIN users u
+        //    ON pm.userkey = u.userkey
+        //    GROUP BY p.ProjectKey
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(ListAggWithMapAggregation))]
-        public void AfterListAggWithMapAggregation()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(ListAggWithMapAggregation), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(ListAggWithMapAggregation))]
+        //public void AfterListAggWithMapAggregation()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(ListAggWithMapAggregation), _stream!.GetDiagnosticsGraph());
+        //}
 
-        [Benchmark]
-        public async Task WindowSum()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT sum(u.doublevalue) OVER(PARTITION BY CompanyId ORDER BY UserKey) FROM users u
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task WindowSum()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT sum(u.doublevalue) OVER(PARTITION BY CompanyId ORDER BY UserKey) FROM users u
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(WindowSum))]
-        public void AfterWindowSum()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(WindowSum), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(WindowSum))]
+        //public void AfterWindowSum()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(WindowSum), _stream!.GetDiagnosticsGraph());
+        //}
 
-        [Benchmark]
-        public async Task ListAggWithStructAggregation()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT 
-            p.ProjectKey,
-            list_agg(named_struct(
-              'userkey',
-              u.userkey,
-              'firstName',
-              u.firstName,
-              'lastName',
-              u.lastName,
-              'active',
-              u.active
-            )) FROM projects p
-            LEFT JOIN projectmembers pm
-            ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
-            LEFT JOIN users u
-            ON pm.userkey = u.userkey
-            GROUP BY p.ProjectKey
-            ", 1);
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task ListAggWithStructAggregation()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT 
+        //    p.ProjectKey,
+        //    list_agg(named_struct(
+        //      'userkey',
+        //      u.userkey,
+        //      'firstName',
+        //      u.firstName,
+        //      'lastName',
+        //      u.lastName,
+        //      'active',
+        //      u.active
+        //    )) FROM projects p
+        //    LEFT JOIN projectmembers pm
+        //    ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
+        //    LEFT JOIN users u
+        //    ON pm.userkey = u.userkey
+        //    GROUP BY p.ProjectKey
+        //    ", 1);
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(ListAggWithStructAggregation))]
-        public void AfterListAggWithStructAggregation()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(ListAggWithStructAggregation), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(ListAggWithStructAggregation))]
+        //public void AfterListAggWithStructAggregation()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(ListAggWithStructAggregation), _stream!.GetDiagnosticsGraph());
+        //}
     }
 }

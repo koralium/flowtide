@@ -20,7 +20,7 @@ using FlowtideDotNet.Benchmarks.Stream;
 
 //StreamBenchmark streamBenchmark = new StreamBenchmark();
 //streamBenchmark.IterationSetup();
-//await streamBenchmark.InnerJoin();
+//await streamBenchmark.SumAggregation();
 //for (int i = 0; i < 10000; i++)
 //{
 //    batchSortBenchmark.BeforeIteration();

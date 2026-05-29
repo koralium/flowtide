@@ -253,7 +253,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     weights.Add(1);
                 }
 
-                if (weights.Count > 100)
+                if (weights.Count > 1000)
                 {
                     var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
 #if DEBUG_WRITE

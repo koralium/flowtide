@@ -43,7 +43,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 SELECT 
                     userkey, sum(orderkey)
                 FROM orders o
-                GROUP BY userkey");
+                GROUP BY companyId");
             await WaitForUpdate();
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
 
