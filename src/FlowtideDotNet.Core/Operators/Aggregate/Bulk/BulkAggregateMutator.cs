@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 {
                     var stateCol = existing.referenceBatch.Columns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
-                    var computeRange = computeRanges[i];
+                    var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
                     writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference);
                 }
