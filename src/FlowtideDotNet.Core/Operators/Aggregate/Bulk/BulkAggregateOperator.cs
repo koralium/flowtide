@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -25,6 +25,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
@@ -43,9 +44,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private IColumnBulkAggregation[] _measures;
         private Func<EventBatchData, int, bool>?[] _measureFilters;
+        private struct GroupExpressionInfo
+        {
+            public int GroupIndex;
+            public Action<EventBatchData, int, ColumnStore.Column> Expression;
+        }
+
         private readonly List<int> m_groupOutputIndices;
-        private List<Action<EventBatchData, int, ColumnStore.Column>>? groupExpressions;
-        private ColumnStore.Column[]? m_groupValues;
+        private List<GroupExpressionInfo>? groupExpressions;
+        private int[]? m_groupDirectFields;
+        private IColumn[]? m_groupValues;
         private readonly BatchSorter _batchSorter;
         private readonly int m_outputCount;
 
@@ -154,8 +162,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             for (int i = 0; i < m_groupValues.Length; i++)
             {
-                m_groupValues[i].Dispose();
-                m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+                if (m_groupDirectFields![i] == -1)
+                {
+                    m_groupValues[i].Dispose();
+                    m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+                }
+                else
+                {
+                    m_groupValues[i] = null!;
+                }
             }
             for (int i = 0; i < m_temporaryStateValues.Length; i++)
             {
@@ -348,10 +363,21 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _measures[i].NewBatch(msg.Data.Weights, msg.Data.EventBatchData);
             }
 
+            var data = msg.Data;
+            var dataCount = data.Count;
+
             // Pre compute group by columns, so we can do sorting and have better cache locality for the measures computation
             for (int i = 0; i < m_groupValues.Length; i++)
             {
-                m_groupValues[i].Clear();
+                var directFieldIndex = m_groupDirectFields![i];
+                if (directFieldIndex != -1)
+                {
+                    m_groupValues[i] = data.EventBatchData.Columns[directFieldIndex];
+                }
+                else
+                {
+                    ((ColumnStore.Column)m_groupValues[i]).Clear();
+                }
             }
             for (int i = 0; i < m_temporaryStateValues.Length; i++)
             {
@@ -360,17 +386,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_temporaryStateValues[i].InsertNullRange(0, msg.Data.Count);
             }
 
-            var data = msg.Data;
-            var dataCount = data.Count;
-
             if (groupExpressions != null)
             {
                 // Take column by column to try and reuse cache
                 for (int k = 0; k < groupExpressions.Count; k++)
                 {
+                    var exprInfo = groupExpressions[k];
+                    var targetColumn = (ColumnStore.Column)m_groupValues[exprInfo.GroupIndex];
                     for (int i = 0; i < dataCount; i++)
                     {
-                        groupExpressions[k](data.EventBatchData, i, m_groupValues[k]);
+                        exprInfo.Expression(data.EventBatchData, i, targetColumn);
                     }
                 }
             }
@@ -599,25 +624,44 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                 var grouping = _aggregateRelation.Groupings[0];
 
-                m_groupValues = new ColumnStore.Column[grouping.GroupingExpressions.Count];
-
-                for (int i = 0; i < grouping.GroupingExpressions.Count; i++)
-                {
-                    m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
-                }
+                m_groupDirectFields = new int[grouping.GroupingExpressions.Count];
+                m_groupValues = new IColumn[grouping.GroupingExpressions.Count];
 
                 if (groupExpressions == null)
                 {
-                    groupExpressions = new List<Action<EventBatchData, int, ColumnStore.Column>>();
-                    foreach (var expr in grouping.GroupingExpressions)
+                    groupExpressions = new List<GroupExpressionInfo>();
+                    for (int i = 0; i < grouping.GroupingExpressions.Count; i++)
                     {
-                        groupExpressions.Add(ColumnProjectCompiler.Compile(expr, _functionsRegister));
+                        var expr = grouping.GroupingExpressions[i];
+                        if (expr is DirectFieldReference directFieldReference &&
+                            directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment &&
+                            structReferenceSegment.Child == null)
+                        {
+                            m_groupDirectFields[i] = structReferenceSegment.Field;
+                            m_groupValues[i] = null!;
+                        }
+                        else
+                        {
+                            m_groupDirectFields[i] = -1;
+                            m_groupValues[i] = ColumnFactory.Get(MemoryAllocator);
+                            groupExpressions.Add(new GroupExpressionInfo
+                            {
+                                GroupIndex = i,
+                                Expression = ColumnProjectCompiler.Compile(expr, _functionsRegister)
+                            });
+                        }
+                    }
+
+                    if (groupExpressions.Count == 0)
+                    {
+                        groupExpressions = null;
                     }
                 }
             }
             else
             {
-                m_groupValues = Array.Empty<ColumnStore.Column>();
+                m_groupValues = Array.Empty<IColumn>();
+                m_groupDirectFields = Array.Empty<int>();
             }
 
             m_temporaryStateValues = new ColumnStore.Column[(_aggregateRelation.Measures?.Count ?? 0) * 2];
