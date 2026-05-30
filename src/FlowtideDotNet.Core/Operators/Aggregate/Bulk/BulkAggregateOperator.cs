@@ -244,11 +244,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     outputColumns[c].InsertRangeFrom(outputColumns[c].Count, sourceColumns[c], 0, currentLeaf.keys.Count);
                 }
 
-                for (int i = 0; i < currentLeaf.keys.Count; i++)
-                {
-                    weights.Add(1);
-                    iterations.Add(0);
-                }
+                weights.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
+                iterations.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
 
                 // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
                 // TODO: Fix row references and indices
@@ -639,10 +636,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             if (weights.Count > 0)
             {
                 Debug.Assert(iterations != null);
-                for (int i = 0; i < weights.Count; i++)
-                {
-                    iterations.Add(0);
-                }
+                iterations.InsertStaticRange(iterations.Count, 0U, weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
                 InitOutputColumns();
             }
