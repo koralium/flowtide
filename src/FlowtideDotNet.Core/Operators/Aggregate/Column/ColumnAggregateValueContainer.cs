@@ -14,7 +14,9 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
+using System.Buffers;
 using System.Text.RegularExpressions;
+using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -138,12 +140,27 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 var col = valuesBatch.Columns[i];
                 _eventBatch.Columns[i].InsertFrom(col, ref sortedLookup, ref targetPositions, -1);
             }
-            for (int i = sortedLookup.Length - 1; i >= 0; i--)
+
+            int count = sortedLookup.Length;
+
+            // Rent temporary array buffers to extract primitive values
+            int[] tempWeights = ArrayPool<int>.Shared.Rent(count);
+            bool[] tempSent = ArrayPool<bool>.Shared.Rent(count);
+            int[] sequentialLookup = ArrayPool<int>.Shared.Rent(count);
+            for (int i = 0; i < count; i++)
             {
                 var sortedIndex = sortedLookup[i];
-                _weights.InsertAt(targetPositions[i], values[sortedIndex].weight);
-                _previousValueSent.InsertAt(targetPositions[i], values[sortedIndex].valueSent);
+                tempWeights[i] = values[sortedIndex].weight;
+                tempSent[i] = values[sortedIndex].valueSent;
+                sequentialLookup[i] = i;
             }
+            // Perform bulk single-pass block copy insertions
+            _weights.InsertFrom(tempWeights, sequentialLookup.AsSpan(0, count), targetPositions);
+            _previousValueSent.InsertFrom(tempSent, sequentialLookup.AsSpan(0, count), targetPositions);
+            // Return rented arrays to the pool
+            ArrayPool<int>.Shared.Return(tempWeights);
+            ArrayPool<bool>.Shared.Return(tempSent);
+            ArrayPool<int>.Shared.Return(sequentialLookup);
         }
 
         public void RemoveAt(int index)
