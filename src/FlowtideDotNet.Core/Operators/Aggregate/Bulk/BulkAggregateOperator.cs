@@ -85,6 +85,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private IBPlusTree<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
         private IBPlusTreeBulkInserter<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeBulkInserter;
         private IBplusTreeBulkSearch<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer, AggregateSearchComparer>? _treeBulkSearch;
+        private IObjectState<bool>? m_hasSentInitialData;
 
         private ColumnStore.Column[] outputColumns;
         private PrimitiveList<int>? weights;
@@ -165,7 +166,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             return Task.CompletedTask;
         }
 
-        public override Task OnCheckpoint()
+        public override async Task OnCheckpoint()
         {
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
@@ -188,7 +189,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
             }
 
-            return Task.CompletedTask;
+            await m_hasSentInitialData.Commit();
         }
 
         protected override async IAsyncEnumerable<StreamEventBatch> OnWatermark(Watermark watermark)
@@ -196,131 +197,80 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(_temporaryTree != null);
             Debug.Assert(_treeBulkSearch != null);
             Debug.Assert(m_groupValues != null);
+            Debug.Assert(m_hasSentInitialData != null);
 
             var outputColumnCount = m_outputCount;
             int groupLength = m_groupValues.Length;
 
-            using var iterator = _temporaryTree.CreateIterator();
-            await iterator.SeekFirst();
-            await foreach(var page in iterator)
+            if (!m_hasSentInitialData.Value)
             {
-                var currentLeaf = page.CurrentPage;
-
-                if (currentLeaf.keys.Count == 0)
+                using var iterator = _tree!.CreateIterator();
+                await iterator.SeekFirst();
+                await foreach (var page in iterator)
                 {
-                    continue;
-                }
+                    var currentLeaf = page.CurrentPage;
 
-                if (_watermarkRowReferences.Length < currentLeaf.keys.Count)
-                {
-                    _watermarkRowReferences = new ColumnRowReference[currentLeaf.keys.Count];
-                    _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
-                    _watermarkIndices = new int[currentLeaf.keys.Count];
-                    // indices will always just be incremented since data is always sorted from the tree
-                    for (int i = 0; i < _watermarkIndices.Length; i++)
+                    if (currentLeaf.keys.Count == 0)
                     {
-                        _watermarkIndices[i] = i;
+                        continue;
                     }
-                }
 
-                for (int i = 0; i < currentLeaf.keys.Count; i++)
-                {
-                    // Map row references, this is simply for the bulk search interface
-                    _watermarkRowReferences[i] = new ColumnRowReference()
+                    if (_watermarkColumnReferences.Length < currentLeaf.keys.Count)
                     {
-                        referenceBatch = currentLeaf.keys._data,
-                        RowIndex = i
-                    };
-                }
-
-                for (int m = 0; m < _measures.Length; m++)
-                {
-                    await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[groupLength + m]);
-                }
-
-                var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
-                for (int c = 0; c < groupLength; c++)
-                {
-                    outputColumns[c].InsertRangeFrom(outputColumns[c].Count, sourceColumns[c], 0, currentLeaf.keys.Count);
-                }
-
-                weights.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
-                iterations.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
-
-                // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
-                // TODO: Fix row references and indices
-                await _treeBulkSearch.Start(_watermarkRowReferences, currentLeaf.keys.Count, _watermarkIndices);
-
-                while (await _treeBulkSearch.MoveNextLeaf())
-                {
-                    var persistedLeaf = _treeBulkSearch.CurrentLeaf;
-                    var currentResults = _treeBulkSearch.CurrentResults;
-                    var previousValueSent = persistedLeaf.values._previousValueSent;
-
-                    var firstIndex = currentResults[0].KeyIndex;
-                    var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
-                    var outputCount = 0;
-                    if (_measures.Length > 0)
-                    {
-                        outputCount = outputColumns[m_groupValues.Length].Count;
+                        _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
                     }
 
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        for (int c = 0; c < currentResults.Count; c++)
-                        {
-                            var stateCol = persistedLeaf.values._eventBatch.GetColumn(m);
-                            _watermarkColumnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
-                        }
-
-                        await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
+                        await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), 0, currentLeaf.keys.Count, outputColumns[groupLength + m]);
                     }
 
-                    // Add output for previously sent data for retraction
-                    persistedLeaf.EnterWriteLock();
-                    for (int i = 0; i < currentResults.Count; i++)
-                    {
-                        var lower = currentResults[i].LowerBound;
-                        var valueSent = previousValueSent[lower];
-                        if (valueSent)
-                        {
-                            // Previous value has been sent, so we need to send a retraction
-                            weights.Add(-1);
-                            for (int c = 0; c < groupLength; c++)
-                            {
-                                outputColumns[c].Add(currentLeaf.keys._data.Columns[c].GetValueAt(currentResults[i].KeyIndex, default));
-                            }
-                            for (int m = 0; m < _measures.Length; m++)
-                            {
-                                var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
-                                outputColumns[groupLength + m].Add(previousValueCol.GetValueAt(lower, default));
-                            }
-                        }
-                        previousValueSent[lower] = true;
-                    }
-
-                    // Update previous sent value column for all data
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
-                        for (int c = 0; c < currentResults.Count; c++)
+                        var stateCol = currentLeaf.values._eventBatch.GetColumn(m);
+                        for (int c = 0; c < currentLeaf.keys.Count; c++)
                         {
-                            previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
+                            _watermarkColumnReferences[c] = new ColumnReference(stateCol, c, currentLeaf);
                         }
+
+                        await _measures[m].GetValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, 0, currentLeaf.keys.Count, outputColumns[groupLength + m]);
                     }
 
-                    persistedLeaf.ExitWriteLock();
+                    var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
+                    for (int c = 0; c < groupLength; c++)
+                    {
+                        outputColumns[c].InsertRangeFrom(outputColumns[c].Count, sourceColumns[c], 0, currentLeaf.keys.Count);
+                    }
+
+                    weights!.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
+                    iterations!.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
+
+                    currentLeaf.EnterWriteLock();
+                    var previousValueSent = currentLeaf.values._previousValueSent;
+                    for (int i = 0; i < currentLeaf.keys.Count; i++)
+                    {
+                        previousValueSent[i] = true;
+                    }
+
+                    for (int m = 0; m < _measures.Length; m++)
+                    {
+                        var previousValueCol = currentLeaf.values._eventBatch.GetColumn(_measures.Length + m);
+                        var outputCount = outputColumns[groupLength + m].Count - currentLeaf.keys.Count;
+                        for (int c = 0; c < currentLeaf.keys.Count; c++)
+                        {
+                            previousValueCol.UpdateAt(c, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
+                        }
+                    }
+                    currentLeaf.ExitWriteLock();
 
                     {
-                        // Save leaf
-                        var bTree = (BPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>)_tree;
-                        var isFull = bTree.m_stateClient.AddOrUpdate(persistedLeaf.Id, persistedLeaf);
+                        var bTree = (BPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>)_tree!;
+                        var isFull = bTree.m_stateClient.AddOrUpdate(currentLeaf.Id, currentLeaf);
                         if (isFull)
                         {
                             await bTree.m_stateClient.WaitForNotFullAsync();
                         }
                     }
-                    
 
                     if (weights.Count >= 100)
                     {
@@ -328,12 +278,150 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         InitOutputColumns();
                     }
                 }
-            }
 
-            if (weights.Count > 0)
+                if (weights.Count > 0)
+                {
+                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                    InitOutputColumns();
+                }
+
+                m_hasSentInitialData.Value = true;
+            }
+            else
             {
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
-                InitOutputColumns();
+                using var iterator = _temporaryTree.CreateIterator();
+                await iterator.SeekFirst();
+                await foreach (var page in iterator)
+                {
+                    var currentLeaf = page.CurrentPage;
+
+                    if (currentLeaf.keys.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    if (_watermarkRowReferences.Length < currentLeaf.keys.Count)
+                    {
+                        _watermarkRowReferences = new ColumnRowReference[currentLeaf.keys.Count];
+                        _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
+                        _watermarkIndices = new int[currentLeaf.keys.Count];
+                        // indices will always just be incremented since data is always sorted from the tree
+                        for (int i = 0; i < _watermarkIndices.Length; i++)
+                        {
+                            _watermarkIndices[i] = i;
+                        }
+                    }
+
+                    for (int i = 0; i < currentLeaf.keys.Count; i++)
+                    {
+                        // Map row references, this is simply for the bulk search interface
+                        _watermarkRowReferences[i] = new ColumnRowReference()
+                        {
+                            referenceBatch = currentLeaf.keys._data,
+                            RowIndex = i
+                        };
+                    }
+
+                    for (int m = 0; m < _measures.Length; m++)
+                    {
+                        await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[groupLength + m]);
+                    }
+
+                    var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
+                    for (int c = 0; c < groupLength; c++)
+                    {
+                        outputColumns[c].InsertRangeFrom(outputColumns[c].Count, sourceColumns[c], 0, currentLeaf.keys.Count);
+                    }
+
+                    weights!.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
+                    iterations!.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
+
+                    // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
+                    // TODO: Fix row references and indices
+                    await _treeBulkSearch.Start(_watermarkRowReferences, currentLeaf.keys.Count, _watermarkIndices);
+
+                    while (await _treeBulkSearch.MoveNextLeaf())
+                    {
+                        var persistedLeaf = _treeBulkSearch.CurrentLeaf;
+                        var currentResults = _treeBulkSearch.CurrentResults;
+                        var previousValueSent = persistedLeaf.values._previousValueSent;
+
+                        var firstIndex = currentResults[0].KeyIndex;
+                        var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
+                        var outputCount = 0;
+                        if (_measures.Length > 0)
+                        {
+                            outputCount = outputColumns[m_groupValues.Length].Count;
+                        }
+
+                        for (int m = 0; m < _measures.Length; m++)
+                        {
+                            for (int c = 0; c < currentResults.Count; c++)
+                            {
+                                var stateCol = persistedLeaf.values._eventBatch.GetColumn(m);
+                                _watermarkColumnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
+                            }
+
+                            await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
+                        }
+
+                        // Add output for previously sent data for retraction
+                        persistedLeaf.EnterWriteLock();
+                        for (int i = 0; i < currentResults.Count; i++)
+                        {
+                            var lower = currentResults[i].LowerBound;
+                            var valueSent = previousValueSent[lower];
+                            if (valueSent)
+                            {
+                                // Previous value has been sent, so we need to send a retraction
+                                weights.Add(-1);
+                                for (int c = 0; c < groupLength; c++)
+                                {
+                                    outputColumns[c].Add(currentLeaf.keys._data.Columns[c].GetValueAt(currentResults[i].KeyIndex, default));
+                                }
+                                for (int m = 0; m < _measures.Length; m++)
+                                {
+                                    var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
+                                    outputColumns[groupLength + m].Add(previousValueCol.GetValueAt(lower, default));
+                                }
+                            }
+                            previousValueSent[lower] = true;
+                        }
+
+                        // Update previous sent value column for all data
+                        for (int m = 0; m < _measures.Length; m++)
+                        {
+                            var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
+                            for (int c = 0; c < currentResults.Count; c++)
+                            {
+                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
+                            }
+                        }
+
+                        persistedLeaf.ExitWriteLock();
+
+                        {
+                            var bTree = (BPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>)_tree!;
+                            var isFull = bTree.m_stateClient.AddOrUpdate(persistedLeaf.Id, persistedLeaf);
+                            if (isFull)
+                            {
+                                await bTree.m_stateClient.WaitForNotFullAsync();
+                            }
+                        }
+
+                        if (weights.Count >= 100)
+                        {
+                            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                            InitOutputColumns();
+                        }
+                    }
+                }
+
+                if (weights.Count > 0)
+                {
+                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                    InitOutputColumns();
+                }
             }
 
             await _temporaryTree.Clear();
@@ -627,8 +715,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             // We now only insert 
-            var tempMutator = new BulkTemporaryMutator();
-            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _tempValues, count, _tempIndices, _tempDuplicateTags, tempMutator, totalBatchSize);
+            if (m_hasSentInitialData!.Value)
+            {
+                var tempMutator = new BulkTemporaryMutator();
+                await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _tempValues, count, _tempIndices, _tempDuplicateTags, tempMutator, totalBatchSize);
+            }
             
             // If there is any output here directly, we output it
             // This is deletes from persisted tree
@@ -645,6 +736,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
             InitOutputColumns();
+            m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
             if (_aggregateRelation.Groupings != null && _aggregateRelation.Groupings.Count > 0)
             {
                 if (_aggregateRelation.Groupings.Count > 1)
