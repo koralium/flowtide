@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -29,6 +29,9 @@ using System.Text;
 using System.Threading.Tasks;
 using static SqlParser.Ast.AlterPolicyOperation;
 using static SqlParser.Ast.DataType;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
@@ -61,12 +64,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 // TODO: Fix later, just initial
             }
 
-            public GenericWriteOperation Process(ListAggColumnRowReference key, bool exists, in int input, ref int existing, int sortedIndex)
+            public GenericWriteOperation Process(ListAggColumnRowReference key, bool exists, in int existing, ref int incoming, int sortedIndex)
             {
                 if (exists)
                 {
-                    existing += input;
-                    if (existing == 0)
+                    incoming += existing;
+                    if (incoming == 0)
                     {
                         return GenericWriteOperation.Delete;
                     }
@@ -78,19 +81,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, EventBatchData incoming, ReadOnlySpan<int> sortedByGroupIndices)
         {
-            ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[weights.Count];
-            int[] weightArray = new int[weights.Count];
+            var len = sortedByGroupIndices.Length;
+            ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[len];
+            int[] weightArray = new int[len];
+            var groupingBatch = new EventBatchData(groupValueColumns);
 
-            for (int i = 0; i < weights.Count; i++)
+            for (int i = 0; i < len; i++)
             {
+                var physicalIndex = sortedByGroupIndices[i];
                 rowReferences[i] = new ListAggColumnRowReference()
                 {
-                    batch = incoming,
-                    index = sortedByGroupIndices[i],
+                    batch = groupingBatch,
+                    index = physicalIndex,
                     // Should be optimized later, just like this for now
-                    insertValue = _projectedDataColumn!.GetValueAt(sortedByGroupIndices[i], default)
+                    insertValue = _projectedDataColumn!.GetValueAt(physicalIndex, default)
                 };
-                weightArray[i] = weights.Get(i);
+                weightArray[i] = weights.Get(physicalIndex);
             }
 
             int totalBatchSize = 0;
@@ -100,7 +106,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             totalBatchSize += _projectedDataColumn!.GetByteSize();
 
-            return _bulkInserter!.ApplyBatch(rowReferences, weightArray, weights.Count, new MinRowMutator(), totalBatchSize);
+            return _bulkInserter!.ApplyBatch(rowReferences, weightArray, len, new MinRowMutator(), totalBatchSize);
         }
 
         public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState)
@@ -148,7 +154,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             for (int i = 0; i < weights.Count; i++)
             {
                 var value = _projectionFunction(batchData, i);
-                _projectedDataColumn.Append(value);
+                _projectedDataColumn.Add(value);
             }
         }
 
@@ -166,25 +172,52 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            int maxKeyIndex = -1;
+            int currentIndex = 0;
             await _bulkSearcher!.Start(rowReferences, length);
             while (await _bulkSearcher.MoveNextLeaf())
             {
                 var leaf = _bulkSearcher.CurrentLeaf;
+
                 for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
                 {
                     var result = _bulkSearcher.CurrentResults[i];
-                    if (result.KeyIndex < maxKeyIndex)
+                    while (currentIndex < result.KeyIndex)
                     {
-                        continue;
+                        outputColumn.Add(NullValue.Instance);
+                        currentIndex++;
                     }
                     if (result.LowerBound >= 0)
                     {
                         leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, _dataValueContainer, default);
                         outputColumn.Add(_dataValueContainer);
                     }
+                    else
+                    {
+                        outputColumn.Add(NullValue.Instance);
+                    }
+                    currentIndex++;
                 }
             }
+
+            while (currentIndex < length)
+            {
+                outputColumn.Add(NullValue.Instance);
+                currentIndex++;
+            }
+        }
+    }
+
+    internal class MinAggregationDefinition : IBulkAggregationDefinition
+    {
+        public IColumnBulkAggregation Create(AggregateFunction aggregateFunction, IFunctionsRegister functionsRegister)
+        {
+            var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
+            return new MinAggregation(compiledValue);
+        }
+
+        public static void Register(IFunctionsRegister functionsRegister)
+        {
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new MinAggregationDefinition());
         }
     }
 }

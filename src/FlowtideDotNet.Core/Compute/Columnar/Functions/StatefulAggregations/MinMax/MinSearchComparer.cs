@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax
@@ -19,11 +20,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
     {
         private readonly int _groupingKeyLength;
         private readonly DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _dataValueContainer2;
 
         public MinSearchComparer(int groupingKeyLength)
         {
             this._groupingKeyLength = groupingKeyLength;
             _dataValueContainer = new DataValueContainer();
+            _dataValueContainer2 = new DataValueContainer();
         }
 
         public bool SeekNextPageForValue => true;
@@ -34,17 +37,54 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
 
         public int CompareTo(in ListAggColumnRowReference x, in ListAggColumnRowReference y)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _groupingKeyLength; i++)
+            {
+                x.batch.Columns[i].GetValueAt(x.index, _dataValueContainer, default);
+                y.batch.Columns[i].GetValueAt(y.index, _dataValueContainer2, default);
+                var cmp = DataValueComparer.CompareTo(_dataValueContainer, _dataValueContainer2);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
         public int CompareTo(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer, in int index)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _groupingKeyLength; i++)
+            {
+                key.batch.Columns[i].GetValueAt(key.index, _dataValueContainer, default);
+                keyContainer._data.Columns[i].GetValueAt(index, _dataValueContainer2, default);
+                var cmp = DataValueComparer.CompareTo(_dataValueContainer, _dataValueContainer2);
+                if (cmp != 0)
+                {
+                    return cmp;
+                }
+            }
+            return 0;
         }
 
-        public FindBoundriesResult FindBoundries(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer, int startIndex, int length)
+        public FindBoundriesResult FindBoundries(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            throw new NotImplementedException();
+            int start = startIndex;
+            int end = endIndex;
+            for (int i = 0; i < _groupingKeyLength; i++)
+            {
+                key.batch.Columns[i].GetValueAt(key.index, _dataValueContainer, default);
+                var (low, high) = keyContainer._data.Columns[i].SearchBoundries(_dataValueContainer, start, end, default);
+
+                if (low < 0)
+                {
+                    return new FindBoundriesResult(low, low);
+                }
+                else
+                {
+                    start = low;
+                    end = high;
+                }
+            }
+            return new FindBoundriesResult(start, end);
         }
 
         public int FindIndex(in ListAggColumnRowReference key, in ListAggKeyStorageContainer keyContainer)

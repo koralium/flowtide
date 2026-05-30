@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -58,6 +58,65 @@ namespace FlowtideDotNet.AcceptanceTests
 
             //await WaitForUpdate();
             //AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
+        }
+
+        [Fact]
+        public async Task BulkAggregateMin()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateMinWithUpdatesAndDeletes()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            
+            // Check initial state
+            var expected1 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // Now, perform some updates and deletes that affect the min aggregation
+            // 1. Lower a user's key to make it a new min for their company
+            var firstUser = Users[0];
+            var companyId = firstUser.CompanyId;
+            DeleteUser(firstUser);
+
+            var newUser = new Entities.User { UserKey = -100, CompanyId = companyId, FirstName = "New", LastName = "User" };
+            AddOrUpdateUser(newUser);
+
+            // 2. Delete some users who currently hold the minimum value
+            // Let's find some companies and their current min users
+            var groupings = Users.GroupBy(x => x.CompanyId).ToList();
+            foreach (var group in groupings.Take(3))
+            {
+                var minVal = group.Min(x => x.UserKey);
+                var minUsers = group.Where(x => x.UserKey == minVal).ToList();
+                foreach (var mu in minUsers)
+                {
+                    DeleteUser(mu);
+                }
+            }
+
+            await WaitForUpdate();
+
+            var expected2 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
         }
 
         [Fact]
