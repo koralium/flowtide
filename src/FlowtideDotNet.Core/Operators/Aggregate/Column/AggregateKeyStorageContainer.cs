@@ -127,7 +127,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
-            var batchReference = keys[0].referenceBatch;
+            var firstIndex = sortedLookup[0];
+            var batchReference = keys[firstIndex].referenceBatch;
 
             for (int i = 0; i < _data.Columns.Count; i++)
             {

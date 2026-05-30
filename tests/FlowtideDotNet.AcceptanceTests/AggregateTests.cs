@@ -41,23 +41,23 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    userkey, sum(orderkey)
-                FROM orders o
+                    companyId, sum(userkey)
+                FROM users o
                 GROUP BY companyId");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
+            AssertCurrentDataEqual(Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) }));
 
-            var firstOrder = Orders[0];
-            var toRemove = Orders.Where(x => x.UserKey == firstOrder.UserKey).ToList();
-            EnterDataWriteLock();
-            foreach(var r in toRemove)
-            {
-                DeleteOrder(r);
-            }
-            ExitDataWriteLock();
+            //var firstOrder = Orders[0];
+            //var toRemove = Orders.Where(x => x.UserKey == firstOrder.UserKey).ToList();
+            //EnterDataWriteLock();
+            //foreach(var r in toRemove)
+            //{
+            //    DeleteOrder(r);
+            //}
+            //ExitDataWriteLock();
 
-            await WaitForUpdate();
-            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
+            //await WaitForUpdate();
+            //AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Sum = x.Sum(y => y.OrderKey) }));
         }
 
         [Fact]

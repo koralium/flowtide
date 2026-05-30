@@ -122,8 +122,11 @@ namespace FlowtideDotNet.Benchmarks.Stream
             await _stream!.StartStream(@"
             INSERT INTO output
             SELECT sum(u.userkey) FROM users u
-            GROUP BY userkey
-            ", 1);
+            GROUP BY companyId
+            ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
+            {
+                                           Parallelization = 4
+            });
             await _stream.WaitForUpdate();
         }
 

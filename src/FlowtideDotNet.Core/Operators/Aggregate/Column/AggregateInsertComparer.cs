@@ -131,8 +131,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                     }
                 }
             }
+            var firstIndex = sortedLookup[0];
 
-            var incomingBatch = keys[0].referenceBatch.Columns;
+            var incomingBatch = keys[firstIndex].referenceBatch.Columns;
             _columnBoundarySearch.SearchBoundries(keyContainer._data.Columns, incomingBatch, sortedLookup, lowerBounds, upperBounds, 0, keyContainer.Count - 1, false, lookupBuffer);
         }
     }
