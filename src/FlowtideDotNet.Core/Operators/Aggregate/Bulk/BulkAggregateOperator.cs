@@ -62,13 +62,23 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private int[] _groupedSortIndices = Array.Empty<int>();
         private int[] _duplicateTags = Array.Empty<int>();
-        private int[] _groupSortLookup = Array.Empty<int>();
+        //private int[] _groupSortLookup = Array.Empty<int>();
         private int[] _noDuplicateIndices = Array.Empty<int>();
         private bool[] _outputToTemp = Array.Empty<bool>();
         private bool[] _isDeleted = Array.Empty<bool>();
         private int[][] _measureLookups;
         private ColumnRowReference[] _rowReferenceBuffer;
         private ColumnAggregateStateReference[] _rowValuesBuffer;
+
+        private ColumnRowReference[] _watermarkRowReferences = Array.Empty<ColumnRowReference>();
+        private ColumnReference[] _watermarkColumnReferences = Array.Empty<ColumnReference>();
+        private int[] _watermarkIndices = Array.Empty<int>();
+
+        private int[] _tempIndices = Array.Empty<int>();
+        private int[] _tempValues = Array.Empty<int>();
+        private int[] _tempDuplicateTags = Array.Empty<int>();
+
+        private readonly List<AggregateComputeRange> _computeRanges = new List<AggregateComputeRange>();
 
         private IBPlusTree<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _tree;
         private IBPlusTreeBulkInserter<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer>? _treeBulkInserter;
@@ -187,11 +197,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(_treeBulkSearch != null);
             Debug.Assert(m_groupValues != null);
 
-            // TODO: Have this be reused between watermarks
-            ColumnRowReference[] rowReferences = Array.Empty<ColumnRowReference>();
-            ColumnReference[] columnReferences = Array.Empty<ColumnReference>();
-            int[] indices = Array.Empty<int>();
-
             var outputColumnCount = m_outputCount;
             int groupLength = m_groupValues.Length;
 
@@ -206,22 +211,22 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     continue;
                 }
 
-                if (rowReferences.Length < currentLeaf.keys.Count)
+                if (_watermarkRowReferences.Length < currentLeaf.keys.Count)
                 {
-                    rowReferences = new ColumnRowReference[currentLeaf.keys.Count];
-                    columnReferences = new ColumnReference[currentLeaf.keys.Count];
-                    indices = new int[currentLeaf.keys.Count];
+                    _watermarkRowReferences = new ColumnRowReference[currentLeaf.keys.Count];
+                    _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
+                    _watermarkIndices = new int[currentLeaf.keys.Count];
                     // indices will always just be incremented since data is always sorted from the tree
-                    for (int i = 0; i < indices.Length; i++)
+                    for (int i = 0; i < _watermarkIndices.Length; i++)
                     {
-                        indices[i] = i;
+                        _watermarkIndices[i] = i;
                     }
                 }
 
                 for (int i = 0; i < currentLeaf.keys.Count; i++)
                 {
                     // Map row references, this is simply for the bulk search interface
-                    rowReferences[i] = new ColumnRowReference()
+                    _watermarkRowReferences[i] = new ColumnRowReference()
                     {
                         referenceBatch = currentLeaf.keys._data,
                         RowIndex = i
@@ -249,7 +254,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                 // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
                 // TODO: Fix row references and indices
-                await _treeBulkSearch.Start(rowReferences, currentLeaf.keys.Count, indices);
+                await _treeBulkSearch.Start(_watermarkRowReferences, currentLeaf.keys.Count, _watermarkIndices);
 
                 while (await _treeBulkSearch.MoveNextLeaf())
                 {
@@ -270,10 +275,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         for (int c = 0; c < currentResults.Count; c++)
                         {
                             var stateCol = persistedLeaf.values._eventBatch.GetColumn(m);
-                            columnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
+                            _watermarkColumnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
                         }
 
-                        await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), columnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
+                        await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
                     }
 
                     // Add output for previously sent data for retraction
@@ -406,7 +411,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             if (_groupedSortIndices.Length < dataCount)
             {
                 _groupedSortIndices = new int[dataCount];
-                _groupSortLookup = new int[dataCount];
+                //_groupSortLookup = new int[dataCount];
                 _duplicateTags = new int[dataCount];
                 _noDuplicateIndices = new int[dataCount];
                 _outputToTemp = new bool[dataCount];
@@ -422,10 +427,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Create indirection lookup from original value to sorted value, so filters can run in sequential order but adding the sorted index
             SortData(dataCount);
 
-            for (int i = 0; i < dataCount; i++)
-            {
-                _groupSortLookup[_groupedSortIndices[i]] = i;
-            }
+            //for (int i = 0; i < dataCount; i++)
+            //{
+            //    _groupSortLookup[_groupedSortIndices[i]] = i;
+            //}
 
             // Create lookup arrays for measures with filters, so we can iterate only on the relevant rows for each measure in the aggregation phase
             for (int i = 0; i < _measures.Length; i++)
@@ -466,7 +471,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _rowValuesBuffer = new ColumnAggregateStateReference[dataCount];
             }
 
-            List<AggregateComputeRange> computeRanges = new List<AggregateComputeRange>();
+            _computeRanges.Clear();
 
             int uniqueCounter = 0;
             if (dataCount > 0)
@@ -501,7 +506,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         _noDuplicateIndices[uniqueCounter] = sortedIndex;
                         _duplicateTags[uniqueCounter] = uniqueCounter;
 
-                        computeRanges.Add(new AggregateComputeRange()
+                        _computeRanges.Add(new AggregateComputeRange()
                         {
                             start = uniqueIndex,
                             length = i - uniqueIndex
@@ -528,7 +533,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 };
                 _noDuplicateIndices[uniqueCounter] = sortedIndexLast;
                 _duplicateTags[uniqueCounter] = uniqueCounter;
-                computeRanges.Add(new AggregateComputeRange()
+                _computeRanges.Add(new AggregateComputeRange()
                 {
                     start = uniqueIndex,
                     length = dataCount - uniqueIndex
@@ -558,7 +563,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 data.Weights, 
                 data.EventBatchData, 
                 _groupedSortIndices, 
-                computeRanges, 
+                _computeRanges, 
                 outputColumns, 
                 weights, 
                 _outputToTemp,
@@ -568,9 +573,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             await _treeBulkInserter.ApplyBatch(_rowReferenceBuffer, _rowValuesBuffer, uniqueCounter, _noDuplicateIndices, _duplicateTags, mutator, totalBatchSize);
 
             // Temporary should be moved
-            int[] tempIndices = new int[uniqueCounter];
-            int[] tmpValues = new int[dataCount];
-            int[] tmpDuplicateTags = new int[uniqueCounter];
+            if (_tempIndices.Length < uniqueCounter)
+            {
+                _tempIndices = new int[uniqueCounter];
+                _tempDuplicateTags = new int[uniqueCounter];
+            }
+            if (_tempValues.Length < dataCount)
+            {
+                _tempValues = new int[dataCount];
+            }
 
             int count = 0;
             for (int i = 0; i < uniqueCounter; i++)
@@ -578,24 +589,24 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 if (_isDeleted[i])
                 {
                     var lookupIndex = _noDuplicateIndices[i];
-                    tempIndices[count] = lookupIndex;
-                    tmpValues[lookupIndex] = -1;
-                    tmpDuplicateTags[count] = count;
+                    _tempIndices[count] = lookupIndex;
+                    _tempValues[lookupIndex] = -1;
+                    _tempDuplicateTags[count] = count;
                     count++;
                 }
                 else if (_outputToTemp[i])
                 {
                     var lookupIndex = _noDuplicateIndices[i];
-                    tempIndices[count] = lookupIndex;
-                    tmpValues[lookupIndex] = 1;
-                    tmpDuplicateTags[count] = count;
+                    _tempIndices[count] = lookupIndex;
+                    _tempValues[lookupIndex] = 1;
+                    _tempDuplicateTags[count] = count;
                     count++;
                 }
             }
 
             // We now only insert 
             var tempMutator = new BulkTemporaryMutator();
-            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, tmpValues, count, tempIndices, tmpDuplicateTags, tempMutator, totalBatchSize);
+            await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _tempValues, count, _tempIndices, _tempDuplicateTags, tempMutator, totalBatchSize);
             
             // If there is any output here directly, we output it
             // This is deletes from persisted tree
