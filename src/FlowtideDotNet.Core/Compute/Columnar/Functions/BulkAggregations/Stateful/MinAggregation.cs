@@ -84,7 +84,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             var len = sortedByGroupIndices.Length;
             ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[len];
             int[] weightArray = new int[len];
-            var groupingBatch = new EventBatchData(groupValueColumns);
+
+            var allColumns = new IColumn[groupValueColumns.Length + 1];
+            System.Array.Copy(groupValueColumns, allColumns, groupValueColumns.Length);
+            allColumns[groupValueColumns.Length] = _projectedDataColumn!;
+            var groupingBatch = new EventBatchData(allColumns);
 
             for (int i = 0; i < len; i++)
             {

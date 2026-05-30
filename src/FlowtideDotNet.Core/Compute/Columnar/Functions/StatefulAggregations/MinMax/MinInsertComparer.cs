@@ -11,8 +11,10 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Storage.Tree;
+using System.Collections.Generic;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax
 {
@@ -21,12 +23,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
         private DataValueContainer dataValueContainer;
         private DataValueContainer dataValueContainer2;
         private readonly int _groupingKeyLength;
+        private readonly ColumnBoundarySearch _columnBoundarySearch;
 
         public MinInsertComparer(int groupingKeyLength)
         {
             _groupingKeyLength = groupingKeyLength;
             dataValueContainer = new DataValueContainer();
             dataValueContainer2 = new DataValueContainer();
+            var columnOrder = new List<int>();
+            for (int i = 0; i <= groupingKeyLength; i++)
+            {
+                columnOrder.Add(i);
+            }
+            _columnBoundarySearch = new ColumnBoundarySearch(columnOrder, columnOrder);
         }
 
         public bool SeekNextPageForValue => false;
@@ -127,6 +136,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
                 return new FindBoundriesResult(index, index);
             }
             return new FindBoundriesResult(index, endIndexResult);
+        }
+
+        public void FindBoundriesBulk(
+            ReadOnlySpan<ListAggColumnRowReference> keys,
+            ReadOnlySpan<int> sortedLookup,
+            in ListAggKeyStorageContainer keyContainer,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            Span<int> lookupBuffer)
+        {
+            var firstIndex = sortedLookup[0];
+            var incomingBatch = keys[firstIndex].batch.Columns;
+
+            Span<int> mappedIndices = stackalloc int[sortedLookup.Length];
+            for (int i = 0; i < sortedLookup.Length; i++)
+            {
+                mappedIndices[i] = keys[sortedLookup[i]].index;
+            }
+
+            _columnBoundarySearch.SearchBoundries(
+                keyContainer._data.Columns,
+                incomingBatch,
+                mappedIndices,
+                lowerBounds,
+                upperBounds,
+                0,
+                keyContainer.Count - 1,
+                false,
+                lookupBuffer);
         }
     }
 }
