@@ -18,9 +18,9 @@ using FlowtideDotNet.Benchmarks.Stream;
 //BatchSortBenchmark batchSortBenchmark = new BatchSortBenchmark();
 //batchSortBenchmark.GlobalSetup();
 
-StreamBenchmark streamBenchmark = new StreamBenchmark();
-streamBenchmark.IterationSetup();
-await streamBenchmark.SumAggregation();
+//StreamBenchmark streamBenchmark = new StreamBenchmark();
+//streamBenchmark.IterationSetup();
+//await streamBenchmark.SumAggregation();
 //for (int i = 0; i < 10000; i++)
 //{
 //    batchSortBenchmark.BeforeIteration();
@@ -45,4 +45,4 @@ await streamBenchmark.SumAggregation();
 //await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
 
 //Console.WriteLine("hello");
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

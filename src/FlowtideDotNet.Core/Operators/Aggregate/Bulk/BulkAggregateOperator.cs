@@ -435,16 +435,16 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Create lookup arrays for measures with filters, so we can iterate only on the relevant rows for each measure in the aggregation phase
             for (int i = 0; i < _measures.Length; i++)
             {
-                if (_measureLookups[i] == null || _measureLookups[i].Length < dataCount)
-                {
-                    // Create lookup array for each measure
-                    _measureLookups[i] = new int[dataCount];
-                }
-                var lookupArray = _measureLookups[i];
-                int rowCounter = 0;
                 var measureFilter = _measureFilters[i];
                 if (measureFilter != null)
                 {
+                    if (_measureLookups[i] == null || _measureLookups[i].Length < dataCount)
+                    {
+                        // Create lookup array for each measure
+                        _measureLookups[i] = new int[dataCount];
+                    }
+                    var lookupArray = _measureLookups[i];
+                    int rowCounter = 0;
                     for (int j = 0; j < dataCount; j++)
                     {
                         var physicalIndex = _groupedSortIndices[j];
@@ -453,16 +453,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             lookupArray[rowCounter++] = physicalIndex;
                         }
                     }
+                    await _measures[i].StoreAsync(data.Weights, m_groupValues, data.EventBatchData, lookupArray.AsSpan(0, rowCounter));
                 }
                 else
                 {
-                    for (int j = 0; j < dataCount; j++)
-                    {
-                        lookupArray[rowCounter++] = _groupedSortIndices[j];
-                    }
+                    await _measures[i].StoreAsync(data.Weights, m_groupValues, data.EventBatchData, _groupedSortIndices.AsSpan(0, dataCount));
                 }
-                
-                await _measures[i].StoreAsync(data.Weights, m_groupValues, data.EventBatchData, lookupArray.AsSpan(0, rowCounter));
             }
 
             if (_rowReferenceBuffer.Length < dataCount)
@@ -476,70 +472,101 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             int uniqueCounter = 0;
             if (dataCount > 0)
             {
-                int lastTag = _duplicateTags[0];
-                int uniqueIndex = 0;
-                var weightCounter = data.Weights[_groupedSortIndices[uniqueIndex]];
-
-                for (int i = 1; i < dataCount; i++)
+                if (m_groupValues.Length == 0)
                 {
-                    
-                    if (_duplicateTags[i] == lastTag)
+                    long weightCounter = 0;
+                    for (int i = 0; i < dataCount; i++)
                     {
-                        var sortedIndex = _groupedSortIndices[i];
-                        weightCounter += data.Weights[sortedIndex];
+                        weightCounter += data.Weights[i];
                     }
-                    else
+
+                    _rowReferenceBuffer[0] = new ColumnRowReference()
                     {
-                        var sortedIndex = _groupedSortIndices[uniqueIndex];
-                        _rowReferenceBuffer[sortedIndex] = new ColumnRowReference()
-                        {
-                            referenceBatch = groupValuesBatch,
-                            RowIndex = sortedIndex
-                        };
-                        _rowValuesBuffer[sortedIndex] = new ColumnAggregateStateReference()
-                        {
-                            referenceBatch = m_temporaryStateBatch,
-                            RowIndex = sortedIndex,
-                            valueSent = false,
-                            weight = weightCounter
-                        };
-                        _noDuplicateIndices[uniqueCounter] = sortedIndex;
-                        _duplicateTags[uniqueCounter] = uniqueCounter;
-
-                        _computeRanges.Add(new AggregateComputeRange()
-                        {
-                            start = uniqueIndex,
-                            length = i - uniqueIndex
-                        });
-                        uniqueCounter++;
-
-                        weightCounter = data.Weights[sortedIndex];
-                        lastTag = _duplicateTags[i];
-                        uniqueIndex = i;
-                    }
+                        referenceBatch = groupValuesBatch,
+                        RowIndex = 0
+                    };
+                    _rowValuesBuffer[0] = new ColumnAggregateStateReference()
+                    {
+                        referenceBatch = m_temporaryStateBatch,
+                        RowIndex = 0,
+                        valueSent = false,
+                        weight = (int)weightCounter
+                    };
+                    _noDuplicateIndices[0] = 0;
+                    _duplicateTags[0] = 0;
+                    _computeRanges.Add(new AggregateComputeRange()
+                    {
+                        start = 0,
+                        length = dataCount
+                    });
+                    uniqueCounter = 1;
                 }
-                var sortedIndexLast = _groupedSortIndices[uniqueIndex];
-                _rowReferenceBuffer[sortedIndexLast] = new ColumnRowReference()
+                else
                 {
-                    referenceBatch = groupValuesBatch,
-                    RowIndex = sortedIndexLast
-                };
-                _rowValuesBuffer[sortedIndexLast] = new ColumnAggregateStateReference()
-                {
-                    referenceBatch = m_temporaryStateBatch,
-                    RowIndex = sortedIndexLast,
-                    valueSent = false,
-                    weight = weightCounter
-                };
-                _noDuplicateIndices[uniqueCounter] = sortedIndexLast;
-                _duplicateTags[uniqueCounter] = uniqueCounter;
-                _computeRanges.Add(new AggregateComputeRange()
-                {
-                    start = uniqueIndex,
-                    length = dataCount - uniqueIndex
-                });
+                    int lastTag = _duplicateTags[0];
+                    int uniqueIndex = 0;
+                    var weightCounter = data.Weights[_groupedSortIndices[uniqueIndex]];
 
-                uniqueCounter++;
+                    for (int i = 1; i < dataCount; i++)
+                    {
+                        if (_duplicateTags[i] == lastTag)
+                        {
+                            var sortedIndex = _groupedSortIndices[i];
+                            weightCounter += data.Weights[sortedIndex];
+                        }
+                        else
+                        {
+                            var sortedIndex = _groupedSortIndices[uniqueIndex];
+                            _rowReferenceBuffer[sortedIndex] = new ColumnRowReference()
+                            {
+                                referenceBatch = groupValuesBatch,
+                                RowIndex = sortedIndex
+                            };
+                            _rowValuesBuffer[sortedIndex] = new ColumnAggregateStateReference()
+                            {
+                                referenceBatch = m_temporaryStateBatch,
+                                RowIndex = sortedIndex,
+                                valueSent = false,
+                                weight = weightCounter
+                            };
+                            _noDuplicateIndices[uniqueCounter] = sortedIndex;
+                            _duplicateTags[uniqueCounter] = uniqueCounter;
+
+                            _computeRanges.Add(new AggregateComputeRange()
+                            {
+                                start = uniqueIndex,
+                                length = i - uniqueIndex
+                            });
+                            uniqueCounter++;
+
+                            weightCounter = data.Weights[sortedIndex];
+                            lastTag = _duplicateTags[i];
+                            uniqueIndex = i;
+                        }
+                    }
+                    var sortedIndexLast = _groupedSortIndices[uniqueIndex];
+                    _rowReferenceBuffer[sortedIndexLast] = new ColumnRowReference()
+                    {
+                        referenceBatch = groupValuesBatch,
+                        RowIndex = sortedIndexLast
+                    };
+                    _rowValuesBuffer[sortedIndexLast] = new ColumnAggregateStateReference()
+                    {
+                        referenceBatch = m_temporaryStateBatch,
+                        RowIndex = sortedIndexLast,
+                        valueSent = false,
+                        weight = weightCounter
+                    };
+                    _noDuplicateIndices[uniqueCounter] = sortedIndexLast;
+                    _duplicateTags[uniqueCounter] = uniqueCounter;
+                    _computeRanges.Add(new AggregateComputeRange()
+                    {
+                        start = uniqueIndex,
+                        length = dataCount - uniqueIndex
+                    });
+
+                    uniqueCounter++;
+                }
             }
 
             int totalBatchSize = 0;
@@ -719,10 +746,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_groupValues != null);
             if (m_groupValues.Length > 0)
             {
-                for (int i = 0; i < dataCount; i++)
-                {
-                    _groupedSortIndices[i] = i;
-                }
                 var groupSortIndicesSpan = _groupedSortIndices.AsSpan(0, dataCount);
                 var duplicateTagsSpan = _duplicateTags.AsSpan(0, dataCount);
                 _batchSorter.SortDataWithTags(m_groupValues, ref groupSortIndicesSpan, ref duplicateTagsSpan);
