@@ -238,12 +238,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[groupLength + m]);
                 }
 
+                var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
                 for (int c = 0; c < groupLength; c++)
                 {
-                    for (int i = 0; i < currentLeaf.keys.Count; i++)
-                    {
-                        outputColumns[c].Add(currentLeaf.keys._data.Columns[c].GetValueAt(i, default));
-                    }
+                    outputColumns[c].InsertRangeFrom(outputColumns[c].Count, sourceColumns[c], 0, currentLeaf.keys.Count);
                 }
 
                 for (int i = 0; i < currentLeaf.keys.Count; i++)

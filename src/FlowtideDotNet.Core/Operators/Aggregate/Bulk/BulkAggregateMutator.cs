@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -60,10 +60,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
         {
-            var batch = keys[0].referenceBatch;
-            for (int i = 0; i < batch.Columns.Count; i++)
+            var columns = keys[0].referenceBatch.GetColumns_Unsafe();
+            for (int i = 0; i < columns.Length; i++)
             {
-                batch.Columns[i].GetPrefixSumByteSizes(indices, sizes);
+                columns[i].GetPrefixSumByteSizes(indices, sizes);
             }
         }
 
@@ -76,9 +76,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                 bool writeToTemp = false;
                 
+                var stateColumns = existing.referenceBatch.GetColumns_Unsafe();
                 for (int i = 0; i < measures.Length; i++)
                 {
-                    var stateCol = existing.referenceBatch.Columns[i];
+                    var stateCol = stateColumns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
@@ -89,16 +90,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 {
                     if (existing.valueSent)
                     {
-                        var keylength = key.referenceBatch.Columns.Count;
+                        var keyColumns = key.referenceBatch.GetColumns_Unsafe();
+                        var keylength = keyColumns.Length;
                         for (int i = 0; i < keylength; i++)
                         {
-                            var col = key.referenceBatch.Columns[i];
+                            var col = keyColumns[i];
                             outputColumns[i].InsertRangeFrom(outputColumns[i].Count, col, key.RowIndex, 1);
                         }
 
                         for (int i = 0; i < measures.Length; i++)
                         {
-                            var col = existing.referenceBatch.Columns[measures.Length + i];
+                            var col = stateColumns[measures.Length + i];
                             outputColumns[keylength + i].InsertRangeFrom(outputColumns[keylength + i].Count, col, existing.RowIndex, 1);
                         }
                         outputToTemp[sortedIndex] = false;
@@ -115,9 +117,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             else
             {
+                var stateColumns = incoming.referenceBatch.GetColumns_Unsafe();
                 for (int i = 0; i < measures.Length; i++)
                 {
-                    var stateCol = incoming.referenceBatch.Columns[i];
+                    var stateCol = stateColumns[i];
                     var colReference = new ColumnReference(stateCol, incoming.RowIndex, default);
                     // Compute should be called here for each row, need alot of extra input here though.
                     var computeRange = computeRanges[sortedIndex];
