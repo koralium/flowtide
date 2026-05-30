@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         /// <param name="groupState"></param>
         bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState);
 
-        ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn);
+        ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn);
 
         /// <summary>
         /// Fetches the current value, the grouping values are sorted by group key in ascending order.

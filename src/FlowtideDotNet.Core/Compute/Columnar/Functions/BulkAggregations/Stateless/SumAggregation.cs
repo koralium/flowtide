@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn)
+        public ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             return ValueTask.CompletedTask;
         }

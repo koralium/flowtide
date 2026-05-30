@@ -222,7 +222,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), 0, currentLeaf.keys.Count, outputColumns[groupLength + m]);
+                        await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), currentLeaf.keys.Count, outputColumns[groupLength + m]);
                     }
 
                     for (int m = 0; m < _measures.Length; m++)
@@ -324,7 +324,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), 0, page.Keys.Count, outputColumns[groupLength + m]);
+                        await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), page.Keys.Count, outputColumns[groupLength + m]);
                     }
 
                     var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();

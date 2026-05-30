@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
             GROUP BY userkey
             ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                                           Parallelization = 1
+                                           Parallelization = 4
             });
             await _stream.WaitForUpdate();
         }

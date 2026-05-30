@@ -110,39 +110,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             return true;
         }
 
-        public async ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn)
+        public ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn)
         {
-            var batch = new EventBatchData(groupingValuesSorted);
-            ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[groupStates.Length];
-
-            for (int i = 0; i < groupStates.Length; i++)
-            {
-                rowReferences[i] = new ListAggColumnRowReference()
-                {
-                    batch = batch,
-                    index = i,
-                };
-            }
-
-            int maxKeyIndex = -1;
-            await _bulkSearcher!.Start(rowReferences, groupStates.Length);
-            while(await _bulkSearcher.MoveNextLeaf())
-            {
-                var leaf = _bulkSearcher.CurrentLeaf;
-                for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
-                {
-                    var result = _bulkSearcher.CurrentResults[i];
-                    if (result.KeyIndex < maxKeyIndex)
-                    {
-                        continue;
-                    }
-                    if (result.LowerBound >= 0)
-                    {
-                        leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, _dataValueContainer, default);
-                        outputColumn.Add(_dataValueContainer);
-                    }
-                }
-            }
+            // We do everything in fetch async
+            return ValueTask.CompletedTask;
         }
 
         public async Task InitializeAsync(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
@@ -181,9 +152,39 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
         }
 
-        public ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int startIndex, int length, Column outputColumn)
+        public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
-            return ValueTask.CompletedTask;
+            var batch = new EventBatchData(groupingValuesSorted);
+            ListAggColumnRowReference[] rowReferences = new ListAggColumnRowReference[length];
+
+            for (int i = 0; i < length; i++)
+            {
+                rowReferences[i] = new ListAggColumnRowReference()
+                {
+                    batch = batch,
+                    index = i,
+                };
+            }
+
+            int maxKeyIndex = -1;
+            await _bulkSearcher!.Start(rowReferences, length);
+            while (await _bulkSearcher.MoveNextLeaf())
+            {
+                var leaf = _bulkSearcher.CurrentLeaf;
+                for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
+                {
+                    var result = _bulkSearcher.CurrentResults[i];
+                    if (result.KeyIndex < maxKeyIndex)
+                    {
+                        continue;
+                    }
+                    if (result.LowerBound >= 0)
+                    {
+                        leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, _dataValueContainer, default);
+                        outputColumn.Add(_dataValueContainer);
+                    }
+                }
+            }
         }
     }
 }
