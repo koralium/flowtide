@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -348,7 +348,7 @@ namespace FlowtideDotNet.Base.Vertices
             return new SingleAsyncEnumerable<IStreamEvent>(lockingEventPrepare);
         }
 
-        private IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
+        private async IAsyncEnumerable<IStreamEvent> HandleInitialDataDoneEvent(int targetId, InitialDataDoneEvent initialDataDoneEvent)
         {
             Debug.Assert(_targetWatermarkNames != null, nameof(_targetWatermarkNames));
             Debug.Assert(_targetWatermarks != null, nameof(_targetWatermarks));
@@ -357,7 +357,7 @@ namespace FlowtideDotNet.Base.Vertices
 
             if (_initialWatermarkSent || _isInIteration)
             {
-                return EmptyAsyncEnumerable<IStreamEvent>.Instance;
+                yield break;
             }
 
             _targetSentWatermark[targetId] = true;
@@ -366,7 +366,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 if (_targetSentDataSinceLastWatermark[i] && !_targetSentWatermark[i])
                 {
-                    return EmptyAsyncEnumerable<IStreamEvent>.Instance;
+                    yield break;
                 }
             }
             for (int i = 0; i < _targetSentDataSinceLastWatermark.Length; i++)
@@ -390,10 +390,24 @@ namespace FlowtideDotNet.Base.Vertices
             if (!hasRecievedWatermark || (_currentWatermark == null))
             {
                 // If no watermark was sent, send an empty one
-                return new SingleAsyncEnumerable<IStreamEvent>(initialDataDoneEvent);
+                yield return initialDataDoneEvent;
+                yield break;
             }
 
-            return new SingleAsyncEnumerable<IStreamEvent>(_currentWatermark);
+            if (!_currentWatermark.Equals(_previousWatermark))
+            {
+                await foreach (var e in OnWatermark(_currentWatermark))
+                {
+                    if (e is IRentable rentable)
+                    {
+                        rentable.Rent(_links.Count);
+                    }
+                    yield return new StreamMessage<T>(e, _currentTime);
+                }
+                _previousWatermark = _currentWatermark;
+            }
+
+            yield return _currentWatermark;
         }
 
         private async IAsyncEnumerable<IStreamEvent> HandleWatermark(int targetId, Watermark watermark)

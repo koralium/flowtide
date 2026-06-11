@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
+using System.Linq;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -480,6 +481,52 @@ namespace FlowtideDotNet.AcceptanceTests
             }
 
             AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LeftJoinBlockLoopModulusUsersFirstOrdersWaitForUsers()
+        {
+            Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+            Internal.MockDataSourceOperator.TableWaitSignals.Clear();
+            Internal.MockDataSourceOperator.TableInitialSignals["users"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Internal.MockDataSourceOperator.TableWaitSignals["orders"] = "users";
+
+            try
+            {
+                GenerateCompanies(10);
+                GenerateUsers(100);
+                await StartStream(@"
+                    INSERT INTO output 
+                    SELECT 
+                        o.orderkey, u.firstName, u.LastName
+                    FROM users u
+                    LEFT JOIN orders o
+                    ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+                await WaitForUpdate();
+
+                List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+                foreach (var user in Users)
+                {
+                    bool joinFound = false;
+                    foreach (var order in Orders.Where(order => order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0))
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                    if (!joinFound)
+                    {
+                        expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                    }
+                }
+
+                AssertCurrentDataEqual(expected);
+            }
+            finally
+            {
+                Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+                Internal.MockDataSourceOperator.TableWaitSignals.Clear();
+            }
         }
 
         [Fact]
