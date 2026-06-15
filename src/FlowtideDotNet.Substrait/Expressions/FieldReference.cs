@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -12,7 +12,21 @@
 
 namespace FlowtideDotNet.Substrait.Expressions
 {
+    public abstract class FieldReferenceRoot
+    {
+    }
+
+    public class RootReference : FieldReferenceRoot
+    {
+    }
+
+    public class OuterReference : FieldReferenceRoot
+    {
+        public uint StepsOut { get; set; }
+    }
+
     public abstract class FieldReference : Expression
     {
+        public FieldReferenceRoot Root { get; set; } = new RootReference();
     }
 }

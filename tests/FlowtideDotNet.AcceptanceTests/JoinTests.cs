@@ -1730,5 +1730,40 @@ namespace FlowtideDotNet.AcceptanceTests
 
             AssertCurrentDataEqual(Users.Where(u => u.UserKey == 0 || !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
         }
+
+        [Fact]
+        public async Task LeftSemiJoin()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftSemiJoinWithOr()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey = 0 OR EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => u.UserKey == 0 || Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
     }
 }
+

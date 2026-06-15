@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,10 +28,17 @@ namespace FlowtideDotNet.Substrait.Sql
     public class SqlExpressionVisitor : BaseExpressionVisitor<ExpressionData, EmitData>
     {
         private readonly SqlFunctionRegister sqlFunctionRegister;
+        private readonly Func<Query, RelationData?>? compileQuery;
+        private readonly IReadOnlyList<EmitData> parentScopes;
 
-        internal SqlExpressionVisitor(SqlFunctionRegister sqlFunctionRegister)
+        internal SqlExpressionVisitor(
+            SqlFunctionRegister sqlFunctionRegister,
+            Func<Query, RelationData?>? compileQuery = null,
+            IReadOnlyList<EmitData>? parentScopes = null)
         {
             this.sqlFunctionRegister = sqlFunctionRegister;
+            this.compileQuery = compileQuery;
+            this.parentScopes = parentScopes ?? System.Array.Empty<EmitData>();
         }
 
         public override ExpressionData Visit(SqlParser.Ast.Expression expression, EmitData state)
@@ -40,10 +47,26 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = segment
+                    ReferenceSegment = segment,
+                    Root = new RootReference()
                 };
                 return new ExpressionData(r, name, type);
             }
+
+            for (int i = 0; i < parentScopes.Count; i++)
+            {
+                var parentScope = parentScopes[i];
+                if (parentScope.TryGetEmitIndex(expression, out var parentSegment, out var parentName, out var parentType))
+                {
+                    var r = new DirectFieldReference()
+                    {
+                        ReferenceSegment = parentSegment,
+                        Root = new OuterReference() { StepsOut = (uint)(i + 1) }
+                    };
+                    return new ExpressionData(r, parentName, parentType);
+                }
+            }
+
             return base.Visit(expression, state);
         }
 
@@ -406,9 +429,24 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var r = new DirectFieldReference()
                 {
-                    ReferenceSegment = segment
+                    ReferenceSegment = segment,
+                    Root = new RootReference()
                 };
                 return new ExpressionData(r, name, type);
+            }
+
+            for (int i = 0; i < parentScopes.Count; i++)
+            {
+                var parentScope = parentScopes[i];
+                if (parentScope.TryGetEmitIndex(removedQuotaIdentifier, out var parentSegment, out var parentName, out var parentType))
+                {
+                    var r = new DirectFieldReference()
+                    {
+                        ReferenceSegment = parentSegment,
+                        Root = new OuterReference() { StepsOut = (uint)(i + 1) }
+                    };
+                    return new ExpressionData(r, parentName, parentType);
+                }
             }
 
             // Otherwise try and find a a part of it.
@@ -851,6 +889,32 @@ namespace FlowtideDotNet.Substrait.Sql
                 return VisitNotUnaryOp(result);
             }
 
+            return result;
+        }
+
+        protected override ExpressionData VisitExists(SqlParser.Ast.Expression.Exists exists, EmitData state)
+        {
+            if (compileQuery == null)
+            {
+                throw new InvalidOperationException("Subquery compilation is not supported in this context.");
+            }
+
+            var subqueryData = compileQuery(exists.SubQuery);
+            if (subqueryData == null)
+            {
+                throw new InvalidOperationException("Failed to compile subquery.");
+            }
+
+            var expr = new SetPredicateExpression()
+            {
+                Relation = subqueryData.Relation
+            };
+
+            var result = new ExpressionData(expr, "$exists", new BoolType());
+            if (exists.Negated)
+            {
+                return VisitNotUnaryOp(result);
+            }
             return result;
         }
     }

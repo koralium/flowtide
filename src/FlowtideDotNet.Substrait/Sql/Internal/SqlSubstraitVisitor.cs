@@ -32,6 +32,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private string? subStreamName;
         private int exchangeTargetIdCounter;
         private readonly List<Relation> subRelations;
+        private readonly Stack<EmitData> scopeStack = new Stack<EmitData>();
+
+        private SqlExpressionVisitor CreateExpressionVisitor()
+        {
+            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList());
+        }
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
         {
@@ -356,31 +362,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             if (query.OrderBy != null && query.OrderBy.Expressions != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
-                foreach (var o in query.OrderBy.Expressions)
+                scopeStack.Push(node.EmitData);
+                try
                 {
-                    var expr = exprVisitor.Visit(o.Expression, node.EmitData);
-                    var sortDirection = GetSortDirection(o);
-
-                    sortFields.Add(new Expressions.SortField()
+                    var exprVisitor = CreateExpressionVisitor();
+                    List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
+                    foreach (var o in query.OrderBy.Expressions)
                     {
-                        Expression = expr.Expr,
-                        SortDirection = sortDirection
-                    });
+                        var expr = exprVisitor.Visit(o.Expression, node.EmitData);
+                        var sortDirection = GetSortDirection(o);
+
+                        sortFields.Add(new Expressions.SortField()
+                        {
+                            Expression = expr.Expr,
+                            SortDirection = sortDirection
+                        });
+                    }
+
+                    if (node.Relation is FetchRelation fetch)
+                    {
+                        var rel = new TopNRelation()
+                        {
+                            Input = fetch.Input,
+                            Sorts = sortFields,
+                            Count = fetch.Count,
+                            Offset = fetch.Offset
+                        };
+                        // Add the order by before the fetch, since the fetch can come from the TOP N in the select.
+                        node = new RelationData(rel, node.EmitData);
+                    }
                 }
-
-                if (node.Relation is FetchRelation fetch)
+                finally
                 {
-                    var rel = new TopNRelation()
-                    {
-                        Input = fetch.Input,
-                        Sorts = sortFields,
-                        Count = fetch.Count,
-                        Offset = fetch.Offset
-                    };
-                    // Add the order by before the fetch, since the fetch can come from the TOP N in the select.
-                    node = new RelationData(rel, node.EmitData);
+                    scopeStack.Pop();
                 }
             }
             return node;
@@ -477,34 +491,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             }
 
-            if (select.Selection != null)
+            scopeStack.Push(outNode.EmitData);
+            try
             {
-                int existsCounter = 0;
-                var remainingSelection = ExtractAndCompileExists(select.Selection, ref outNode, state, ref existsCounter);
-
-                if (remainingSelection != null)
+                if (select.Selection != null)
                 {
                     bool selectionContainsWindow = false;
                     ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(remainingSelection, default);
+                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
                     if (selectionContainsWindow)
                     {
                         // Does not include expressions from the window functions in the emit data
-                        outNode = VisitFilterWithWindowExpressions(remainingSelection, containsWindowSelectFunctionVisitor, outNode);
+                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
                     }
                     else
                     {
-                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                        var expr = exprVisitor.Visit(remainingSelection, outNode.EmitData);
+                        var exprVisitor = CreateExpressionVisitor();
+                        var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
                         outNode = new RelationData(new FilterRelation()
                         {
                             Input = outNode.Relation,
-                            Condition = expr.Expr,
-                            Emit = Enumerable.Range(0, outNode.EmitData.GetNames().Count - existsCounter).ToList()
+                            Condition = expr.Expr
                         }, outNode.EmitData);
                     }
                 }
-            }   
 
             ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
             bool containsAggregate = select.GroupBy != null;
@@ -590,6 +600,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("TOP statement only supports constant values");
                 }
+            }
+            }
+            finally
+            {
+                scopeStack.Pop();
             }
 
             return outNode;
@@ -1626,92 +1641,6 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             };
             return new RelationData(relation, projectEmitData);
-        }
-
-        private SqlParser.Ast.Expression ExtractAndCompileExists(
-            SqlParser.Ast.Expression expr,
-            ref RelationData outNode,
-            object? state,
-            ref int existsCounter)
-        {
-            if (expr is SqlParser.Ast.Expression.Exists exists)
-            {
-                if (exists.SubQuery.Body is SetExpression.SelectExpression selectExpression)
-                {
-                    if (selectExpression.Select.From == null || selectExpression.Select.From.Count == 0)
-                    {
-                        throw new InvalidOperationException("Subquery must have a FROM clause.");
-                    }
-
-                    var fromTable = selectExpression.Select.From.First();
-                    var subNode = Visit(fromTable, state);
-
-                    if (subNode == null)
-                    {
-                        throw new InvalidOperationException("Failed to visit subquery FROM table.");
-                    }
-
-                    var joinConditionEmitData = new EmitData();
-                    joinConditionEmitData.Add(outNode.EmitData, 0);
-                    joinConditionEmitData.Add(subNode.EmitData, outNode.Relation.OutputLength);
-
-                    FlowtideDotNet.Substrait.Expressions.Expression? joinConditionExpr = null;
-                    if (selectExpression.Select.Selection != null)
-                    {
-                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                        var condition = exprVisitor.Visit(selectExpression.Select.Selection, joinConditionEmitData);
-                        joinConditionExpr = condition.Expr;
-                    }
-
-                    var joinRelation = new JoinRelation()
-                    {
-                        Left = outNode.Relation,
-                        Right = subNode.Relation,
-                        Type = JoinType.LeftMark,
-                        Expression = joinConditionExpr
-                    };
-
-                    var markColumnIndex = outNode.Relation.OutputLength;
-                    var dummyName = $"__exists_mark_{existsCounter++}";
-
-                    outNode.EmitData.Add(
-                        new SqlParser.Ast.Expression.Identifier(new Ident(dummyName)),
-                        markColumnIndex,
-                        dummyName,
-                        new AnyType() { Nullable = false }
-                    );
-
-                    outNode = new RelationData(joinRelation, outNode.EmitData);
-
-                    var identifierExpr = new SqlParser.Ast.Expression.Identifier(new Ident(dummyName));
-                    if (exists.Negated)
-                    {
-                        return new SqlParser.Ast.Expression.UnaryOp(identifierExpr, UnaryOperator.Not);
-                    }
-                    return identifierExpr;
-                }
-                else
-                {
-                    throw new NotImplementedException("Only Select expressions are supported in EXISTS subqueries.");
-                }
-            }
-            if (expr is SqlParser.Ast.Expression.BinaryOp binaryOp)
-            {
-                var newLeft = ExtractAndCompileExists(binaryOp.Left, ref outNode, state, ref existsCounter);
-                var newRight = ExtractAndCompileExists(binaryOp.Right, ref outNode, state, ref existsCounter);
-                return new SqlParser.Ast.Expression.BinaryOp(newLeft, binaryOp.Op, newRight);
-            }
-            if (expr is SqlParser.Ast.Expression.UnaryOp unaryOp)
-            {
-                var newExpr = ExtractAndCompileExists(unaryOp.Expression, ref outNode, state, ref existsCounter);
-                return new SqlParser.Ast.Expression.UnaryOp(newExpr, unaryOp.Op);
-            }
-            if (expr is SqlParser.Ast.Expression.Nested nested)
-            {
-                var newExpr = ExtractAndCompileExists(nested.Expression, ref outNode, state, ref existsCounter);
-                return new SqlParser.Ast.Expression.Nested(newExpr);
-            }
-            return expr;
         }
     }
 }
