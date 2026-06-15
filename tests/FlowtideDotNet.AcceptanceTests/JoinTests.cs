@@ -1900,5 +1900,94 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
         }
+
+        [Fact]
+        public async Task NotInSubqueryWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey NOT IN (
+                    SELECT o.userkey FROM orders o
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete an order that makes a user now NOT have any orders (so they should appear in NOT IN output)
+            var orderWithUser = Orders.First(o => Users.Any(u => u.UserKey == o.UserKey));
+            DeleteOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back the order (user should disappear from NOT IN output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a user (should disappear from output)
+            var userWithoutOrders = Users.First(u => !Orders.Any(o => o.UserKey == u.UserKey));
+            DeleteUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task CorrelatedInSubqueryWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey IN (
+                    SELECT o.userkey FROM orders o WHERE o.orderkey >= 0 AND u.userkey = o.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete all orders for a user that has orders (so they should disappear from output)
+            var orderWithUser = Orders.First(o => o.OrderKey >= 0 && Users.Any(u => u.UserKey == o.UserKey));
+            var matchedUserKey = orderWithUser.UserKey;
+            var allOrdersForUser = Orders.Where(o => o.UserKey == matchedUserKey).ToList();
+            foreach (var order in allOrdersForUser)
+            {
+                DeleteOrder(order);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back one order (user should reappear in output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a matched user (should disappear from output)
+            var matchedUser = Users.First(u => u.UserKey == matchedUserKey);
+            DeleteUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
     }
 }
