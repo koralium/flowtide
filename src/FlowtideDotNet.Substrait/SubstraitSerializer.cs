@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -801,6 +801,9 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Right;
                         break;
+                    case JoinType.LeftMark:
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.LeftMark;
+                        break;
                 }
 
                 joinRel.Left = Visit(joinRelation.Left, state);
@@ -999,6 +1002,9 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case JoinType.Right:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Right;
+                        break;
+                    case JoinType.LeftMark:
+                        rel.Type = Protobuf.MergeJoinRel.Types.JoinType.LeftMark;
                         break;
                 }
 

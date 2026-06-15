@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -479,23 +479,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             if (select.Selection != null)
             {
-                bool selectionContainsWindow = false;
-                ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-                selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
-                if (selectionContainsWindow)
-                {   
-                    // Does not include expressions from the window functions in the emit data
-                    outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
-                }
-                else
+                int existsCounter = 0;
+                var remainingSelection = ExtractAndCompileExists(select.Selection, ref outNode, state, ref existsCounter);
+
+                if (remainingSelection != null)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                    var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
-                    outNode = new RelationData(new FilterRelation()
+                    bool selectionContainsWindow = false;
+                    ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(remainingSelection, default);
+                    if (selectionContainsWindow)
                     {
-                        Input = outNode.Relation,
-                        Condition = expr.Expr
-                    }, outNode.EmitData);
+                        // Does not include expressions from the window functions in the emit data
+                        outNode = VisitFilterWithWindowExpressions(remainingSelection, containsWindowSelectFunctionVisitor, outNode);
+                    }
+                    else
+                    {
+                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                        var expr = exprVisitor.Visit(remainingSelection, outNode.EmitData);
+                        outNode = new RelationData(new FilterRelation()
+                        {
+                            Input = outNode.Relation,
+                            Condition = expr.Expr,
+                            Emit = Enumerable.Range(0, outNode.EmitData.GetNames().Count - existsCounter).ToList()
+                        }, outNode.EmitData);
+                    }
                 }
             }   
 
@@ -1619,6 +1626,92 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             };
             return new RelationData(relation, projectEmitData);
+        }
+
+        private SqlParser.Ast.Expression ExtractAndCompileExists(
+            SqlParser.Ast.Expression expr,
+            ref RelationData outNode,
+            object? state,
+            ref int existsCounter)
+        {
+            if (expr is SqlParser.Ast.Expression.Exists exists)
+            {
+                if (exists.SubQuery.Body is SetExpression.SelectExpression selectExpression)
+                {
+                    if (selectExpression.Select.From == null || selectExpression.Select.From.Count == 0)
+                    {
+                        throw new InvalidOperationException("Subquery must have a FROM clause.");
+                    }
+
+                    var fromTable = selectExpression.Select.From.First();
+                    var subNode = Visit(fromTable, state);
+
+                    if (subNode == null)
+                    {
+                        throw new InvalidOperationException("Failed to visit subquery FROM table.");
+                    }
+
+                    var joinConditionEmitData = new EmitData();
+                    joinConditionEmitData.Add(outNode.EmitData, 0);
+                    joinConditionEmitData.Add(subNode.EmitData, outNode.Relation.OutputLength);
+
+                    FlowtideDotNet.Substrait.Expressions.Expression? joinConditionExpr = null;
+                    if (selectExpression.Select.Selection != null)
+                    {
+                        var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+                        var condition = exprVisitor.Visit(selectExpression.Select.Selection, joinConditionEmitData);
+                        joinConditionExpr = condition.Expr;
+                    }
+
+                    var joinRelation = new JoinRelation()
+                    {
+                        Left = outNode.Relation,
+                        Right = subNode.Relation,
+                        Type = JoinType.LeftMark,
+                        Expression = joinConditionExpr
+                    };
+
+                    var markColumnIndex = outNode.Relation.OutputLength;
+                    var dummyName = $"__exists_mark_{existsCounter++}";
+
+                    outNode.EmitData.Add(
+                        new SqlParser.Ast.Expression.Identifier(new Ident(dummyName)),
+                        markColumnIndex,
+                        dummyName,
+                        new AnyType() { Nullable = false }
+                    );
+
+                    outNode = new RelationData(joinRelation, outNode.EmitData);
+
+                    var identifierExpr = new SqlParser.Ast.Expression.Identifier(new Ident(dummyName));
+                    if (exists.Negated)
+                    {
+                        return new SqlParser.Ast.Expression.UnaryOp(identifierExpr, UnaryOperator.Not);
+                    }
+                    return identifierExpr;
+                }
+                else
+                {
+                    throw new NotImplementedException("Only Select expressions are supported in EXISTS subqueries.");
+                }
+            }
+            if (expr is SqlParser.Ast.Expression.BinaryOp binaryOp)
+            {
+                var newLeft = ExtractAndCompileExists(binaryOp.Left, ref outNode, state, ref existsCounter);
+                var newRight = ExtractAndCompileExists(binaryOp.Right, ref outNode, state, ref existsCounter);
+                return new SqlParser.Ast.Expression.BinaryOp(newLeft, binaryOp.Op, newRight);
+            }
+            if (expr is SqlParser.Ast.Expression.UnaryOp unaryOp)
+            {
+                var newExpr = ExtractAndCompileExists(unaryOp.Expression, ref outNode, state, ref existsCounter);
+                return new SqlParser.Ast.Expression.UnaryOp(newExpr, unaryOp.Op);
+            }
+            if (expr is SqlParser.Ast.Expression.Nested nested)
+            {
+                var newExpr = ExtractAndCompileExists(nested.Expression, ref outNode, state, ref existsCounter);
+                return new SqlParser.Ast.Expression.Nested(newExpr);
+            }
+            return expr;
         }
     }
 }

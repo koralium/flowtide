@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -868,6 +868,8 @@ namespace FlowtideDotNet.Substrait
                         return JoinType.Inner;
                     case Protobuf.MergeJoinRel.Types.JoinType.Left:
                         return JoinType.Left;
+                    case Protobuf.MergeJoinRel.Types.JoinType.LeftMark:
+                        return JoinType.LeftMark;
                     case Protobuf.MergeJoinRel.Types.JoinType.Unspecified:
                         return JoinType.Unspecified;
                     default:
@@ -1357,8 +1359,11 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.JoinRel.Types.JoinType.Left:
                         joinType = JoinType.Left;
                         break;
+                    case Protobuf.JoinRel.Types.JoinType.LeftMark:
+                        joinType = JoinType.LeftMark;
+                        break;
                     default:
-                        throw new NotSupportedException("Join type not supported");
+                        throw new NotSupportedException("Join type not supported: " + joinRel.Type.ToString());
                 }
                 var joinRelation = new JoinRelation()
                 {

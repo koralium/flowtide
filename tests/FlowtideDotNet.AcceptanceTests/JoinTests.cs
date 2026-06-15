@@ -1711,7 +1711,24 @@ namespace FlowtideDotNet.AcceptanceTests
                 )");
             await WaitForUpdate();
 
-            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftAntiJoinWithOr()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey = 0 OR NOT EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => u.UserKey == 0 || !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
         }
     }
 }
