@@ -76,6 +76,21 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task BulkAggregateMax()
+        {
+            GenerateData(10_000);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, max(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Max(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
         public async Task BulkAggregateMinWithUpdatesAndDeletes()
         {
             GenerateData(100);
@@ -324,6 +339,28 @@ namespace FlowtideDotNet.AcceptanceTests
 
 
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MinVal = x.Min(y => y.OrderKey) }));
+        }
+
+        [Fact]
+        public async Task MaxAggregateWithStateCrash()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, max(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MaxVal = x.Max(y => y.OrderKey) }));
         }
 
         //[Fact]

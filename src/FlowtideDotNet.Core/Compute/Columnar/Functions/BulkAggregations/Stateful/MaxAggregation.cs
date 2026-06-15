@@ -30,7 +30,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    internal class MinAggregation : ISharedTreeColumnAggregation
+    internal class MaxAggregation : ISharedTreeColumnAggregation
     {
         private readonly Expression _valueExpression;
         private readonly Func<EventBatchData, int, IDataValue> _projectionFunction;
@@ -39,12 +39,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IMemoryAllocator? _memoryAllocator;
         private IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>? _tree;
         private IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>? _bulkInserter;
-        private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMinSearchComparer>? _bulkSearcher;
+        private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMaxSearchComparer>? _bulkSearcher;
         private int _groupingLength;
         private bool _isShared;
         private IDataValue[]? _tempValues;
 
-        public MinAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
+        public MaxAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
         {
             _valueExpression = valueExpression;
             _projectionFunction = projectionFunction;
@@ -60,13 +60,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         {
             _tree = sharedTree;
             _groupingLength = groupingLength;
-            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength));
+            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMaxSearchComparer(groupingLength));
             _isShared = true;
         }
 
         public void OnValueMutated(BulkGroupValueRowReference key, bool exists, int oldWeight, int newWeight, int sortedIndex)
         {
-            // Min aggregation reactively queries from the shared B+ tree during watermark, no-op here.
+            // Max aggregation reactively queries from the shared B+ tree during watermark, no-op here.
         }
         
         public async Task CommitAsync()
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             await _tree!.Commit();
         }
 
-        private struct MinRowMutator : IRowMutator<BulkGroupValueRowReference, int>
+        private struct MaxRowMutator : IRowMutator<BulkGroupValueRowReference, int>
         {
             public void GetSizePrefixSum(BulkGroupValueRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
             {
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             totalBatchSize += _projectedDataColumn!.GetByteSize();
 
-            return _bulkInserter!.ApplyBatch(rowReferences, weightArray, len, new MinRowMutator(), totalBatchSize);
+            return _bulkInserter!.ApplyBatch(rowReferences, weightArray, len, new MaxRowMutator(), totalBatchSize);
         }
 
         public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState, int sortedIndex)
@@ -154,18 +154,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             _groupingLength = groupingLength;
             _memoryAllocator = memoryAllocator;
-            _tree = await stateManagerClient.GetOrCreateTree("mintree",
+            _tree = await stateManagerClient.GetOrCreateTree("maxtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                 {
                     Comparer = new BulkMinInsertComparer(groupingLength),
                     KeySerializer = new BulkGroupValueKeyStorageSerializer(groupingLength, memoryAllocator),
                     ValueSerializer = new PrimitiveListValueContainerSerializer<int>(memoryAllocator),
                     UseByteBasedPageSizes = true,
-                    MemoryAllocator = memoryAllocator
+                    MemoryAllocator = memoryAllocator,
+                    UsePreviousPointers = true
                 });
 
             _bulkInserter = _tree.CreateBulkInserter();
-            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength));
+            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMaxSearchComparer(groupingLength));
         }
 
         public void NewBatch(PrimitiveList<int> weights, EventBatchData batchData)
@@ -214,21 +215,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
 
             await _bulkSearcher!.Start(rowReferences, length);
-            int foundCount = 0;
-            while (foundCount < length && await _bulkSearcher.MoveNextLeaf())
+            while (await _bulkSearcher.MoveNextLeaf())
             {
                 var leaf = _bulkSearcher.CurrentLeaf;
 
                 for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
                 {
                     var result = _bulkSearcher.CurrentResults[i];
-                    if (result.LowerBound >= 0)
+                    if (result.UpperBound >= 0)
                     {
-                        if (_tempValues[result.KeyIndex] == null)
-                        {
-                            _tempValues[result.KeyIndex] = leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, default);
-                            foundCount++;
-                        }
+                        _tempValues[result.KeyIndex] = leaf.keys._data.Columns[_groupingLength].GetValueAt(result.UpperBound, default);
                     }
                 }
             }
@@ -248,17 +244,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         }
     }
 
-    internal class MinAggregationDefinition : IBulkAggregationDefinition
+    internal class MaxAggregationDefinition : IBulkAggregationDefinition
     {
         public IColumnBulkAggregation Create(AggregateFunction aggregateFunction, IFunctionsRegister functionsRegister)
         {
             var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
-            return new MinAggregation(aggregateFunction.Arguments[0], compiledValue);
+            return new MaxAggregation(aggregateFunction.Arguments[0], compiledValue);
         }
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new MinAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Max, new MaxAggregationDefinition());
         }
     }
 }

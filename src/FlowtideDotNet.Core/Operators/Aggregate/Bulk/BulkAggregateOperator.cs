@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Join.MergeJoin;
 using FlowtideDotNet.Storage.DataStructures;
@@ -62,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private int[] _groupedSortIndices = Array.Empty<int>();
         private int[] _duplicateTags = Array.Empty<int>();
-        //private int[] _groupSortLookup = Array.Empty<int>();
+        private int[] _groupSortLookup = Array.Empty<int>();
         private int[] _noDuplicateIndices = Array.Empty<int>();
         private bool[] _outputToTemp = Array.Empty<bool>();
         private bool[] _isDeleted = Array.Empty<bool>();
@@ -86,6 +87,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private IBPlusTreeBulkInserter<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeBulkInserter;
         private IBplusTreeBulkSearch<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer, AggregateSearchComparer>? _treeBulkSearch;
         private IObjectState<bool>? m_hasSentInitialData;
+        private readonly Dictionary<string, SharedGroupValueTree> _sharedTrees = new();
 
         private ColumnStore.Column[] outputColumns;
         private PrimitiveList<int>? weights;
@@ -168,8 +170,26 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         public override async Task OnCheckpoint()
         {
+            Debug.Assert(_tree != null);
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
+
+            await _tree.Commit();
+
+            if (_temporaryTree != null)
+            {
+                await _temporaryTree.Commit();
+            }
+
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                await sharedTree.Tree.Commit();
+            }
+
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                await _measures[i].CommitAsync();
+            }
 
             for (int i = 0; i < m_groupValues.Length; i++)
             {
@@ -204,11 +224,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             if (!m_hasSentInitialData.Value)
             {
+                int totalProcessed = 0;
                 using var iterator = _tree!.CreateIterator();
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
                     var currentLeaf = page.CurrentPage;
+                    totalProcessed += currentLeaf.keys.Count;
 
                     if (currentLeaf.keys.Count == 0)
                     {
@@ -220,8 +242,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
                     }
 
+                    int[] pageStart = new int[_measures.Length];
                     for (int m = 0; m < _measures.Length; m++)
                     {
+                        pageStart[m] = outputColumns[groupLength + m].Count;
                         await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), currentLeaf.keys.Count, outputColumns[groupLength + m]);
                     }
 
@@ -255,10 +279,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     for (int m = 0; m < _measures.Length; m++)
                     {
                         var previousValueCol = currentLeaf.values._eventBatch.GetColumn(_measures.Length + m);
-                        var outputCount = outputColumns[groupLength + m].Count - currentLeaf.keys.Count;
                         for (int c = 0; c < currentLeaf.keys.Count; c++)
                         {
-                            previousValueCol.UpdateAt(c, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
+                            previousValueCol.UpdateAt(c, outputColumns[groupLength + m].GetValueAt(pageStart[m] + c, default));
                         }
                     }
                     currentLeaf.ExitWriteLock();
@@ -289,11 +312,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             else
             {
+                int totalProcessed = 0;
                 using var iterator = _temporaryTree.CreateIterator();
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
                     var currentLeaf = page.CurrentPage;
+                    totalProcessed += currentLeaf.keys.Count;
 
                     if (currentLeaf.keys.Count == 0)
                     {
@@ -322,8 +347,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         };
                     }
 
+                    int[] pageStart = new int[_measures.Length];
                     for (int m = 0; m < _measures.Length; m++)
                     {
+                        pageStart[m] = outputColumns[groupLength + m].Count;
                         await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), page.Keys.Count, outputColumns[groupLength + m]);
                     }
 
@@ -394,7 +421,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
                             for (int c = 0; c < currentResults.Count; c++)
                             {
-                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(outputCount + c, default));
+                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, default));
                             }
                         }
 
@@ -422,6 +449,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
                     InitOutputColumns();
                 }
+                Console.WriteLine($"[WATERMARK INC] processed {totalProcessed} keys from temporary tree");
             }
 
             await _temporaryTree.Clear();
@@ -449,6 +477,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             for (int i = 0; i< _measures.Length; i++)
             {
                 _measures[i].NewBatch(msg.Data.Weights, msg.Data.EventBatchData);
+            }
+
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                sharedTree.NewBatch(msg.Data.Weights, msg.Data.EventBatchData, MemoryAllocator);
             }
 
             var data = msg.Data;
@@ -494,7 +527,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             if (_groupedSortIndices.Length < dataCount)
             {
                 _groupedSortIndices = new int[dataCount];
-                //_groupSortLookup = new int[dataCount];
+                _groupSortLookup = new int[dataCount];
                 _duplicateTags = new int[dataCount];
                 _noDuplicateIndices = new int[dataCount];
                 _outputToTemp = new bool[dataCount];
@@ -510,10 +543,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Create indirection lookup from original value to sorted value, so filters can run in sequential order but adding the sorted index
             SortData(dataCount);
 
-            //for (int i = 0; i < dataCount; i++)
-            //{
-            //    _groupSortLookup[_groupedSortIndices[i]] = i;
-            //}
+            for (int i = 0; i < dataCount; i++)
+            {
+                _groupSortLookup[_groupedSortIndices[i]] = _duplicateTags[i];
+            }
+
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                if (_measures[i] is ISharedTreeColumnAggregation sharedMeasure)
+                {
+                    sharedMeasure.SetGroupMapping(_groupSortLookup);
+                }
+            }
 
             // Create lookup arrays for measures with filters, so we can iterate only on the relevant rows for each measure in the aggregation phase
             for (int i = 0; i < _measures.Length; i++)
@@ -542,6 +583,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 {
                     await _measures[i].StoreAsync(data.Weights, m_groupValues, data.EventBatchData, _groupedSortIndices.AsSpan(0, dataCount));
                 }
+            }
+
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                await sharedTree.StoreAsync(data.Weights, m_groupValues, _groupedSortIndices.AsSpan(0, dataCount), data.EventBatchData);
             }
 
             if (_rowReferenceBuffer.Length < dataCount)
@@ -735,6 +781,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         protected override async Task InitializeOrRestore(IStateManagerClient stateManagerClient)
         {
+            _sharedTrees.Clear();
             InitOutputColumns();
             m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
             if (_aggregateRelation.Groupings != null && _aggregateRelation.Groupings.Count > 0)
@@ -793,6 +840,35 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
             }
             m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+
+            // Group and bind all ISharedTreeColumnAggregation measures by unique value expression and filter
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                if (_measures[i] is ISharedTreeColumnAggregation sharedMeasure && sharedMeasure.SupportsSharedTree)
+                {
+                    var filter = _aggregateRelation.Measures[i].Filter;
+                    var keyString = sharedMeasure.ValueExpression.ToString() + (filter != null ? "_" + filter.ToString() : "");
+                    if (!_sharedTrees.TryGetValue(keyString, out var sharedTree))
+                    {
+                        sharedTree = new SharedGroupValueTree($"sharedtree_{i}", sharedMeasure.ValueProjection, _measureFilters[i]);
+                        var bTree = await stateManagerClient.GetOrCreateTree(sharedTree.TreeName,
+                            new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
+                            {
+                                Comparer = new BulkMinInsertComparer(m_groupValues.Length),
+                                KeySerializer = new BulkGroupValueKeyStorageSerializer(m_groupValues.Length, MemoryAllocator),
+                                ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator),
+                                UseByteBasedPageSizes = true,
+                                MemoryAllocator = MemoryAllocator,
+                                UsePreviousPointers = true
+                            });
+                        sharedTree.Tree = bTree;
+                        sharedTree.BulkInserter = bTree.CreateBulkInserter();
+                        _sharedTrees[keyString] = sharedTree;
+                    }
+                    sharedTree.BindMeasure(sharedMeasure);
+                    sharedMeasure.BindSharedTree(sharedTree.Tree, m_groupValues.Length);
+                }
+            }
 
             for (int i = 0; i < _measures.Length; i++)
             {

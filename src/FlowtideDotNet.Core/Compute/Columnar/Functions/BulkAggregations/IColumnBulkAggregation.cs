@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         /// <param name="indices"></param>
         /// <param name="data"></param>
         /// <param name="groupState"></param>
-        bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState);
+        bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState, int sortedIndex);
 
         ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn);
 

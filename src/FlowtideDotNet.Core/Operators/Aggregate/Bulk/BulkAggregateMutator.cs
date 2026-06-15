@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
-                    writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference);
+                    writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 
                 if (incoming.weight == 0)
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     // Compute should be called here for each row, need alot of extra input here though.
                     var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
-                    measures[i].Compute(indiceSpan, weights, incomingData, colReference);
+                    measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 // New data should always be output no matter what compute says
                 outputToTemp[sortedIndex] = true;

@@ -32,6 +32,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             // Bulk
             SumAggregationDefinition.Register(functionsRegister);
             MinAggregationDefinition.Register(functionsRegister);
+            MaxAggregationDefinition.Register(functionsRegister);
 
             functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
