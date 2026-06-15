@@ -100,6 +100,10 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitIsNotDistinctFrom(isNotDistinctFrom, state);
             }
+            if (expression is Expression.Exists exists)
+            {
+                return VisitExists(exists, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
         }
 
@@ -196,6 +200,11 @@ namespace FlowtideDotNet.Substrait.Sql
         protected virtual TReturn VisitBinaryOperation(Expression.BinaryOp binaryOp, TState state)
         {
             throw new NotImplementedException();
+        }
+
+        protected virtual TReturn VisitExists(Expression.Exists exists, TState state)
+        {
+            throw new NotImplementedException($"The expression '{exists.GetType().Name}' is not supported in SQL");
         }
     }
 }

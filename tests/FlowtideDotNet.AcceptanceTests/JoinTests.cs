@@ -1696,5 +1696,22 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Validate();
         }
+
+        [Fact]
+        public async Task LeftAntiJoin()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
     }
 }
