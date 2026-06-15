@@ -917,5 +917,103 @@ namespace FlowtideDotNet.Substrait.Sql
             }
             return result;
         }
+
+        protected override ExpressionData VisitInSubquery(InSubquery inSubquery, EmitData state)
+        {
+            if (compileQuery == null)
+            {
+                throw new InvalidOperationException("Subquery compilation is not supported in this context.");
+            }
+
+            var subqueryData = compileQuery(inSubquery.SubQuery);
+            if (subqueryData == null)
+            {
+                throw new InvalidOperationException("Failed to compile subquery.");
+            }
+
+            var subqueryRel = subqueryData.Relation;
+            
+            if (inSubquery.Expression == null)
+            {
+                throw new InvalidOperationException("IN subquery expression cannot be null.");
+            }
+            var leftExprData = Visit(inSubquery.Expression, state);
+            var leftExpr = leftExprData.Expr;
+
+            var scopeIncrementer = new ScopeIncrementVisitor();
+            scopeIncrementer.Visit(leftExpr, null);
+
+            Expressions.Expression subqueryColRef;
+            if (subqueryRel is FlowtideDotNet.Substrait.Relations.ProjectRelation projectRel)
+            {
+                subqueryColRef = projectRel.Expressions[0];
+                
+                var eqFunc = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
+                };
+
+                var filterRel = new FlowtideDotNet.Substrait.Relations.FilterRelation()
+                {
+                    Input = projectRel.Input,
+                    Condition = eqFunc
+                };
+
+                projectRel.Input = filterRel;
+            }
+            else
+            {
+                subqueryColRef = new DirectFieldReference()
+                {
+                    ReferenceSegment = new StructReferenceSegment() { Field = 0 },
+                    Root = new RootReference()
+                };
+
+                var eqFunc = new ScalarFunction()
+                {
+                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionName = FunctionsComparison.Equal,
+                    Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
+                };
+
+                var filterRel = new FlowtideDotNet.Substrait.Relations.FilterRelation()
+                {
+                    Input = subqueryRel,
+                    Condition = eqFunc
+                };
+
+                subqueryRel = filterRel;
+            }
+
+            var setPredicate = new SetPredicateExpression()
+            {
+                Relation = subqueryRel
+            };
+
+            var result = new ExpressionData(setPredicate, "$exists", new BoolType());
+            if (inSubquery.Negated)
+            {
+                return VisitNotUnaryOp(result);
+            }
+            return result;
+        }
+
+        private class ScopeIncrementVisitor : ExpressionVisitor<object?, object?>
+        {
+            public override object? VisitDirectFieldReference(DirectFieldReference directFieldReference, object? state)
+            {
+                if (directFieldReference.Root is RootReference)
+                {
+                    directFieldReference.Root = new OuterReference() { StepsOut = 1 };
+                }
+                else if (directFieldReference.Root is OuterReference outerRef)
+                {
+                    directFieldReference.Root = new OuterReference() { StepsOut = outerRef.StepsOut + 1 };
+                }
+                return null;
+            }
+        }
     }
 }

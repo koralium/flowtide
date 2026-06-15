@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -104,6 +104,10 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 return VisitExists(exists, state);
             }
+            if (expression is Expression.InSubquery inSubquery)
+            {
+                return VisitInSubquery(inSubquery, state);
+            }
             throw new NotImplementedException($"The expression '{expression.GetType().Name}' is not supported in SQL");
         }
 
@@ -205,6 +209,11 @@ namespace FlowtideDotNet.Substrait.Sql
         protected virtual TReturn VisitExists(Expression.Exists exists, TState state)
         {
             throw new NotImplementedException($"The expression '{exists.GetType().Name}' is not supported in SQL");
+        }
+
+        protected virtual TReturn VisitInSubquery(Expression.InSubquery inSubquery, TState state)
+        {
+            throw new NotImplementedException($"The expression '{inSubquery.GetType().Name}' is not supported in SQL");
         }
     }
 }

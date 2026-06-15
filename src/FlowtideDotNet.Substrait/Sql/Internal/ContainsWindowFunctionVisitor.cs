@@ -210,5 +210,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             return false;
         }
+
+        protected override bool VisitInSubquery(Expression.InSubquery inSubquery, object? state)
+        {
+            return false;
+        }
     }
 }
