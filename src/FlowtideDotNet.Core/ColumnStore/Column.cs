@@ -744,19 +744,18 @@ namespace FlowtideDotNet.Core.ColumnStore
             Debug.Assert(_validityList != null);
             if (!disposedValue)
             {
-                _validityList.Dispose();
-                if (_dataColumn != null)
+                if (disposing)
                 {
-                    _dataColumn.Dispose();
+                    _validityList.Dispose();
+                    if (_dataColumn != null)
+                    {
+                        _dataColumn.Dispose();
+                    }
+                    ColumnFactory.Return(this);
                 }
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
                 // TODO: set large fields to null
                 disposedValue = true;
-
-                if (disposing)
-                {
-                    ColumnFactory.Return(this);
-                }
             }
         }
 
