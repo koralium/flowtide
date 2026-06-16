@@ -413,5 +413,196 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             Assert.Equal(expected, optimizedPlan);
         }
+
+        [Fact]
+        public void MergeJoinPushEmitAllFields()
+        {
+            var plan = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new MergeJoinRelation()
+                    {
+                        Emit = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                        LeftKeys = new List<FieldReference>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 4
+                                }
+                            }
+                        },
+                        RightKeys = new List<FieldReference>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 9
+                                }
+                            }
+                        },
+                        Left = new ReadRelation()
+                        {
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        },
+                        Right = new FilterRelation()
+                        {
+                            Input = new ReadRelation()
+                            {
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table2" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            },
+                            Condition = new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 4
+                                        }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var optimizedPlan = EmitPushdown.Optimize(plan);
+
+            var expected = new Plan()
+            {
+                Relations = new List<Substrait.Relations.Relation>()
+                {
+                    new MergeJoinRelation()
+                    {
+                        Emit = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                        LeftKeys = new List<FieldReference>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 4
+                                }
+                            }
+                        },
+                        RightKeys = new List<FieldReference>()
+                        {
+                            new DirectFieldReference()
+                            {
+                                ReferenceSegment = new StructReferenceSegment()
+                                {
+                                    Field = 9
+                                }
+                            }
+                        },
+                        Left = new ReadRelation()
+                        {
+                            Emit = [0, 1, 2, 3, 4, 5],
+                            NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table1" } },
+                            BaseSchema = new Substrait.Type.NamedStruct()
+                            {
+                                Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                Struct = new Substrait.Type.Struct()
+                                {
+                                    Types = new List<Substrait.Type.SubstraitBaseType>()
+                                    {
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType(),
+                                        new AnyType()
+                                    }
+                                }
+                            }
+                        },
+                        Right = new FilterRelation()
+                        {
+                            Emit = [0, 1, 2, 3, 4, 5],
+                            Input = new ReadRelation()
+                            {
+                                Emit = [0, 1, 2, 3, 4, 5],
+                                NamedTable = new Substrait.Type.NamedTable(){ Names = new List<string>() { "Table2" } },
+                                BaseSchema = new Substrait.Type.NamedStruct()
+                                {
+                                    Names = new List<string>() { "Col1", "Col2", "Col3", "Col4", "Col5", "Col6"},
+                                    Struct = new Substrait.Type.Struct()
+                                    {
+                                        Types = new List<Substrait.Type.SubstraitBaseType>()
+                                        {
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType(),
+                                            new AnyType()
+                                        }
+                                    }
+                                }
+                            },
+                            Condition = new ScalarFunction()
+                            {
+                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionName = FunctionsComparison.Equal,
+                                Arguments = new List<Expression>()
+                                {
+                                    new DirectFieldReference()
+                                    {
+                                        ReferenceSegment = new StructReferenceSegment()
+                                        {
+                                            Field = 4
+                                        }
+                                    },
+                                    new StringLiteral() { Value = "test" }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            Assert.Equal(expected, optimizedPlan);
+        }
     }
 }
