@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 return projectRelation;
             }
-            if (projectRelation.Input.OutputLength >= projectRelation.OutputLength)
+            if (projectRelation.EmitSet && projectRelation.Input.OutputLength >= projectRelation.OutputLength)
             {
                 var input = projectRelation.Input;
 
@@ -488,7 +488,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
         {
-            var inputLength = mergeJoinRelation.Left.OutputLength + mergeJoinRelation.Right.OutputLength;
+            if (!mergeJoinRelation.EmitSet)
+            {
+                return base.VisitMergeJoinRelation(mergeJoinRelation, state);
+            }
 
             if (mergeJoinRelation.Left is ReferenceRelation leftReference)
             {
@@ -648,7 +651,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
             {
                 return filterRelation;
             }
-            if (filterRelation.Input.OutputLength >= filterRelation.OutputLength)
+            if (filterRelation.EmitSet && filterRelation.Input.OutputLength >= filterRelation.OutputLength)
             {
                 var input = filterRelation.Input;
 
