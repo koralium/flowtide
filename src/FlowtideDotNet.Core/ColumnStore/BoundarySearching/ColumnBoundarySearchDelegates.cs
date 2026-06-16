@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Substrait.Relations;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -167,6 +168,104 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
                 upperBounds[i] = upper;
 
                 currentFastForward = lower < 0 ? ~lower : lower;
+            }
+        }
+
+        internal static void FallbackMethodWithOperators(
+            IColumn column,
+            IColumn inputCol,
+            ReadOnlySpan<int> inputSortedLookup,
+            Span<int> lowerBounds,
+            Span<int> upperBounds,
+            DataValueContainer xContainer,
+            DataValueContainer yContainer,
+            bool doNotMatchNull,
+            Span<int> buffer,
+            JoinComparisonType op)
+        {
+            for (int i = 0; i < inputSortedLookup.Length; i++)
+            {
+                int lowerBound = lowerBounds[i];
+                int searchEnd = upperBounds[i];
+
+                if (lowerBound < 0) continue;
+
+                int searchStart = lowerBound;
+
+                if (searchStart > searchEnd)
+                {
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
+                    continue;
+                }
+
+                var inputIndex = inputSortedLookup[i];
+                inputCol.GetValueAt(inputIndex, xContainer, null);
+
+                if (doNotMatchNull && xContainer.Type == ArrowTypeId.Null)
+                {
+                    lowerBounds[i] = ~searchStart;
+                    upperBounds[i] = ~searchStart;
+                    continue;
+                }
+
+                var (lower, upper) = column.SearchBoundries(xContainer, searchStart, searchEnd, null);
+
+                int matchStart;
+                int matchEnd;
+
+                if (op == JoinComparisonType.Equal)
+                {
+                    matchStart = lower;
+                    matchEnd = upper;
+                }
+                else if (op == JoinComparisonType.LessThan)
+                {
+                    int firstGte = lower >= 0 ? lower : ~lower;
+                    matchStart = searchStart;
+                    matchEnd = firstGte - 1;
+                    if (firstGte <= searchStart)
+                    {
+                        matchStart = ~searchStart;
+                        matchEnd = ~searchStart;
+                    }
+                }
+                else if (op == JoinComparisonType.LessThanOrEqual)
+                {
+                    int firstGt = lower >= 0 ? upper + 1 : ~lower;
+                    matchStart = searchStart;
+                    matchEnd = firstGt - 1;
+                    if (firstGt <= searchStart)
+                    {
+                        matchStart = ~searchStart;
+                        matchEnd = ~searchStart;
+                    }
+                }
+                else if (op == JoinComparisonType.GreaterThan)
+                {
+                    int firstGt = lower >= 0 ? upper + 1 : ~lower;
+                    matchStart = firstGt;
+                    matchEnd = searchEnd;
+                    if (firstGt > searchEnd)
+                    {
+                        matchStart = ~firstGt;
+                        matchEnd = ~firstGt;
+                    }
+                }
+                else // GreaterThanOrEqual
+                {
+                    int firstGte = lower >= 0 ? lower : ~lower;
+                    matchStart = firstGte;
+                    matchEnd = searchEnd;
+                    if (firstGte > searchEnd)
+                    {
+                        matchStart = ~firstGte;
+                        matchEnd = ~firstGte;
+                    }
+                }
+
+                lowerBounds[i] = matchStart;
+                upperBounds[i] = matchEnd;
             }
         }
     }
