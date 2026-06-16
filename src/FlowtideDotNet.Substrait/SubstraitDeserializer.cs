@@ -652,6 +652,11 @@ namespace FlowtideDotNet.Substrait
 
                 throw new NotImplementedException(functionName);
             }
+
+            public bool TryGetFunctionName(uint functionReference, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? functionName)
+            {
+                return idToFunctionLookup.TryGetValue(functionReference, out functionName);
+            }
         }
 
         private sealed class SubstraitDeserializerImpl
@@ -922,10 +927,58 @@ namespace FlowtideDotNet.Substrait
             {
                 List<FieldReference> leftKeys = new List<FieldReference>();
                 List<FieldReference> rightKeys = new List<FieldReference>();
+                List<JoinComparisonType> comparisonTypes = new List<JoinComparisonType>();
                 foreach (var key in mergeJoin.Keys)
                 {
                     leftKeys.Add(ExpressionDeserializerImpl.VisitFieldReference(key.Left));
                     rightKeys.Add(ExpressionDeserializerImpl.VisitFieldReference(key.Right));
+
+                    if (key.Comparison != null)
+                    {
+                        if (key.Comparison.Simple == Protobuf.ComparisonJoinKey.Types.SimpleComparisonType.Eq)
+                        {
+                            comparisonTypes.Add(JoinComparisonType.Equal);
+                        }
+                        else if (key.Comparison.InnerTypeCase == Protobuf.ComparisonJoinKey.Types.ComparisonType.InnerTypeOneofCase.CustomFunctionReference)
+                        {
+                            if (expressionDeserializer.TryGetFunctionName(key.Comparison.CustomFunctionReference, out var functionName))
+                            {
+                                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                                if (name == "lt")
+                                {
+                                    comparisonTypes.Add(JoinComparisonType.LessThan);
+                                }
+                                else if (name == "lte")
+                                {
+                                    comparisonTypes.Add(JoinComparisonType.LessThanOrEqual);
+                                }
+                                else if (name == "gt")
+                                {
+                                    comparisonTypes.Add(JoinComparisonType.GreaterThan);
+                                }
+                                else if (name == "gte")
+                                {
+                                    comparisonTypes.Add(JoinComparisonType.GreaterThanOrEqual);
+                                }
+                                else
+                                {
+                                    comparisonTypes.Add(JoinComparisonType.Equal);
+                                }
+                            }
+                            else
+                            {
+                                comparisonTypes.Add(JoinComparisonType.Equal);
+                            }
+                        }
+                        else
+                        {
+                            comparisonTypes.Add(JoinComparisonType.Equal);
+                        }
+                    }
+                    else
+                    {
+                        comparisonTypes.Add(JoinComparisonType.Equal);
+                    }
                 }
                 Expression? postJoinFilter = default;
                 if (mergeJoin.PostJoinFilter != null)
@@ -939,6 +992,7 @@ namespace FlowtideDotNet.Substrait
                     Right = VisitRel(mergeJoin.Right),
                     LeftKeys = leftKeys,
                     RightKeys = rightKeys,
+                    ComparisonTypes = comparisonTypes,
                     Type = GetJoinType(mergeJoin.Type),
                     PostJoinFilter = postJoinFilter
                 };

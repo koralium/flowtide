@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using Google.Protobuf;
 using Substrait.Protobuf;
 using Protobuf = Substrait.Protobuf;
@@ -976,6 +977,44 @@ namespace FlowtideDotNet.Substrait
                 {
                     var leftKey = mergeJoinRelation.LeftKeys[i];
                     var rightKey = mergeJoinRelation.RightKeys[i];
+                    var comparisonType = mergeJoinRelation.ComparisonTypes != null && i < mergeJoinRelation.ComparisonTypes.Count 
+                        ? mergeJoinRelation.ComparisonTypes[i] 
+                        : JoinComparisonType.Equal;
+
+                    ComparisonJoinKey.Types.ComparisonType comparison;
+                    if (comparisonType == JoinComparisonType.Equal)
+                    {
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                        };
+                    }
+                    else
+                    {
+                        string extensionName;
+                        if (comparisonType == JoinComparisonType.LessThan)
+                        {
+                            extensionName = "lt";
+                        }
+                        else if (comparisonType == JoinComparisonType.LessThanOrEqual)
+                        {
+                            extensionName = "lte";
+                        }
+                        else if (comparisonType == JoinComparisonType.GreaterThan)
+                        {
+                            extensionName = "gt";
+                        }
+                        else // GreaterThanOrEqual
+                        {
+                            extensionName = "gte";
+                        }
+                        var anchor = state.GetFunctionExtensionAnchor(FunctionsComparison.Uri, extensionName);
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            CustomFunctionReference = anchor
+                        };
+                    }
+
                     if (leftKey is DirectFieldReference directFieldReferenceLeft &&
                         directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
                         rightKey is DirectFieldReference directFieldReferenceRight &&
@@ -983,10 +1022,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
-                            {
-                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
-                            },
+                            Comparison = comparison,
                             Left = new Protobuf.Expression.Types.FieldReference()
                             {
                                 DirectReference = new Protobuf.Expression.Types.ReferenceSegment()

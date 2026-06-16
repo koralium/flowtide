@@ -14,6 +14,15 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
+    public enum JoinComparisonType
+    {
+        Equal = 0,
+        LessThan = 1,
+        LessThanOrEqual = 2,
+        GreaterThan = 3,
+        GreaterThanOrEqual = 4
+    }
+
     public sealed class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
     {
         public JoinType Type { get; set; }
@@ -25,6 +34,8 @@ namespace FlowtideDotNet.Substrait.Relations
         public required List<FieldReference> LeftKeys { get; set; }
 
         public required List<FieldReference> RightKeys { get; set; }
+
+        public List<JoinComparisonType>? ComparisonTypes { get; set; }
 
         public Expression? PostJoinFilter { get; set; }
 
@@ -64,6 +75,7 @@ namespace FlowtideDotNet.Substrait.Relations
                 Equals(Right, other.Right) &&
                 LeftKeys.SequenceEqual(other.LeftKeys) &&
                 RightKeys.SequenceEqual(other.RightKeys) &&
+                (ComparisonTypes == null ? other.ComparisonTypes == null : other.ComparisonTypes != null && ComparisonTypes.SequenceEqual(other.ComparisonTypes)) &&
                 Equals(PostJoinFilter, other.PostJoinFilter);
         }
 
@@ -82,6 +94,14 @@ namespace FlowtideDotNet.Substrait.Relations
             foreach (var key in RightKeys)
             {
                 code.Add(key);
+            }
+
+            if (ComparisonTypes != null)
+            {
+                foreach (var comp in ComparisonTypes)
+                {
+                    code.Add(comp);
+                }
             }
 
             code.Add(PostJoinFilter);
