@@ -14,14 +14,17 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.Tree.Internal;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 {
-    internal class MergeJoinSearchComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>
+    internal class MergeJoinSearchComparer : IBplusTreeComparer<ColumnRowReference, ColumnKeyStorageContainer>, IRouteToLeftmost
     {
         private DataValueContainer dataValueContainer;
         private readonly List<int> selfColumns;
         private readonly List<int> referenceColumns;
+        private readonly List<JoinComparisonType>? comparisonTypes;
         private readonly ColumnBoundarySearch _columnBoundarySearch;
 
         public int start;
@@ -30,12 +33,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
         public bool SeekNextPageForValue => true;
 
-        public MergeJoinSearchComparer(List<int> selfColumns, List<int> referenceColumns)
+        public bool RouteToLeftmost => comparisonTypes != null && comparisonTypes.Count > 0 &&
+                                       (comparisonTypes[0] == JoinComparisonType.LessThan || comparisonTypes[0] == JoinComparisonType.LessThanOrEqual);
+
+        public MergeJoinSearchComparer(List<int> selfColumns, List<int> referenceColumns, List<JoinComparisonType>? comparisonTypes = null)
         {
             dataValueContainer = new DataValueContainer();
             this.selfColumns = selfColumns;
             this.referenceColumns = referenceColumns;
-            _columnBoundarySearch = new ColumnBoundarySearch(selfColumns, referenceColumns);
+            this.comparisonTypes = comparisonTypes;
+            _columnBoundarySearch = new ColumnBoundarySearch(selfColumns, referenceColumns, comparisonTypes);
         }
         private readonly DataValueContainer _yDataValueContainer = new DataValueContainer();
 
@@ -133,14 +140,68 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 var (low, high) = keyContainer._data.Columns[selfColumns[i]].SearchBoundries(dataValueContainer, currentStart, currentEnd, default);
 
-                if (low < 0)
+                var op = comparisonTypes != null && i < comparisonTypes.Count ? comparisonTypes[i] : JoinComparisonType.Equal;
+                int matchStart;
+                int matchEnd;
+
+                if (op == JoinComparisonType.Equal)
                 {
-                    return new FindBoundriesResult(low, low);
+                    matchStart = low;
+                    matchEnd = high;
+                }
+                else if (op == JoinComparisonType.LessThan)
+                {
+                    int firstGte = low >= 0 ? low : ~low;
+                    matchStart = currentStart;
+                    matchEnd = firstGte - 1;
+                    if (firstGte <= currentStart)
+                    {
+                        matchStart = ~currentStart;
+                        matchEnd = ~currentStart;
+                    }
+                }
+                else if (op == JoinComparisonType.LessThanOrEqual)
+                {
+                    int firstGt = low >= 0 ? high + 1 : ~low;
+                    matchStart = currentStart;
+                    matchEnd = firstGt - 1;
+                    if (firstGt <= currentStart)
+                    {
+                        matchStart = ~currentStart;
+                        matchEnd = ~currentStart;
+                    }
+                }
+                else if (op == JoinComparisonType.GreaterThan)
+                {
+                    int firstGt = low >= 0 ? high + 1 : ~low;
+                    matchStart = firstGt;
+                    matchEnd = currentEnd;
+                    if (firstGt > currentEnd)
+                    {
+                        matchStart = ~firstGt;
+                        matchEnd = ~firstGt;
+                    }
+                }
+                else // GreaterThanOrEqual
+                {
+                    int firstGte = low >= 0 ? low : ~low;
+                    matchStart = firstGte;
+                    matchEnd = currentEnd;
+                    if (firstGte > currentEnd)
+                    {
+                        matchStart = ~firstGte;
+                        matchEnd = ~firstGte;
+                    }
+                }
+
+                if (matchStart < 0)
+                {
+                    return new FindBoundriesResult(matchStart, matchStart);
                 }
                 else
                 {
-                    currentStart = low;
-                    currentEnd = high;
+                    currentStart = matchStart;
+                    currentEnd = matchEnd;
                 }
             }
             return new FindBoundriesResult(currentStart, currentEnd);

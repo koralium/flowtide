@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Substrait.Relations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -26,6 +27,7 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         private readonly int _columnCount;
         private readonly IReadOnlyList<int> _treeColumnOrder;
         private readonly IReadOnlyList<int> _incomingColumnOrder;
+        private readonly List<JoinComparisonType>? _comparisonTypes;
 
         // Containers here are for fallback where we skip heap allocation on GetValue
         // This is only used for permutations where there is no specialized code
@@ -33,11 +35,12 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
         private readonly DataValueContainer _yContainer;
         
 
-        public ColumnBoundarySearch(IReadOnlyList<int> treeColumnOrder, IReadOnlyList<int> incomingColumnOrder)
+        public ColumnBoundarySearch(IReadOnlyList<int> treeColumnOrder, IReadOnlyList<int> incomingColumnOrder, List<JoinComparisonType>? comparisonTypes = null)
         {
             this._columnCount = treeColumnOrder.Count;
             _treeColumnOrder = treeColumnOrder;
             _incomingColumnOrder = incomingColumnOrder;
+            _comparisonTypes = comparisonTypes;
             
             columnStates = new int[_columnCount];
 
@@ -69,16 +72,25 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             {
                 var treeColumn = columns[_treeColumnOrder[i]];
                 var inputColumn = inputs[_incomingColumnOrder[i]];
-                var treeColumnState = treeColumn.GetColumnState();
-                var inputColumnState = inputColumn.GetColumnState();
-                var searchKey = ColumnBoundarySearchDelegates.GetKey(treeColumnState, inputColumnState);
-                if (columnStates[i] != searchKey)
+                var op = _comparisonTypes != null && i < _comparisonTypes.Count ? _comparisonTypes[i] : JoinComparisonType.Equal;
+
+                if (op != JoinComparisonType.Equal)
                 {
-                    // If the state has changed, we need to get a new delegate for this column
-                    _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(searchKey);
-                    columnStates[i] = searchKey;
+                    ColumnBoundarySearchDelegates.FallbackMethodWithOperators(treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer, doNotMatchNull, buffer, op);
                 }
-                _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer, doNotMatchNull, buffer);
+                else
+                {
+                    var treeColumnState = treeColumn.GetColumnState();
+                    var inputColumnState = inputColumn.GetColumnState();
+                    var searchKey = ColumnBoundarySearchDelegates.GetKey(treeColumnState, inputColumnState);
+                    if (columnStates[i] != searchKey)
+                    {
+                        // If the state has changed, we need to get a new delegate for this column
+                        _savedDelegates[i] = ColumnBoundarySearchDelegates.GetDelegate(searchKey);
+                        columnStates[i] = searchKey;
+                    }
+                    _savedDelegates[i](treeColumn, inputColumn, inputSortedLookup, lowerBounds, upperBounds, _xContainer, _yContainer, doNotMatchNull, buffer);
+                }
             }
         }
     }
