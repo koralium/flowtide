@@ -1458,7 +1458,7 @@ namespace FlowtideDotNet.Substrait
                         joinType = JoinType.LeftMark;
                         break;
                     default:
-                        throw new NotSupportedException("Join type not supported: " + joinRel.Type.ToString());
+                        throw new NotSupportedException("Join type not supported: " + joinRel.Type);
                 }
                 var joinRelation = new JoinRelation()
                 {
