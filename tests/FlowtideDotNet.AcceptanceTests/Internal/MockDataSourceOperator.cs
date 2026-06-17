@@ -155,11 +155,44 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockDatabase.RwLock.Release();
         }
 
+        private async Task SendEmptyBatch(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            mockDatabase.RwLock.Wait();
+            Debug.Assert(_state?.Value != null);
+            await output.EnterCheckpointLock();
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            await output.SendAsync(outputBatch);
+
+            var fetchedOffset = _state.Value.LatestOffset;
+            await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+
+            output.ExitCheckpointLock();
+            mockDatabase.RwLock.Release();
+        }
+
         public override Task OnTrigger(string triggerName, object? state)
         {
             if (triggerName == "changes")
             {
                 RunTask(FetchChanges);
+            }
+            else if (triggerName == "send_empty_batch")
+            {
+                if (state == null || (state is string tableName && tableName.Equals(readRelation.NamedTable.DotSeperated, StringComparison.OrdinalIgnoreCase)))
+                {
+                    RunTask(SendEmptyBatch);
+                }
             }
             else if (triggerName == "crash")
             {
@@ -219,6 +252,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await RegisterTrigger("ingress_no_autocomplete_dependencies");
             await RegisterTrigger("ingress_fail_and_rollback");
             await RegisterTrigger("ingress_dependencies_done");
+            await RegisterTrigger("send_empty_batch");
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)

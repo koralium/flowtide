@@ -334,6 +334,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var memoryManager = MemoryAllocator;
 
             int keyLength = msg.Data.Weights.Count;
+
+            if (keyLength == 0)
+            {
+                yield break;
+            }
+
             List<Column> rightColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
@@ -515,6 +521,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             var memoryManager = MemoryAllocator;
 
             int keyLength = msg.Data.Weights.Count;
+
+            if (keyLength == 0)
+            {
+                yield break;
+            }
+
             List<Column> leftColumns = new List<Column>();
             PrimitiveList<int> foundOffsets = new PrimitiveList<int>(memoryManager, keyLength);
             PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager, keyLength);
