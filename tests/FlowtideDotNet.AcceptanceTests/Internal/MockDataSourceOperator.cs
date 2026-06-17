@@ -157,7 +157,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private async Task SendEmptyBatch(IngressOutput<StreamEventBatch> output, object? state)
         {
-            mockDatabase.RwLock.Wait();
+            await mockDatabase.RwLock.WaitAsync();
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
 
