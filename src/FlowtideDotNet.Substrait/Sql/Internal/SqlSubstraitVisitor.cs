@@ -492,7 +492,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         Left = outNode.Relation,
                         Right = otherOut.Relation,
-                        Type = JoinType.Inner
+                        Type = JoinType.Inner,
+                        Expression = new FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral() { Value = true }
                     };
 
                     EmitData joinEmitData = new EmitData();
