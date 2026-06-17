@@ -256,10 +256,7 @@ namespace FlowtideDotNet.Core.Optimizer
                         if (Visit(ifClause.If, state) || Visit(ifClause.Then, state)) return true;
                     }
                 }
-                if (ifThenExpression.Else != null)
-                {
-                    if (Visit(ifThenExpression.Else, state)) return true;
-                }
+                if (ifThenExpression.Else != null && Visit(ifThenExpression.Else, state)) return true;
                 return false;
             }
 
