@@ -101,14 +101,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 Condition = newCondition
             };
 
-            if (filterRelation.EmitSet)
-            {
-                newFilter.Emit = filterRelation.Emit.ToList();
-            }
-            else
-            {
-                newFilter.Emit = Enumerable.Range(0, originalLeftLength).ToList();
-            }
+            newFilter.Emit = filterRelation.EmitSet
+                ? filterRelation.Emit.ToList()
+                : Enumerable.Range(0, originalLeftLength).ToList();
 
             return newFilter;
         }
