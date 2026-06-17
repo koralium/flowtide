@@ -404,7 +404,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                     return Visit(joinRelation, state);
                 }
                 // Fields from both sides: push into the join expression so it can be used as a join condition
-                else if (visitor.fieldInLeft && visitor.fieldInRight)
+                else if (visitor.fieldInLeft && visitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                 {
                     AddToJoinExpression(joinRelation, RemapConditionForJoinExpression(filterRelation.Condition, joinRelation));
                     SwitchEmit(filterRelation, joinRelation);
@@ -444,7 +444,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                         i--;
                     }
                     // Fields from both sides: push into the join expression
-                    else if (!andVisitor.unknownCase && andVisitor.fieldInLeft && andVisitor.fieldInRight)
+                    else if (!andVisitor.unknownCase && andVisitor.fieldInLeft && andVisitor.fieldInRight && joinRelation.Type == JoinType.Inner)
                     {
                         AddToJoinExpression(joinRelation, RemapConditionForJoinExpression(expr, joinRelation));
                         scalarFunction.Arguments.RemoveAt(i);
