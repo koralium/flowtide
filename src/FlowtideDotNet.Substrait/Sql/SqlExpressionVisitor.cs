@@ -946,8 +946,12 @@ namespace FlowtideDotNet.Substrait.Sql
             Expressions.Expression subqueryColRef;
             if (subqueryRel is FlowtideDotNet.Substrait.Relations.ProjectRelation projectRel)
             {
+                if (projectRel.Expressions.Count != 1)
+                {
+                    throw new InvalidOperationException("IN subquery must return exactly one column.");
+                }
                 subqueryColRef = projectRel.Expressions[0];
-                
+
                 var eqFunc = new ScalarFunction()
                 {
                     ExtensionUri = FunctionsComparison.Uri,
