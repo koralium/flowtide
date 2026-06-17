@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -154,6 +154,11 @@ namespace FlowtideDotNet.AcceptanceTests
         protected void EgressCrashOnCheckpoint(int times)
         {
             flowtideTestStream.EgressCrashOnCheckpoint(times);
+        }
+
+        protected Task Trigger(string triggerName, object? state = default)
+        {
+            return flowtideTestStream.Trigger(triggerName, state);
         }
 
         public void AddOrUpdateUser(User user)
