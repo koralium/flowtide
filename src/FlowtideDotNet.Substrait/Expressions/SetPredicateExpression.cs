@@ -25,7 +25,8 @@ namespace FlowtideDotNet.Substrait.Expressions
 
         public override Expression Clone()
         {
-            throw new NotImplementedException("Cloning SetPredicateExpression is not supported.");
+            // Relation cloning is not supported; return a shallow clone.
+            return new SetPredicateExpression() { Relation = Relation };
         }
 
         public override bool Equals(object? obj)
