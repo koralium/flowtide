@@ -587,22 +587,13 @@ namespace FlowtideDotNet.Core.Optimizer
             {
                 if (directFieldReference.Root is OuterReference outerRef)
                 {
-                    if (outerRef.StepsOut == 1)
+                    return new DirectFieldReference()
                     {
-                        return new DirectFieldReference()
-                        {
-                            ReferenceSegment = directFieldReference.ReferenceSegment,
-                            Root = new RootReference()
-                        };
-                    }
-                    else
-                    {
-                        return new DirectFieldReference()
-                        {
-                            ReferenceSegment = directFieldReference.ReferenceSegment,
-                            Root = new OuterReference() { StepsOut = outerRef.StepsOut - 1 }
-                        };
-                    }
+                        ReferenceSegment = directFieldReference.ReferenceSegment,
+                        Root = outerRef.StepsOut == 1
+                            ? new RootReference()
+                            : new OuterReference() { StepsOut = outerRef.StepsOut - 1 }
+                    };
                 }
                 else if (directFieldReference.Root is RootReference)
                 {
