@@ -45,8 +45,7 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             var leftRel = filterRelation.Input;
-            var subqueryToMarkColumnIndex = new Dictionary<SetPredicateExpression, int>();
-
+            var subqueryToMarkColumnIndex = new Dictionary<SetPredicateExpression, int>(ReferenceEqualityComparer.Instance);
             foreach (var subqueryExpr in extractor.Subqueries)
             {
                 // Decorrelate this subquery!
