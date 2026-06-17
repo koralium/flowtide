@@ -1838,6 +1838,33 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task InnerJoinMergeJoinEmptyBatchTriggered()
+        {
+            // Mark source as immutable to not catch the empty batch in normalization operator
+            SourceImmutable();
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+
+            // Trigger empty batches
+            await Trigger("send_empty_batch", "orders");
+            await Trigger("send_empty_batch", "users");
+
+            // do a data gen to be able to wait for updates
+            GenerateData(1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
+
+        [Fact]
         public async Task LeftAntiJoin()
         {
             GenerateData(5);
