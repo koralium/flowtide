@@ -424,18 +424,32 @@ namespace FlowtideDotNet.Substrait
             {
                 if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    var expr = new Protobuf.Expression()
+                    var fieldRef = new Protobuf.Expression.Types.FieldReference()
                     {
-                        Selection = new Protobuf.Expression.Types.FieldReference()
+                        DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                                {
-                                    Field = structReferenceSegment.Field
-                                }
+                                Field = structReferenceSegment.Field
                             }
                         }
+                    };
+
+                    if (directFieldReference.Root is OuterReference outerReference)
+                    {
+                        fieldRef.OuterReference = new Protobuf.Expression.Types.FieldReference.Types.OuterReference()
+                        {
+                            StepsOut = outerReference.StepsOut
+                        };
+                    }
+                    else if (directFieldReference.Root is RootReference)
+                    {
+                        fieldRef.RootReference = new Protobuf.Expression.Types.FieldReference.Types.RootReference();
+                    }
+
+                    var expr = new Protobuf.Expression()
+                    {
+                        Selection = fieldRef
                     };
 
                     return expr;
@@ -545,6 +559,26 @@ namespace FlowtideDotNet.Substrait
                 }
 
                 return output;
+            }
+
+            public override Protobuf.Expression? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, SerializerVisitorState state)
+            {
+                var relVisitor = new SerializerVisitor();
+                var relProto = relVisitor.Visit(setPredicateExpression.Relation, state);
+
+                var subquery = new Protobuf.Expression.Types.Subquery()
+                {
+                    SetPredicate = new Protobuf.Expression.Types.Subquery.Types.SetPredicate()
+                    {
+                        PredicateOp = Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp.Exists,
+                        Tuples = relProto
+                    }
+                };
+
+                return new Protobuf.Expression()
+                {
+                    Subquery = subquery
+                };
             }
         }
 
@@ -802,6 +836,9 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Right;
                         break;
+                    case JoinType.LeftMark:
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.LeftMark;
+                        break;
                 }
 
                 joinRel.Left = Visit(joinRelation.Left, state);
@@ -1035,6 +1072,9 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case JoinType.Right:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Right;
+                        break;
+                    case JoinType.LeftMark:
+                        rel.Type = Protobuf.MergeJoinRel.Types.JoinType.LeftMark;
                         break;
                 }
 

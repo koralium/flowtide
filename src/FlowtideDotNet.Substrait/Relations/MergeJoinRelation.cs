@@ -47,6 +47,10 @@ namespace FlowtideDotNet.Substrait.Relations
                 {
                     return Emit.Count;
                 }
+                if (Type == JoinType.LeftMark)
+                {
+                    return Left.OutputLength + 1;
+                }
                 return Left.OutputLength + Right.OutputLength;
             }
         }

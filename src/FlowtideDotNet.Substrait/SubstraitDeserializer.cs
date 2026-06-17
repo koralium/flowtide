@@ -26,9 +26,11 @@ namespace FlowtideDotNet.Substrait
         {
             private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
             private readonly Dictionary<uint, string> idToUserDefinedType = new Dictionary<uint, string>();
+            private readonly Protobuf.Plan plan;
 
             public ExpressionDeserializerImpl(Protobuf.Plan plan)
             {
+                this.plan = plan;
                 foreach (var extension in plan.Extensions)
                 {
                     if (extension.MappingTypeCase == Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase.ExtensionType)
@@ -262,8 +264,31 @@ namespace FlowtideDotNet.Substrait
                         return VisitNested(expression.Nested);
                     case Protobuf.Expression.RexTypeOneofCase.SingularOrList:
                         return VisitSingularOrList(expression.SingularOrList);
+                    case Protobuf.Expression.RexTypeOneofCase.Subquery:
+                        return VisitSubquery(expression.Subquery);
                 }
                 throw new NotImplementedException();
+            }
+
+            private Expressions.Expression VisitSubquery(Protobuf.Expression.Types.Subquery subquery)
+            {
+                switch (subquery.SubqueryTypeCase)
+                {
+                    case Protobuf.Expression.Types.Subquery.SubqueryTypeOneofCase.SetPredicate:
+                        var setPredicate = subquery.SetPredicate;
+                        if (setPredicate.PredicateOp != Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp.Exists)
+                        {
+                            throw new NotSupportedException($"Only EXISTS set predicates are supported. Got: {setPredicate.PredicateOp}");
+                        }
+                        var relDeserializer = new SubstraitDeserializerImpl(plan);
+                        var rel = relDeserializer.VisitRel(setPredicate.Tuples);
+                        return new SetPredicateExpression()
+                        {
+                            Relation = rel
+                        };
+                    default:
+                        throw new NotImplementedException($"Subquery type {subquery.SubqueryTypeCase} is not supported.");
+                }
             }
 
             public StructExpression VisitStruct(Protobuf.Expression.Types.Nested.Types.Struct structExpr)
@@ -540,13 +565,29 @@ namespace FlowtideDotNet.Substrait
 
             public static FieldReference VisitFieldReference(Protobuf.Expression.Types.FieldReference fieldReference)
             {
+                FieldReference result;
                 switch (fieldReference.ReferenceTypeCase)
                 {
                     case Protobuf.Expression.Types.FieldReference.ReferenceTypeOneofCase.DirectReference:
-                        return VisitDirectReference(fieldReference.DirectReference);
+                        result = VisitDirectReference(fieldReference.DirectReference);
+                        break;
                     default:
                         throw new NotImplementedException();
                 }
+
+                if (fieldReference.RootTypeCase == Protobuf.Expression.Types.FieldReference.RootTypeOneofCase.OuterReference)
+                {
+                    result.Root = new OuterReference()
+                    {
+                        StepsOut = fieldReference.OuterReference.StepsOut
+                    };
+                }
+                else if (fieldReference.RootTypeCase == Protobuf.Expression.Types.FieldReference.RootTypeOneofCase.RootReference)
+                {
+                    result.Root = new RootReference();
+                }
+
+                return result;
             }
 
             private static DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
@@ -674,7 +715,7 @@ namespace FlowtideDotNet.Substrait
                 return rootRelation;
             }
 
-            private Relation VisitRel(Protobuf.Rel rel)
+            public Relation VisitRel(Protobuf.Rel rel)
             {
                 switch (rel.RelTypeCase)
                 {
@@ -873,6 +914,8 @@ namespace FlowtideDotNet.Substrait
                         return JoinType.Inner;
                     case Protobuf.MergeJoinRel.Types.JoinType.Left:
                         return JoinType.Left;
+                    case Protobuf.MergeJoinRel.Types.JoinType.LeftMark:
+                        return JoinType.LeftMark;
                     case Protobuf.MergeJoinRel.Types.JoinType.Unspecified:
                         return JoinType.Unspecified;
                     default:
@@ -1411,8 +1454,11 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.JoinRel.Types.JoinType.Left:
                         joinType = JoinType.Left;
                         break;
+                    case Protobuf.JoinRel.Types.JoinType.LeftMark:
+                        joinType = JoinType.LeftMark;
+                        break;
                     default:
-                        throw new NotSupportedException("Join type not supported");
+                        throw new NotSupportedException("Join type not supported: " + joinRel.Type);
                 }
                 var joinRelation = new JoinRelation()
                 {
