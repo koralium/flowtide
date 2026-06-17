@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -347,7 +347,7 @@ namespace FlowtideDotNet.Core.Engine
         {
             var id = _operatorId++;
 
-            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer)
+            if (joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right || joinRelation.Type == JoinType.Outer || joinRelation.Type == JoinType.LeftMark)
             {
                 //throw new NotSupportedException();
                 var op = new BlockNestedJoinOperator(joinRelation, functionsRegister, DefaultBlockOptions);

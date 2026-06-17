@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,6 +15,7 @@ using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using Google.Protobuf;
 using Substrait.Protobuf;
 using Protobuf = Substrait.Protobuf;
@@ -423,18 +424,32 @@ namespace FlowtideDotNet.Substrait
             {
                 if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
                 {
-                    var expr = new Protobuf.Expression()
+                    var fieldRef = new Protobuf.Expression.Types.FieldReference()
                     {
-                        Selection = new Protobuf.Expression.Types.FieldReference()
+                        DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
                         {
-                            DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
+                            StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
                             {
-                                StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                                {
-                                    Field = structReferenceSegment.Field
-                                }
+                                Field = structReferenceSegment.Field
                             }
                         }
+                    };
+
+                    if (directFieldReference.Root is OuterReference outerReference)
+                    {
+                        fieldRef.OuterReference = new Protobuf.Expression.Types.FieldReference.Types.OuterReference()
+                        {
+                            StepsOut = outerReference.StepsOut
+                        };
+                    }
+                    else if (directFieldReference.Root is RootReference)
+                    {
+                        fieldRef.RootReference = new Protobuf.Expression.Types.FieldReference.Types.RootReference();
+                    }
+
+                    var expr = new Protobuf.Expression()
+                    {
+                        Selection = fieldRef
                     };
 
                     return expr;
@@ -544,6 +559,26 @@ namespace FlowtideDotNet.Substrait
                 }
 
                 return output;
+            }
+
+            public override Protobuf.Expression? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, SerializerVisitorState state)
+            {
+                var relVisitor = new SerializerVisitor();
+                var relProto = relVisitor.Visit(setPredicateExpression.Relation, state);
+
+                var subquery = new Protobuf.Expression.Types.Subquery()
+                {
+                    SetPredicate = new Protobuf.Expression.Types.Subquery.Types.SetPredicate()
+                    {
+                        PredicateOp = Protobuf.Expression.Types.Subquery.Types.SetPredicate.Types.PredicateOp.Exists,
+                        Tuples = relProto
+                    }
+                };
+
+                return new Protobuf.Expression()
+                {
+                    Subquery = subquery
+                };
             }
         }
 
@@ -801,6 +836,9 @@ namespace FlowtideDotNet.Substrait
                     case JoinType.Right:
                         joinRel.Type = Protobuf.JoinRel.Types.JoinType.Right;
                         break;
+                    case JoinType.LeftMark:
+                        joinRel.Type = Protobuf.JoinRel.Types.JoinType.LeftMark;
+                        break;
                 }
 
                 joinRel.Left = Visit(joinRelation.Left, state);
@@ -939,6 +977,44 @@ namespace FlowtideDotNet.Substrait
                 {
                     var leftKey = mergeJoinRelation.LeftKeys[i];
                     var rightKey = mergeJoinRelation.RightKeys[i];
+                    var comparisonType = mergeJoinRelation.ComparisonTypes != null && i < mergeJoinRelation.ComparisonTypes.Count 
+                        ? mergeJoinRelation.ComparisonTypes[i] 
+                        : JoinComparisonType.Equal;
+
+                    ComparisonJoinKey.Types.ComparisonType comparison;
+                    if (comparisonType == JoinComparisonType.Equal)
+                    {
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
+                        };
+                    }
+                    else
+                    {
+                        string extensionName;
+                        if (comparisonType == JoinComparisonType.LessThan)
+                        {
+                            extensionName = "lt";
+                        }
+                        else if (comparisonType == JoinComparisonType.LessThanOrEqual)
+                        {
+                            extensionName = "lte";
+                        }
+                        else if (comparisonType == JoinComparisonType.GreaterThan)
+                        {
+                            extensionName = "gt";
+                        }
+                        else // GreaterThanOrEqual
+                        {
+                            extensionName = "gte";
+                        }
+                        var anchor = state.GetFunctionExtensionAnchor(FunctionsComparison.Uri, extensionName);
+                        comparison = new ComparisonJoinKey.Types.ComparisonType()
+                        {
+                            CustomFunctionReference = anchor
+                        };
+                    }
+
                     if (leftKey is DirectFieldReference directFieldReferenceLeft &&
                         directFieldReferenceLeft.ReferenceSegment is StructReferenceSegment structReferenceSegmentLeft &&
                         rightKey is DirectFieldReference directFieldReferenceRight &&
@@ -946,10 +1022,7 @@ namespace FlowtideDotNet.Substrait
                     {
                         rel.Keys.Add(new ComparisonJoinKey()
                         {
-                            Comparison = new ComparisonJoinKey.Types.ComparisonType()
-                            {
-                                Simple = ComparisonJoinKey.Types.SimpleComparisonType.Eq
-                            },
+                            Comparison = comparison,
                             Left = new Protobuf.Expression.Types.FieldReference()
                             {
                                 DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
@@ -999,6 +1072,9 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case JoinType.Right:
                         rel.Type = Protobuf.MergeJoinRel.Types.JoinType.Right;
+                        break;
+                    case JoinType.LeftMark:
+                        rel.Type = Protobuf.MergeJoinRel.Types.JoinType.LeftMark;
                         break;
                 }
 

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,6 +14,15 @@ using FlowtideDotNet.Substrait.Expressions;
 
 namespace FlowtideDotNet.Substrait.Relations
 {
+    public enum JoinComparisonType
+    {
+        Equal = 0,
+        LessThan = 1,
+        LessThanOrEqual = 2,
+        GreaterThan = 3,
+        GreaterThanOrEqual = 4
+    }
+
     public sealed class MergeJoinRelation : Relation, IEquatable<MergeJoinRelation>
     {
         public JoinType Type { get; set; }
@@ -26,6 +35,8 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public required List<FieldReference> RightKeys { get; set; }
 
+        public List<JoinComparisonType>? ComparisonTypes { get; set; }
+
         public Expression? PostJoinFilter { get; set; }
 
         public override int OutputLength
@@ -35,6 +46,10 @@ namespace FlowtideDotNet.Substrait.Relations
                 if (EmitSet)
                 {
                     return Emit.Count;
+                }
+                if (Type == JoinType.LeftMark)
+                {
+                    return Left.OutputLength + 1;
                 }
                 return Left.OutputLength + Right.OutputLength;
             }
@@ -60,6 +75,7 @@ namespace FlowtideDotNet.Substrait.Relations
                 Equals(Right, other.Right) &&
                 LeftKeys.SequenceEqual(other.LeftKeys) &&
                 RightKeys.SequenceEqual(other.RightKeys) &&
+                (ComparisonTypes == null ? other.ComparisonTypes == null : other.ComparisonTypes != null && ComparisonTypes.SequenceEqual(other.ComparisonTypes)) &&
                 Equals(PostJoinFilter, other.PostJoinFilter);
         }
 
@@ -78,6 +94,14 @@ namespace FlowtideDotNet.Substrait.Relations
             foreach (var key in RightKeys)
             {
                 code.Add(key);
+            }
+
+            if (ComparisonTypes != null)
+            {
+                foreach (var comp in ComparisonTypes)
+                {
+                    code.Add(comp);
+                }
             }
 
             code.Add(PostJoinFilter);

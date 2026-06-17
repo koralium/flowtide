@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -291,7 +291,18 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                         return (input, GenericWriteOperation.Upsert);
                     });
 
-                    if (value.joinWeight == 0 && (_joinRelation.Type == JoinType.Left || _joinRelation.Type == JoinType.Outer))
+                    if (_joinRelation.Type == JoinType.LeftMark)
+                    {
+                        weights.Add(value.weight);
+                        iterations.Add(0);
+                        for (int i = 0; i < _leftOutputColumns.Count; i++)
+                        {
+                            var outputColumn = columns[_leftOutputIndices[i]];
+                            outputColumn.InsertRangeFrom(outputColumn.Count, leftTmpPage.Keys._data.Columns[_leftOutputColumns[i]], leftIndex, 1);
+                        }
+                        columns[_rightOutputIndices[0]].Add(value.joinWeight != 0 ? BoolValue.True : BoolValue.False);
+                    }
+                    else if (value.joinWeight == 0 && (_joinRelation.Type == JoinType.Left || _joinRelation.Type == JoinType.Outer))
                     {
                         // Output null values here
                         weights.Add(value.weight);
@@ -381,6 +392,65 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             ref var rightWeights = ref rightValues.GetRef(rightIndex);
             var outputWeight = leftWeights.weight * rightValues.Get(rightIndex).weight;
 
+            if (_joinRelation.Type == JoinType.LeftMark)
+            {
+                var previousJoinWeight = leftWeights.joinWeight;
+                var newJoinWeight = previousJoinWeight + outputWeight;
+
+                if (previousJoinWeight == 0 && newJoinWeight != 0)
+                {
+                    // Transition 0 -> non-zero: false -> true
+                    // Retract false
+                    weights.Add(-leftWeights.weight);
+                    iterations.Add(0);
+                    for (int i = 0; i < _leftOutputColumns.Count; i++)
+                    {
+                        var outputColumn = columns[_leftOutputIndices[i]];
+                        outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
+                    }
+                    columns[_rightOutputIndices[0]].Add(BoolValue.False);
+
+                    // Emit true
+                    weights.Add(leftWeights.weight);
+                    iterations.Add(0);
+                    for (int i = 0; i < _leftOutputColumns.Count; i++)
+                    {
+                        var outputColumn = columns[_leftOutputIndices[i]];
+                        outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
+                    }
+                    columns[_rightOutputIndices[0]].Add(BoolValue.True);
+                }
+                else if (previousJoinWeight != 0 && newJoinWeight == 0)
+                {
+                    // Transition non-zero -> 0: true -> false
+                    // Retract true
+                    weights.Add(-leftWeights.weight);
+                    iterations.Add(0);
+                    for (int i = 0; i < _leftOutputColumns.Count; i++)
+                    {
+                        var outputColumn = columns[_leftOutputIndices[i]];
+                        outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
+                    }
+                    columns[_rightOutputIndices[0]].Add(BoolValue.True);
+
+                    // Emit false
+                    weights.Add(leftWeights.weight);
+                    iterations.Add(0);
+                    for (int i = 0; i < _leftOutputColumns.Count; i++)
+                    {
+                        var outputColumn = columns[_leftOutputIndices[i]];
+                        outputColumn.InsertRangeFrom(outputColumn.Count, leftColumns[_leftOutputColumns[i]], leftIndex, 1);
+                    }
+                    columns[_rightOutputIndices[0]].Add(BoolValue.False);
+                }
+
+                leftWeights.joinWeight = newJoinWeight;
+                rightWeights.joinWeight += outputWeight;
+                rightModified = true;
+                leftModified = true;
+                return;
+            }
+
             // Add output here
             weights.Add(outputWeight);
             iterations.Add(0);
@@ -396,14 +466,14 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             }
 
             // Check if it previously was left values with null right
-            var previousJoinWeight = leftWeights.joinWeight;
+            var previousJoinWeightVal = leftWeights.joinWeight;
             rightWeights.joinWeight += outputWeight;
             leftWeights.joinWeight += outputWeight;
 
             if (_joinRelation.Type == JoinType.Left || _joinRelation.Type == JoinType.Outer)
             {
                 // Check if it was previously a left values null right, then output a negation
-                if (previousJoinWeight == 0 && leftWeights.joinWeight > 0)
+                if (previousJoinWeightVal == 0 && leftWeights.joinWeight > 0)
                 {
                     // Output a negation
                     weights.Add(-leftWeights.weight);
@@ -419,7 +489,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
                     }
                 }
                 // Went back to be a join with left values and null right
-                if (previousJoinWeight > 0 && leftWeights.joinWeight == 0)
+                if (previousJoinWeightVal > 0 && leftWeights.joinWeight == 0)
                 {
                     weights.Add(leftWeights.weight);
                     iterations.Add(0);
@@ -455,6 +525,15 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
             ref var leftWeights = ref leftValues.GetRef(leftIndex);
             ref var rightWeights = ref rightValues.GetRef(rightIndex);
             var outputWeight = leftWeights.weight * rightValues.Get(rightIndex).weight;
+
+            if (_joinRelation.Type == JoinType.LeftMark)
+            {
+                rightWeights.joinWeight += outputWeight;
+                leftWeights.joinWeight += outputWeight;
+                rightModified = true;
+                leftModified = true;
+                return;
+            }
 
             // Add output here
             weights.Add(outputWeight);

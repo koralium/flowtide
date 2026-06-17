@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -46,7 +46,10 @@ namespace FlowtideDotNet.Storage.Memory
 
         public void Free()
         {
-            Debug.Assert(_memoryOwner != null);
+            if (_memoryOwner == null)
+            {
+                return;
+            }
             var result = Interlocked.Decrement(ref _usageCount);
             if (result == 0)
             {

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Base;
+using System.Linq;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -509,6 +510,52 @@ namespace FlowtideDotNet.AcceptanceTests
             }
 
             AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task LeftJoinBlockLoopModulusUsersFirstOrdersWaitForUsers()
+        {
+            Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+            Internal.MockDataSourceOperator.TableWaitSignals.Clear();
+            Internal.MockDataSourceOperator.TableInitialSignals["users"] = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            Internal.MockDataSourceOperator.TableWaitSignals["orders"] = "users";
+
+            try
+            {
+                GenerateCompanies(10);
+                GenerateUsers(100);
+                await StartStream(@"
+                    INSERT INTO output 
+                    SELECT 
+                        o.orderkey, u.firstName, u.LastName
+                    FROM users u
+                    LEFT JOIN orders o
+                    ON o.userkey % u.userkey = 0 AND u.userkey % 2 = 0");
+                await WaitForUpdate();
+
+                List<LeftJoinBlockLoopModulusResult> expected = new List<LeftJoinBlockLoopModulusResult>();
+
+                foreach (var user in Users)
+                {
+                    bool joinFound = false;
+                    foreach (var order in Orders.Where(order => order.UserKey % user.UserKey == 0 && user.UserKey % 2 == 0))
+                    {
+                        joinFound = true;
+                        expected.Add(new LeftJoinBlockLoopModulusResult(order.OrderKey, user.FirstName, user.LastName));
+                    }
+                    if (!joinFound)
+                    {
+                        expected.Add(new LeftJoinBlockLoopModulusResult(null, user.FirstName, user.LastName));
+                    }
+                }
+
+                AssertCurrentDataEqual(expected);
+            }
+            finally
+            {
+                Internal.MockDataSourceOperator.TableInitialSignals.Clear();
+                Internal.MockDataSourceOperator.TableWaitSignals.Clear();
+            }
         }
 
         [Fact]
@@ -1677,6 +1724,466 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             Validate();
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinLessThan()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey < u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey < u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinLessThanOrEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey <= u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey <= u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinGreaterThan()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinGreaterThanOrEqual()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey >= u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey >= u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinEqualityAndInequality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey = u.userkey AND o.orderkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey == u.UserKey && o.OrderKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinInequalityAndEquality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.orderkey > u.userkey AND o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.OrderKey > u.UserKey && o.UserKey == u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinInequalityAndInequality()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey > u.userkey AND o.orderkey > u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(
+                from o in Orders
+                from u in Users
+                where o.UserKey > u.UserKey && o.OrderKey > u.UserKey
+                select new { o.OrderKey, u.FirstName, u.LastName });
+        }
+
+        [Fact]
+        public async Task InnerJoinMergeJoinEmptyBatchTriggered()
+        {
+            // Mark source as immutable to not catch the empty batch in normalization operator
+            SourceImmutable();
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    o.orderkey, firstName, lastName
+                FROM orders o
+                INNER JOIN users u
+                ON o.userkey = u.userkey");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+
+            // Trigger empty batches
+            await Trigger("send_empty_batch", "orders");
+            await Trigger("send_empty_batch", "users");
+
+            // do a data gen to be able to wait for updates
+            GenerateData(1);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Join(Users, x => x.UserKey, x => x.UserKey, (l, r) => new { l.OrderKey, r.FirstName, r.LastName }));
+        }
+
+        [Fact]
+        public async Task LeftAntiJoin()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftAntiJoinWithOr()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey = 0 OR NOT EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => u.UserKey == 0 || !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftSemiJoin()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftSemiJoinWithOr()
+        {
+            GenerateData(5);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey = 0 OR EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => u.UserKey == 0 || Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftAntiJoinWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete an order that makes a user now NOT have any orders (so they should appear in anti-join output)
+            var orderWithUser = Orders.First(o => Users.Any(u => u.UserKey == o.UserKey));
+            DeleteOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back the order (user should disappear from anti-join output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a user (should disappear from output)
+            var userWithoutOrders = Users.First(u => !Orders.Any(o => o.UserKey == u.UserKey));
+            DeleteUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task LeftSemiJoinWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE EXISTS (
+                    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete all orders for a user that has orders (so they should disappear from semi-join output)
+            var orderWithUser = Orders.First(o => Users.Any(u => u.UserKey == o.UserKey));
+            var matchedUserKey = orderWithUser.UserKey;
+            var allOrdersForUser = Orders.Where(o => o.UserKey == matchedUserKey).ToList();
+            foreach (var order in allOrdersForUser)
+            {
+                DeleteOrder(order);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back one order (user should reappear in semi-join output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a matched user (should disappear from output)
+            var matchedUser = Users.First(u => u.UserKey == matchedUserKey);
+            DeleteUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task InSubqueryWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey IN (
+                    SELECT o.userkey FROM orders o
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete all orders for a user that has orders (so they should disappear from IN subquery output)
+            var orderWithUser = Orders.First(o => Users.Any(u => u.UserKey == o.UserKey));
+            var matchedUserKey = orderWithUser.UserKey;
+            var allOrdersForUser = Orders.Where(o => o.UserKey == matchedUserKey).ToList();
+            foreach (var order in allOrdersForUser)
+            {
+                DeleteOrder(order);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back one order (user should reappear in IN subquery output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a matched user (should disappear from output)
+            var matchedUser = Users.First(u => u.UserKey == matchedUserKey);
+            DeleteUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task NotInSubqueryWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey NOT IN (
+                    SELECT o.userkey FROM orders o
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete an order that makes a user now NOT have any orders (so they should appear in NOT IN output)
+            var orderWithUser = Orders.First(o => Users.Any(u => u.UserKey == o.UserKey));
+            DeleteOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back the order (user should disappear from NOT IN output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a user (should disappear from output)
+            var userWithoutOrders = Users.First(u => !Orders.Any(o => o.UserKey == u.UserKey));
+            DeleteUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(userWithoutOrders);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => !Orders.Any(o => o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+        }
+
+        [Fact]
+        public async Task CorrelatedInSubqueryWithUpdate()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    u.userkey
+                FROM users u
+                WHERE u.userkey IN (
+                    SELECT o.userkey FROM orders o WHERE o.orderkey >= 0 AND u.userkey = o.userkey
+                )");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete all orders for a user that has orders (so they should disappear from output)
+            var orderWithUser = Orders.First(o => o.OrderKey >= 0 && Users.Any(u => u.UserKey == o.UserKey));
+            var matchedUserKey = orderWithUser.UserKey;
+            var allOrdersForUser = Orders.Where(o => o.UserKey == matchedUserKey).ToList();
+            foreach (var order in allOrdersForUser)
+            {
+                DeleteOrder(order);
+            }
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Add back one order (user should reappear in output)
+            AddOrUpdateOrder(orderWithUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Delete a matched user (should disappear from output)
+            var matchedUser = Users.First(u => u.UserKey == matchedUserKey);
+            DeleteUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
+
+            // Crash and recover to verify persistence/state restoration
+            await Crash();
+
+            // Re-add the user (should reappear in output)
+            AddOrUpdateUser(matchedUser);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(u => Orders.Any(o => o.OrderKey >= 0 && o.UserKey == u.UserKey)).Select(u => new { userkey = u.UserKey }));
         }
     }
 }

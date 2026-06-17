@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
         private static void TestPushdownNotNull(JoinRelation joinRelation, Expression expression, List<Expression> leftPushdowns, List<Expression> rightPushdowns)
         {
             if ((joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Left || joinRelation.Type == JoinType.Right) &&
-                MergeJoinFindVisitor.Check(joinRelation, expression, out var leftKey, out var rightKey))
+                MergeJoinFindVisitor.Check(joinRelation, expression, out var leftKey, out var rightKey, out _))
             {
                 if (joinRelation.Type == JoinType.Inner || joinRelation.Type == JoinType.Right)
                 {

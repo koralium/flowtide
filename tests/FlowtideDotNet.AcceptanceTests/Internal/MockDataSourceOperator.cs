@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -40,6 +40,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private MockTable _table;
         private IObjectState<MockDataSourceState>? _state;
         private BatchConverter _batchConverter;
+
+        public static Dictionary<string, System.Threading.Tasks.TaskCompletionSource> TableInitialSignals { get; } = new Dictionary<string, System.Threading.Tasks.TaskCompletionSource>();
+        public static Dictionary<string, string> TableWaitSignals { get; } = new Dictionary<string, string>();
 
         public MockDataSourceOperator(ReadRelation readRelation, MockDatabase mockDatabase, DataflowBlockOptions options) : base(options)
         {
@@ -152,11 +155,44 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockDatabase.RwLock.Release();
         }
 
+        private async Task SendEmptyBatch(IngressOutput<StreamEventBatch> output, object? state)
+        {
+            await mockDatabase.RwLock.WaitAsync();
+            Debug.Assert(_state?.Value != null);
+            await output.EnterCheckpointLock();
+
+            PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+            PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+            Column[] columns = new Column[readRelation.OutputLength];
+
+            for (int i = 0; i < readRelation.OutputLength; i++)
+            {
+                columns[i] = new Column(MemoryAllocator);
+            }
+
+            var outputBatch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)));
+            await output.SendAsync(outputBatch);
+
+            var fetchedOffset = _state.Value.LatestOffset;
+            await output.SendWatermark(new Base.Watermark(readRelation.NamedTable.DotSeperated, LongWatermarkValue.Create(fetchedOffset)));
+            this.ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+
+            output.ExitCheckpointLock();
+            mockDatabase.RwLock.Release();
+        }
+
         public override Task OnTrigger(string triggerName, object? state)
         {
             if (triggerName == "changes")
             {
                 RunTask(FetchChanges);
+            }
+            else if (triggerName == "send_empty_batch")
+            {
+                if (state == null || (state is string tableName && tableName.Equals(readRelation.NamedTable.DotSeperated, StringComparison.OrdinalIgnoreCase)))
+                {
+                    RunTask(SendEmptyBatch);
+                }
             }
             else if (triggerName == "crash")
             {
@@ -216,6 +252,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await RegisterTrigger("ingress_no_autocomplete_dependencies");
             await RegisterTrigger("ingress_fail_and_rollback");
             await RegisterTrigger("ingress_dependencies_done");
+            await RegisterTrigger("send_empty_batch");
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -226,6 +263,13 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
+            var tableName = readRelation.NamedTable.DotSeperated;
+            if (TableWaitSignals.TryGetValue(tableName, out var waitTableName) &&
+                TableInitialSignals.TryGetValue(waitTableName, out var waitTcs))
+            {
+                await waitTcs.Task;
+            }
+
             Debug.Assert(_state?.Value != null);
             await output.EnterCheckpointLock();
             var (operations, fetchedOffset) = _table.GetOperations(_state.Value.LatestOffset);
@@ -307,6 +351,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             await allOutput!.FlushAsync();
 #endif
 
+            if (TableInitialSignals.TryGetValue(tableName, out var myTcs))
+            {
+                myTcs.TrySetResult();
+            }
         }
     }
 }

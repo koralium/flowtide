@@ -10,15 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-namespace FlowtideDotNet.Substrait.Relations
+namespace FlowtideDotNet.Storage.Tree.Internal
 {
-    public enum JoinType
+    internal interface IRouteToLeftmost
     {
-        Unspecified = 0,
-        Inner = 1,
-        Outer = 2,
-        Left = 3,
-        Right = 4,
-        LeftMark = 5
+        bool RouteToLeftmost { get; }
     }
 }
