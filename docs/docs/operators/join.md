@@ -57,3 +57,14 @@ At this point, a block-nested join operator will never be unhealthy.
 If there is a failure against the state, the stream will instead restart.
 
 :::
+
+## LeftMark Join
+
+The `LeftMark` join type is used during subquery decorrelation (for `EXISTS`, `NOT EXISTS`, and `IN` subqueries). It joins a left-hand relation with a right-hand relation, and appends a single boolean column (the **mark column**) to the end of the left relation's fields.
+
+* The mark column is `true` if there is at least one matching row in the right-hand relation.
+* The mark column is `false` if there are no matching rows in the right-hand relation.
+
+Unlike standard joins, the `LeftMark` join:
+1. **No Duplication:** It does not duplicate left-hand rows if there are multiple matching right-hand rows.
+2. **Update Suppression:** It emits updates (retractions and insertions) only when the match status transitions between matching (`true`) and non-matching (`false`). Changes in the number of matching right-hand rows (e.g. from 1 to 2) do not trigger downstream updates, suppressing unnecessary stream churn.

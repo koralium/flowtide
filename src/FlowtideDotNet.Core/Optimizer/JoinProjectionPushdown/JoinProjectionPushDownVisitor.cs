@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -96,12 +96,12 @@ namespace FlowtideDotNet.Core.Optimizer.JoinProjectionPushdown
 
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
         {
-            if (joinRelation.Expression == null)
-            {
-                throw new Exceptions.FlowtideException("Join relation must have an expression");
-            }
             joinRelation.Left = Visit(joinRelation.Left, state);
             joinRelation.Right = Visit(joinRelation.Right, state);
+            if (joinRelation.Expression == null)
+            {
+                return joinRelation;
+            }
 
             int counter = joinRelation.Left.OutputLength + joinRelation.Right.OutputLength;
             int leftSizeBefore = joinRelation.Left.OutputLength;

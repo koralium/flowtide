@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -32,6 +32,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private string? subStreamName;
         private int exchangeTargetIdCounter;
         private readonly List<Relation> subRelations;
+        private readonly Stack<EmitData> scopeStack = new Stack<EmitData>();
+
+        private SqlExpressionVisitor CreateExpressionVisitor()
+        {
+            return new SqlExpressionVisitor(sqlFunctionRegister, q => this.Visit(q, null), scopeStack.ToList());
+        }
 
         public SqlSubstraitVisitor(SqlPlanBuilder sqlPlanBuilder, SqlFunctionRegister sqlFunctionRegister)
         {
@@ -356,31 +362,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             }
             if (query.OrderBy != null && query.OrderBy.Expressions != null)
             {
-                var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
-                foreach (var o in query.OrderBy.Expressions)
+                scopeStack.Push(node.EmitData);
+                try
                 {
-                    var expr = exprVisitor.Visit(o.Expression, node.EmitData);
-                    var sortDirection = GetSortDirection(o);
-
-                    sortFields.Add(new Expressions.SortField()
+                    var exprVisitor = CreateExpressionVisitor();
+                    List<Expressions.SortField> sortFields = new List<Expressions.SortField>();
+                    foreach (var o in query.OrderBy.Expressions)
                     {
-                        Expression = expr.Expr,
-                        SortDirection = sortDirection
-                    });
+                        var expr = exprVisitor.Visit(o.Expression, node.EmitData);
+                        var sortDirection = GetSortDirection(o);
+
+                        sortFields.Add(new Expressions.SortField()
+                        {
+                            Expression = expr.Expr,
+                            SortDirection = sortDirection
+                        });
+                    }
+
+                    if (node.Relation is FetchRelation fetch)
+                    {
+                        var rel = new TopNRelation()
+                        {
+                            Input = fetch.Input,
+                            Sorts = sortFields,
+                            Count = fetch.Count,
+                            Offset = fetch.Offset
+                        };
+                        // Add the order by before the fetch, since the fetch can come from the TOP N in the select.
+                        node = new RelationData(rel, node.EmitData);
+                    }
                 }
-
-                if (node.Relation is FetchRelation fetch)
+                finally
                 {
-                    var rel = new TopNRelation()
-                    {
-                        Input = fetch.Input,
-                        Sorts = sortFields,
-                        Count = fetch.Count,
-                        Offset = fetch.Offset
-                    };
-                    // Add the order by before the fetch, since the fetch can come from the TOP N in the select.
-                    node = new RelationData(rel, node.EmitData);
+                    scopeStack.Pop();
                 }
             }
             return node;
@@ -456,13 +470,39 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             RelationData? outNode = default;
             if (select.From != null)
             {
-                if (select.From.Count != 1)
-                {
-                    throw new InvalidOperationException("Only a single table in the FROM statement is supported");
-                }
-                var fromTable = select.From.First();
+                var firstTable = select.From[0];
+                outNode = Visit(firstTable, state);
 
-                outNode = Visit(fromTable, state);
+                if (outNode == null)
+                {
+                    throw new SubstraitParseException("Could not parse FROM statement");
+                }
+
+                for (int i = 1; i < select.From.Count; i++)
+                {
+                    var otherTable = select.From[i];
+                    var otherOut = Visit(otherTable, outNode.EmitData);
+
+                    if (otherOut == null)
+                    {
+                        throw new SubstraitParseException("Could not parse FROM statement");
+                    }
+
+                    var joinRel = new JoinRelation()
+                    {
+                        Left = outNode.Relation,
+                        Right = otherOut.Relation,
+                        Type = JoinType.Inner,
+                        Expression = new FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral() { Value = true }
+                    };
+
+                    EmitData joinEmitData = new EmitData();
+                    joinEmitData.Add(outNode.EmitData, 0);
+                    joinEmitData.Add(otherOut.EmitData, outNode.Relation.OutputLength);
+
+                    outNode = new RelationData(joinRel, joinEmitData);
+
+                }
             }
 
             if (outNode == null)
@@ -477,27 +517,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             }
 
-            if (select.Selection != null)
+            scopeStack.Push(outNode.EmitData);
+            try
             {
-                bool selectionContainsWindow = false;
-                ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
-                selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
-                if (selectionContainsWindow)
-                {   
-                    // Does not include expressions from the window functions in the emit data
-                    outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
-                }
-                else
+                if (select.Selection != null)
                 {
-                    var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
-                    var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
-                    outNode = new RelationData(new FilterRelation()
+                    bool selectionContainsWindow = false;
+                    ContainsWindowFunctionVisitor containsWindowSelectFunctionVisitor = new ContainsWindowFunctionVisitor(sqlFunctionRegister);
+                    selectionContainsWindow |= containsWindowSelectFunctionVisitor.Visit(select.Selection, default);
+                    if (selectionContainsWindow)
                     {
-                        Input = outNode.Relation,
-                        Condition = expr.Expr
-                    }, outNode.EmitData);
+                        // Does not include expressions from the window functions in the emit data
+                        outNode = VisitFilterWithWindowExpressions(select.Selection, containsWindowSelectFunctionVisitor, outNode);
+                    }
+                    else
+                    {
+                        var exprVisitor = CreateExpressionVisitor();
+                        var expr = exprVisitor.Visit(select.Selection, outNode.EmitData);
+                        outNode = new RelationData(new FilterRelation()
+                        {
+                            Input = outNode.Relation,
+                            Condition = expr.Expr
+                        }, outNode.EmitData);
+                    }
                 }
-            }   
 
             ContainsAggregateVisitor containsAggregateVisitor = new ContainsAggregateVisitor(sqlFunctionRegister);
             bool containsAggregate = select.GroupBy != null;
@@ -583,6 +626,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new SubstraitParseException("TOP statement only supports constant values");
                 }
+            }
+            }
+            finally
+            {
+                scopeStack.Pop();
             }
 
             return outNode;

@@ -110,6 +110,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _upperBounds = new int[keyLength];
                 _lookupBuffer = new int[keyLength];
             }
+            if (_comparer is IRouteToLeftmost routeToLeftmost && routeToLeftmost.RouteToLeftmost)
+            {
+                _mappings.Add(new BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping(_tree.m_stateClient.Metadata!.Left, 0, keyLength, -1));
+                return ValueTask.CompletedTask;
+            }
+
             var task = _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
             if (task.IsCompletedSuccessfully)
             {

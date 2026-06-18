@@ -561,9 +561,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
-        public async Task Trigger(string triggerName)
+        public async Task Trigger(string triggerName, object? state = default)
         {
-            await _stream!.CallTrigger(triggerName, default);
+            await _stream!.CallTrigger(triggerName, state);
         }
 
         public StreamGraph GetDiagnosticsGraph()
