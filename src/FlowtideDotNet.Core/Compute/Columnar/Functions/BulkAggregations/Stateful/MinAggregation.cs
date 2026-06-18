@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMinSearchComparer>? _bulkSearcher;
         private int _groupingLength;
         private bool _isShared;
-        private IDataValue[]? _tempValues;
+        private int[] _sortedBuffer;
 
         public MinAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
         {
@@ -204,16 +204,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            if (_tempValues == null || _tempValues.Length < length)
+            if (_sortedBuffer == null || _sortedBuffer.Length < length)
             {
-                _tempValues = new IDataValue[length];
+                _sortedBuffer = new int[length];
             }
-            else
+            for (int i = 0; i < length; i++)
             {
-                System.Array.Clear(_tempValues, 0, length);
+                _sortedBuffer[i] = i;
             }
 
-            await _bulkSearcher!.Start(rowReferences, length);
+            await _bulkSearcher!.Start(rowReferences, length, _sortedBuffer);
             int foundCount = 0;
             while (foundCount < length && await _bulkSearcher.MoveNextLeaf())
             {
@@ -224,25 +224,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                     var result = _bulkSearcher.CurrentResults[i];
                     if (result.LowerBound >= 0)
                     {
-                        if (_tempValues[result.KeyIndex] == null)
-                        {
-                            _tempValues[result.KeyIndex] = leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, default);
-                            foundCount++;
-                        }
+                        outputColumn.Add(leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, default));
                     }
-                }
-            }
-
-            for (int i = 0; i < length; i++)
-            {
-                var val = _tempValues[i];
-                if (val != null)
-                {
-                    outputColumn.Add(val);
-                }
-                else
-                {
-                    outputColumn.Add(NullValue.Instance);
+                    else
+                    {
+                        outputColumn.Add(NullValue.Instance);
+                    }
                 }
             }
         }
