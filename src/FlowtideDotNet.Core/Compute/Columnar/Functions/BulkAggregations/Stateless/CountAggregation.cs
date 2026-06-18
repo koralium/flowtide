@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             }
             for (int i = 0; i < indices.Length; i++)
             {
-                count += weights.Get(i);
+                count += weights.Get(indices[i]);
             }
             _valueContainer._type = ArrowTypeId.Int64;
             _valueContainer._int64Value = new Int64Value(count);
@@ -142,7 +142,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
                 var value = projectionFunction(data, indices[i]);
                 if (value.Type != ArrowTypeId.Null)
                 {
-                    count += weights.Get(i);
+                    count += weights.Get(indices[i]);
                 }
             }
             _valueContainer._type = ArrowTypeId.Int64;
