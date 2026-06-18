@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             public Action<EventBatchData, int, ColumnStore.Column> Expression;
         }
 
-        private readonly List<int> m_groupOutputIndices;
+        private readonly int m_groupLength;
         private List<GroupExpressionInfo>? groupExpressions;
         private int[]? m_groupDirectFields;
         private IColumn[]? m_groupValues;
@@ -115,22 +115,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 groupLength = grouping.GroupingExpressions.Count;
             }
 
-            m_outputCount = groupLength + (_measures?.Length ?? 0);
-            outputColumns = new ColumnStore.Column[m_outputCount];
-
-            m_groupOutputIndices = new List<int>();
-            for (int i = 0; i < groupLength; i++)
-            {
-                if (aggregateRelation.EmitSet)
-                {
-                    var emitIndex = aggregateRelation.Emit.IndexOf(i);
-                    m_groupOutputIndices.Add(emitIndex);
-                }
-                else
-                {
-                    m_groupOutputIndices.Add(i);
-                }
-            }
+            m_groupLength = groupLength;
+            m_outputCount = aggregateRelation.OutputLength;
+            outputColumns = new ColumnStore.Column[groupLength + _measures.Length];
 
             _batchSorter = new BatchSorter(groupLength);
 
@@ -219,7 +206,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_hasSentInitialData != null);
 
-            var outputColumnCount = m_outputCount;
             int groupLength = m_groupValues.Length;
 
             if (!m_hasSentInitialData.Value)
@@ -242,22 +228,19 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         _watermarkColumnReferences = new ColumnReference[currentLeaf.keys.Count];
                     }
 
-                    int[] pageStart = new int[_measures.Length];
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        pageStart[m] = outputColumns[groupLength + m].Count;
-                        await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), currentLeaf.keys.Count, outputColumns[groupLength + m]);
-                    }
+                        var measureColIndex = groupLength + m;
+                        var pageStart = outputColumns[measureColIndex].Count;
+                        await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), currentLeaf.keys.Count, outputColumns[measureColIndex]);
 
-                    for (int m = 0; m < _measures.Length; m++)
-                    {
                         var stateCol = currentLeaf.values._eventBatch.GetColumn(m);
                         for (int c = 0; c < currentLeaf.keys.Count; c++)
                         {
                             _watermarkColumnReferences[c] = new ColumnReference(stateCol, c, currentLeaf);
                         }
 
-                        await _measures[m].GetValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, 0, currentLeaf.keys.Count, outputColumns[groupLength + m]);
+                        await _measures[m].GetValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, 0, currentLeaf.keys.Count, outputColumns[measureColIndex]);
                     }
 
                     var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
@@ -279,9 +262,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     for (int m = 0; m < _measures.Length; m++)
                     {
                         var previousValueCol = currentLeaf.values._eventBatch.GetColumn(_measures.Length + m);
+                        var measureColIndex = groupLength + m;
+                        var pageStart = outputColumns[measureColIndex].Count - currentLeaf.keys.Count;
                         for (int c = 0; c < currentLeaf.keys.Count; c++)
                         {
-                            previousValueCol.UpdateAt(c, outputColumns[groupLength + m].GetValueAt(pageStart[m] + c, default));
+                            previousValueCol.UpdateAt(c, outputColumns[measureColIndex].GetValueAt(pageStart + c, default));
                         }
                     }
                     currentLeaf.ExitWriteLock();
@@ -297,14 +282,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     if (weights.Count >= 100)
                     {
-                        yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                        yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                         InitOutputColumns();
                     }
                 }
 
                 if (weights.Count > 0)
                 {
-                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                     InitOutputColumns();
                 }
 
@@ -350,8 +335,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     int[] pageStart = new int[_measures.Length];
                     for (int m = 0; m < _measures.Length; m++)
                     {
-                        pageStart[m] = outputColumns[groupLength + m].Count;
-                        await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), page.Keys.Count, outputColumns[groupLength + m]);
+                        var measureColIndex = groupLength + m;
+                        pageStart[m] = outputColumns[measureColIndex].Count;
+                        await _measures[m].FetchValuesAsync(page.Keys._data.GetColumns_Unsafe(), page.Keys.Count, outputColumns[measureColIndex]);
                     }
 
                     var sourceColumns = currentLeaf.keys._data.GetColumns_Unsafe();
@@ -375,21 +361,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                         var firstIndex = currentResults[0].KeyIndex;
                         var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
-                        var outputCount = 0;
-                        if (_measures.Length > 0)
-                        {
-                            outputCount = outputColumns[m_groupValues.Length].Count;
-                        }
 
                         for (int m = 0; m < _measures.Length; m++)
                         {
+                            var measureColIndex = groupLength + m;
                             for (int c = 0; c < currentResults.Count; c++)
                             {
                                 var stateCol = persistedLeaf.values._eventBatch.GetColumn(m);
                                 _watermarkColumnReferences[firstIndex + c] = new ColumnReference(stateCol, currentResults[c].LowerBound, persistedLeaf);
                             }
 
-                            await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[groupLength + m]);
+                            await _measures[m].GetValuesAsync(page.Keys._data.GetColumns_Unsafe(), _watermarkColumnReferences, firstIndex, lastIndex - firstIndex + 1, outputColumns[measureColIndex]);
                         }
 
                         // Add output for previously sent data for retraction
@@ -419,9 +401,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         for (int m = 0; m < _measures.Length; m++)
                         {
                             var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
+                            var measureColIndex = groupLength + m;
                             for (int c = 0; c < currentResults.Count; c++)
                             {
-                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[groupLength + m].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, default));
+                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[measureColIndex].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, default));
                             }
                         }
 
@@ -435,18 +418,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                                 await bTree.m_stateClient.WaitForNotFullAsync();
                             }
                         }
+                    }
 
-                        if (weights.Count >= 100)
-                        {
-                            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
-                            InitOutputColumns();
-                        }
+                    if (weights.Count >= 100)
+                    {
+                        yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
+                        InitOutputColumns();
                     }
                 }
 
                 if (weights.Count > 0)
                 {
-                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                     InitOutputColumns();
                 }
                 Console.WriteLine($"[WATERMARK INC] processed {totalProcessed} keys from temporary tree");
@@ -455,10 +438,26 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             await _temporaryTree.Clear();
         }
 
+        private EventBatchData GetEmitBatchData()
+        {
+            if (_aggregateRelation.EmitSet)
+            {
+                var emit = _aggregateRelation.Emit;
+                var emitColumns = new ColumnStore.Column[emit.Count];
+                for (int i = 0; i < emit.Count; i++)
+                {
+                    emitColumns[i] = outputColumns[emit[i]];
+                }
+                return new EventBatchData(emitColumns);
+            }
+            return new EventBatchData(outputColumns);
+        }
+
         public void InitOutputColumns()
         {
-            outputColumns = new ColumnStore.Column[m_outputCount];
-            for (int i = 0; i < m_outputCount; i++)
+            var totalColumns = m_groupLength + _measures.Length;
+            outputColumns = new ColumnStore.Column[totalColumns];
+            for (int i = 0; i < totalColumns; i++)
             {
                 outputColumns[i] = new ColumnStore.Column(MemoryAllocator);
             }
@@ -774,7 +773,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 Debug.Assert(iterations != null);
                 iterations.InsertStaticRange(iterations.Count, 0U, weights.Count);
-                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns)));
+                yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                 InitOutputColumns();
             }
         }
@@ -783,6 +782,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         {
             _sharedTrees.Clear();
             InitOutputColumns();
+
             m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
             if (_aggregateRelation.Groupings != null && _aggregateRelation.Groupings.Count > 0)
             {
