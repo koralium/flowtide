@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.DataStructures;
@@ -31,6 +32,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         public Func<EventBatchData, int, bool>? Filter { get; }
         private Column _projectedDataColumn;
         private readonly List<ISharedTreeColumnAggregation> _boundMeasures = new();
+        private BatchSorter? _batchSorter;
+        private int[] _indirectBuffer = Array.Empty<int>();
+        private int[] _duplicateTags = Array.Empty<int>();
 
         public SharedGroupValueTree(string treeName, Func<EventBatchData, int, IDataValue> projectionFunction, Func<EventBatchData, int, bool>? filter = null)
         {
@@ -80,20 +84,42 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             allColumns[groupValueColumns.Length] = _projectedDataColumn;
             var groupingBatch = new EventBatchData(allColumns);
 
+            if (_indirectBuffer.Length < len)
+            {
+                _indirectBuffer = new int[len];
+                _duplicateTags = new int[len];
+            }
+
             int writeIndex = 0;
             for (int i = 0; i < sortedByGroupIndices.Length; i++)
             {
                 var physicalIndex = sortedByGroupIndices[i];
                 if (Filter == null || Filter(incoming, physicalIndex))
                 {
-                    rowReferences[writeIndex] = new BulkGroupValueRowReference()
-                    {
-                        batch = groupingBatch,
-                        index = physicalIndex
-                    };
-                    weightArray[writeIndex] = weights.Get(physicalIndex);
-                    writeIndex++;
+                    _indirectBuffer[writeIndex++] = physicalIndex;
                 }
+            }
+
+            if (len > 1)
+            {
+                if (_batchSorter == null)
+                {
+                    _batchSorter = new BatchSorter(allColumns.Length);
+                }
+                var indirectSpan = _indirectBuffer.AsSpan(0, len);
+                var duplicateSpan = _duplicateTags.AsSpan(0, len);
+                _batchSorter.SortDataWithTags(allColumns, ref indirectSpan, ref duplicateSpan);
+            }
+
+            for (int i = 0; i < len; i++)
+            {
+                //var physicalIndex = _indirectBuffer[i];
+                rowReferences[i] = new BulkGroupValueRowReference()
+                {
+                    batch = groupingBatch,
+                    index = i
+                };
+                weightArray[i] = weights.Get(i);
             }
 
             int totalBatchSize = 0;
@@ -103,27 +129,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             totalBatchSize += _projectedDataColumn.GetByteSize();
 
-            if (len > 1)
-            {
-                var insertComparer = new BulkMinInsertComparer(groupValueColumns.Length);
-                System.Array.Sort(rowReferences, weightArray, 0, len, new BulkGroupValueRowReferenceComparer(insertComparer));
-            }
-
             var mutator = new SharedRowMutator(_boundMeasures);
-            return BulkInserter.ApplyBatch(rowReferences, weightArray, len, mutator, totalBatchSize);
-        }
-    }
-
-    internal class BulkGroupValueRowReferenceComparer : IComparer<BulkGroupValueRowReference>
-    {
-        private readonly BulkMinInsertComparer _comparer;
-        public BulkGroupValueRowReferenceComparer(BulkMinInsertComparer comparer)
-        {
-            _comparer = comparer;
-        }
-        public int Compare(BulkGroupValueRowReference x, BulkGroupValueRowReference y)
-        {
-            return _comparer.CompareTo(x, y);
+            return BulkInserter.ApplyBatch(rowReferences, weightArray, len, _indirectBuffer, _duplicateTags,  mutator, totalBatchSize);
         }
     }
 
