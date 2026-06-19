@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using BenchmarkDotNet.Attributes;
+using FlowtideDotNet.Nexmark.Internal.Diagnosers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Nexmark
 {
+    [EventCountDiagnoser]
     public class Query4 : QueryBase
     {
         [Benchmark]
@@ -32,7 +34,7 @@ namespace FlowtideDotNet.Nexmark
                 GROUP BY A.id, A.category
             ", planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 8                                         
+                Parallelization = 4                               
             });
             await Stream.WaitForUpdate();
         }
