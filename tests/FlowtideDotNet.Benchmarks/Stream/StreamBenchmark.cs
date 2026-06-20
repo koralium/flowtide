@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             _stream = new BenchmarkTestStream(iterationId.ToString());
             _stream.SourceImmutable();
-            _stream.Generate(1_000_000);
+            _stream.Generate(100_000);
             _stream.CachePageCount = 100_000;
             iterationId++;
         }
@@ -116,25 +116,25 @@ namespace FlowtideDotNet.Benchmarks.Stream
         /// Read[Users] -> Normalization -> Aggregation -> Projection -> Write[Output]
         /// </summary>
         /// <returns></returns>
-        [Benchmark]
-        public async Task SumAggregation()
-        {
-            await _stream!.StartStream(@"
-            INSERT INTO output
-            SELECT min(u.userkey) FROM users u
-            GROUP BY userkey
-            ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
-            {
-                                           Parallelization = 1
-            });
-            await _stream.WaitForUpdate();
-        }
+        //[Benchmark]
+        //public async Task SumAggregation()
+        //{
+        //    await _stream!.StartStream(@"
+        //    INSERT INTO output
+        //    SELECT min(u.userkey) FROM users u
+        //    GROUP BY userkey
+        //    ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
+        //    {
+        //                                   Parallelization = 1
+        //    });
+        //    await _stream.WaitForUpdate();
+        //}
 
-        [IterationCleanup(Target = nameof(SumAggregation))]
-        public void AfterSumAggregation()
-        {
-            StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
-        }
+        //[IterationCleanup(Target = nameof(SumAggregation))]
+        //public void AfterSumAggregation()
+        //{
+        //    StreamGraphMetadata.SaveGraphData(nameof(SumAggregation), _stream!.GetDiagnosticsGraph());
+        //}
 
         //[Benchmark]
         //public async Task ListAggWithMapAggregation()
@@ -184,36 +184,36 @@ namespace FlowtideDotNet.Benchmarks.Stream
         //    StreamGraphMetadata.SaveGraphData(nameof(WindowSum), _stream!.GetDiagnosticsGraph());
         //}
 
-        //[Benchmark]
-        //public async Task ListAggWithStructAggregation()
-        //{
-        //    await _stream!.StartStream(@"
-        //    INSERT INTO output
-        //    SELECT 
-        //    p.ProjectKey,
-        //    list_agg(named_struct(
-        //      'userkey',
-        //      u.userkey,
-        //      'firstName',
-        //      u.firstName,
-        //      'lastName',
-        //      u.lastName,
-        //      'active',
-        //      u.active
-        //    )) FROM projects p
-        //    LEFT JOIN projectmembers pm
-        //    ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
-        //    LEFT JOIN users u
-        //    ON pm.userkey = u.userkey
-        //    GROUP BY p.ProjectKey
-        //    ", 1);
-        //    await _stream.WaitForUpdate();
-        //}
+        [Benchmark]
+        public async Task ListAggWithStructAggregation()
+        {
+            await _stream!.StartStream(@"
+            INSERT INTO output
+            SELECT 
+            p.ProjectKey,
+            list_agg(named_struct(
+              'userkey',
+              u.userkey,
+              'firstName',
+              u.firstName,
+              'lastName',
+              u.lastName,
+              'active',
+              u.active
+            )) FROM projects p
+            LEFT JOIN projectmembers pm
+            ON p.ProjectNumber = pm.ProjectNumber AND p.companyid = pm.companyid
+            LEFT JOIN users u
+            ON pm.userkey = u.userkey
+            GROUP BY p.ProjectKey
+            ", 1);
+            await _stream.WaitForUpdate();
+        }
 
-        //[IterationCleanup(Target = nameof(ListAggWithStructAggregation))]
-        //public void AfterListAggWithStructAggregation()
-        //{
-        //    StreamGraphMetadata.SaveGraphData(nameof(ListAggWithStructAggregation), _stream!.GetDiagnosticsGraph());
-        //}
+        [IterationCleanup(Target = nameof(ListAggWithStructAggregation))]
+        public void AfterListAggWithStructAggregation()
+        {
+            StreamGraphMetadata.SaveGraphData(nameof(ListAggWithStructAggregation), _stream!.GetDiagnosticsGraph());
+        }
     }
 }

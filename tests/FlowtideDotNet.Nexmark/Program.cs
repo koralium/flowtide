@@ -13,15 +13,15 @@
 using BenchmarkDotNet.Running;
 using FlowtideDotNet.Nexmark;
 
-Query4 query3 = new Query4();
-query3.Setup();
+//Query4 query3 = new Query4();
+//query3.Setup();
 
-for (int i = 0; i < 10000; i++)
-{
-    query3.IterationSetup();
-    await query3.Q4();
-    query3.IterationCleanup();
-}
+//for (int i = 0; i < 10000; i++)
+//{
+//    query3.IterationSetup();
+//    await query3.Q4();
+//    query3.IterationCleanup();
+//}
 
 
-//var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: [.. args, "--join"]);
+var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args: [.. args, "--join"]);
