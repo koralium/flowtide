@@ -492,6 +492,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
 
             _temporaryPageLocations.Clear();
+
+            _fileProvider.Dispose();
         }
 
         private async Task<ReservoirStreamsMetadata> ReadMetadata(string streamName, CancellationToken cancellationToken)

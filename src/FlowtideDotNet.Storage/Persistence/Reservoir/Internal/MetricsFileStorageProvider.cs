@@ -149,5 +149,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             return _internalProvider.DeleteStreamVersionAsync(streamName, streamVersion, cancellationToken);
         }
+
+        public void Dispose()
+        {
+            _internalProvider.Dispose();
+        }
     }
 }

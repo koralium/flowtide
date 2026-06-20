@@ -313,5 +313,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             }
             return Task.FromResult<IEnumerable<CheckpointId>>(result);
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

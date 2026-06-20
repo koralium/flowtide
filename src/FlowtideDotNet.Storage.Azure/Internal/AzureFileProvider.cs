@@ -291,5 +291,9 @@ namespace FlowtideDotNet.Storage.AzureBlobs
                 await _blobContainerClient.DeleteBlobIfExistsAsync(blob.Name, cancellationToken: cancellationToken).ConfigureAwait(false);
             }
         }
+
+        public void Dispose()
+        {
+        }
     }
 }
