@@ -232,5 +232,16 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
         {
             return Task.FromResult<IEnumerable<CheckpointId>>(_checkpointFiles.Keys.ToList());
         }
+
+        public void Dispose()
+        {
+            lock (_lock)
+            {
+                _dataFiles.Clear();
+                _checkpointFiles.Clear();
+                _registryBytes = null;
+                _metadataBytes = null;
+            }
+        }
     }
 }

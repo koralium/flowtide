@@ -15,7 +15,7 @@ using System.IO.Pipelines;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir
 {
-    public interface IReservoirStorageProvider
+    public interface IReservoirStorageProvider : IDisposable
     {
         bool SupportsFileListing { get; }
 

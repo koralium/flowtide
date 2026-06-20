@@ -424,5 +424,24 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.TemporaryDisk
                 _semaphore.Release();
             }
         }
+
+        public void Dispose()
+        {
+            _semaphore.Wait();
+            try
+            {
+                // Dispose all open file streams
+                foreach (var fileStream in _openFiles.Values)
+                {
+                    fileStream.Dispose();
+                }
+                _openFiles.Clear();
+            }
+            finally
+            {
+                _semaphore.Release();
+                _semaphore.Dispose();
+            }
+        }
     }
 }
