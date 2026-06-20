@@ -191,8 +191,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         public void Dispose()
         {
-            _remoteStorage.Dispose();
             _localCacheManager.Dispose();
+            _remoteStorage.Dispose();
         }
     }
 }
