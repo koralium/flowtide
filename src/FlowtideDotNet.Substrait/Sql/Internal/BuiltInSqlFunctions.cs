@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -743,6 +743,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, p1 => p1);
             RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, p1 => p1);
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, p1 =>
+            {
+                if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64 || p1.Type == SubstraitType.Int32 || p1.Type == SubstraitType.Fp32)
+                {
+                    return new Fp64Type() { Nullable = true };
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return p1;
+                }
+                return AnyType.Instance;
+            });
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 

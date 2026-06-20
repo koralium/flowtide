@@ -91,6 +91,51 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task BulkAggregateAvg()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, avg(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Avg = (double)x.Average(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateAvgWithUpdatesAndDeletes()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, avg(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            
+            // Check initial state
+            var expected1 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Avg = (double)x.Average(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // Now, perform some updates and deletes that affect the avg aggregation
+            var firstUser = Users[0];
+            var companyId = firstUser.CompanyId;
+            DeleteUser(firstUser);
+
+            var newUser = new Entities.User { UserKey = 1000, CompanyId = companyId, FirstName = "New", LastName = "User" };
+            AddOrUpdateUser(newUser);
+
+            await WaitForUpdate();
+
+            var expected2 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Avg = (double)x.Average(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        [Fact]
         public async Task BulkAggregateMinWithUpdatesAndDeletes()
         {
             GenerateData(100);
@@ -361,6 +406,28 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, MaxVal = x.Max(y => y.OrderKey) }));
+        }
+
+        [Fact]
+        public async Task AvgAggregateWithStateCrash()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userkey, avg(orderkey)
+                FROM orders
+                GROUP BY userkey
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            await Crash();
+
+            GenerateData(1000);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders.GroupBy(x => x.UserKey).Select(x => new { UserKey = x.Key, AvgVal = (double)x.Average(y => y.OrderKey) }));
         }
 
         //[Fact]
