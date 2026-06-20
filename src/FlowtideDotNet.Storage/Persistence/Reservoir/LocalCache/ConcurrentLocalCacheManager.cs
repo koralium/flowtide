@@ -775,7 +775,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     _logger.LogWarning(ex, "Background task failed during disposal.");
                 }
             }
-
+            _remoteStorage.Dispose();
+            _localCache.Dispose();
             _cts.Dispose();
             _downloadSemaphore.Dispose();
         }
@@ -806,7 +807,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     _logger.LogWarning(ex, "Background task failed during disposal.");
                 }
             }
-
+            _remoteStorage.Dispose();
+            _localCache.Dispose();
             _cts.Dispose();
             _downloadSemaphore.Dispose();
         }
