@@ -188,5 +188,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
         {
             return _remoteStorage.DeleteStreamVersionAsync(streamName, streamVersion, cancellationToken);
         }
+
+        public void Dispose()
+        {
+            _remoteStorage.Dispose();
+            _localCacheManager.Dispose();
+        }
     }
 }
