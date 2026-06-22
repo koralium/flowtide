@@ -152,22 +152,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 resultList.Add(result);
             }
 
-            Assert.Equal(2, resultList.Count);
+            try
+            {
+                Assert.Equal(2, resultList.Count);
 
-            Assert.Equal(1, resultList[0].count);
-            Assert.Equal(1, resultList[0].weights[0]);
-            var (array1, _) = resultList[0].data.Columns[0].ToArrowArray();
-            var companyCol1 = (Apache.Arrow.StringArray)array1;
-            Assert.Equal("company_5000", companyCol1.GetString(0));
+                Assert.Equal(1, resultList[0].count);
+                Assert.Equal(1, resultList[0].weights[0]);
+                var (array1, _) = resultList[0].data.Columns[0].ToArrowArray();
+                var companyCol1 = (Apache.Arrow.StringArray)array1;
+                Assert.Equal("company_5000", companyCol1.GetString(0));
 
-            Assert.Equal(2, resultList[1].count);
-            Assert.Equal(1, resultList[1].weights[0]);
-            Assert.Equal(-1, resultList[1].weights[1]);
-            
-            var (array2, _) = resultList[1].data.Columns[0].ToArrowArray();
-            var companyCol2 = (Apache.Arrow.StringArray)array2;
-            Assert.Equal("company_65536", companyCol2.GetString(0));
-            Assert.Equal("company_75000", companyCol2.GetString(1));
+                Assert.Equal(2, resultList[1].count);
+                Assert.Equal(1, resultList[1].weights[0]);
+                Assert.Equal(-1, resultList[1].weights[1]);
+
+                var (array2, _) = resultList[1].data.Columns[0].ToArrowArray();
+                var companyCol2 = (Apache.Arrow.StringArray)array2;
+                Assert.Equal("company_65536", companyCol2.GetString(0));
+                Assert.Equal("company_75000", companyCol2.GetString(1));
+            }
+            finally
+            {
+                foreach (var r in resultList)
+                {
+                    r.data.Dispose();
+                    r.weights.Dispose();
+                }
+            }
         }
     }
 }
