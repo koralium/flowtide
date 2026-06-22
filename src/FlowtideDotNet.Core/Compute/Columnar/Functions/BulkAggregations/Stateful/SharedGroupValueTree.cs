@@ -60,21 +60,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, ReadOnlySpan<int> sortedByGroupIndices, EventBatchData incoming)
         {
-            int len = 0;
-            if (Filter != null)
-            {
-                for (int i = 0; i < sortedByGroupIndices.Length; i++)
-                {
-                    if (Filter(incoming, sortedByGroupIndices[i]))
-                    {
-                        len++;
-                    }
-                }
-            }
-            else
-            {
-                len = sortedByGroupIndices.Length;
-            }
+            int len = sortedByGroupIndices.Length;
 
             BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[len];
             int[] weightArray = new int[len];
@@ -90,6 +76,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 _duplicateTags = new int[len];
             }
 
+            int actualLength = 0;
             int writeIndex = 0;
             for (int i = 0; i < sortedByGroupIndices.Length; i++)
             {
@@ -97,23 +84,23 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 if (Filter == null || Filter(incoming, physicalIndex))
                 {
                     _indirectBuffer[writeIndex++] = physicalIndex;
+                    actualLength++;
                 }
             }
 
-            if (len > 1)
+            if (actualLength > 1)
             {
                 if (_batchSorter == null)
                 {
                     _batchSorter = new BatchSorter(allColumns.Length);
                 }
-                var indirectSpan = _indirectBuffer.AsSpan(0, len);
-                var duplicateSpan = _duplicateTags.AsSpan(0, len);
+                var indirectSpan = _indirectBuffer.AsSpan(0, actualLength);
+                var duplicateSpan = _duplicateTags.AsSpan(0, actualLength);
                 _batchSorter.SortDataWithTags(allColumns, ref indirectSpan, ref duplicateSpan);
             }
 
             for (int i = 0; i < len; i++)
             {
-                //var physicalIndex = _indirectBuffer[i];
                 rowReferences[i] = new BulkGroupValueRowReference()
                 {
                     batch = groupingBatch,
@@ -130,7 +117,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             totalBatchSize += _projectedDataColumn.GetByteSize();
 
             var mutator = new SharedRowMutator(_boundMeasures);
-            return BulkInserter.ApplyBatch(rowReferences, weightArray, len, _indirectBuffer, _duplicateTags,  mutator, totalBatchSize);
+            return BulkInserter.ApplyBatch(rowReferences, weightArray, actualLength, _indirectBuffer, _duplicateTags,  mutator, totalBatchSize);
         }
     }
 
