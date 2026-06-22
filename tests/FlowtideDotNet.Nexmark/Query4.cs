@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Nexmark
                 Q.category,
                 AVG(Q.final)
             FROM (
-            SELECT MIN(B.price) AS final, A.category
+            SELECT MAX(B.price) AS final, A.category
                 FROM auction A, bid B
                 WHERE A.id = B.auction AND B.date_time BETWEEN A.dateTime AND A.expires
                 GROUP BY A.id, A.category

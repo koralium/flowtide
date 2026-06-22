@@ -42,7 +42,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMaxSearchComparer>? _bulkSearcher;
         private int _groupingLength;
         private bool _isShared;
-        private IDataValue[]? _tempValues;
+        private int[]? _sourceIndices;
+        private int[]? _insertPositions;
 
         public MaxAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
         {
@@ -148,12 +149,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public async Task InitializeAsync(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             if (_isShared)
             {
                 return;
             }
             _groupingLength = groupingLength;
-            _memoryAllocator = memoryAllocator;
             _tree = await stateManagerClient.GetOrCreateTree("maxtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -205,14 +206,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            if (_tempValues == null || _tempValues.Length < length)
+            if (_sourceIndices == null || _sourceIndices.Length < length)
             {
-                _tempValues = new IDataValue[length];
+                _sourceIndices = new int[length];
+                _insertPositions = new int[length];
             }
-            else
-            {
-                System.Array.Clear(_tempValues, 0, length);
-            }
+
+            System.Array.Fill(_sourceIndices, -1, 0, length);
+            Debug.Assert(_insertPositions != null);
+            System.Array.Clear(_insertPositions, 0, length);
+
+            Debug.Assert(_memoryAllocator != null);
+            using var tempColumn = new Column(_memoryAllocator);
 
             await _bulkSearcher!.Start(rowReferences, length);
             while (await _bulkSearcher.MoveNextLeaf())
@@ -222,25 +227,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
                 {
                     var result = _bulkSearcher.CurrentResults[i];
-                    if (result.UpperBound >= 0)
+                    if (result.UpperBound >= 0 && _sourceIndices[result.KeyIndex] == -1)
                     {
-                        _tempValues[result.KeyIndex] = leaf.keys._data.Columns[_groupingLength].GetValueAt(result.UpperBound, default);
+                        _sourceIndices[result.KeyIndex] = tempColumn.Count;
+                        var val = leaf.keys._data.Columns[_groupingLength].GetValueAt(result.UpperBound, default);
+                        tempColumn.Add(val);
                     }
                 }
             }
 
-            for (int i = 0; i < length; i++)
-            {
-                var val = _tempValues[i];
-                if (val != null)
-                {
-                    outputColumn.Add(val);
-                }
-                else
-                {
-                    outputColumn.Add(NullValue.Instance);
-                }
-            }
+            InsertFromHelper(outputColumn, tempColumn, length);
+        }
+
+        private void InsertFromHelper(Column outputColumn, Column tempColumn, int length)
+        {
+            Debug.Assert(_sourceIndices != null);
+            Debug.Assert(_insertPositions != null);
+            ReadOnlySpan<int> sortedLookupSpan = _sourceIndices.AsSpan(0, length);
+            ReadOnlySpan<int> insertPositionsSpan = _insertPositions.AsSpan(0, length);
+            outputColumn.InsertFrom(tempColumn, in sortedLookupSpan, in insertPositionsSpan, -1);
         }
     }
 
