@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
@@ -210,6 +211,45 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
             if (!m_hasSentInitialData.Value)
             {
+                if (groupLength == 0)
+                {
+                    bool isEmpty = true;
+                    using (var testIterator = _tree!.CreateIterator())
+                    {
+                        await testIterator.SeekFirst();
+                        await foreach (var page in testIterator)
+                        {
+                            if (page.CurrentPage.keys.Count > 0)
+                            {
+                                isEmpty = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isEmpty)
+                    {
+                        for (int i = 0; i < m_temporaryStateValues!.Length; i++)
+                        {
+                            m_temporaryStateValues[i].Clear();
+                            m_temporaryStateValues[i].Add(NullValue.Instance);
+                        }
+                        var emptyKey = new ColumnRowReference()
+                        {
+                            referenceBatch = new EventBatchData(m_groupValues),
+                            RowIndex = 0
+                        };
+                        var defaultState = new ColumnAggregateStateReference()
+                        {
+                            referenceBatch = m_temporaryStateBatch!,
+                            RowIndex = 0,
+                            valueSent = false,
+                            weight = 0
+                        };
+                        await _tree.Upsert(emptyKey, defaultState);
+                    }
+                }
+
                 int totalProcessed = 0;
                 using var iterator = _tree!.CreateIterator();
                 await iterator.SeekFirst();
