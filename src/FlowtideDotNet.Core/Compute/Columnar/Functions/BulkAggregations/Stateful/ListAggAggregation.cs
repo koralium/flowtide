@@ -142,12 +142,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public async Task InitializeAsync(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
+            _memoryAllocator = memoryAllocator;
             if (_isShared)
             {
                 return;
             }
             _groupingLength = groupingLength;
-            _memoryAllocator = memoryAllocator;
             _tree = await stateManagerClient.GetOrCreateTree("listaggtree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -199,11 +199,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            List<IDataValue>[] accumulatedValues = new List<IDataValue>[length];
-            for (int i = 0; i < length; i++)
-            {
-                accumulatedValues[i] = new List<IDataValue>();
-            }
+            int currentKeyIndex = -1;
 
             await _bulkSearcher!.Start(rowReferences, length);
             while (await _bulkSearcher.MoveNextLeaf())
@@ -216,7 +212,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                     var result = results[i];
                     if (result.Found)
                     {
-                        var keyIndex = result.KeyIndex;
+                        if (result.KeyIndex > currentKeyIndex)
+                        {
+                            if (currentKeyIndex >= 0)
+                            {
+                                outputColumn.EndNewList();
+                            }
+                            for (int k = currentKeyIndex + 1; k < result.KeyIndex; k++)
+                            {
+                                outputColumn.EndNewList();
+                            }
+                            currentKeyIndex = result.KeyIndex;
+                        }
+
                         int lowerBound = result.LowerBound;
                         int upperBound = result.UpperBound;
 
@@ -227,20 +235,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
                             for (int w = 0; w < weight; w++)
                             {
-                                accumulatedValues[keyIndex].Add(value);
+                                outputColumn.AddToNewList(value);
                             }
                         }
                     }
                 }
             }
 
-            for (int i = 0; i < length; i++)
+            if (currentKeyIndex >= 0)
             {
-                var list = accumulatedValues[i];
-                for (int k = 0; k < list.Count; k++)
-                {
-                    outputColumn.AddToNewList(list[k]);
-                }
+                outputColumn.EndNewList();
+            }
+            for (int k = currentKeyIndex + 1; k < length; k++)
+            {
                 outputColumn.EndNewList();
             }
         }
