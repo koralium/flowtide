@@ -847,10 +847,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 if (_measures[i] is ISharedTreeColumnAggregation sharedMeasure && sharedMeasure.SupportsSharedTree)
                 {
                     var filter = _aggregateRelation.Measures[i].Filter;
-                    var keyString = sharedMeasure.ValueExpression.ToString() + (filter != null ? "_" + filter.ToString() : "");
+                    var keyString = sharedMeasure.ValueExpression.ToString() + (filter != null ? "_" + filter.ToString() : "") + "_" + sharedMeasure.IgnoreNulls.ToString();
                     if (!_sharedTrees.TryGetValue(keyString, out var sharedTree))
                     {
-                        sharedTree = new SharedGroupValueTree($"sharedtree_{i}", sharedMeasure.ValueProjection, _measureFilters[i]);
+                        sharedTree = new SharedGroupValueTree($"sharedtree_{i}", sharedMeasure.ValueProjection, _measureFilters[i], sharedMeasure.IgnoreNulls);
                         var bTree = await stateManagerClient.GetOrCreateTree(sharedTree.TreeName,
                             new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                             {

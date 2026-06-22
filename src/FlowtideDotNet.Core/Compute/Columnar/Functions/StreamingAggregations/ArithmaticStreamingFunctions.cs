@@ -33,6 +33,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             SumAggregationDefinition.Register(functionsRegister);
             MinAggregationDefinition.Register(functionsRegister);
             MaxAggregationDefinition.Register(functionsRegister);
+            MinByAggregationDefinition.Register(functionsRegister);
+            MaxByAggregationDefinition.Register(functionsRegister);
             CountAggregationDefinition.Register(functionsRegister);
             AvgAggregationDefinition.Register(functionsRegister);
 

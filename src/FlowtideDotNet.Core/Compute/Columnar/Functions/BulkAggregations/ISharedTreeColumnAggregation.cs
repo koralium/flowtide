@@ -26,6 +26,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations
         bool SupportsSharedTree => true;
 
         /// <summary>
+        /// Indicates whether null values should be ignored by the shared tree.
+        /// </summary>
+        bool IgnoreNulls => true;
+
+        /// <summary>
         /// Returns the Substrait Expression representing the aggregated value.
         /// This is used by the operator to group measures that share the same expression.
         /// </summary>

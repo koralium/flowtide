@@ -35,12 +35,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private BatchSorter? _batchSorter;
         private int[] _indirectBuffer = Array.Empty<int>();
         private int[] _duplicateTags = Array.Empty<int>();
+        private readonly bool _ignoreNulls;
 
-        public SharedGroupValueTree(string treeName, Func<EventBatchData, int, IDataValue> projectionFunction, Func<EventBatchData, int, bool>? filter = null)
+        public SharedGroupValueTree(string treeName, Func<EventBatchData, int, IDataValue> projectionFunction, Func<EventBatchData, int, bool>? filter = null, bool ignoreNulls = true)
         {
             TreeName = treeName;
             ProjectionFunction = projectionFunction;
             Filter = filter;
+            _ignoreNulls = ignoreNulls;
         }
 
         public void BindMeasure(ISharedTreeColumnAggregation measure)
@@ -83,6 +85,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 var physicalIndex = sortedByGroupIndices[i];
                 if (Filter == null || Filter(incoming, physicalIndex))
                 {
+                    if (_ignoreNulls && _projectedDataColumn.GetValueAt(physicalIndex, default).IsNull)
+                    {
+                        continue;
+                    }
                     _indirectBuffer[writeIndex++] = physicalIndex;
                     actualLength++;
                 }
