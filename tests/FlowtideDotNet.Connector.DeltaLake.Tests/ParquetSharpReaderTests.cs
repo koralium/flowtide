@@ -52,6 +52,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(-1, batch.weights[1]);
 
             Assert.Equal(3, batch.data.Columns.Count);
+
+            batch.data.Dispose();
+            batch.weights.Dispose();
         }
 
         [Fact]
