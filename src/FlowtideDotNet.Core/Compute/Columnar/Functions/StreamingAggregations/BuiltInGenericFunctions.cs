@@ -66,6 +66,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             SurrogateKeyInt64Aggregation.Register(functionsRegister);
             CountDistinctAggregation.RegisterCountDistinct(functionsRegister);
             FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.CountDistinctAggregationDefinition.Register(functionsRegister);
+            BulkAggregations.Stateful.SurrogateKeyAggregationDefinition.Register(functionsRegister);
         }
 
         private static LambdaExpression GetCountWithArgBody(System.Type inputType)

@@ -57,7 +57,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private int[]? m_groupDirectFields;
         private IColumn[]? m_groupValues;
         private readonly BatchSorter _batchSorter;
-        private readonly int m_outputCount;
 
         private ColumnStore.Column[]? m_temporaryStateValues;
         private EventBatchData? m_temporaryStateBatch;
@@ -117,7 +116,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             m_groupLength = groupLength;
-            m_outputCount = aggregateRelation.OutputLength;
             outputColumns = new ColumnStore.Column[groupLength + _measures.Length];
 
             _batchSorter = new BatchSorter(groupLength);
