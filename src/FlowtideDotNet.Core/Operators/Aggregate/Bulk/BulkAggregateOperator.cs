@@ -75,6 +75,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private ColumnReference[] _watermarkColumnReferences = Array.Empty<ColumnReference>();
         private int[] _watermarkIndices = Array.Empty<int>();
         private int[]? _pageStartBuffer;
+        private DataValueContainer? _watermarkValueContainer;
 
         private int[] _tempIndices = Array.Empty<int>();
         private int[] _tempValues = Array.Empty<int>();
@@ -298,6 +299,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         previousValueSent[i] = true;
                     }
 
+                    Debug.Assert(_watermarkValueContainer != null);
                     for (int m = 0; m < _measures.Length; m++)
                     {
                         var previousValueCol = currentLeaf.values._eventBatch.GetColumn(_measures.Length + m);
@@ -305,7 +307,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         var pageStart = outputColumns[measureColIndex].Count - currentLeaf.keys.Count;
                         for (int c = 0; c < currentLeaf.keys.Count; c++)
                         {
-                            previousValueCol.UpdateAt(c, outputColumns[measureColIndex].GetValueAt(pageStart + c, default));
+                            outputColumns[measureColIndex].GetValueAt(pageStart + c, _watermarkValueContainer, default);
+                            previousValueCol.UpdateAt(c, _watermarkValueContainer);
                         }
                     }
                     currentLeaf.ExitWriteLock();
@@ -426,25 +429,27 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                                 weights.Add(-1);
                                 for (int c = 0; c < groupLength; c++)
                                 {
-                                    outputColumns[c].Add(currentLeaf.keys._data.Columns[c].GetValueAt(currentResults[i].KeyIndex, default));
+                                    outputColumns[c].InsertRangeFrom(outputColumns[c].Count, currentLeaf.keys._data.Columns[c], currentResults[i].KeyIndex, 1);
                                 }
                                 for (int m = 0; m < _measures.Length; m++)
                                 {
                                     var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
-                                    outputColumns[groupLength + m].Add(previousValueCol.GetValueAt(lower, default));
+                                    outputColumns[groupLength + m].InsertRangeFrom(outputColumns[groupLength + m].Count, previousValueCol, lower, 1);
                                 }
                             }
                             previousValueSent[lower] = true;
                         }
 
                         // Update previous sent value column for all data
+                        Debug.Assert(_watermarkValueContainer != null);
                         for (int m = 0; m < _measures.Length; m++)
                         {
                             var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
                             var measureColIndex = groupLength + m;
                             for (int c = 0; c < currentResults.Count; c++)
                             {
-                                previousValueCol.UpdateAt(currentResults[c].LowerBound, outputColumns[measureColIndex].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, default));
+                                outputColumns[measureColIndex].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, _watermarkValueContainer, default);
+                                previousValueCol.UpdateAt(currentResults[c].LowerBound, _watermarkValueContainer);
                             }
                         }
 
@@ -881,6 +886,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
             _pageStartBuffer = new int[_measures.Length];
+            _watermarkValueContainer = new DataValueContainer();
 
             // Group and bind all ISharedTreeColumnAggregation measures by unique value expression and filter
             for (int i = 0; i < _measures.Length; i++)
