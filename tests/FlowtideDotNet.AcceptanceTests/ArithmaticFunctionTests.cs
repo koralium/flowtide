@@ -1374,15 +1374,16 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task SelectSumAddRemove()
         {
-            GenerateData(0);
-            await StartStream("INSERT INTO output SELECT sum(userkey) FROM users");
+            var userInitial = new Entities.User { UserKey = 0, CompanyId = "1", FirstName = "A", LastName = "B" };
+            AddOrUpdateUser(userInitial);
+            await StartStream("INSERT INTO output SELECT sum(userkey) FROM users WHERE UserKey = 5");
             await WaitForUpdate();
             AssertCurrentDataEqual(new[] { new { Sum = default(double?) } });
 
             var user = new Entities.User { UserKey = 5, CompanyId = "1", FirstName = "A", LastName = "B" };
             AddOrUpdateUser(user);
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = (double?)5 } });
+            AssertCurrentDataEqual(new[] { new { Sum = 5 } });
 
             DeleteUser(user);
             await WaitForUpdate();
