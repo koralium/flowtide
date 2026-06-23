@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
@@ -88,10 +89,21 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 
                 if (incoming.weight == 0)
                 {
+                    var keyColumns = key.referenceBatch.GetColumns_Unsafe();
+                    var keylength = keyColumns.Length;
+                    if (keylength == 0)
+                    {
+                        for (int i = 0; i < measures.Length; i++)
+                        {
+                            var col = stateColumns[i];
+                            col.UpdateAt(existing.RowIndex, NullValue.Instance);
+                        }
+                        outputToTemp[sortedIndex] = true;
+                        return GenericWriteOperation.Upsert;
+                    }
+
                     if (existing.valueSent)
                     {
-                        var keyColumns = key.referenceBatch.GetColumns_Unsafe();
-                        var keylength = keyColumns.Length;
                         for (int i = 0; i < keylength; i++)
                         {
                             var col = keyColumns[i];
