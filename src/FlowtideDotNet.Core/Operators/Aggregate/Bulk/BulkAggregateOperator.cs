@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     }
                     else
                     {
-                        throw new NotSupportedException("Bulk aggregate operator only works with bulk ready aggregations");
+                        throw new NotSupportedException($"Bulk aggregate operator only works with bulk ready aggregations. Not found: {aggregateRelation.Measures[i].Measure.ExtensionUri}:{aggregateRelation.Measures[i].Measure.ExtensionName}");
                     }
                 }
             }

@@ -1101,9 +1101,50 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _dataColumn.InsertRangeFrom(index, column._dataColumn, start, count, column._nullCounter > 0 ? column._validityList : default);
                 }
             }
+            else if (otherColumn is ColumnWithOffset columnWithOffset)
+            {
+                bool contiguous = true;
+                var offsets = columnWithOffset.Offsets;
+                if (count > 0)
+                {
+                    int firstOffset = offsets.Get(start);
+                    if (firstOffset == ColumnWithOffset.NullValueIndex)
+                    {
+                        contiguous = false;
+                    }
+                    else
+                    {
+                        for (int i = 1; i < count; i++)
+                        {
+                            if (offsets.Get(start + i) != firstOffset + i)
+                            {
+                                contiguous = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (contiguous)
+                    {
+                        InsertRangeFrom(index, columnWithOffset.InnerColumn, firstOffset, count);
+                    }
+                    else
+                    {
+                        for (int i = 0; i < count; i++)
+                        {
+                            var val = otherColumn.GetValueAt(start + i, default);
+                            InsertAt(index + i, val);
+                        }
+                    }
+                }
+            }
             else
             {
-                throw new NotImplementedException("Insert range from does not yet work from a column with offset.");
+                for (int i = 0; i < count; i++)
+                {
+                    var val = otherColumn.GetValueAt(start + i, default);
+                    InsertAt(index + i, val);
+                }
             }
         }
 
