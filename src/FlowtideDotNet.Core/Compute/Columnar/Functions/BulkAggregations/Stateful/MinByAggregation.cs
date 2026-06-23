@@ -45,6 +45,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMinSearchComparer>? _bulkSearcher;
         private int _groupingLength;
         private int[]? _sortedBuffer;
+        private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
+        private int[] _storeWeightArrayBuffer = Array.Empty<int>();
+        private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
 
         public MinByAggregation(
             Expression valueExpression, Func<EventBatchData, int, IDataValue> valueProjection,
@@ -102,8 +105,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, EventBatchData incoming, ReadOnlySpan<int> sortedByGroupIndices)
         {
             var len = sortedByGroupIndices.Length;
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[len];
-            int[] weightArray = new int[len];
+            if (_storeRowReferencesBuffer.Length < len)
+            {
+                _storeRowReferencesBuffer = new BulkGroupValueRowReference[len];
+                _storeWeightArrayBuffer = new int[len];
+            }
+            var rowReferences = _storeRowReferencesBuffer;
+            var weightArray = _storeWeightArrayBuffer;
 
             // allColumns has: grouping keys, then order column, then value column
             var allColumns = new IColumn[groupValueColumns.Length + 2];
@@ -198,7 +206,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[length];
+            if (_fetchRowReferencesBuffer.Length < length)
+            {
+                _fetchRowReferencesBuffer = new BulkGroupValueRowReference[length];
+            }
+            var rowReferences = _fetchRowReferencesBuffer;
 
             for (int i = 0; i < length; i++)
             {

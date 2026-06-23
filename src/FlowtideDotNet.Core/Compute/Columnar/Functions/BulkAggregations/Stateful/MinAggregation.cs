@@ -43,6 +43,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private int _groupingLength;
         private bool _isShared;
         private int[] _sortedBuffer;
+        private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
+        private int[] _storeWeightArrayBuffer = Array.Empty<int>();
+        private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
 
         public MinAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
         {
@@ -107,8 +110,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
 
             var len = sortedByGroupIndices.Length;
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[len];
-            int[] weightArray = new int[len];
+            if (_storeRowReferencesBuffer.Length < len)
+            {
+                _storeRowReferencesBuffer = new BulkGroupValueRowReference[len];
+                _storeWeightArrayBuffer = new int[len];
+            }
+            var rowReferences = _storeRowReferencesBuffer;
+            var weightArray = _storeWeightArrayBuffer;
 
             var allColumns = new IColumn[groupValueColumns.Length + 1];
             System.Array.Copy(groupValueColumns, allColumns, groupValueColumns.Length);
@@ -193,7 +201,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[length];
+            if (_fetchRowReferencesBuffer.Length < length)
+            {
+                _fetchRowReferencesBuffer = new BulkGroupValueRowReference[length];
+            }
+            var rowReferences = _fetchRowReferencesBuffer;
 
             for (int i = 0; i < length; i++)
             {

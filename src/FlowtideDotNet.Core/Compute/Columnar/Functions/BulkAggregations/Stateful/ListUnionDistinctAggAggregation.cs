@@ -39,6 +39,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private bool _isShared;
         private PrimitiveList<int>? _offsets;
         private Column? _projectedDataColumn;
+        private PrimitiveList<int>? _weightList;
+        private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
+        private int[] _storeWeightArrayBuffer = Array.Empty<int>();
+        private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
 
         public ListUnionDistinctAggAggregation(Expression valueExpression, Func<EventBatchData, int, IDataValue> projectionFunction)
         {
@@ -104,14 +108,37 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             Debug.Assert(_memoryAllocator != null);
             var len = sortedByGroupIndices.Length;
 
-            _offsets = new PrimitiveList<int>(_memoryAllocator);
-            using var weightList = new PrimitiveList<int>(_memoryAllocator);
-            _projectedDataColumn = new Column(_memoryAllocator);
+            if (_offsets == null)
+            {
+                _offsets = new PrimitiveList<int>(_memoryAllocator);
+            }
+            else
+            {
+                _offsets.Clear();
+            }
+
+            if (_projectedDataColumn == null)
+            {
+                _projectedDataColumn = new Column(_memoryAllocator);
+            }
+            else
+            {
+                _projectedDataColumn.Clear();
+            }
+
+            if (_weightList == null)
+            {
+                _weightList = new PrimitiveList<int>(_memoryAllocator);
+            }
+            else
+            {
+                _weightList.Clear();
+            }
 
             for (int i = 0; i < len; i++)
             {
                 var physicalIndex = sortedByGroupIndices[i];
-                var weight = weights.Get(i);
+                var weight = weights.Get(physicalIndex);
                 var value = _projectionFunction(incoming, physicalIndex);
 
                 if (!value.IsNull && value.Type == ArrowTypeId.List)
@@ -122,8 +149,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                     {
                         var item = list.GetAt(k);
                         _projectedDataColumn.Add(item);
-                        _offsets.Add(i);
-                        weightList.Add(weight);
+                        _offsets.Add(physicalIndex);
+                        _weightList.Add(weight);
                     }
                 }
             }
@@ -131,10 +158,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             var totalInserted = _offsets.Count;
             if (totalInserted == 0)
             {
-                _offsets.Dispose();
-                _offsets = null;
-                _projectedDataColumn.Dispose();
-                _projectedDataColumn = null;
                 return ValueTask.CompletedTask;
             }
 
@@ -146,8 +169,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             allColumns[groupValueColumns.Length] = _projectedDataColumn;
             var groupingBatch = new EventBatchData(allColumns);
 
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[totalInserted];
-            int[] weightArray = new int[totalInserted];
+            if (_storeRowReferencesBuffer.Length < totalInserted)
+            {
+                _storeRowReferencesBuffer = new BulkGroupValueRowReference[totalInserted];
+                _storeWeightArrayBuffer = new int[totalInserted];
+            }
+            var rowReferences = _storeRowReferencesBuffer;
+            var weightArray = _storeWeightArrayBuffer;
 
             for (int i = 0; i < totalInserted; i++)
             {
@@ -156,7 +184,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                     batch = groupingBatch,
                     index = i
                 };
-                weightArray[i] = weightList.Get(i);
+                weightArray[i] = _weightList.Get(i);
             }
 
             int totalBatchSize = 0;
@@ -210,20 +238,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             if (_offsets != null)
             {
-                _offsets.Dispose();
-                _offsets = null;
+                _offsets.Clear();
             }
             if (_projectedDataColumn != null)
             {
-                _projectedDataColumn.Dispose();
-                _projectedDataColumn = null;
+                _projectedDataColumn.Clear();
+            }
+            if (_weightList != null)
+            {
+                _weightList.Clear();
             }
         }
 
         public async ValueTask FetchValuesAsync(IColumn[] groupingValuesSorted, int length, Column outputColumn)
         {
             var batch = new EventBatchData(groupingValuesSorted);
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[length];
+            if (_fetchRowReferencesBuffer.Length < length)
+            {
+                _fetchRowReferencesBuffer = new BulkGroupValueRowReference[length];
+            }
+            var rowReferences = _fetchRowReferencesBuffer;
 
             for (int i = 0; i < length; i++)
             {

@@ -36,6 +36,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private int[] _indirectBuffer = Array.Empty<int>();
         private int[] _duplicateTags = Array.Empty<int>();
         private readonly bool _ignoreNulls;
+        private BulkGroupValueRowReference[] _rowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
+        private int[] _weightArrayBuffer = Array.Empty<int>();
 
         public SharedGroupValueTree(string treeName, Func<EventBatchData, int, IDataValue> projectionFunction, Func<EventBatchData, int, bool>? filter = null, bool ignoreNulls = true)
         {
@@ -64,8 +66,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         {
             int len = sortedByGroupIndices.Length;
 
-            BulkGroupValueRowReference[] rowReferences = new BulkGroupValueRowReference[len];
-            int[] weightArray = new int[len];
+            if (_rowReferencesBuffer.Length < len)
+            {
+                _rowReferencesBuffer = new BulkGroupValueRowReference[len];
+                _weightArrayBuffer = new int[len];
+            }
+            var rowReferences = _rowReferencesBuffer;
+            var weightArray = _weightArrayBuffer;
 
             var allColumns = new IColumn[groupValueColumns.Length + 1];
             System.Array.Copy(groupValueColumns, allColumns, groupValueColumns.Length);
