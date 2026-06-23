@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.BoundarySearching;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Storage.Tree;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
@@ -126,22 +127,36 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             var firstIndex = sortedLookup[0];
             var incomingBatch = keys[firstIndex].batch.Columns;
 
-            Span<int> mappedIndices = stackalloc int[sortedLookup.Length];
-            for (int i = 0; i < sortedLookup.Length; i++)
-            {
-                mappedIndices[i] = keys[sortedLookup[i]].index;
-            }
+            int[]? rented = null;
+            Span<int> mappedIndices = sortedLookup.Length <= 256 ? 
+                stackalloc int[sortedLookup.Length] : 
+                (rented = ArrayPool<int>.Shared.Rent(sortedLookup.Length));
 
-            _columnBoundarySearch.SearchBoundries(
-                keyContainer._data.Columns,
-                incomingBatch,
-                mappedIndices,
-                lowerBounds,
-                upperBounds,
-                0,
-                keyContainer.Count - 1,
-                false,
-                lookupBuffer);
+            try
+            {
+                for (int i = 0; i < sortedLookup.Length; i++)
+                {
+                    mappedIndices[i] = keys[sortedLookup[i]].index;
+                }
+
+                _columnBoundarySearch.SearchBoundries(
+                    keyContainer._data.Columns,
+                    incomingBatch,
+                    mappedIndices.Slice(0, sortedLookup.Length),
+                    lowerBounds,
+                    upperBounds,
+                    0,
+                    keyContainer.Count - 1,
+                    false,
+                    lookupBuffer);
+            }
+            finally
+            {
+                if (rented != null)
+                {
+                    ArrayPool<int>.Shared.Return(rented);
+                }
+            }
         }
     }
 }

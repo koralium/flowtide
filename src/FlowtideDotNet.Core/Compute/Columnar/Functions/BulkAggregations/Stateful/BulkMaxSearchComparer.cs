@@ -157,16 +157,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             var firstIndex = sortedLookup[0];
             var incomingBatch = keys[firstIndex].batch.Columns;
 
-            Span<int> mappedIndices = stackalloc int[sortedLookup.Length];
-            for (int i = 0; i < sortedLookup.Length; i++)
-            {
-                mappedIndices[i] = keys[sortedLookup[i]].index;
-            }
-
             _columnBoundarySearch.SearchBoundries(
                 keyContainer._data.Columns,
                 incomingBatch,
-                mappedIndices,
+                sortedLookup,
                 lowerBounds,
                 upperBounds,
                 0,
