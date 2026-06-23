@@ -74,6 +74,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private ColumnRowReference[] _watermarkRowReferences = Array.Empty<ColumnRowReference>();
         private ColumnReference[] _watermarkColumnReferences = Array.Empty<ColumnReference>();
         private int[] _watermarkIndices = Array.Empty<int>();
+        private int[]? _pageStartBuffer;
 
         private int[] _tempIndices = Array.Empty<int>();
         private int[] _tempValues = Array.Empty<int>();
@@ -370,7 +371,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         };
                     }
 
-                    int[] pageStart = new int[_measures.Length];
+                    Debug.Assert(_pageStartBuffer != null);
+                    var pageStart = _pageStartBuffer;
                     for (int m = 0; m < _measures.Length; m++)
                     {
                         var measureColIndex = groupLength + m;
@@ -878,6 +880,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_temporaryStateValues[i] = ColumnFactory.Get(MemoryAllocator);
             }
             m_temporaryStateBatch = new EventBatchData(m_temporaryStateValues);
+            _pageStartBuffer = new int[_measures.Length];
 
             // Group and bind all ISharedTreeColumnAggregation measures by unique value expression and filter
             for (int i = 0; i < _measures.Length; i++)
