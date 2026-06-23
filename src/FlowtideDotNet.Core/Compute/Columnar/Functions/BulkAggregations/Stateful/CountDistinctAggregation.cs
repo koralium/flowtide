@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState, int sortedIndex)
         {
+            if (indices.Length == 0)
+            {
+                return false;
+            }
+
             var delta = _batchDeltas![sortedIndex];
             if (delta != 0)
             {

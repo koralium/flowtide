@@ -124,6 +124,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             Span<int> upperBounds,
             Span<int> lookupBuffer)
         {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
             var firstIndex = sortedLookup[0];
             var incomingBatch = keys[firstIndex].batch.Columns;
 
