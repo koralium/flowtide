@@ -161,6 +161,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(_tree != null);
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
+            Debug.Assert(m_hasSentInitialData != null);
 
             await _tree.Commit();
 
@@ -206,6 +207,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             Debug.Assert(_treeBulkSearch != null);
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_hasSentInitialData != null);
+            Debug.Assert(weights != null);
+            Debug.Assert(iterations != null);
 
             int groupLength = m_groupValues.Length;
 

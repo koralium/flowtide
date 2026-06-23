@@ -92,7 +92,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             for (int i = startIndex; i < startIndex + length; i++)
             {
                 groupStates[i].GetValue(_valueContainer);
-                outputColumn.Add(_valueContainer);
+                if (_valueContainer.Type == ArrowTypeId.Null)
+                {
+                    outputColumn.Add(new Int64Value(0));
+                }
+                else
+                {
+                    outputColumn.Add(_valueContainer);
+                }
             }
             return ValueTask.CompletedTask;
         }
@@ -161,7 +168,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             for (int i = startIndex; i < startIndex + length; i++)
             {
                 groupStates[i].GetValue(_valueContainer);
-                outputColumn.Add(_valueContainer);
+                if (_valueContainer.Type == ArrowTypeId.Null)
+                {
+                    outputColumn.Add(new Int64Value(0));
+                }
+                else
+                {
+                    outputColumn.Add(_valueContainer);
+                }
             }
             return ValueTask.CompletedTask;
         }
