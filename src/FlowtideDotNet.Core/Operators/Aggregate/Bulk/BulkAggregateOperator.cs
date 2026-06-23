@@ -94,6 +94,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private ColumnStore.Column[] outputColumns;
         private PrimitiveList<int>? weights;
         private PrimitiveList<uint>? iterations;
+        private uint m_currentIteration;
 
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -293,7 +294,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     }
 
                     weights!.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
-                    iterations!.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
+                    iterations!.InsertStaticRange(iterations.Count, m_currentIteration, currentLeaf.keys.Count);
 
                     currentLeaf.EnterWriteLock();
                     var previousValueSent = currentLeaf.values._previousValueSent;
@@ -393,7 +394,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     }
 
                     weights!.InsertStaticRange(weights.Count, 1, currentLeaf.keys.Count);
-                    iterations!.InsertStaticRange(iterations.Count, 0U, currentLeaf.keys.Count);
+                    iterations!.InsertStaticRange(iterations.Count, m_currentIteration, currentLeaf.keys.Count);
 
                     // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
                     // TODO: Fix row references and indices
@@ -430,6 +431,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             {
                                 // Previous value has been sent, so we need to send a retraction
                                 weights.Add(-1);
+                                iterations!.Add(m_currentIteration);
                                 for (int c = 0; c < groupLength; c++)
                                 {
                                     outputColumns[c].InsertRangeFrom(outputColumns[c].Count, currentLeaf.keys._data.Columns[c], currentResults[i].KeyIndex, 1);
@@ -515,6 +517,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
         {
+            if (msg.Data.Count > 0)
+            {
+                // Take first iteration
+                m_currentIteration = msg.Data.Iterations[0];
+            }
             Debug.Assert(m_groupValues != null);
             Debug.Assert(m_temporaryStateValues != null);
             Debug.Assert(m_temporaryStateBatch != null);
@@ -820,7 +827,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             if (weights.Count > 0)
             {
                 Debug.Assert(iterations != null);
-                iterations.InsertStaticRange(iterations.Count, 0U, weights.Count);
+                iterations.InsertStaticRange(iterations.Count, m_currentIteration, weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                 InitOutputColumns();
             }
