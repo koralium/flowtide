@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             Columnar.Functions.TableFunctions.UnnestFunction.AddBuiltInUnnestFunction(functionsRegister);
             ListUnionDistinctAggAggregation.Register(functionsRegister);
             FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.ListAggAggregationDefinition.Register(functionsRegister);
+            FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.ListUnionDistinctAggAggregationDefinition.Register(functionsRegister);
         }
     }
 }
