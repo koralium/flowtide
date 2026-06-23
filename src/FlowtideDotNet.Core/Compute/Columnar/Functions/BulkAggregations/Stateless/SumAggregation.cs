@@ -95,7 +95,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             {
                 if (value.Type == ArrowTypeId.Int64)
                 {
-                    var count = currentState.AsDouble + (value.AsLong * weight);
+                    var count = currentState.AsDouble + ((double)value.AsLong * (double)weight);
                     currentState._type = ArrowTypeId.Double;
                     currentState._doubleValue = new DoubleValue(count);
                 }
