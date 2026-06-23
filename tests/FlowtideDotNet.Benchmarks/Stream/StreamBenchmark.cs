@@ -110,12 +110,12 @@ namespace FlowtideDotNet.Benchmarks.Stream
         }
 
 
-        / <summary>
-        / Runs the following graph:
-        / 
-        / Read[Users] -> Normalization -> Aggregation -> Projection -> Write[Output]
-        / </summary>
-        / <returns></returns>
+        /// <summary>
+        /// Runs the following graph:
+        /// 
+        /// Read[Users] -> Normalization -> Aggregation -> Projection -> Write[Output]
+        /// </summary>
+        /// <returns></returns>
         [Benchmark]
         public async Task SumAggregation()
         {
@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Benchmarks.Stream
             GROUP BY userkey
             ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 1
+                                           Parallelization = 1
             });
             await _stream.WaitForUpdate();
         }
