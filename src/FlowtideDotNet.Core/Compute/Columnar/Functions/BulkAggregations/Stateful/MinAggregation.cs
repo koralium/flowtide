@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
     {
         private readonly Expression _valueExpression;
         private readonly Func<EventBatchData, int, IDataValue> _projectionFunction;
-        private DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _dataValueContainer;
         private Column? _projectedDataColumn;
         private IMemoryAllocator? _memoryAllocator;
         private IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>? _tree;
