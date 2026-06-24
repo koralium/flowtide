@@ -762,5 +762,200 @@ namespace FlowtideDotNet.AcceptanceTests
                 })
             );
         }
+
+        /// <summary>
+        /// Tests MIN on a nullable column (Visits) which exercises the SharedGroupValueTree's
+        /// _ignoreNulls path. When Visits is null for some rows, the shared tree must skip those
+        /// rows during StoreAsync, creating a gap between the full batch length and the actualLength
+        /// passed to ApplyBatch. This verifies that null-skipping does not corrupt the index mapping.
+        /// </summary>
+        [Fact]
+        public async Task MinAggregateOnNullableColumnWithSharedTree()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(visits)
+                FROM users
+                GROUP BY companyId
+                ");
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new
+                {
+                    Key = x.Key,
+                    Min = x.Where(u => u.Visits.HasValue).Any()
+                        ? (int?)x.Where(u => u.Visits.HasValue).Min(u => u.Visits!.Value)
+                        : (int?)null
+                });
+            AssertCurrentDataEqual(expected);
+        }
+
+        /// <summary>
+        /// Tests MIN and MAX on a nullable column with shared tree, then performs updates and deletes.
+        /// The shared tree is shared between MIN and MAX (same value expression). Null values in Visits
+        /// cause non-contiguous indices in the shared tree's StoreAsync. After mutations, the tree must
+        /// correctly reflect the new min/max values.
+        /// </summary>
+        [Fact]
+        public async Task MinMaxAggregateOnNullableColumnWithUpdatesAndDeletes()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(visits), max(visits)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            // Verify initial state
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x =>
+                {
+                    var nonNulls = x.Where(u => u.Visits.HasValue).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Min = nonNulls.Any() ? (int?)nonNulls.Min(u => u.Visits!.Value) : (int?)null,
+                        Max = nonNulls.Any() ? (int?)nonNulls.Max(u => u.Visits!.Value) : (int?)null
+                    };
+                });
+            AssertCurrentDataEqual(expected1);
+
+            // Delete the user holding the current min for their company, and add a new user
+            // with a very low Visits value to become the new min
+            var firstUser = Users[0];
+            var companyId = firstUser.CompanyId;
+            DeleteUser(firstUser);
+
+            var newUser = new Entities.User
+            {
+                UserKey = 99999,
+                CompanyId = companyId,
+                FirstName = "NullTest",
+                LastName = "User",
+                Visits = -50  // Should become new min
+            };
+            AddOrUpdateUser(newUser);
+
+            // Also add a user with null Visits to exercise the null-skipping path during update
+            var nullUser = new Entities.User
+            {
+                UserKey = 99998,
+                CompanyId = companyId,
+                FirstName = "NullVisits",
+                LastName = "User",
+                Visits = null
+            };
+            AddOrUpdateUser(nullUser);
+
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x =>
+                {
+                    var nonNulls = x.Where(u => u.Visits.HasValue).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Min = nonNulls.Any() ? (int?)nonNulls.Min(u => u.Visits!.Value) : (int?)null,
+                        Max = nonNulls.Any() ? (int?)nonNulls.Max(u => u.Visits!.Value) : (int?)null
+                    };
+                });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        /// <summary>
+        /// Tests MIN with a FILTER clause on a nullable column. This exercises both the filter
+        /// predicate path and the null-skipping path in SharedGroupValueTree.StoreAsync simultaneously,
+        /// maximizing the gap between the full batch length and the actualLength that reaches ApplyBatch.
+        /// </summary>
+        [Fact]
+        public async Task MinAggregateWithFilterOnNullableColumn()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(visits) FILTER (WHERE visits > 3)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x =>
+                {
+                    var filtered = x.Where(u => u.Visits.HasValue && u.Visits.Value > 3).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Min = filtered.Any()
+                            ? (int?)filtered.Min(u => u.Visits!.Value)
+                            : (int?)null
+                    };
+                });
+            AssertCurrentDataEqual(expected);
+
+            // Now add a user with Visits=null (should be ignored by both null-skip and filter)
+            // and one with Visits=1 (should be filtered out by FILTER WHERE visits > 3)
+            // and one with Visits=100 (should pass filter)
+            var company = Users[0].CompanyId;
+
+            AddOrUpdateUser(new Entities.User
+            {
+                UserKey = 88881,
+                CompanyId = company,
+                FirstName = "NullV",
+                LastName = "User",
+                Visits = null
+            });
+            AddOrUpdateUser(new Entities.User
+            {
+                UserKey = 88882,
+                CompanyId = company,
+                FirstName = "LowV",
+                LastName = "User",
+                Visits = 1  // Below filter threshold, should be excluded
+            });
+            AddOrUpdateUser(new Entities.User
+            {
+                UserKey = 88883,
+                CompanyId = company,
+                FirstName = "HighV",
+                LastName = "User",
+                Visits = 100  // Passes filter, but not a new min
+            });
+
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x =>
+                {
+                    var filtered = x.Where(u => u.Visits.HasValue && u.Visits.Value > 3).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Min = filtered.Any()
+                            ? (int?)filtered.Min(u => u.Visits!.Value)
+                            : (int?)null
+                    };
+                });
+            AssertCurrentDataEqual(expected2);
+        }
     }
 }
