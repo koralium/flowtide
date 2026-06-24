@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly FunctionsRegister _functionsRegister;
 
         private IColumnBulkAggregation[] _measures;
-        private Func<EventBatchData, int, bool>?[] _measureFilters;
+        private readonly Func<EventBatchData, int, bool>?[] _measureFilters;
         private struct GroupExpressionInfo
         {
             public int GroupIndex;
