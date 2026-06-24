@@ -22,8 +22,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 {
     public class BulkMinInsertComparer : IBplusTreeComparer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
     {
-        private DataValueContainer dataValueContainer;
-        private DataValueContainer dataValueContainer2;
+        private readonly DataValueContainer dataValueContainer;
+        private readonly DataValueContainer dataValueContainer2;
         private readonly int _groupingKeyLength;
         private readonly ColumnBoundarySearch _columnBoundarySearch;
 
