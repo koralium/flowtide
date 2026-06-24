@@ -121,7 +121,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
     internal class CountAggregationWithArg : IColumnBulkAggregation
     {
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
-        private DataValueContainer _valueContainer;
+        private readonly DataValueContainer _valueContainer;
 
         public CountAggregationWithArg(Func<EventBatchData, int, IDataValue> projectionFunction)
         {
