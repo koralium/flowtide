@@ -154,20 +154,26 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
             int[] tempWeights = ArrayPool<int>.Shared.Rent(count);
             bool[] tempSent = ArrayPool<bool>.Shared.Rent(count);
             int[] sequentialLookup = ArrayPool<int>.Shared.Rent(count);
-            for (int i = 0; i < count; i++)
+            try
             {
-                var sortedIndex = sortedLookup[i];
-                tempWeights[i] = values[sortedIndex].weight;
-                tempSent[i] = values[sortedIndex].valueSent;
-                sequentialLookup[i] = i;
+                for (int i = 0; i < count; i++)
+                {
+                    var sortedIndex = sortedLookup[i];
+                    tempWeights[i] = values[sortedIndex].weight;
+                    tempSent[i] = values[sortedIndex].valueSent;
+                    sequentialLookup[i] = i;
+                }
+                // Perform bulk single-pass block copy insertions
+                _weights.InsertFrom(tempWeights, sequentialLookup.AsSpan(0, count), targetPositions);
+                _previousValueSent.InsertFrom(tempSent, sequentialLookup.AsSpan(0, count), targetPositions);
             }
-            // Perform bulk single-pass block copy insertions
-            _weights.InsertFrom(tempWeights, sequentialLookup.AsSpan(0, count), targetPositions);
-            _previousValueSent.InsertFrom(tempSent, sequentialLookup.AsSpan(0, count), targetPositions);
-            // Return rented arrays to the pool
-            ArrayPool<int>.Shared.Return(tempWeights);
-            ArrayPool<bool>.Shared.Return(tempSent);
-            ArrayPool<int>.Shared.Return(sequentialLookup);
+            finally
+            {
+                // Return rented arrays to the pool
+                ArrayPool<int>.Shared.Return(tempWeights);
+                ArrayPool<bool>.Shared.Return(tempSent);
+                ArrayPool<int>.Shared.Return(sequentialLookup);
+            }
         }
 
         public void RemoveAt(int index)
