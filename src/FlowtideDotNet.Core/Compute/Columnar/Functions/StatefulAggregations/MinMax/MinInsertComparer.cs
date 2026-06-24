@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
     internal class MinInsertComparer : IBplusTreeComparer<ListAggColumnRowReference, ListAggKeyStorageContainer>
     {
         private DataValueContainer dataValueContainer;
-        private DataValueContainer dataValueContainer2;
+        private readonly DataValueContainer dataValueContainer2;
         private readonly int _groupingKeyLength;
         private readonly ColumnBoundarySearch _columnBoundarySearch;
 
