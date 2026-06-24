@@ -1383,7 +1383,7 @@ namespace FlowtideDotNet.AcceptanceTests
             var user = new Entities.User { UserKey = 5, CompanyId = "1", FirstName = "A", LastName = "B" };
             AddOrUpdateUser(user);
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = 5 } });
+            AssertCurrentDataEqual(new[] { new { Sum = 5L } });
 
             DeleteUser(user);
             await WaitForUpdate();
