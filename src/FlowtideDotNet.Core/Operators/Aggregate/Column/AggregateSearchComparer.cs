@@ -92,13 +92,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public FindBoundriesResult FindBoundries(in ColumnRowReference key, in AggregateKeyStorageContainer keyContainer, int startIndex, int endIndex)
         {
-            int start = startIndex;
-            int end = endIndex;
+            int localStart = startIndex;
+            int localEnd = endIndex;
             for (int i = 0; i < columnCount; i++)
             {
                 var column = i;
                 key.referenceBatch.Columns[column].GetValueAt(key.RowIndex, dataValueContainer, default);
-                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, start, end, default);
+                var (low, high) = keyContainer._data.Columns[column].SearchBoundries(dataValueContainer, localStart, localEnd, default);
 
                 if (low < 0)
                 {
@@ -106,8 +106,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 }
                 else
                 {
-                    start = low;
-                    end = high;
+                    localStart = low;
+                    localEnd = high;
                 }
             }
             if (columnCount == 0)
@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 }
                 return new FindBoundriesResult(-1, -1);
             }
-            return new FindBoundriesResult(start, end);
+            return new FindBoundriesResult(localStart, localEnd);
         }
 
         void IBplusTreeComparer<ColumnRowReference, AggregateKeyStorageContainer>.FindBoundriesBulk(ReadOnlySpan<ColumnRowReference> keys, ReadOnlySpan<int> sortedLookup, in AggregateKeyStorageContainer keyContainer, Span<int> lowerBounds, Span<int> upperBounds, Span<int> lookupBuffer)

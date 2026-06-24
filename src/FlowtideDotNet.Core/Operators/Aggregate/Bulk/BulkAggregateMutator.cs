@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly IColumnBulkAggregation[] measures;
         private readonly PrimitiveList<int> weights;
         private readonly EventBatchData incomingData;
-        private readonly int[] indices;
+        private readonly int[] groupSortIndices;
         private readonly List<AggregateComputeRange> computeRanges;
         private readonly ColumnStore.Column[] outputColumns;
         private readonly PrimitiveList<int> outputWeights;
@@ -51,7 +51,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             this.measures = measures;
             this.weights = weights;
             this.incomingData = incomingData;
-            this.indices = indices;
+            this.groupSortIndices = indices;
             this.computeRanges = computeRanges;
             this.outputColumns = outputColumns;
             this.outputWeights = outputWeights;
@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var stateCol = stateColumns[i];
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     var computeRange = computeRanges[sortedIndex];
-                    var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
+                    var indiceSpan = groupSortIndices.AsSpan(computeRange.start, computeRange.length);
                     writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var colReference = new ColumnReference(stateCol, incoming.RowIndex, default);
                     // Compute should be called here for each row, need alot of extra input here though.
                     var computeRange = computeRanges[sortedIndex];
-                    var indiceSpan = indices.AsSpan(computeRange.start, computeRange.length);
+                    var indiceSpan = groupSortIndices.AsSpan(computeRange.start, computeRange.length);
                     measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 // New data should always be output no matter what compute says
