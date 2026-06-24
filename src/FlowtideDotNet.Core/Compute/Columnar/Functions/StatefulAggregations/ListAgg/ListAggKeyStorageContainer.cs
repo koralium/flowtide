@@ -121,6 +121,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations
 
         public void InsertFrom(ListAggColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+
             var batchReference = keys[0].batch;
 
             for (int i = 0; i < _groupingKeyLength; i++)

@@ -13,8 +13,6 @@
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
@@ -86,6 +84,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public void InsertFrom(BulkGroupValueRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+
             var batchReference = keys[0].batch;
 
             for (int i = 0; i < (_groupingKeyLength + 1); i++)

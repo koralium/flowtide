@@ -14,7 +14,6 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using static SqlParser.Ast.FetchDirection;
 
 namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 {
@@ -127,6 +126,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
             var firstIndex = sortedLookup[0];
             var batchReference = keys[firstIndex].referenceBatch;
 
