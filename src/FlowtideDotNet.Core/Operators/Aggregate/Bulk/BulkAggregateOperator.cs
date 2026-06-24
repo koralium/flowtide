@@ -44,8 +44,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly AggregateRelation _aggregateRelation;
         private readonly FunctionsRegister _functionsRegister;
 
-        private IColumnBulkAggregation[] _measures;
-        private Func<EventBatchData, int, bool>?[] _measureFilters;
+        private readonly IColumnBulkAggregation[] _measures;
+        private readonly Func<EventBatchData, int, bool>?[] _measureFilters;
         private struct GroupExpressionInfo
         {
             public int GroupIndex;
@@ -67,7 +67,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private int[] _noDuplicateIndices = Array.Empty<int>();
         private bool[] _outputToTemp = Array.Empty<bool>();
         private bool[] _isDeleted = Array.Empty<bool>();
-        private int[][] _measureLookups;
+        private readonly int[][] _measureLookups;
         private ColumnRowReference[] _rowReferenceBuffer;
         private ColumnAggregateStateReference[] _rowValuesBuffer;
 

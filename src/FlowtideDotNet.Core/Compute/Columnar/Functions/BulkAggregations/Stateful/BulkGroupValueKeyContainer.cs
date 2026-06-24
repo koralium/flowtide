@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
     {
         private readonly int _groupingKeyLength;
         internal readonly EventBatchData _data;
-        private DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _dataValueContainer;
 
         public BulkGroupValueKeyContainer(int groupingKeyLength, IMemoryAllocator memoryAllocator)
         {

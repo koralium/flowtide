@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
     internal class SumAggregation : IColumnBulkAggregation
     {
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
-        private DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _dataValueContainer;
 
         public SumAggregation(Func<EventBatchData, int, IDataValue> projectionFunction)
         {
