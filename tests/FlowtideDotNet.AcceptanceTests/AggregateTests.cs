@@ -86,7 +86,7 @@ namespace FlowtideDotNet.AcceptanceTests
                 FROM users o
                 GROUP BY companyId");
             await WaitForUpdate();
-            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Max(y => y.UserKey) });
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Max = x.Max(y => y.UserKey) });
             AssertCurrentDataEqual(expected);
         }
 
