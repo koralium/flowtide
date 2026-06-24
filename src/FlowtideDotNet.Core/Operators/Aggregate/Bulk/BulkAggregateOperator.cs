@@ -396,7 +396,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     iterations!.InsertStaticRange(iterations.Count, m_currentIteration, currentLeaf.keys.Count);
 
                     // Current leaf have data sorted already, so no need to sort, take data and search in persisted tree to get states
-                    // TODO: Fix row references and indices
                     await _treeBulkSearch.Start(_watermarkRowReferences, currentLeaf.keys.Count, _watermarkIndices);
 
                     while (await _treeBulkSearch.MoveNextLeaf())
@@ -765,7 +764,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _isDeleted[i] = false;
             }
             
-            // TODO: Might need to handle deleted rows here, if valueSent is set, output directly
             var mutator = new BulkAggregateMutator(
                 _measures, 
                 data.Weights, 
