@@ -79,6 +79,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         {
             public void GetSizePrefixSum(BulkGroupValueRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
             {
+                var columns = keys[0].batch.GetColumns_Unsafe();
+                for (int i = 0; i < columns.Length; i++)
+                {
+                    columns[i].GetPrefixSumByteSizes(indices, sizes);
+                }
             }
 
             public GenericWriteOperation Process(BulkGroupValueRowReference key, bool exists, in int existing, ref int incoming, int sortedIndex)
