@@ -180,6 +180,48 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task BulkAggregateMaxWithUpdatesAndDeletes()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, max(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+            
+            // Check initial state
+            var expected1 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Max = x.Max(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // 1. Add a user with a very high key to become the new max for their company
+            var firstUser = Users[0];
+            var companyId = firstUser.CompanyId;
+            DeleteUser(firstUser);
+
+            var newUser = new Entities.User { UserKey = 999999, CompanyId = companyId, FirstName = "New", LastName = "User" };
+            AddOrUpdateUser(newUser);
+
+            // 2. Delete users who currently hold the maximum value in their companies
+            var groupings = Users.GroupBy(x => x.CompanyId).ToList();
+            foreach (var group in groupings.Take(3))
+            {
+                var maxVal = group.Max(x => x.UserKey);
+                var maxUsers = group.Where(x => x.UserKey == maxVal).ToList();
+                foreach (var mu in maxUsers)
+                {
+                    DeleteUser(mu);
+                }
+            }
+
+            await WaitForUpdate();
+
+            var expected2 = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Max = x.Max(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        [Fact]
         public async Task AggregateCountDistinct()
         {
             GenerateData();
