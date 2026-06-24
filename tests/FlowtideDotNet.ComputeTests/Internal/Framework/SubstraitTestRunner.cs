@@ -206,8 +206,8 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 SharedGroupValueTree? sharedTree = null;
                 if (measure is ISharedTreeColumnAggregation sharedMeasure && sharedMeasure.SupportsSharedTree)
                 {
-                    sharedTree = new SharedGroupValueTree("sharedtree", sharedMeasure.ValueProjection, null, sharedMeasure.IgnoreNulls);
-                    var bTree = await stateClient.GetOrCreateTree(sharedTree.TreeName,
+                    var sharedTreeName = "sharedtree";
+                    var bTree = await stateClient.GetOrCreateTree(sharedTreeName,
                         new BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                         {
                             Comparer = new BulkMinInsertComparer(0),
@@ -217,8 +217,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                             MemoryAllocator = GlobalMemoryManager.Instance,
                             UsePreviousPointers = true
                         });
-                    sharedTree.Tree = bTree;
-                    sharedTree.BulkInserter = bTree.CreateBulkInserter();
+                    sharedTree = new SharedGroupValueTree("sharedtree", sharedMeasure.ValueProjection, bTree, bTree.CreateBulkInserter(), null, sharedMeasure.IgnoreNulls);
                     sharedTree.BindMeasure(sharedMeasure);
                     sharedMeasure.BindSharedTree(sharedTree.Tree, 0);
                     sharedMeasure.SetGroupMapping(new int[parsedTest.InputData.Count]);
