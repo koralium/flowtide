@@ -957,5 +957,213 @@ namespace FlowtideDotNet.AcceptanceTests
                 });
             AssertCurrentDataEqual(expected2);
         }
+
+        /// <summary>
+        /// Tests that weight accumulation is correct at group boundaries in OnRecieve.
+        /// When a batch contains deletes (weight=-1) for one company and inserts (weight=+1)
+        /// for a different company, after sorting by companyId, the group boundary transition
+        /// must correctly initialize the weight counter for the new group.
+        /// Bug scenario: if the previous group's representative row has weight=-1,
+        /// the next group's weight counter could be initialized to -1 instead of +1.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSumWithCrossGroupDeletesAndInserts()
+        {
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, sum(userkey)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            // Verify initial state
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // Now create a scenario with cross-group deletes and inserts in the same batch.
+            // Delete ALL users from one company, and add new users to a DIFFERENT company.
+            // This ensures the batch has both weight=-1 and weight=+1 rows for different groups.
+            var companiesWithUsers = Users
+                .Where(x => x.CompanyId != null)
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            if (companiesWithUsers.Count >= 2)
+            {
+                var companyToDelete = companiesWithUsers[0];
+                var companyToAddTo = companiesWithUsers[companiesWithUsers.Count - 1];
+
+                // Delete all users from the first company (sorted alphabetically)
+                foreach (var user in companyToDelete.ToList())
+                {
+                    DeleteUser(user);
+                }
+
+                // Add new users to the last company (sorted alphabetically)
+                // These will be in the same batch as the deletes
+                for (int i = 0; i < 5; i++)
+                {
+                    AddOrUpdateUser(new Entities.User
+                    {
+                        UserKey = 70000 + i,
+                        CompanyId = companyToAddTo.Key,
+                        FirstName = $"CrossGroup{i}",
+                        LastName = "Test",
+                        Visits = 5
+                    });
+                }
+            }
+
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        /// <summary>
+        /// Tests min aggregation with cross-group deletes and inserts.
+        /// Similar to the sum variant, but exercises the stateful (shared tree) path.
+        /// Deletes all users from one company and adds users to another company in
+        /// the same batch, which creates mixed weight=-1 and weight=+1 rows at
+        /// group boundaries.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMinWithCrossGroupDeletesAndInserts()
+        {
+            SourceImmutable();
+            GenerateData(100);
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, min(userkey)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            // Verify initial state
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // Cross-group mutation: delete from one company, insert to another
+            var companiesWithUsers = Users
+                .Where(x => x.CompanyId != null)
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .ToList();
+
+            if (companiesWithUsers.Count >= 2)
+            {
+                var companyToDelete = companiesWithUsers[0];
+                var companyToAddTo = companiesWithUsers[companiesWithUsers.Count - 1];
+
+                // Delete all users from the first company
+                foreach (var user in companyToDelete.ToList())
+                {
+                    DeleteUser(user);
+                }
+
+                // Add users with very low keys to the last company
+                for (int i = 0; i < 3; i++)
+                {
+                    AddOrUpdateUser(new Entities.User
+                    {
+                        UserKey = -(500 + i),
+                        CompanyId = companyToAddTo.Key,
+                        FirstName = $"CrossMin{i}",
+                        LastName = "Test"
+                    });
+                }
+            }
+
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        /// <summary>
+        /// Targeted test for the weight counter initialization bug at group boundaries (line 723).
+        /// Uses only manually-created users (no GenerateData) to ensure exact control over 
+        /// batch contents and sort order.
+        /// Sets up: company "aaa_test" with 1 user and company "zzz_test" with 1 user.
+        /// Delta: insert to "aaa_test" (weight=+1), delete from "zzz_test" (weight=-1).
+        /// After sorting: "aaa_test" first. Bug: "zzz_test" weight counter initialized from 
+        /// "aaa_test"'s representative (+1) instead of "zzz_test"'s first row (-1).
+        /// Group weight becomes 1+1=2 instead of 1-1=0, so group survives incorrectly.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateWeightAtGroupBoundaryDeletion()
+        {
+            // Create exactly 2 users in 2 different companies - no random data
+            var userA = new Entities.User
+            {
+                UserKey = 50001,
+                CompanyId = "aaa_test",
+                FirstName = "UserA",
+                LastName = "Test"
+            };
+            var userZ = new Entities.User
+            {
+                UserKey = 50002,
+                CompanyId = "zzz_test",
+                FirstName = "UserZ",
+                LastName = "Test"
+            };
+            AddUser(userA);
+            AddUser(userZ);
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, sum(userkey)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            // Verify both companies appear
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+            AssertCurrentDataEqual(expected1);
+
+            // Delta batch: insert to "aaa_test" (weight=+1) then delete from "zzz_test" (weight=-1)
+            // Both in the same batch. After sorting by companyId, aaa_test sorts before zzz_test.
+            AddOrUpdateUser(new Entities.User
+            {
+                UserKey = 50003,
+                CompanyId = "aaa_test",
+                FirstName = "NewA",
+                LastName = "Test"
+            });
+            DeleteUser(userZ);  // Only user in zzz_test - group should be deleted
+
+            await WaitForUpdate();
+
+            // zzz_test should be gone; aaa_test should have 2 users
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+            AssertCurrentDataEqual(expected2);
+        }
     }
 }
