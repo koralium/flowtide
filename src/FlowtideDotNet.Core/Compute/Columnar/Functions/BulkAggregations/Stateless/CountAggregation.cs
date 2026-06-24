@@ -36,8 +36,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             }
             else if (aggregateFunction.Arguments.Count == 1)
             {
-                
-                var argument = aggregateFunction.Arguments[0];
                 var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
                 return new CountAggregationWithArg(compiledValue);
             }
