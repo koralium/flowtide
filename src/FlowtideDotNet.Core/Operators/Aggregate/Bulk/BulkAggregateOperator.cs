@@ -720,7 +720,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             });
                             uniqueCounter++;
 
-                            weightCounter = data.Weights[sortedIndex];
+                            weightCounter = data.Weights[_groupedSortIndices[i]];
                             lastTag = _duplicateTags[i];
                             uniqueIndex = i;
                         }

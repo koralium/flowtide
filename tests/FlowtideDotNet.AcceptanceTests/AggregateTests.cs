@@ -1100,13 +1100,17 @@ namespace FlowtideDotNet.AcceptanceTests
 
         /// <summary>
         /// Targeted test for the weight counter initialization bug at group boundaries (line 723).
-        /// Uses only manually-created users (no GenerateData) to ensure exact control over 
-        /// batch contents and sort order.
+        /// Uses SourceImmutable to force deletes and inserts into the same batch (no normalization,
+        /// no 50ms polling split). 
         /// Sets up: company "aaa_test" with 1 user and company "zzz_test" with 1 user.
-        /// Delta: insert to "aaa_test" (weight=+1), delete from "zzz_test" (weight=-1).
-        /// After sorting: "aaa_test" first. Bug: "zzz_test" weight counter initialized from 
-        /// "aaa_test"'s representative (+1) instead of "zzz_test"'s first row (-1).
-        /// Group weight becomes 1+1=2 instead of 1-1=0, so group survives incorrectly.
+        /// On GenerateData, the immutable source retracts old data and inserts new data in one batch.
+        /// After deleting zzz_test's only user and adding to aaa_test, the batch contains:
+        /// - Old aaa_test user retracted (weight=-1)
+        /// - Old zzz_test user retracted (weight=-1)  
+        /// - New aaa_test users inserted (weight=+1 each)
+        /// After sorting by companyId, groups interleave. The weight counter at group boundaries
+        /// could be initialized from the previous group's representative weight instead of the
+        /// current group's first row weight.
         /// </summary>
         [Fact]
         public async Task BulkAggregateWeightAtGroupBoundaryDeletion()
@@ -1129,6 +1133,8 @@ namespace FlowtideDotNet.AcceptanceTests
             AddUser(userA);
             AddUser(userZ);
 
+            SourceImmutable();
+
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
@@ -1145,8 +1151,11 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
             AssertCurrentDataEqual(expected1);
 
-            // Delta batch: insert to "aaa_test" (weight=+1) then delete from "zzz_test" (weight=-1)
-            // Both in the same batch. After sorting by companyId, aaa_test sorts before zzz_test.
+            // Delete the only user from zzz_test (group should be removed)
+            // and add a new user to aaa_test
+            // With SourceImmutable, the next GenerateData/WaitForUpdate will send
+            // the full new snapshot with both retractions and insertions in one batch.
+            DeleteUser(userZ);
             AddOrUpdateUser(new Entities.User
             {
                 UserKey = 50003,
@@ -1154,8 +1163,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 FirstName = "NewA",
                 LastName = "Test"
             });
-            DeleteUser(userZ);  // Only user in zzz_test - group should be deleted
 
+            GenerateData(0);
             await WaitForUpdate();
 
             // zzz_test should be gone; aaa_test should have 2 users
