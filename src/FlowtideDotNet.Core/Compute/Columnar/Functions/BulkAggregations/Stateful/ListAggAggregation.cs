@@ -119,7 +119,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
             for (int i = 0; i < len; i++)
             {
-                var physicalIndex = sortedByGroupIndices[i];
                 rowReferences[i] = new BulkGroupValueRowReference()
                 {
                     batch = groupingBatch,
