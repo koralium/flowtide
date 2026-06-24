@@ -18,6 +18,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
@@ -26,11 +27,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         public string TreeName { get; }
         public Func<EventBatchData, int, IDataValue> ProjectionFunction { get; }
 
-        public IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> Tree { get; set; }
-        public IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> BulkInserter { get; set; }
+        public IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> Tree { get; }
+        public IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> BulkInserter { get; }
 
         public Func<EventBatchData, int, bool>? Filter { get; }
-        private Column _projectedDataColumn;
+        private Column? _projectedDataColumn;
         private readonly List<ISharedTreeColumnAggregation> _boundMeasures = new();
         private BatchSorter? _batchSorter;
         private int[] _indirectBuffer = Array.Empty<int>();
@@ -39,9 +40,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private BulkGroupValueRowReference[] _rowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
         private int[] _weightArrayBuffer = Array.Empty<int>();
 
-        public SharedGroupValueTree(string treeName, Func<EventBatchData, int, IDataValue> projectionFunction, Func<EventBatchData, int, bool>? filter = null, bool ignoreNulls = true)
+        public SharedGroupValueTree(
+            string treeName, 
+            Func<EventBatchData, int, IDataValue> projectionFunction,
+            IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> tree,
+            IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> bulkInserter,
+            Func<EventBatchData, int, bool>? filter = null, 
+            bool ignoreNulls = true)
         {
             TreeName = treeName;
+            Tree = tree;
+            BulkInserter = bulkInserter;
             ProjectionFunction = projectionFunction;
             Filter = filter;
             _ignoreNulls = ignoreNulls;
@@ -64,6 +73,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, ReadOnlySpan<int> sortedByGroupIndices, EventBatchData incoming)
         {
+            Debug.Assert(_projectedDataColumn != null);
+
             int len = sortedByGroupIndices.Length;
 
             if (_rowReferencesBuffer.Length < len)

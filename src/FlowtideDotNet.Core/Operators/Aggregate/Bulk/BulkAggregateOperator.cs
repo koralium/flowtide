@@ -910,8 +910,9 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var treeKey = new SharedTreeKey(sharedMeasure.ValueExpression, filter, sharedMeasure.IgnoreNulls);
                     if (!_sharedTrees.TryGetValue(treeKey, out var sharedTree))
                     {
-                        sharedTree = new SharedGroupValueTree($"sharedtree_{i}", sharedMeasure.ValueProjection, _measureFilters[i], sharedMeasure.IgnoreNulls);
-                        var bTree = await stateManagerClient.GetOrCreateTree(sharedTree.TreeName,
+                        var sharedTreeName = $"sharedtree_{i}";
+                        
+                        var bTree = await stateManagerClient.GetOrCreateTree(sharedTreeName,
                             new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                             {
                                 Comparer = new BulkMinInsertComparer(m_groupValues.Length),
@@ -921,8 +922,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                                 MemoryAllocator = MemoryAllocator,
                                 UsePreviousPointers = true
                             });
-                        sharedTree.Tree = bTree;
-                        sharedTree.BulkInserter = bTree.CreateBulkInserter();
+
+                        sharedTree = new SharedGroupValueTree(sharedTreeName, sharedMeasure.ValueProjection, bTree, bTree.CreateBulkInserter(), _measureFilters[i], sharedMeasure.IgnoreNulls);
                         _sharedTrees[treeKey] = sharedTree;
                     }
                     sharedTree.BindMeasure(sharedMeasure);
