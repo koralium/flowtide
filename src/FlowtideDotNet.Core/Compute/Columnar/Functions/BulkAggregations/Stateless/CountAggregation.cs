@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
 
     internal class CountAggregation : IColumnBulkAggregation
     {
-        private DataValueContainer _valueContainer;
+        private readonly DataValueContainer _valueContainer;
 
         public CountAggregation()
         {
