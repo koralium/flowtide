@@ -28,7 +28,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    public class StringAggAggregation : ISharedTreeColumnAggregation
+    internal class StringAggAggregation : ISharedTreeColumnAggregation
     {
         private readonly Expression _valueExpression;
         private readonly Func<EventBatchData, int, IDataValue> _projectionFunction;

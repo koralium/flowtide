@@ -25,7 +25,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    public class CountDistinctAggregation : ISharedTreeColumnAggregation
+    internal class CountDistinctAggregation : ISharedTreeColumnAggregation
     {
         private readonly Expression _valueExpression;
         private readonly Func<EventBatchData, int, IDataValue> _projectionFunction;
