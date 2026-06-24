@@ -42,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         private static readonly StructHeader AvgStateHeader = StructHeader.Create("sum", "count");
 
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
-        private DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _dataValueContainer;
 
         public AvgAggregation(Func<EventBatchData, int, IDataValue> projectionFunction)
         {
