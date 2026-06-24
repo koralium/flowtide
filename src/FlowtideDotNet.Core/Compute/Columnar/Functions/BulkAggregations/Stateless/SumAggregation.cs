@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
                 }
                 else if (value.Type == ArrowTypeId.Int64)
                 {
-                    var count = currentState.AsDecimal + (value.AsLong * weight);
+                    var count = currentState.AsDecimal + ((decimal)value.AsLong * weight);
                     currentState._type = ArrowTypeId.Decimal128;
                     currentState._decimalValue = new DecimalValue(count);
                 }
