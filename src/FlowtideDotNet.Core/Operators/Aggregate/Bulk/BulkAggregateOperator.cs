@@ -89,7 +89,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private IBPlusTreeBulkInserter<ColumnRowReference, int, AggregateKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTreeBulkInserter;
         private IBplusTreeBulkSearch<ColumnRowReference, ColumnAggregateStateReference, AggregateKeyStorageContainer, ColumnAggregateValueContainer, AggregateSearchComparer>? _treeBulkSearch;
         private IObjectState<bool>? m_hasSentInitialData;
-        private readonly Dictionary<string, SharedGroupValueTree> _sharedTrees = new();
+        private readonly Dictionary<SharedTreeKey, SharedGroupValueTree> _sharedTrees = new();
 
         private ColumnStore.Column[] outputColumns;
         private PrimitiveList<int>? weights;
@@ -902,9 +902,13 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 if (_measures[i] is ISharedTreeColumnAggregation sharedMeasure && sharedMeasure.SupportsSharedTree)
                 {
-                    var filter = _aggregateRelation.Measures[i].Filter;
-                    var keyString = sharedMeasure.ValueExpression.ToString() + (filter != null ? "_" + filter.ToString() : "") + "_" + sharedMeasure.IgnoreNulls.ToString();
-                    if (!_sharedTrees.TryGetValue(keyString, out var sharedTree))
+                    Expression? filter = default;
+                    if (_aggregateRelation.Measures != null)
+                    {
+                        filter = _aggregateRelation.Measures[i].Filter;
+                    }
+                    var treeKey = new SharedTreeKey(sharedMeasure.ValueExpression, filter, sharedMeasure.IgnoreNulls);
+                    if (!_sharedTrees.TryGetValue(treeKey, out var sharedTree))
                     {
                         sharedTree = new SharedGroupValueTree($"sharedtree_{i}", sharedMeasure.ValueProjection, _measureFilters[i], sharedMeasure.IgnoreNulls);
                         var bTree = await stateManagerClient.GetOrCreateTree(sharedTree.TreeName,
@@ -919,7 +923,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             });
                         sharedTree.Tree = bTree;
                         sharedTree.BulkInserter = bTree.CreateBulkInserter();
-                        _sharedTrees[keyString] = sharedTree;
+                        _sharedTrees[treeKey] = sharedTree;
                     }
                     sharedTree.BindMeasure(sharedMeasure);
                     sharedMeasure.BindSharedTree(sharedTree.Tree, m_groupValues.Length);
