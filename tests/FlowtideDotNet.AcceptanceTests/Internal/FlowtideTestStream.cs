@@ -518,28 +518,6 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void AssertCurrentDataEqual<T>(IEnumerable<T> data)
         {
             var expectedBatch = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
-            
-            var expectedRows = new List<string>();
-            for (int i = 0; i < Math.Min(20, expectedBatch.Count); i++)
-            {
-                var r = new List<string>();
-                for (int c = 0; c < expectedBatch.Columns.Count; c++)
-                {
-                    r.Add(expectedBatch.Columns[c].GetValueAt(i, default)?.ToString() ?? "null");
-                }
-                expectedRows.Add($"({string.Join(",", r)})");
-            }
-            
-            var actualRows = new List<string>();
-            for (int i = 0; i < Math.Min(20, _actualData!.Count); i++)
-            {
-                var r = new List<string>();
-                for (int c = 0; c < _actualData.Columns.Count; c++)
-                {
-                    r.Add(_actualData.Columns[c].GetValueAt(i, default)?.ToString() ?? "null");
-                }
-                actualRows.Add($"({string.Join(",", r)})");
-            }
             EventBatchAssertion.Equal(expectedBatch, _actualData!);
         }
 
