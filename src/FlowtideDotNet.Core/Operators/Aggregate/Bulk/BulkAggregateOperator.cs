@@ -275,7 +275,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     for (int m = 0; m < _measures.Length; m++)
                     {
                         var measureColIndex = groupLength + m;
-                        var pageStart = outputColumns[measureColIndex].Count;
                         await _measures[m].FetchValuesAsync(currentLeaf.keys._data.GetColumns_Unsafe(), currentLeaf.keys.Count, outputColumns[measureColIndex]);
 
                         var stateCol = currentLeaf.values._eventBatch.GetColumn(m);
