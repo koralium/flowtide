@@ -43,11 +43,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
 
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
         private readonly DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _sumContainer;
 
         public AvgAggregation(Func<EventBatchData, int, IDataValue> projectionFunction)
         {
             this.projectionFunction = projectionFunction;
             _dataValueContainer = new DataValueContainer();
+            _sumContainer = new DataValueContainer();
         }
 
         public Task CommitAsync()
@@ -59,18 +61,18 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         {
             groupState.GetValue(_dataValueContainer);
 
-            IDataValue currentSum = NullValue.Instance;
             long currentCount = 0;
 
             if (_dataValueContainer.Type == ArrowTypeId.Struct)
             {
                 var structValue = _dataValueContainer.AsStruct;
-                currentSum = structValue.GetAt(0);
+                structValue.GetAt(0, _sumContainer);
                 currentCount = structValue.GetAt(1).AsLong;
             }
-
-            var sumContainer = new DataValueContainer();
-            currentSum.CopyToContainer(sumContainer);
+            else
+            {
+                _sumContainer._type = ArrowTypeId.Null;
+            }
 
             for (int i = 0; i < indices.Length; i++)
             {
@@ -78,19 +80,19 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
                 if (value.Type != ArrowTypeId.Null)
                 {
                     var weight = weights[indices[i]];
-                    SumAggregation.DoSum(value, sumContainer, weight);
+                    SumAggregation.DoSum(value, _sumContainer, weight);
                     currentCount += weight;
                 }
             }
 
-            if (currentCount <= 0 || sumContainer.Type == ArrowTypeId.Null)
+            if (currentCount <= 0 || _sumContainer.Type == ArrowTypeId.Null)
             {
                 _dataValueContainer._type = ArrowTypeId.Null;
             }
             else
             {
                 var countVal = new Int64Value(currentCount);
-                var structVal = new StructValue(AvgStateHeader, sumContainer, countVal);
+                var structVal = new StructValue(AvgStateHeader, _sumContainer, countVal);
                 _dataValueContainer._structValue = structVal;
                 _dataValueContainer._type = ArrowTypeId.Struct;
             }
