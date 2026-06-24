@@ -1174,5 +1174,82 @@ namespace FlowtideDotNet.AcceptanceTests
                 .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
             AssertCurrentDataEqual(expected2);
         }
+
+        [Fact]
+        public async Task BulkListAggWithCrossGroupDeletesAndInserts()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "aaa_co", FirstName = "Alice", LastName = "A" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "aaa_co", FirstName = "Bob", LastName = "A" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "zzz_co", FirstName = "Zara", LastName = "Z" });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "zzz_co", FirstName = "Zoe", LastName = "Z" });
+
+            SourceImmutable();
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, list_agg(firstname)
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
+            AssertCurrentDataEqual(expected1);
+
+            DeleteUser(Users.First(u => u.UserKey == 3)); // Remove Zara from zzz_co
+            AddOrUpdateUser(new Entities.User { UserKey = 5, CompanyId = "aaa_co", FirstName = "Charlie", LastName = "A" });
+
+            GenerateData(0);
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
+            AssertCurrentDataEqual(expected2);
+        }
+
+        [Fact]
+        public async Task BulkStringAggWithCrossGroupDeletesAndInserts()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "aaa_co", FirstName = "Alice", LastName = "A" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "aaa_co", FirstName = "Bob", LastName = "A" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "zzz_co", FirstName = "Zara", LastName = "Z" });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "zzz_co", FirstName = "Zoe", LastName = "Z" });
+
+            SourceImmutable();
+
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    companyId, string_agg(firstname, ',')
+                FROM users
+                GROUP BY companyId
+                ", ignoreSameDataCheck: true);
+            await WaitForUpdate();
+
+            // Verify initial output
+            var expected1 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Names = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n)) });
+            AssertCurrentDataEqual(expected1);
+
+            DeleteUser(Users.First(u => u.UserKey == 3)); // Remove Zara from zzz_co
+            AddOrUpdateUser(new Entities.User { UserKey = 5, CompanyId = "aaa_co", FirstName = "Charlie", LastName = "A" });
+
+            GenerateData(0);
+            await WaitForUpdate();
+
+            var expected2 = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Names = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n)) });
+            AssertCurrentDataEqual(expected2);
+        }
     }
 }

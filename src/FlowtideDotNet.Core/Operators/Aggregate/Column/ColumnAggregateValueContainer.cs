@@ -192,10 +192,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public void Update(int index, ColumnAggregateStateReference value)
         {
-            //for (int i = 0; i < columnCount; i++)
-            //{
-            //    _eventBatch.Columns[i].UpdateAt(index, value.referenceBatch.Columns[i].GetValueAt(value.RowIndex, default));
-            //}
             _weights.Update(index, value.weight);
             _previousValueSent.Update(index, value.valueSent);
         }
