@@ -481,7 +481,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
                     InitOutputColumns();
                 }
-                Console.WriteLine($"[WATERMARK INC] processed {totalProcessed} keys from temporary tree");
             }
 
             await _temporaryTree.Clear();
