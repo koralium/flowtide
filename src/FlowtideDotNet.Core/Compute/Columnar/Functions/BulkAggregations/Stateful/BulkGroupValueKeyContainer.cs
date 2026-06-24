@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
     public class BulkGroupValueKeyContainer : IKeyContainer<BulkGroupValueRowReference>
     {
         private readonly int _groupingKeyLength;
-        internal EventBatchData _data;
+        internal readonly EventBatchData _data;
         private DataValueContainer _dataValueContainer;
 
         public BulkGroupValueKeyContainer(int groupingKeyLength, IMemoryAllocator memoryAllocator)
