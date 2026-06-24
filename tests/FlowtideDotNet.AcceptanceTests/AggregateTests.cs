@@ -616,6 +616,46 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task MinAggregateWithDifferentFilters()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    userKey, min(orderkey) FILTER (WHERE orderkey % 2 = 0), min(orderkey) FILTER (WHERE orderkey % 3 = 0)
+                FROM orders
+                GROUP BY userkey
+                ", ignoreSameDataCheck: true);
+
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Orders
+                .GroupBy(x => x.UserKey)
+                .Select(x =>
+                {
+                    var minSequence = x.Where(x => x.OrderKey % 2 == 0).ToList();
+                    var minSequence2 = x.Where(x => x.OrderKey % 3 == 0).ToList();
+                    int? output = null;
+                    if (minSequence.Count > 0)
+                    {
+                        output = minSequence.Min(y => y.OrderKey);
+                    }
+                    int? output2 = null;
+                    if (minSequence2.Count > 0)
+                    {
+                        output2 = minSequence2.Min(y => y.OrderKey);
+                    }
+                    return new
+                    {
+                        UserKey = x.Key,
+                        MinVal = output,
+                        MinVal2 = output2
+                    };
+                })
+            );
+        }
+
+        [Fact]
         public async Task MinByAggregate()
         {
             GenerateData();
