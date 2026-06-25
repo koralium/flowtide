@@ -127,7 +127,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    CASE WHEN active THEN named_struct('company', companyId, 'visits', visits, 'manager', managerkey)
+                    CASE WHEN active THEN named_struct('company', companyId, 'visits', visits, 'manager', managerKey)
                     ELSE NULL
                     END AS s
                 FROM users");
