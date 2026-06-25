@@ -641,7 +641,59 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return 0;
                 }
-                return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
+
+                // Check null values in both columns before comparing data.
+                // Null values are tracked via validity bitmaps in Column,
+                // but the data column's CompareTo(IDataColumn, ...) does not
+                // check them, so we must handle nulls here.
+                bool thisIsNull = false;
+                bool otherIsNull = false;
+
+                if (_nullCounter > 0)
+                {
+                    thisIsNull = !_validityList!.Get(thisIndex);
+                }
+
+                int resolvedOtherIndex = otherIndex;
+                IDataColumn resolvedOtherDataColumn;
+                Column? resolvedOtherColumn = null;
+
+                if (otherColumn is Column otherCol)
+                {
+                    resolvedOtherDataColumn = otherCol._dataColumn!;
+                    resolvedOtherColumn = otherCol;
+                }
+                else if (otherColumn is ColumnWithOffset otherOffset)
+                {
+                    resolvedOtherIndex = otherOffset.Offsets.Get(otherIndex);
+                    resolvedOtherDataColumn = otherOffset.InnerColumn.DataColumn!;
+                    resolvedOtherColumn = otherOffset.InnerColumn as Column;
+
+                    if (resolvedOtherIndex == ColumnWithOffset.NullValueIndex)
+                    {
+                        otherIsNull = true;
+                    }
+                }
+                else
+                {
+                    // Fallback for other IColumn implementations
+                    var thisVal = GetValueAt(thisIndex, default);
+                    var otherVal = otherColumn.GetValueAt(otherIndex, default);
+                    return Comparers.DataValueComparer.CompareTo(thisVal, otherVal);
+                }
+
+                if (!otherIsNull && resolvedOtherColumn != null && resolvedOtherColumn._nullCounter > 0)
+                {
+                    otherIsNull = !resolvedOtherColumn._validityList!.Get(resolvedOtherIndex);
+                }
+
+                if (thisIsNull || otherIsNull)
+                {
+                    if (thisIsNull && otherIsNull) return 0;
+                    return thisIsNull ? -1 : 1; // null < non-null
+                }
+
+                return _dataColumn!.CompareTo(resolvedOtherDataColumn, thisIndex, resolvedOtherIndex);
             }
             // Check if any of the columns are unions, if so fetch the value and compare it
             else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
@@ -651,7 +703,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
-                return _type - otherColumn.Type;
+                return GetTypeAt(thisIndex, default) - otherColumn.GetTypeAt(otherIndex, default);
             }
         }
 
@@ -963,7 +1015,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (otherColumn is Column column)
             {
-                
+
                 if (CompareOtherColumnType(column))
                 {
                     if (_type == ArrowTypeId.Null)
@@ -1035,7 +1087,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             _dataColumn = CreateArrayByType(otherColumn.Type);
                         }
-                        
+
                         _type = otherColumn.Type;
 
                         if (_type == ArrowTypeId.Union)
