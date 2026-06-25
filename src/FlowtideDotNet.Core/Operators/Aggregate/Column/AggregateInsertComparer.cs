@@ -132,6 +132,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
                 }
                 return;
             }
+            if (sortedLookup.Length == 0)
+            {
+                // No keys routed to this leaf (e.g. a zero-row batch). Nothing to search.
+                return;
+            }
             var firstIndex = sortedLookup[0];
 
             var incomingBatch = keys[firstIndex].referenceBatch.Columns;

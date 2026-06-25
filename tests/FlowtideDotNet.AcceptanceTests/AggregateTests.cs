@@ -291,6 +291,40 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        /// <summary>
+        /// An empty batch must not crash a grouped bulk aggregate. Empty batches are normally absorbed
+        /// by the upstream normalization operator, but an immutable source has no normalization step, so
+        /// the empty batch reaches the operator directly. With dataCount == 0 the operator applies a
+        /// zero-row batch to the persisted aggregate tree; AggregateInsertComparer.FindBoundriesBulk then
+        /// indexes sortedLookup[0] on an empty span and throws IndexOutOfRangeException
+        /// (BulkMinInsertComparer guards this case, but AggregateInsertComparer did not).
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateEmptyBatchDoesNotCrash()
+        {
+            SourceImmutable();
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "a" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "b" });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(userkey)
+                FROM users o
+                GROUP BY companyId");
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+
+            // Push an empty batch through the operator. On the buggy operator this throws
+            // IndexOutOfRangeException in AggregateInsertComparer.FindBoundriesBulk during OnRecieve.
+            WaitForUpdateDoesNotRequireDataChange();
+            await Trigger("send_empty_batch", "users");
+            await WaitForUpdate();
+
+            // The empty batch changes nothing.
+            AssertCurrentDataEqual(expected);
+        }
+
         [Fact]
         public async Task AggregateCountDistinct()
         {
