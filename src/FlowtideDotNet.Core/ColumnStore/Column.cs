@@ -703,7 +703,7 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
-                return GetTypeAt(thisIndex, default) - otherColumn.GetTypeAt(otherIndex, default); 
+                return GetTypeAt(thisIndex, default) - otherColumn.GetTypeAt(otherIndex, default);
             }
         }
 

@@ -218,5 +218,32 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(columnHash, valueHash);
         }
+
+        [Fact]
+        public void CompareTypedColumnToAllNullColumnOrdersNullFirst()
+        {
+            using Column typedColumn = new Column(GlobalMemoryManager.Instance);
+            typedColumn.Add(new Int64Value(1));
+
+            using Column nullColumn = new Column(GlobalMemoryManager.Instance);
+            nullColumn.Add(NullValue.Instance);
+
+            Assert.True(typedColumn.CompareTo(nullColumn, 0, 0) > 0);
+            Assert.True(nullColumn.CompareTo(typedColumn, 0, 0) < 0);
+        }
+
+        [Fact]
+        public void CompareNullEntryToAllNullColumnReturnsEqual()
+        {
+            using Column typedColumn = new Column(GlobalMemoryManager.Instance);
+            typedColumn.Add(new Int64Value(1));
+            typedColumn.Add(NullValue.Instance);
+
+            using Column nullColumn = new Column(GlobalMemoryManager.Instance);
+            nullColumn.Add(NullValue.Instance);
+
+            Assert.Equal(0, typedColumn.CompareTo(nullColumn, 1, 0));
+            Assert.Equal(0, nullColumn.CompareTo(typedColumn, 0, 1));
+        }
     }
 }
