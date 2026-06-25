@@ -641,6 +641,42 @@ namespace FlowtideDotNet.Core.ColumnStore
                 {
                     return 0;
                 }
+
+                // Check null values in both columns before comparing data.
+                // Null values are tracked via validity bitmaps in Column,
+                // but the data column's CompareTo(IDataColumn, ...) does not
+                // check them, so we must handle nulls here.
+                bool thisIsNull = false;
+                bool otherIsNull = false;
+
+                if (_nullCounter > 0)
+                {
+                    thisIsNull = !_validityList!.Get(thisIndex);
+                }
+
+                if (otherColumn is Column otherCol)
+                {
+                    if (otherCol._nullCounter > 0)
+                    {
+                        otherIsNull = !otherCol._validityList!.Get(otherIndex);
+                    }
+                }
+                else
+                {
+                    // For ColumnWithOffset or other IColumn implementations
+                    // where we cannot access the validity bitmap directly,
+                    // fall back to value-based comparison.
+                    var thisVal = GetValueAt(thisIndex, default);
+                    var otherVal = otherColumn.GetValueAt(otherIndex, default);
+                    return Comparers.DataValueComparer.CompareTo(thisVal, otherVal);
+                }
+
+                if (thisIsNull || otherIsNull)
+                {
+                    if (thisIsNull && otherIsNull) return 0;
+                    return thisIsNull ? -1 : 1; // null < non-null
+                }
+
                 return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
             }
             // Check if any of the columns are unions, if so fetch the value and compare it
@@ -963,7 +999,7 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             if (otherColumn is Column column)
             {
-                
+
                 if (CompareOtherColumnType(column))
                 {
                     if (_type == ArrowTypeId.Null)
@@ -1035,7 +1071,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             _dataColumn = CreateArrayByType(otherColumn.Type);
                         }
-                        
+
                         _type = otherColumn.Type;
 
                         if (_type == ArrowTypeId.Union)

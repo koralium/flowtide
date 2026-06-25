@@ -16,14 +16,25 @@ namespace FlowtideDotNet.AcceptanceTests
 {
     /// <summary>
     /// Tests for struct columns with nullable inner fields.
-    /// These tests exercise the B+ tree key lookup (FindIndex / SearchBoundries)
-    /// and comparison paths (Column.CompareTo) when struct column fields are null.
     /// 
     /// The bug: Column.CompareTo(IColumn otherColumn, thisIndex, otherIndex)
-    /// does not check validity bitmaps (null tracking) before delegating to
-    /// the data column's comparison. When struct fields are null, raw data values
-    /// are compared instead of being treated as nulls, which can cause incorrect
-    /// comparison results leading to duplicate key insertions in the B+ tree.
+    /// does not check validity bitmaps before delegating to the data column's
+    /// comparison. This is exposed when:
+    /// 1. The outer struct Column has _nullCounter > 0 (some null structs),
+    ///    which forces SearchBoundries to use BoundarySearch.SearchBoundriesForDataColumn
+    /// 2. The tree's inner data columns have MIXED null/non-null values (type is not
+    ///    ArrowTypeId.Null, _nullCounter > 0), which requires a non-null value
+    ///    to be inserted before a null value
+    /// 3. StructColumn.CompareTo with ReferenceStructValue calls
+    ///    _columns[i].CompareTo(IColumn, ...) for inner columns
+    /// 4. An inner column has null (raw data=0) compared to actual value 0,
+    ///    producing incorrect equality (0 == 0) instead of null &lt; 0
+    /// 
+    /// Key trigger conditions (ALL required):
+    /// - Null outer struct → _nullCounter > 0 on outer Column → SearchBoundriesForDataColumn
+    /// - Non-null struct with non-null inner field inserted BEFORE null inner field
+    ///   → inner Column type becomes Int64 with _nullCounter > 0
+    /// - Search for a struct with inner value = 0 (same raw data as null default)
     /// </summary>
     [Collection("Acceptance tests")]
     public class StructColumnNullFieldTests : FlowtideAcceptanceBase
@@ -33,269 +44,239 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// Test that selecting struct columns with nullable inner fields
-        /// produces the correct number of rows (no duplicates).
-        /// Uses SourceImmutable to skip normalization so data goes directly
-        /// into the sink's B+ tree via ColumnComparer.FindIndex.
+        /// Core bug reproduction test.
         /// 
-        /// The struct has a nullable field (visits) which can be null for some users.
-        /// If the B+ tree comparison doesn't handle null fields correctly,
-        /// rows with null struct fields will not match on lookup and
-        /// will be inserted as duplicates.
+        /// User insertion order matters for triggering the bug:
+        /// 1. Inactive user → null outer struct (forces _nullCounter > 0 on outer Column)
+        /// 2. Active user with visits=5 → non-null inner visits Column gets Int64 type
+        /// 3. Active user with visits=null → inner visits Column stays Int64, _nullCounter > 0
+        /// 4. Active user with visits=0 → search for raw value 0, same as null's default
+        /// 
+        /// Without the fix, when searching for {co1, 0} in a tree containing {co1, null},
+        /// the inner Column.CompareTo(IColumn, ...) compares raw data: null(0) == 0,
+        /// treating them as the same key. This causes FindIndex to return "found"
+        /// for {co1, null} when searching for {co1, 0}, merging distinct keys.
         /// </summary>
         [Fact]
-        public async Task SelectStructWithNullableFields()
+        public async Task StructWithNullVsZeroInnerField()
         {
-            SourceImmutable();
-            GenerateData(100);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    named_struct('id', userkey, 'visits', visits) AS s
-                FROM users");
-            await WaitForUpdate();
-
-            AssertCurrentDataEqual(Users.Select(x => new
-            {
-                s = new { id = x.UserKey, visits = x.Visits }
-            }));
-        }
-
-        /// <summary>
-        /// Test that struct columns with multiple nullable inner fields
-        /// are handled correctly. Uses multiple nullable fields to increase
-        /// the chance of exposing the null handling bug.
-        /// </summary>
-        [Fact]
-        public async Task SelectStructWithMultipleNullableFields()
-        {
-            SourceImmutable();
-            GenerateData(100);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    named_struct('id', userkey, 'visits', visits, 'manager', managerkey) AS s
-                FROM users");
-            await WaitForUpdate();
-
-            AssertCurrentDataEqual(Users.Select(x => new
-            {
-                s = new { id = x.UserKey, visits = x.Visits, manager = x.ManagerKey }
-            }));
-        }
-
-        /// <summary>
-        /// Test struct with nullable fields in a GROUP BY aggregation context.
-        /// The aggregate operator uses AggregateInsertComparer which also goes
-        /// through the same Column.CompareTo path for struct key columns.
-        /// Grouping by a struct that contains nullable fields exercises the
-        /// boundary search logic with null struct field values.
-        /// </summary>
-        [Fact]
-        public async Task AggregateWithStructKeyContainingNullableField()
-        {
-            SourceImmutable();
-            GenerateData(100);
-            await StartStream(@"
-                INSERT INTO output 
-                SELECT 
-                    named_struct('company', companyId, 'visits', visits) AS key,
-                    count(*) as cnt
-                FROM users
-                GROUP BY named_struct('company', companyId, 'visits', visits)
-                ", ignoreSameDataCheck: true);
-            await WaitForUpdate();
-
-            var expected = Users
-                .GroupBy(x => new { company = x.CompanyId, visits = x.Visits })
-                .OrderBy(x => x.Key.company)
-                .ThenBy(x => x.Key.visits)
-                .Select(x => new
-                {
-                    key = new { company = x.Key.company, visits = x.Key.visits },
-                    cnt = (long)x.Count()
-                });
-            AssertCurrentDataEqual(expected);
-        }
-
-        /// <summary>
-        /// Test that updating a user where the struct key contains a null field
-        /// properly finds and updates the existing row instead of inserting a duplicate.
-        /// This is the most direct test of the bug: if Column.CompareTo doesn't
-        /// handle nulls correctly, FindIndex returns "not found" for an existing key,
-        /// causing the tree to insert a duplicate.
-        /// </summary>
-        [Fact]
-        public async Task UpdateRowWithNullStructField()
-        {
-            // Create users with specific null patterns
+            // User 1: active=false -> null outer struct (forces _nullCounter > 0)
             AddUser(new Entities.User
             {
                 UserKey = 1,
                 FirstName = "Alice",
                 LastName = "Smith",
-                Visits = null,   // null field in struct
+                Visits = 5,
+                Active = false,
                 CompanyId = "co1"
             });
+            // User 2: active=true, visits=5 -> non-null struct with non-null visits
+            // CRITICAL: must be inserted BEFORE null visits so inner Column type
+            // becomes Int64 (not Null), enabling the raw data comparison path
             AddUser(new Entities.User
             {
                 UserKey = 2,
                 FirstName = "Bob",
                 LastName = "Jones",
-                Visits = 5,      // non-null field in struct
+                Visits = 5,
+                Active = true,
                 CompanyId = "co2"
             });
+            // User 3: active=true, visits=null -> non-null struct with null inner field
+            // Inner visits Column now has type=Int64, _nullCounter=1
             AddUser(new Entities.User
             {
                 UserKey = 3,
                 FirstName = "Carol",
                 LastName = "Davis",
-                Visits = null,   // null field in struct
-                CompanyId = null // null companyId too
+                Visits = null,      // null visits -> raw data = 0 in Int64Column
+                Active = true,
+                CompanyId = "co1"
+            });
+            // User 4: active=true, visits=0 -> non-null struct with visits=0
+            // When searching for this, raw data 0 matches null's raw data 0
+            AddUser(new Entities.User
+            {
+                UserKey = 4,
+                FirstName = "Dave",
+                LastName = "Evans",
+                Visits = 0,         // actual 0 -> raw data = 0 (same as null!)
+                Active = true,
+                CompanyId = "co1"
             });
 
             SourceImmutable();
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    named_struct('id', userkey, 'visits', visits) AS s,
-                    firstName
+                    CASE WHEN active THEN named_struct('company', companyId, 'visits', visits)
+                    ELSE NULL
+                    END AS s
                 FROM users");
             await WaitForUpdate();
 
-            // Verify initial state: 3 rows
+            // Expected: 4 distinct output values:
+            // 1. null (User 1, active=false)
+            // 2. {co2, 5} (User 2)
+            // 3. {co1, null} (User 3)
+            // 4. {co1, 0} (User 4) -- MUST be distinct from {co1, null}
+            //
+            // Without the fix: User 3 and User 4 merge because
+            // Column.CompareTo compares raw data: null(0) == 0
+            // -> only 3 rows, and {co1, 0} is lost
             AssertCurrentDataEqual(Users.Select(x => new
             {
-                s = new { id = x.UserKey, visits = x.Visits },
-                x.FirstName
-            }));
-
-            // Update a user - change firstName but keep the same struct key (with null visits)
-            AddOrUpdateUser(new Entities.User
-            {
-                UserKey = 1,
-                FirstName = "Alicia",  // changed
-                LastName = "Smith",
-                Visits = null,   // still null - same struct key
-                CompanyId = "co1"
-            });
-
-            await WaitForUpdate();
-
-            // Should still be 3 rows, not 4 (no duplicate)
-            AssertCurrentDataEqual(Users.Select(x => new
-            {
-                s = new { id = x.UserKey, visits = x.Visits },
-                x.FirstName
+                s = x.Active ? new { company = x.CompanyId, visits = x.Visits } : null
             }));
         }
 
         /// <summary>
-        /// Test with all-null struct fields to ensure the degenerate case works.
-        /// When all fields of a struct are null, the comparison must still
-        /// correctly identify equality.
+        /// Same bug pattern but with multiple nullable inner fields.
         /// </summary>
         [Fact]
-        public async Task SelectStructWithAllNullFields()
+        public async Task StructWithNullVsZeroMultipleInnerFields()
         {
-            // Create users where nullable fields will all be null
+            // Inactive user -> null outer struct
             AddUser(new Entities.User
             {
                 UserKey = 1,
                 FirstName = "Alice",
                 LastName = "Smith",
-                Visits = null,
-                ManagerKey = null,
-                CompanyId = null
+                Visits = 1,
+                ManagerKey = 1,
+                Active = false,
+                CompanyId = "co1"
             });
+            // Active user with non-null fields -> sets inner Column types to Int64
             AddUser(new Entities.User
             {
                 UserKey = 2,
                 FirstName = "Bob",
                 LastName = "Jones",
+                Visits = 5,
+                ManagerKey = 10,
+                Active = true,
+                CompanyId = "co1"
+            });
+            // Active user with null fields -> inner Columns have _nullCounter > 0
+            AddUser(new Entities.User
+            {
+                UserKey = 3,
+                FirstName = "Carol",
+                LastName = "Davis",
                 Visits = null,
                 ManagerKey = null,
-                CompanyId = null
+                Active = true,
+                CompanyId = "co1"
+            });
+            // Active user with zero fields -> raw data matches null's default
+            AddUser(new Entities.User
+            {
+                UserKey = 4,
+                FirstName = "Dave",
+                LastName = "Evans",
+                Visits = 0,
+                ManagerKey = 0,
+                Active = true,
+                CompanyId = "co1"
             });
 
             SourceImmutable();
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    userkey,
-                    named_struct('visits', visits, 'manager', managerkey) AS s
+                    CASE WHEN active THEN named_struct('company', companyId, 'visits', visits, 'manager', managerkey)
+                    ELSE NULL
+                    END AS s
                 FROM users");
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Users.Select(x => new
             {
-                x.UserKey,
-                s = new { visits = x.Visits, manager = x.ManagerKey }
+                s = x.Active
+                    ? new { company = x.CompanyId, visits = x.Visits, manager = x.ManagerKey }
+                    : null
             }));
         }
 
         /// <summary>
-        /// Test with mixed null and non-null struct fields across multiple rows
-        /// to verify binary search correctness. When some rows have null fields
-        /// and others don't, the B+ tree's column-by-column narrowing binary
-        /// search must correctly handle the null ordering.
+        /// Larger dataset variant to also test internal B+ tree node navigation
+        /// which uses EventBatchData.CompareRows -> Column.CompareTo(IColumn, ...).
         /// </summary>
         [Fact]
-        public async Task SelectStructWithMixedNullPattern()
+        public async Task StructWithNullVsZeroLargerDataset()
         {
-            // Create a controlled set of users with specific null patterns
-            AddUser(new Entities.User { UserKey = 1, FirstName = "A", LastName = "X", Visits = 1, ManagerKey = null, CompanyId = "c1" });
-            AddUser(new Entities.User { UserKey = 2, FirstName = "B", LastName = "Y", Visits = null, ManagerKey = 1, CompanyId = "c1" });
-            AddUser(new Entities.User { UserKey = 3, FirstName = "C", LastName = "Z", Visits = 2, ManagerKey = 1, CompanyId = "c2" });
-            AddUser(new Entities.User { UserKey = 4, FirstName = "D", LastName = "W", Visits = null, ManagerKey = null, CompanyId = null });
-            AddUser(new Entities.User { UserKey = 5, FirstName = "E", LastName = "V", Visits = 3, ManagerKey = 2, CompanyId = null });
+            // Add inactive users to force null outer structs
+            for (int i = 1; i <= 5; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    FirstName = $"Inactive{i}",
+                    LastName = "User",
+                    Visits = i,
+                    Active = false,
+                    CompanyId = $"co{i}"
+                });
+            }
+
+            // Add active users with non-null visits first (sets inner Column type to Int64)
+            for (int i = 6; i <= 15; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    FirstName = $"Active{i}",
+                    LastName = "User",
+                    Visits = i,
+                    Active = true,
+                    CompanyId = $"co{i % 3}"
+                });
+            }
+
+            // Add active users with visits=null (inner Column gets _nullCounter > 0)
+            for (int i = 16; i <= 25; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    FirstName = $"NullVisits{i}",
+                    LastName = "User",
+                    Visits = null,
+                    Active = true,
+                    CompanyId = $"co{i % 3}"
+                });
+            }
+
+            // Add active users with visits=0 (raw data matches null's default)
+            for (int i = 26; i <= 35; i++)
+            {
+                AddUser(new Entities.User
+                {
+                    UserKey = i,
+                    FirstName = $"ZeroVisits{i}",
+                    LastName = "User",
+                    Visits = 0,
+                    Active = true,
+                    CompanyId = $"co{i % 3}"
+                });
+            }
 
             SourceImmutable();
             await StartStream(@"
                 INSERT INTO output 
                 SELECT 
-                    named_struct('visits', visits, 'manager', managerkey, 'company', companyId) AS s,
-                    firstName
+                    CASE WHEN active THEN named_struct('id', userkey, 'company', companyId, 'visits', visits)
+                    ELSE NULL
+                    END AS s
                 FROM users");
             await WaitForUpdate();
 
             AssertCurrentDataEqual(Users.Select(x => new
             {
-                s = new { visits = x.Visits, manager = x.ManagerKey, company = x.CompanyId },
-                x.FirstName
-            }));
-        }
-
-        /// <summary>
-        /// Test struct columns in a join context where struct keys with null
-        /// fields are used. The merge join uses MergeJoinInsertComparer which
-        /// has its own FindBoundries implementation that also goes through
-        /// Column.SearchBoundries.
-        /// </summary>
-        [Fact]
-        public async Task JoinWithStructContainingNullFields()
-        {
-            // Add users with nullable visits
-            AddUser(new Entities.User { UserKey = 1, FirstName = "Alice", LastName = "Smith", Visits = null, CompanyId = "co1" });
-            AddUser(new Entities.User { UserKey = 2, FirstName = "Bob", LastName = "Jones", Visits = 5, CompanyId = "co1" });
-            AddUser(new Entities.User { UserKey = 3, FirstName = "Carol", LastName = "Davis", Visits = null, CompanyId = "co2" });
-
-            SourceImmutable();
-            await StartStream(@"
-                CREATE VIEW v1 AS
-                SELECT 
-                    userkey,
-                    named_struct('name', firstName, 'visits', visits) AS info
-                FROM users;
-
-                INSERT INTO output
-                SELECT userkey, info FROM v1");
-            await WaitForUpdate();
-
-            AssertCurrentDataEqual(Users.Select(x => new
-            {
-                x.UserKey,
-                info = new { name = x.FirstName, visits = x.Visits }
+                s = x.Active
+                    ? new { id = x.UserKey, company = x.CompanyId, visits = x.Visits }
+                    : null
             }));
         }
     }
