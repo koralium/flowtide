@@ -660,7 +660,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
                 if (otherColumn is Column otherCol)
                 {
-                    resolvedOtherDataColumn = otherCol.DataColumn!;
+                    resolvedOtherDataColumn = otherCol._dataColumn!;
                     resolvedOtherColumn = otherCol;
                 }
                 else if (otherColumn is ColumnWithOffset otherOffset)
