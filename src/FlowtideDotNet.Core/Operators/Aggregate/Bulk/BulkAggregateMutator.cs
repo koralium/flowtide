@@ -115,10 +115,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             var col = stateColumns[measures.Length + i];
                             outputColumns[keylength + i].InsertRangeFrom(outputColumns[keylength + i].Count, col, existing.RowIndex, 1);
                         }
-                        outputToTemp[sortedIndex] = false;
-                        isDeleted[sortedIndex] = true;
                         outputWeights.Add(-1);
                     }
+
+                    // The group no longer exists in the persisted tree. Always mark it as deleted, even
+                    // if its value was never emitted, so that any entry queued in the temporary tree by
+                    // an insert earlier in the same watermark interval is removed (pushed as -1). Leaving
+                    // it would make the temporary tree reference a key that is gone from the persisted
+                    // tree, and the next watermark would index the persisted leaf with a negative
+                    // bulk-search result and throw an IndexOutOfRangeException.
+                    outputToTemp[sortedIndex] = false;
+                    isDeleted[sortedIndex] = true;
                     return GenericWriteOperation.Delete;
                 }
                 else

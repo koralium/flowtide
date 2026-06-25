@@ -811,7 +811,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
 
             // We now only insert 
-            if (m_hasSentInitialData!.Value)
+            if (m_hasSentInitialData!.Value && count > 0)
             {
                 var tempMutator = new BulkTemporaryMutator();
                 await _temporaryTreeBulkInserter.ApplyBatch(_rowReferenceBuffer, _tempValues, count, _tempIndices, _tempDuplicateTags, tempMutator, totalBatchSize);
