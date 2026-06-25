@@ -842,9 +842,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
 
             var keepCount = _splitPointsBuffer[0].LeafIndex;
-            leaf.keys.RemoveRange(keepCount, leafCount - keepCount);
-            leaf.values.RemoveRange(keepCount, leafCount - keepCount);
-
+            var toRemoveCount = leafCount - keepCount;
+            if (toRemoveCount > 0)
+            {
+                leaf.keys.RemoveRange(keepCount, toRemoveCount);
+                leaf.values.RemoveRange(keepCount, toRemoveCount);
+            }
             
             parent.ExitWriteLock();
 
