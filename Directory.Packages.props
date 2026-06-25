@@ -43,6 +43,7 @@
     <PackageVersion Include="SqlParserCS" Version="0.6.5" />
     <PackageVersion Include="OpenFga.Sdk" Version="0.3.1" />
     <PackageVersion Include="MongoDB.Driver" Version="3.8.1" />
+    <PackageVersion Include="Npgsql" Version="9.0.3" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageVersion Include="ParquetSharp" Version="23.0.0.2" />
     <PackageVersion Include="Stowage" Version="2.0.1" />
