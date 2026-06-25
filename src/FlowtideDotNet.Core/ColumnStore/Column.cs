@@ -654,21 +654,37 @@ namespace FlowtideDotNet.Core.ColumnStore
                     thisIsNull = !_validityList!.Get(thisIndex);
                 }
 
+                int resolvedOtherIndex = otherIndex;
+                IDataColumn resolvedOtherDataColumn;
+                Column? resolvedOtherColumn = null;
+
                 if (otherColumn is Column otherCol)
                 {
-                    if (otherCol._nullCounter > 0)
+                    resolvedOtherDataColumn = otherCol.DataColumn!;
+                    resolvedOtherColumn = otherCol;
+                }
+                else if (otherColumn is ColumnWithOffset otherOffset)
+                {
+                    resolvedOtherIndex = otherOffset.Offsets.Get(otherIndex);
+                    resolvedOtherDataColumn = otherOffset.InnerColumn.DataColumn!;
+                    resolvedOtherColumn = otherOffset.InnerColumn as Column;
+
+                    if (resolvedOtherIndex == ColumnWithOffset.NullValueIndex)
                     {
-                        otherIsNull = !otherCol._validityList!.Get(otherIndex);
+                        otherIsNull = true;
                     }
                 }
                 else
                 {
-                    // For ColumnWithOffset or other IColumn implementations
-                    // where we cannot access the validity bitmap directly,
-                    // fall back to value-based comparison.
+                    // Fallback for other IColumn implementations
                     var thisVal = GetValueAt(thisIndex, default);
                     var otherVal = otherColumn.GetValueAt(otherIndex, default);
                     return Comparers.DataValueComparer.CompareTo(thisVal, otherVal);
+                }
+
+                if (!otherIsNull && resolvedOtherColumn != null && resolvedOtherColumn._nullCounter > 0)
+                {
+                    otherIsNull = !resolvedOtherColumn._validityList!.Get(resolvedOtherIndex);
                 }
 
                 if (thisIsNull || otherIsNull)
@@ -677,7 +693,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return thisIsNull ? -1 : 1; // null < non-null
                 }
 
-                return _dataColumn!.CompareTo(otherColumn.DataColumn!, thisIndex, otherIndex);
+                return _dataColumn!.CompareTo(resolvedOtherDataColumn, thisIndex, resolvedOtherIndex);
             }
             // Check if any of the columns are unions, if so fetch the value and compare it
             else if (_type == ArrowTypeId.Union || otherColumn.Type == ArrowTypeId.Union)
