@@ -68,15 +68,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public ValueTask GetValuesAsync(IColumn[] groupingValuesSorted, ColumnReference[] groupStates, int startIndex, int length, Column outputColumn)
         {
+            Debug.Assert(_state != null);
             for (int i = startIndex; i < startIndex + length; i++)
             {
                 var groupState = groupStates[i];
                 var stateValue = groupState.GetValue();
                 if (stateValue.IsNull)
                 {
-                    throw new InvalidOperationException("Group state is null. This should not happen if Compute was called correctly.");
+                    // The group has no assigned key yet. This happens for the synthetic group that the
+                    // operator inserts for a groupless aggregate over empty input (Compute is never run
+                    // for it). Assign a surrogate key here so the scalar aggregate still emits one row,
+                    // mirroring Compute, instead of throwing.
+                    var nextId = _state!.Value++;
+                    groupState.Update(new Int64Value(nextId));
+                    outputColumn.Add(new Int64Value(nextId));
                 }
-                outputColumn.Add(stateValue);
+                else
+                {
+                    outputColumn.Add(stateValue);
+                }
             }
             return ValueTask.CompletedTask;
         }

@@ -697,6 +697,25 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task BulkAggregateGrouplessSurrogateKeyOverEmptyInput()
+        {
+            SourceImmutable();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT surrogate_key_int64() as key
+                FROM users");
+
+            // An immutable source has no normalization step, so an empty batch reaches the operator and
+            // fires a watermark while the aggregate tree is still empty, hitting the groupless empty path.
+            WaitForUpdateDoesNotRequireDataChange();
+            await Trigger("send_empty_batch", "users");
+            await WaitForUpdate();
+
+            // The scalar aggregate emits exactly one row, with the first surrogate key.
+            AssertCurrentDataEqual(new[] { new { key = 0L } });
+        }
+
+        [Fact]
         public async Task TestSurrogateKeyInt64()
         {
             GenerateData();
