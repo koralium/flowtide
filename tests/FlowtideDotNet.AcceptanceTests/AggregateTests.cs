@@ -221,6 +221,65 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected2);
         }
 
+        /// <summary>
+        /// Reproduces an IndexOutOfRangeException in <c>BulkAggregateOperator.OnWatermark</c>.
+        ///
+        /// When a brand new group is created and then fully retracted (net weight zero) within the
+        /// same watermark interval - before its value was ever emitted downstream - the group is
+        /// deleted from the persisted tree, but the entry that was queued for output in the temporary
+        /// tree is left dangling (it is only removed when the previous value had already been sent).
+        /// On the watermark, the operator iterates the temporary tree and bulk searches the persisted
+        /// tree for that key. The key is no longer present, so the search returns a negative
+        /// (bitwise-complement) lower bound, which is then used to index into the leaf's
+        /// _previousValueSent list (previousValueSent[lower] = true) and throws.
+        ///
+        /// To hit it, the insert and the delete of the group must arrive in separate batches but
+        /// inside the same watermark interval. The mock source flushes a new batch every time more
+        /// than 100 operations have accumulated, so the filler rows below force the insert into the
+        /// first batch and the delete into a later batch, with a single watermark covering both.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateNewGroupCreatedAndRemovedInSameWatermark()
+        {
+            // Baseline group so the first watermark emits initial data and the operator switches
+            // into incremental (temporary tree) mode.
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "baseline" });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    companyId, min(userkey)
+                FROM users o
+                GROUP BY companyId", pageSize: 1024 * 1024);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) }));
+
+            // Everything below happens within a single watermark interval (no WaitForUpdate in between),
+            // so all operations are picked up by one source fetch and covered by one watermark.
+
+            // New group "transient" created here ...
+            var transientUser = new Entities.User { UserKey = 1_000_000, CompanyId = "transient" };
+            AddUser(transientUser);
+
+            // ... filler rows (each its own new group) to push past the 100 operation batch boundary,
+            // so the delete below lands in a different batch than the insert above. Distinct groups keep
+            // every batch's temporary-tree insert non-empty so we exercise the watermark path.
+            for (int i = 0; i < 150; i++)
+            {
+                AddUser(new Entities.User { UserKey = 2_000_000 + i, CompanyId = "filler-" + i });
+            }
+
+            // ... and fully retracted before it was ever emitted. Net weight for "transient" is zero.
+            DeleteUser(transientUser);
+
+            // On the buggy operator this throws IndexOutOfRangeException during OnWatermark.
+            await WaitForUpdate();
+
+            // After the fix the transient group simply never appears and every other group is correct.
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+        }
+
         [Fact]
         public async Task AggregateCountDistinct()
         {
