@@ -1386,29 +1386,32 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// Same multi-leaf boundary scenario as <see cref="BulkAggregateMultiLeafBoundary_ListAgg"/>, but
-        /// using a stateless measure (sum). These build their forward value from GetValuesAsync over the
-        /// search results, so the not-found result also has to be skipped at the leaf level.
+        /// Multi-leaf scenario with a stateless measure (sum) whose value actually changes. Stateless
+        /// measures build their forward value from GetValuesAsync per persisted leaf; when a temp leaf
+        /// spans multiple persisted leaves those per-leaf forward values must not be interleaved with the
+        /// retraction rows, otherwise the output columns misalign and the sink ends up with wrong/negative
+        /// weight rows. (The update must change the aggregated value, otherwise retract == insert and the
+        /// misalignment cancels out, hiding the bug.)
         /// </summary>
         [Fact]
         public async Task BulkAggregateMultiLeafBoundary_Sum()
         {
             SetPageSizeBytes(256);
-            for (int i = 0; i < 500; i++)
+            for (int i = 0; i < 1000; i++)
             {
-                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "n" + i });
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "n" + i, Visits = i });
             }
             await StartStream(@"
                 INSERT INTO output
-                SELECT companyId, sum(userkey)
+                SELECT companyId, sum(visits)
                 FROM users
                 GROUP BY companyId");
             await WaitForUpdate();
 
-            for (int i = 0; i < 500; i += 2)
+            for (int i = 0; i < 1000; i += 2)
             {
                 var u = Users.First(x => x.UserKey == i);
-                u.FirstName = "updated" + i;
+                u.Visits = (u.Visits ?? 0) + 100000;
                 AddOrUpdateUser(u);
             }
             await WaitForUpdate();
@@ -1416,7 +1419,44 @@ namespace FlowtideDotNet.AcceptanceTests
             var expected = Users
                 .GroupBy(x => x.CompanyId)
                 .OrderBy(x => x.Key)
-                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        /// <summary>
+        /// Multi-leaf scenario mixing a stateless measure (sum, forward value via per-leaf GetValuesAsync)
+        /// with a shared-tree measure (list_agg, forward value laid down up front via FetchValuesAsync).
+        /// The two forward orderings must not be allowed to misalign with each other or with the
+        /// retraction rows.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMultiLeafBoundary_MixedMeasures()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "longfirstname_value_" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(visits), list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+            await WaitForUpdate();
+
+            for (int i = 0; i < 1000; i += 2)
+            {
+                var u = Users.First(x => x.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 100000;
+                u.FirstName = "updated_longfirstname_value_" + i;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)), Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
             AssertCurrentDataEqual(expected);
         }
 

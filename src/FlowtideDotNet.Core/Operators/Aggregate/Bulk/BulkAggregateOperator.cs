@@ -94,6 +94,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private ColumnStore.Column[] outputColumns;
         private PrimitiveList<int>? weights;
         private PrimitiveList<uint>? iterations;
+        // Retraction rows are emitted as their own batch. Within one watermark a temp leaf can span
+        // multiple persisted leaves; the stateless measure forward values are produced per persisted
+        // leaf while the group/weights/shared-tree columns are produced once up front. Mixing the
+        // retraction rows into the same columns would interleave the two orderings and misalign the
+        // columns, so the retractions go into a parallel column set and are emitted separately.
+        private ColumnStore.Column[] _retractColumns = Array.Empty<ColumnStore.Column>();
+        private PrimitiveList<int>? _retractWeights;
+        private PrimitiveList<uint>? _retractIterations;
         private uint m_currentIteration;
 
         public BulkAggregateOperator(AggregateRelation aggregateRelation, FunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
@@ -328,14 +336,14 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     if (weights.Count >= 100)
                     {
                         yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
-                        InitOutputColumns();
+                        InitForwardColumns();
                     }
                 }
 
                 if (weights.Count > 0)
                 {
                     yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
-                    InitOutputColumns();
+                    InitForwardColumns();
                 }
 
                 m_hasSentInitialData.Value = true;
@@ -443,17 +451,20 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             var valueSent = previousValueSent[lower];
                             if (valueSent)
                             {
-                                // Previous value has been sent, so we need to send a retraction
-                                weights.Add(-1);
-                                iterations!.Add(m_currentIteration);
+                                // Previous value has been sent, so we need to send a retraction. Retractions
+                                // go into their own column set (see _retractColumns) so they are not
+                                // interleaved with the per-leaf forward values, which would misalign the
+                                // columns when a temp leaf spans multiple persisted leaves.
+                                _retractWeights!.Add(-1);
+                                _retractIterations!.Add(m_currentIteration);
                                 for (int c = 0; c < groupLength; c++)
                                 {
-                                    outputColumns[c].InsertRangeFrom(outputColumns[c].Count, currentLeaf.keys._data.Columns[c], currentResults[i].KeyIndex, 1);
+                                    _retractColumns[c].InsertRangeFrom(_retractColumns[c].Count, currentLeaf.keys._data.Columns[c], currentResults[i].KeyIndex, 1);
                                 }
                                 for (int m = 0; m < _measures.Length; m++)
                                 {
                                     var previousValueCol = persistedLeaf.values._eventBatch.GetColumn(_measures.Length + m);
-                                    outputColumns[groupLength + m].InsertRangeFrom(outputColumns[groupLength + m].Count, previousValueCol, lower, 1);
+                                    _retractColumns[groupLength + m].InsertRangeFrom(_retractColumns[groupLength + m].Count, previousValueCol, lower, 1);
                                 }
                             }
                             previousValueSent[lower] = true;
@@ -489,24 +500,39 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         }
                     }
 
-                    if (weights.Count >= 100)
+                    if (weights.Count + _retractWeights!.Count >= 100)
                     {
-                        yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
-                        InitOutputColumns();
+                        if (weights.Count > 0)
+                        {
+                            yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData(outputColumns)));
+                            InitForwardColumns();
+                        }
+                        if (_retractWeights.Count > 0)
+                        {
+                            yield return new StreamEventBatch(new EventBatchWeighted(_retractWeights, _retractIterations!, GetEmitBatchData(_retractColumns)));
+                            InitRetractColumns();
+                        }
                     }
                 }
 
                 if (weights.Count > 0)
                 {
-                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
-                    InitOutputColumns();
+                    yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData(outputColumns)));
+                    InitForwardColumns();
+                }
+                if (_retractWeights!.Count > 0)
+                {
+                    yield return new StreamEventBatch(new EventBatchWeighted(_retractWeights, _retractIterations!, GetEmitBatchData(_retractColumns)));
+                    InitRetractColumns();
                 }
             }
 
             await _temporaryTree.Clear();
         }
 
-        private EventBatchData GetEmitBatchData()
+        private EventBatchData GetEmitBatchData() => GetEmitBatchData(outputColumns);
+
+        private EventBatchData GetEmitBatchData(ColumnStore.Column[] columns)
         {
             if (_aggregateRelation.EmitSet)
             {
@@ -514,14 +540,21 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 var emitColumns = new ColumnStore.Column[emit.Count];
                 for (int i = 0; i < emit.Count; i++)
                 {
-                    emitColumns[i] = outputColumns[emit[i]];
+                    emitColumns[i] = columns[emit[i]];
                 }
                 return new EventBatchData(emitColumns);
             }
-            return new EventBatchData(outputColumns);
+            return new EventBatchData(columns);
         }
 
         public void InitOutputColumns()
+        {
+            // Only re-allocate the set whose buffers were just handed off to an emitted batch.
+            InitForwardColumns();
+            InitRetractColumns();
+        }
+
+        private void InitForwardColumns()
         {
             var totalColumns = m_groupLength + _measures.Length;
             outputColumns = new ColumnStore.Column[totalColumns];
@@ -531,6 +564,18 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             weights = new PrimitiveList<int>(MemoryAllocator);
             iterations = new PrimitiveList<uint>(MemoryAllocator);
+        }
+
+        private void InitRetractColumns()
+        {
+            var totalColumns = m_groupLength + _measures.Length;
+            _retractColumns = new ColumnStore.Column[totalColumns];
+            for (int i = 0; i < totalColumns; i++)
+            {
+                _retractColumns[i] = new ColumnStore.Column(MemoryAllocator);
+            }
+            _retractWeights = new PrimitiveList<int>(MemoryAllocator);
+            _retractIterations = new PrimitiveList<uint>(MemoryAllocator);
         }
 
         public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
@@ -846,7 +891,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 Debug.Assert(iterations != null);
                 iterations.InsertStaticRange(iterations.Count, m_currentIteration, weights.Count);
                 yield return new StreamEventBatch(new EventBatchWeighted(weights, iterations, GetEmitBatchData()));
-                InitOutputColumns();
+                InitForwardColumns();
             }
         }
 
