@@ -376,7 +376,10 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     _carryOverWrite.Add(keyIndex);
                 }
 
-                _currentResults.Add(result);
+                if (!(boundries.lowerBounds == -1 && boundries.upperBounds == -1))
+                {
+                    _currentResults.Add(result);
+                }
             }
 
             var temp = _carryOverRead;

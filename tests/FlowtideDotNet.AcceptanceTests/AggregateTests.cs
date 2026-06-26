@@ -1340,6 +1340,86 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected2);
         }
 
+        /// <summary>
+        /// Regression test for an IndexOutOfRangeException in <c>BulkAggregateOperator.OnWatermark</c>
+        /// when the persisted aggregate tree spans multiple leaves. When updates touch many groups, the
+        /// bulk search of the persisted tree can return a not-found (negative LowerBound) result for a
+        /// key that is routed to a leaf it does not belong to (a leaf-boundary artifact); the key is
+        /// found again in its actual leaf. The watermark loop used that negative LowerBound to index the
+        /// leaf's _previousValueSent list and threw (the reported crash). Forcing a tiny page size makes
+        /// the main tree split into many leaves so the boundary case is hit.
+        ///
+        /// This variant uses list_agg (and other shared-tree measures): the forward value comes from
+        /// FetchValuesAsync, so the crash was in the retraction / previousValueSent loop.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMultiLeafBoundary_ListAgg()
+        {
+            SetPageSizeBytes(256); // tiny leaves -> many separators in the main tree
+            // 250 groups, 2 members each (a member update never empties a group).
+            for (int i = 0; i < 500; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "n" + i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+            await WaitForUpdate();
+
+            // Update one member of every group in one batch -> all groups become temp keys searched
+            // against the multi-leaf persisted tree.
+            for (int i = 0; i < 500; i += 2)
+            {
+                var u = Users.First(x => x.UserKey == i);
+                u.FirstName = "updated" + i;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        /// <summary>
+        /// Same multi-leaf boundary scenario as <see cref="BulkAggregateMultiLeafBoundary_ListAgg"/>, but
+        /// using a stateless measure (sum). These build their forward value from GetValuesAsync over the
+        /// search results, so the not-found result also has to be skipped at the leaf level.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMultiLeafBoundary_Sum()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 500; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "n" + i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(userkey)
+                FROM users
+                GROUP BY companyId");
+            await WaitForUpdate();
+
+            for (int i = 0; i < 500; i += 2)
+            {
+                var u = Users.First(x => x.UserKey == i);
+                u.FirstName = "updated" + i;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => y.UserKey) });
+            AssertCurrentDataEqual(expected);
+        }
+
         [Fact]
         public async Task BulkListAggWithCrossGroupDeletesAndInserts()
         {

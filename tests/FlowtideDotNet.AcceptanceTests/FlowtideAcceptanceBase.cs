@@ -86,6 +86,11 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.Generate(count);
         }
 
+        protected void SetPageSizeBytes(int bytes)
+        {
+            flowtideTestStream.BPlusTreePageSizeBytes = bytes;
+        }
+
         protected void GenerateUsers(int count = 1000)
         {
             flowtideTestStream.GenerateUsers(count);

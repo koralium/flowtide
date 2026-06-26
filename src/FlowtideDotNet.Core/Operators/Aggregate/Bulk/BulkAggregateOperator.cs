@@ -404,6 +404,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         var currentResults = _treeBulkSearch.CurrentResults;
                         var previousValueSent = persistedLeaf.values._previousValueSent;
 
+                        if (currentResults.Count == 0)
+                        {
+                            continue;
+                        }
+
                         var firstIndex = currentResults[0].KeyIndex;
                         var lastIndex = currentResults[currentResults.Count - 1].KeyIndex;
 
@@ -424,6 +429,17 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                         for (int i = 0; i < currentResults.Count; i++)
                         {
                             var lower = currentResults[i].LowerBound;
+                            if (lower < 0)
+                            {
+                                if (currentResults[i].ContinuesToNextLeaf)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    throw new InvalidOperationException("Lower bound should not be negative for a leaf that does not continue to the next leaf.");
+                                }
+                            }
                             var valueSent = previousValueSent[lower];
                             if (valueSent)
                             {
@@ -451,6 +467,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                             var measureColIndex = groupLength + m;
                             for (int c = 0; c < currentResults.Count; c++)
                             {
+                                if (currentResults[c].LowerBound < 0)
+                                {
+                                    // Skip not-found results (see the retraction loop above).
+                                    continue;
+                                }
                                 outputColumns[measureColIndex].GetValueAt(pageStart[m] + currentResults[c].KeyIndex, _watermarkValueContainer, default);
                                 previousValueCol.UpdateAt(currentResults[c].LowerBound, _watermarkValueContainer);
                             }
