@@ -1424,6 +1424,55 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// Multi-leaf scenario where whole groups are deleted in the same watermark that other groups are
+        /// updated. A deleted group disappears from the persisted tree; the temporary tree must not retain
+        /// a reference to it (Fix #1), otherwise the watermark would bulk-search a key that no longer
+        /// exists and read a negative bound. Stresses the temp-tree invariant under deletions with a
+        /// stateless measure (sum) on a multi-leaf tree.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMultiLeafBoundary_GroupDeletions_Sum()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 1000; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 2).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(visits)
+                FROM users
+                GROUP BY companyId");
+            await WaitForUpdate();
+
+            // In one batch: delete BOTH members of every 4th group (group dies), update one member of
+            // every other group (group survives). The deletions and survivors are interleaved across the
+            // whole multi-leaf tree.
+            for (int g = 0; g < 500; g++)
+            {
+                var u0 = Users.First(x => x.UserKey == g * 2);
+                var u1 = Users.First(x => x.UserKey == g * 2 + 1);
+                if (g % 4 == 0)
+                {
+                    DeleteUser(u0);
+                    DeleteUser(u1);
+                }
+                else
+                {
+                    u0.Visits = (u0.Visits ?? 0) + 100000;
+                    AddOrUpdateUser(u0);
+                }
+            }
+            await WaitForUpdate();
+
+            var expected = Users
+                .GroupBy(x => x.CompanyId)
+                .OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        /// <summary>
         /// Multi-leaf scenario mixing a stateless measure (sum, forward value via per-leaf GetValuesAsync)
         /// with a shared-tree measure (list_agg, forward value laid down up front via FetchValuesAsync).
         /// The two forward orderings must not be allowed to misalign with each other or with the
