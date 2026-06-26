@@ -504,6 +504,13 @@ namespace FlowtideDotNet.Core.Operators.Read
             return _persistentTree.GetValue(in rowKeyReference);
         }
 
+        /// <summary>
+        /// The schema column indices that are stored as the non-key value of each row, in the same order they appear
+        /// in a value reference returned by <see cref="LookupRowValue"/>. That is, value column <c>j</c> corresponds to
+        /// schema column <c>NonKeyColumnIndexes[j]</c>. Useful for reading back a previous row's values by column.
+        /// </summary>
+        protected IReadOnlyList<int> NonKeyColumnIndexes => _otherColumns ?? throw new InvalidOperationException("Operator is not initialized.");
+
         private Watermark CreateWatermark(long watermarkValue, long batchId = 0)
         {
             var watermark = LongWatermarkValue.Create(watermarkValue);

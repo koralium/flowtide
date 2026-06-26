@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Npgsql;
+using Polly;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -230,6 +231,14 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 default:
                     throw new InvalidOperationException("PostgreSQL table name must be [table], [schema.table] or [database.schema.table].");
             }
+        }
+
+        /// <summary>
+        /// Opens a connection through the configured resilience pipeline so transient connection failures are retried.
+        /// </summary>
+        public static async ValueTask OpenWithResilienceAsync(NpgsqlConnection connection, ResiliencePipeline pipeline, CancellationToken ct)
+        {
+            await pipeline.ExecuteAsync(async token => await connection.OpenAsync(token), ct);
         }
 
         public static async Task<string> GetWalLevel(NpgsqlConnection connection, CancellationToken ct)

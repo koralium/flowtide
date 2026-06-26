@@ -58,6 +58,26 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Tests
             Assert.Fail($"Timed out waiting for {expectedCount} rows.");
         }
 
+        private static async Task WaitAndAssert<T>(PostgresTestStream stream, IEnumerable<T> expected)
+        {
+            for (int i = 0; i < 150; i++)
+            {
+                await stream.SchedulerTick();
+                await Task.Delay(200);
+                try
+                {
+                    stream.AssertCurrentDataEqual(expected);
+                    return;
+                }
+                catch
+                {
+                    // Not yet reflecting the expected data.
+                }
+            }
+            // Final attempt - throws with a detailed assertion message.
+            stream.AssertCurrentDataEqual(expected);
+        }
+
         [Theory]
         [InlineData(PostgresReplicationMode.PerTable)]
         [InlineData(PostgresReplicationMode.Shared)]
@@ -127,6 +147,52 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Tests
                 new { id = 1L, name = "b1" },
                 new { id = 2L, name = "b2" }
             });
+        }
+
+        [Fact]
+        public async Task UnchangedToastColumnIsBackfilledOnUpdate()
+        {
+            var big = new string('x', 5000);
+            await _fixture.ExecuteAsync("DROP TABLE IF EXISTS public.toast_t");
+            await _fixture.ExecuteAsync("CREATE TABLE public.toast_t (id int PRIMARY KEY, n int NOT NULL, big text NOT NULL)");
+            // EXTERNAL storage forces the large value out-of-line (TOAST) and disables compression, so an UPDATE that
+            // leaves it unchanged emits an "unchanged TOAST" marker on the replication stream.
+            await _fixture.ExecuteAsync("ALTER TABLE public.toast_t ALTER COLUMN big SET STORAGE EXTERNAL");
+            await _fixture.ExecuteAsync($"INSERT INTO public.toast_t (id, n, big) VALUES (1, 1, '{big}')");
+
+            await using var stream = CreateStream(nameof(UnchangedToastColumnIsBackfilledOnUpdate), PostgresReplicationMode.PerTable);
+            await stream.StartStream("INSERT INTO output SELECT id, n, big FROM public.toast_t");
+
+            await WaitAndAssert(stream, new[] { new { id = 1L, n = 1L, big } });
+
+            // Update only n; big is unchanged and TOASTed. The connector must backfill big from the previous row.
+            await _fixture.ExecuteAsync("UPDATE public.toast_t SET n = 42 WHERE id = 1");
+
+            await WaitAndAssert(stream, new[] { new { id = 1L, n = 42L, big } });
+        }
+
+        [Fact]
+        public async Task TruncateRetractsAllRows()
+        {
+            await _fixture.ExecuteAsync("DROP TABLE IF EXISTS public.trunc_t");
+            await _fixture.ExecuteAsync("CREATE TABLE public.trunc_t (id int PRIMARY KEY, name text NOT NULL)");
+            await _fixture.ExecuteAsync("INSERT INTO public.trunc_t VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+
+            await using var stream = CreateStream(nameof(TruncateRetractsAllRows), PostgresReplicationMode.PerTable);
+            await stream.StartStream("INSERT INTO output SELECT id, name FROM public.trunc_t");
+
+            await WaitAndAssert(stream, new[]
+            {
+                new { id = 1L, name = "a" },
+                new { id = 2L, name = "b" },
+                new { id = 3L, name = "c" }
+            });
+
+            await _fixture.ExecuteAsync("TRUNCATE public.trunc_t");
+
+            // Known-shape empty set so the assertion compares against a 0-row, same-schema batch.
+            var none = new[] { new { id = 0L, name = "" } }.Take(0);
+            await WaitAndAssert(stream, none);
         }
     }
 }

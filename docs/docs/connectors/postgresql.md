@@ -118,10 +118,18 @@ are read as their text representation.
 | `date`, `timestamp`, `timestamptz` | Timestamp |
 | `time`, `timetz` | Int64 (ticks) |
 
+## Observability and resilience
+
+* The source exposes an `events` counter and a `postgres_applied_lsn` gauge (the last WAL position applied to the
+  stream) per operator.
+* Snapshot connections are opened through the configured `ResiliencePipeline` (a Polly pipeline; the default retries
+  with backoff), so transient connection failures during a snapshot are retried before escalating.
+
 ## Notes and limitations
 
 * **Re-snapshot on restart.** Because slots are temporary, a restart re-reads the table and reconciles it against
   existing state. For very large tables this can be costly; a bounded permanent-slot mode may be added later.
-* **TOAST.** When an `UPDATE` omits an unchanged out-of-line (TOAST) column, the row is reconciled via a full reload
-  rather than applied incrementally.
-* **TRUNCATE** currently triggers a re-snapshot of the affected tables.
+* **TOAST.** When an `UPDATE` omits an unchanged out-of-line (TOAST) column, the value is backfilled from the previous
+  row, so the row is emitted with its full, correct value. (If the previous row is unexpectedly missing, the table
+  falls back to a reconciling reload.)
+* **TRUNCATE** is reflected by reconciling against the now-empty table, which retracts all of its rows.

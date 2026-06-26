@@ -13,6 +13,8 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
@@ -43,6 +45,8 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         private List<string>? _primaryKeys;
         private List<int>? _keyOrdinals;
+        private HashSet<int>? _keyColumnSet;
+        private Dictionary<int, int>? _schemaToValueIndex;
         private Action<IColumn, object?>[]? _converters;
         private IObjectState<PostgresState>? _state;
         private IPostgresChangeSource? _changeSource;
@@ -51,6 +55,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private bool _pendingReload;
         private long _lastLsn;
         private ICounter<long>? _eventsCounter;
+        private IObservableGauge<long>? _appliedLsnGauge;
 
         public ColumnPostgresDeltaSource(
             PostgresSourceOptions options,
@@ -76,11 +81,12 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
             _eventsCounter ??= Metrics.CreateCounter<long>("events");
+            _appliedLsnGauge ??= Metrics.CreateObservableGauge("postgres_applied_lsn", () => Interlocked.Read(ref _lastLsn));
 
             List<(string name, string udtName)> columns;
             await using (var connection = new NpgsqlConnection(_options.ConnectionStringFunc()))
             {
-                await connection.OpenAsync();
+                await PostgresUtils.OpenWithResilienceAsync(connection, _options.ResiliencePipeline, default);
                 _primaryKeys = await PostgresUtils.GetPrimaryKeys(connection, _schema, _table, default);
                 columns = await PostgresUtils.GetColumns(connection, _schema, _table, default);
             }
@@ -115,6 +121,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 }
                 _keyOrdinals.Add(index);
             }
+            _keyColumnSet = new HashSet<int>(_keyOrdinals);
 
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<PostgresState>("postgres_state");
             _state.Value ??= new PostgresState();
@@ -142,6 +149,15 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             _snapshot = await _changeSource.InitializeAsync(default);
 
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
+
+            // Map each non-key schema column to its position in a looked-up value reference, so unchanged-TOAST
+            // columns can be backfilled from the previous row stored in the persistent tree.
+            _schemaToValueIndex = new Dictionary<int, int>();
+            var nonKeyColumns = NonKeyColumnIndexes;
+            for (int j = 0; j < nonKeyColumns.Count; j++)
+            {
+                _schemaToValueIndex[nonKeyColumns[j]] = j;
+            }
         }
 
         private async Task OnChangeSourceFaultAsync(Exception exception)
@@ -195,7 +211,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             bool useSnapshot = !_streamingStarted && _snapshot != null;
 
             await using var connection = new NpgsqlConnection(_options.ConnectionStringFunc());
-            await connection.OpenAsync(linked.Token);
+            await PostgresUtils.OpenWithResilienceAsync(connection, _options.ResiliencePipeline, linked.Token);
 
             NpgsqlTransaction? transaction = null;
             if (useSnapshot)
@@ -295,19 +311,32 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                         countInBatch++;
                         break;
                     case PostgresChangeKind.Update:
-                        if (HasUnchangedToast(change.Values))
-                        {
-                            // Cannot apply incrementally without the omitted TOAST value; reconcile via a full reload.
-                            _pendingReload = true;
-                            break;
-                        }
                         if (change.OldKeyValues != null)
                         {
                             AppendRow(columns, weights, iterations, change.OldKeyValues, -1);
                             countInBatch++;
                         }
-                        AppendRow(columns, weights, iterations, change.Values, 1);
-                        countInBatch++;
+                        if (HasUnchangedToast(change.Values))
+                        {
+                            // An UPDATE omitted an unchanged out-of-line (TOAST) column. Backfill it from the previous
+                            // row stored in the persistent tree so the row is emitted with its full, correct value.
+                            var (found, previous) = await LookupPreviousRowAsync(change.Values);
+                            if (found)
+                            {
+                                AppendUpdateRowWithBackfill(columns, weights, iterations, change.Values, previous);
+                                countInBatch++;
+                            }
+                            else
+                            {
+                                // The row is unexpectedly absent; fall back to a reconciling full reload for safety.
+                                _pendingReload = true;
+                            }
+                        }
+                        else
+                        {
+                            AppendRow(columns, weights, iterations, change.Values, 1);
+                            countInBatch++;
+                        }
                         break;
                 }
 
@@ -358,6 +387,66 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 }
             }
             return false;
+        }
+
+        /// <summary>
+        /// Looks up the previous version of a row (by primary key) in the persistent tree, used to backfill
+        /// unchanged-TOAST columns. The returned value reference is only valid until the next tree operation.
+        /// </summary>
+        private async ValueTask<(bool found, ColumnRowReference value)> LookupPreviousRowAsync(object?[] values)
+        {
+            Debug.Assert(_keyColumnSet != null);
+            Debug.Assert(_converters != null);
+
+            var schemaWidth = _readRelation.BaseSchema.Names.Count;
+            var keyColumns = new Column[schemaWidth];
+            for (int i = 0; i < schemaWidth; i++)
+            {
+                keyColumns[i] = Column.Create(MemoryAllocator);
+                if (_keyColumnSet.Contains(i))
+                {
+                    var keyValue = i < values.Length ? values[i] : null;
+                    _converters[i](keyColumns[i], keyValue);
+                }
+                else
+                {
+                    // Only the key columns are read by the tree comparer, but every column needs a value at row 0.
+                    keyColumns[i].Add(NullValue.Instance);
+                }
+            }
+
+            var keyReference = new ColumnRowReference { referenceBatch = new EventBatchData(keyColumns), RowIndex = 0 };
+            var result = await LookupRowValue(keyReference);
+
+            foreach (var column in keyColumns)
+            {
+                column.Dispose();
+            }
+            return result;
+        }
+
+        private void AppendUpdateRowWithBackfill(Column[] columns, PrimitiveList<int> weights, PrimitiveList<uint> iterations, object?[] values, ColumnRowReference previous)
+        {
+            Debug.Assert(_schemaToValueIndex != null);
+
+            for (int i = 0; i < columns.Length; i++)
+            {
+                var value = i < values.Length ? values[i] : null;
+                if (ReferenceEquals(value, PostgresUtils.UnchangedToast) && _schemaToValueIndex.TryGetValue(i, out var valueColumn))
+                {
+                    columns[i].Add(previous.referenceBatch.Columns[valueColumn].GetValueAt(previous.RowIndex, default));
+                }
+                else
+                {
+                    if (ReferenceEquals(value, PostgresUtils.UnchangedToast))
+                    {
+                        value = null;
+                    }
+                    _converters![i](columns[i], value);
+                }
+            }
+            weights.Add(1);
+            iterations.Add(0);
         }
 
         private void AppendRow(Column[] columns, PrimitiveList<int> weights, PrimitiveList<uint> iterations, object?[] values, int weight)
