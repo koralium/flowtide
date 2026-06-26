@@ -1510,6 +1510,316 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task Diag_MultiLeaf_Initial()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+                for (int m = 0; m < 5; m++)
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = (m + 1) * 10 });
+            await StartStream("INSERT INTO output SELECT companyId, min(visits), max(visits), list_agg(firstName) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.Visits), Max = x.Max(y => y.Visits), Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task Diag_MultiLeaf_DeleteMin()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+                for (int m = 0; m < 5; m++)
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = (m + 1) * 10 });
+            await StartStream("INSERT INTO output SELECT companyId, min(visits), max(visits), list_agg(firstName) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.Visits), Max = x.Max(y => y.Visits), Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int g = 0; g < 50; g++)
+                DeleteUser(Users.First(u => u.UserKey == g * 5));
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Hammers the shared-tree measures (min/max/count_distinct/list_agg) under member churn on a
+        /// multi-leaf tree: removing the current min member must raise min, removing the current max member
+        /// must drop max, and updating a member must retract its old contribution from the shared trees.
+        /// This is the closest stress to the original production failure (list_agg member update).
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSharedTreeRetractionChurn_MultiLeaf()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 200; g++)
+            {
+                for (int m = 0; m < 5; m++)
+                {
+                    int key = g * 5 + m;
+                    AddUser(new Entities.User { UserKey = key, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + key, Visits = (m + 1) * 10 });
+                }
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), count(DISTINCT visits), list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId)
+                    .OrderBy(x => x.Key)
+                    .Select(x => new
+                    {
+                        Key = x.Key,
+                        Min = x.Min(y => y.Visits),
+                        Max = x.Max(y => y.Visits),
+                        DistinctVisits = x.Select(y => y.Visits).Distinct().Count(),
+                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                    });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Remove the current MIN member (visits=10) of every group -> min must rise to 20.
+            for (int g = 0; g < 200; g++)
+            {
+                DeleteUser(Users.First(u => u.UserKey == g * 5));
+            }
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Remove the current MAX member (visits=50) of every group -> max must drop to 40.
+            for (int g = 0; g < 200; g++)
+            {
+                DeleteUser(Users.First(u => u.UserKey == g * 5 + 4));
+            }
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Update a surviving member to a new global extreme and change its name -> both the min/max
+            // shared tree and the list_agg shared tree must retract the old value and add the new one.
+            for (int g = 0; g < 200; g++)
+            {
+                var u = Users.First(uu => uu.UserKey == g * 5 + 2);
+                u.Visits = 1000;
+                u.FirstName = "updated_" + u.UserKey;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Stresses the numeric promotion paths in SumAggregation.DoSum: within each group the summed
+        /// expression yields an int for some rows (visits) and a double for others (DoubleValue), so the
+        /// running state changes type. Flipping a row's branch on update must retract the old typed value
+        /// correctly. DoubleValue uses a 0.25 fraction (exactly representable) so the sum is order
+        /// independent and can be compared exactly.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSumMixedNumericTypes()
+        {
+            for (int i = 0; i < 200; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 10).ToString("D3"), Gender = (Entities.Gender)(i % 2), Visits = i, DoubleValue = i + 0.25 });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(CASE WHEN Gender = 1 THEN visits ELSE DoubleValue END)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId)
+                    .OrderBy(x => x.Key)
+                    .Select(x => new
+                    {
+                        Key = x.Key,
+                        Sum = x.Sum(y => y.Gender == Entities.Gender.Female ? (double)(y.Visits ?? 0) : y.DoubleValue)
+                    });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Flip the gender of every even user: rows that contributed a double now contribute an int and
+            // vice versa, forcing the per-group state through mixed-type retract + add.
+            for (int i = 0; i < 200; i += 2)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Gender = u.Gender == Entities.Gender.Male ? Entities.Gender.Female : Entities.Gender.Male;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Multi-column group key (companyId, lastName) on a multi-leaf tree with updates and deletes. The
+        /// group columns must stay aligned across the two key columns and the measures.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMultiColumnGroupKey_MultiLeaf()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 30).ToString("D3"), LastName = "L" + (i % 3), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, LastName, sum(visits), max(visits), list_agg(firstName)
+                FROM users
+                GROUP BY companyId, LastName");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => new { x.CompanyId, x.LastName })
+                    .OrderBy(x => x.Key.CompanyId).ThenBy(x => x.Key.LastName)
+                    .Select(x => new
+                    {
+                        x.Key.CompanyId,
+                        x.Key.LastName,
+                        Sum = x.Sum(y => (long)(y.Visits ?? 0)),
+                        Max = x.Max(y => y.Visits),
+                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                    });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int i = 0; i < 600; i += 2)
+            {
+                if (i % 6 == 0)
+                {
+                    DeleteUser(Users.First(u => u.UserKey == i));
+                }
+                else
+                {
+                    var u = Users.First(uu => uu.UserKey == i);
+                    u.Visits = (u.Visits ?? 0) + 100000;
+                    AddOrUpdateUser(u);
+                }
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Group by a computed expression (concat) rather than a direct field reference, on a multi-leaf
+        /// tree. This exercises the non-direct-field group path (groupExpressions / ColumnProjectCompiler)
+        /// instead of the direct-column path.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateComputedGroupKey_MultiLeaf()
+        {
+            SetPageSizeBytes(256);
+            for (int i = 0; i < 600; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, CompanyId = "co_" + (i / 3).ToString("D4"), FirstName = "n" + i, Visits = i });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT concat(companyId, '_grp'), sum(visits)
+                FROM users
+                GROUP BY concat(companyId, '_grp')");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId + "_grp")
+                    .OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Sum = x.Sum(y => (long)(y.Visits ?? 0)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int i = 0; i < 600; i += 3)
+            {
+                var u = Users.First(uu => uu.UserKey == i);
+                u.Visits = (u.Visits ?? 0) + 50000;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Crash and restore with a multi-leaf persisted tree AND shared trees (min/max/list_agg), then
+        /// continue with member churn. Verifies the serialized persisted + shared tree state restores
+        /// correctly and the operator keeps incrementally updating afterwards.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateCrashRestore_MultiLeaf_SharedTree()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 200; g++)
+            {
+                for (int m = 0; m < 3; m++)
+                {
+                    int key = g * 3 + m;
+                    AddUser(new Entities.User { UserKey = key, CompanyId = "co_" + g.ToString("D4"), FirstName = "n_" + key, Visits = (m + 1) * 10 });
+                }
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users
+                    .GroupBy(x => x.CompanyId)
+                    .OrderBy(x => x.Key)
+                    .Select(x => new
+                    {
+                        Key = x.Key,
+                        Min = x.Min(y => y.Visits),
+                        Max = x.Max(y => y.Visits),
+                        Sum = x.Sum(y => (long)(y.Visits ?? 0)),
+                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                    });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            await Crash();
+
+            // After restore: remove the min member of each group and update another, so the restored
+            // persisted + shared trees must be correct and keep updating.
+            for (int g = 0; g < 200; g++)
+            {
+                DeleteUser(Users.First(u => u.UserKey == g * 3));
+                var u = Users.First(uu => uu.UserKey == g * 3 + 1);
+                u.Visits = 999;
+                u.FirstName = "upd_" + u.UserKey;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Fact]
         public async Task BulkListAggWithCrossGroupDeletesAndInserts()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "aaa_co", FirstName = "Alice", LastName = "A" });
