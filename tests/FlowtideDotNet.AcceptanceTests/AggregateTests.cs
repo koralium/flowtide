@@ -2422,6 +2422,68 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(new[] { new { CompanyId = "A", Cnt = 2L } });
         }
 
+        /// <summary>
+        /// Stresses the incremental watermark path's exact-match search of the persisted tree across many
+        /// leaf boundaries: tiny pages (one/few groups per leaf) + state-bearing measures, then EVERY group is
+        /// modified in a single batch so the temp tree spans the whole persisted tree and the bulk search
+        /// crosses every leaf boundary (the carry / "continues to next leaf" path). Verifies values stay
+        /// correct and nothing reads a not-found/negative state index.
+        /// </summary>
+        [Theory]
+        [InlineData(128)]
+        [InlineData(200)]
+        public async Task BulkAggregateIncrementalWatermark_ManyLeafBoundaries(int pageBytes)
+        {
+            SetPageSizeBytes(pageBytes);
+            int nextKey = 0;
+            for (int g = 0; g < 150; g++)
+                for (int m = 0; m < 2; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), Visits = g * 10 + m + 1 });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(visits), count(*), avg(visits), count(DISTINCT visits)
+                FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+                {
+                    var nn = x.Where(y => y.Visits.HasValue).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Sum = nn.Count > 0 ? (long?)nn.Sum(y => (long)y.Visits!.Value) : null,
+                        Cnt = (long)x.Count(),
+                        Avg = nn.Count > 0 ? (double?)nn.Average(y => (double)y.Visits!.Value) : null,
+                        DCnt = (long)nn.Select(y => y.Visits!.Value).Distinct().Count()
+                    };
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Modify EVERY group in one batch -> every key lands in the temp tree -> the watermark search
+            // walks the entire persisted tree, crossing every leaf boundary.
+            foreach (var u in Users.Where(x => x.UserKey % 2 == 0).ToList())
+            {
+                u.Visits = u.Visits!.Value + 1000;
+                AddOrUpdateUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Delete one member of every group in one batch (shifts boundaries) and re-verify.
+            foreach (var u in Users.Where(x => x.UserKey % 2 == 1).ToList())
+            {
+                DeleteUser(u);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
         [Fact]
         public async Task BulkAggregateStringAgg_OrderBy_Throws()
         {
