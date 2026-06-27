@@ -1560,6 +1560,64 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// min_by over a multi-leaf shared tree, distinct value per group. min_by reads the value at the
+        /// group's smallest orderBy (its leftmost shared-tree entry); like min it routes left and needs
+        /// forward carry to find groups that begin on a leaf boundary. Varying per-group results make any
+        /// boundary miss or column misalignment observable.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMinBy_MultiLeaf_VaryingValues()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+                for (int m = 0; m < 5; m++)
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "g" + g + "_m" + m, Visits = g * 100 + (m + 1) * 10 });
+            await StartStream("INSERT INTO output SELECT companyId, min_by(firstName, visits) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+                {
+                    var minV = x.Min(y => y.Visits);
+                    return new { Key = x.Key, MinByName = x.First(y => y.Visits == minV).FirstName };
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Delete each group's smallest-orderBy member so min_by must move to the next member, and the
+            // deletes shift leaf boundaries (which is what surfaced the min boundary-miss).
+            for (int g = 0; g < 50; g++)
+                DeleteUser(Users.First(u => u.UserKey == g * 5));
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// max_by over a multi-leaf shared tree, distinct value per group. max_by gathers per leaf and
+        /// emits via InsertFrom; with multiple leaves the column must not be front-inserted (reversed).
+        /// Varying per-group results make any reversal/misalignment observable.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMaxBy_MultiLeaf_VaryingValues()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+                for (int m = 0; m < 5; m++)
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "g" + g + "_m" + m, Visits = g * 100 + (m + 1) * 10 });
+            await StartStream("INSERT INTO output SELECT companyId, max_by(firstName, visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+            {
+                var maxV = x.Max(y => y.Visits);
+                return new { Key = x.Key, MaxByName = x.First(y => y.Visits == maxV).FirstName };
+            });
+            AssertCurrentDataEqual(expected);
+        }
+
+        /// <summary>
         /// Hammers the shared-tree measures (min/max/count_distinct/list_agg) under member churn on a
         /// multi-leaf tree: removing the current min member must raise min, removing the current max member
         /// must drop max, and updating a member must retract its old contribution from the shared trees.
@@ -1907,6 +1965,96 @@ namespace FlowtideDotNet.AcceptanceTests
                 .OrderBy(x => x.Key)
                 .Select(x => new { Key = x.Key, Names = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n)) });
             AssertCurrentDataEqual(expected2);
+        }
+
+        /// <summary>
+        /// count(DISTINCT visits) over a multi-leaf shared tree with a distinct count that varies per group
+        /// (2..5), plus a delete round. Varying per-group counts make any boundary miss / misalignment in
+        /// the shared distinct tree observable.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateCountDistinct_MultiLeaf_VaryingCounts()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+            {
+                int distinct = (g % 4) + 2; // 2..5 distinct visit values per group
+                for (int m = 0; m < 6; m++)
+                    AddUser(new Entities.User { UserKey = g * 6 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "n" + (g * 6 + m), Visits = g * 1000 + (m % distinct) });
+            }
+            await StartStream("INSERT INTO output SELECT companyId, count(DISTINCT visits) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, DistinctVisits = x.Select(y => y.Visits).Distinct().Count() });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int g = 0; g < 50; g++)
+                DeleteUser(Users.First(u => u.UserKey == g * 6));
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// string_agg over a multi-leaf shared tree with distinct names per group, plus a delete round.
+        /// Varying per-group strings make any reversal/misalignment observable.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateStringAgg_MultiLeaf_VaryingValues()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 50; g++)
+                for (int m = 0; m < 5; m++)
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "g" + g.ToString("D4") + "_m" + m });
+            await StartStream("INSERT INTO output SELECT companyId, string_agg(firstName, ',') FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Names = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n)) });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int g = 0; g < 50; g++)
+                DeleteUser(Users.First(u => u.UserKey == g * 5));
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// KNOWN ISSUE (separate from the min/max/_by fixes): list_union_distinct_agg with a GROUP BY
+        /// crashes during insert with NotSupportedException. The list argument is flattened into a
+        /// ColumnWithOffset value column, and the shared-tree insert's boundary search
+        /// (BulkMinInsertComparer -> ColumnBoundarySearch) calls ColumnWithOffset.GetColumnState(), which
+        /// throws when the inner column is not a plain Column. Reproduces at any scale / page size, so it
+        /// is unrelated to the multi-leaf carry/front-insert bugs. Needs its own fix in the boundary-search
+        /// / ColumnWithOffset support; skipped until then so the suite stays green.
+        /// </summary>
+        [Fact(Skip = "Known bug: grouped list_union_distinct_agg throws NotSupportedException via ColumnWithOffset.GetColumnState during shared-tree insert; tracked separately.")]
+        public async Task BulkAggregateListUnionDistinctAgg_Grouped_KnownIssue()
+        {
+            for (int g = 0; g < 3; g++)
+                for (int m = 0; m < 2; m++)
+                    AddUser(new Entities.User { UserKey = g * 2 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "g" + g.ToString("D4") + "_m" + m });
+            await StartStream("INSERT INTO output SELECT companyId, list_union_distinct_agg(list(firstName)) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Names = x.Select(y => y.FirstName).Distinct().OrderBy(n => n).ToList() });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
         }
     }
 }

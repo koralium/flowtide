@@ -44,7 +44,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>? _bulkInserter;
         private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMinSearchComparer>? _bulkSearcher;
         private int _groupingLength;
-        private int[]? _sortedBuffer;
+        private int[]? _sourceIndices;
+        private int[]? _insertPositions;
         private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
         private int[] _storeWeightArrayBuffer = Array.Empty<int>();
         private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
@@ -180,7 +181,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 });
 
             _bulkInserter = _tree.CreateBulkInserter();
-            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength));
+            // min_by reads the value at the group's smallest orderBy (its leftmost entry); like min it
+            // routes left and needs forward carry to find groups that begin on a leaf boundary.
+            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength, seekNextPageForValue: true));
         }
 
         public void NewBatch(PrimitiveList<int> weights, EventBatchData batchData)
@@ -226,35 +229,47 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            if (_sortedBuffer == null || _sortedBuffer.Length < length)
+            if (_sourceIndices == null || _sourceIndices.Length < length)
             {
-                _sortedBuffer = new int[length];
-            }
-            for (int i = 0; i < length; i++)
-            {
-                _sortedBuffer[i] = i;
+                _sourceIndices = new int[length];
+                _insertPositions = new int[length];
             }
 
-            await _bulkSearcher!.Start(rowReferences, length, _sortedBuffer);
-            int foundCount = 0;
-            while (foundCount < length && await _bulkSearcher.MoveNextLeaf())
+            System.Array.Fill(_sourceIndices, -1, 0, length);
+
+            Debug.Assert(_memoryAllocator != null);
+            using var tempColumn = new Column(_memoryAllocator);
+
+            await _bulkSearcher!.Start(rowReferences, length);
+            while (await _bulkSearcher.MoveNextLeaf())
             {
                 var leaf = _bulkSearcher.CurrentLeaf;
 
                 for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
                 {
                     var result = _bulkSearcher.CurrentResults[i];
-                    if (result.LowerBound >= 0)
+                    if (result.LowerBound >= 0 && _sourceIndices[result.KeyIndex] == -1)
                     {
+                        _sourceIndices[result.KeyIndex] = tempColumn.Count;
                         // The value column is at index _groupingLength + 1
-                        outputColumn.Add(leaf.keys._data.Columns[_groupingLength + 1].GetValueAt(result.LowerBound, default));
-                    }
-                    else
-                    {
-                        outputColumn.Add(NullValue.Instance);
+                        tempColumn.Add(leaf.keys._data.Columns[_groupingLength + 1].GetValueAt(result.LowerBound, default));
                     }
                 }
             }
+
+            InsertFromHelper(outputColumn, tempColumn, length);
+        }
+
+        private void InsertFromHelper(Column outputColumn, Column tempColumn, int length)
+        {
+            Debug.Assert(_sourceIndices != null);
+            Debug.Assert(_insertPositions != null);
+            // Append this batch at the end of outputColumn (in group order). Using the current count as the
+            // insert position appends; zero would front-insert and reverse the column across leaves.
+            System.Array.Fill(_insertPositions, outputColumn.Count, 0, length);
+            ReadOnlySpan<int> sortedLookupSpan = _sourceIndices.AsSpan(0, length);
+            ReadOnlySpan<int> insertPositionsSpan = _insertPositions.AsSpan(0, length);
+            outputColumn.InsertFrom(tempColumn, in sortedLookupSpan, in insertPositionsSpan, -1);
         }
     }
 
