@@ -656,6 +656,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
                 }
+                if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for sum; reject rather than silently summing duplicates.
+                    throw new InvalidOperationException("sum does not support DISTINCT.");
+                }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
@@ -701,6 +706,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
+                }
+                if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for sum0; reject rather than silently summing duplicates.
+                    throw new InvalidOperationException("sum0 does not support DISTINCT.");
                 }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
@@ -764,7 +774,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return p1;
                 }
                 return AnyType.Instance;
-            });
+            }, rejectDistinct: true);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 
@@ -1335,7 +1345,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string functionName,
             string extensionUri,
             string extensionName,
-            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc)
+            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
+            bool rejectDistinct = false)
         {
             sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1343,6 +1354,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if (rejectDistinct && argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for this aggregate; reject rather than silently return a
+                    // wrong result. (count(DISTINCT) is routed to count_distinct; min/max DISTINCT is a no-op.)
+                    throw new InvalidOperationException($"{functionName} does not support DISTINCT.");
                 }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {

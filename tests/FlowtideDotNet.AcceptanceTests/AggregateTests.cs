@@ -2278,6 +2278,145 @@ namespace FlowtideDotNet.AcceptanceTests
         /// sum0, both a never-valued group and a valued-then-retracted group must be Int64 0 (previously the
         /// never-valued one leaked a Double 0.0 fallback into the Int64 column).
         /// </summary>
+        /// <summary>
+        /// KNOWN BUG: a FILTER clause on a STATELESS aggregate (sum/sum0/count/avg) is silently ignored. The
+        /// filter is wired into StoreAsync (shared-tree measures and min_by/max_by honour it) but the Compute
+        /// path - which stateless measures use - is driven by BulkAggregateMutator with the full per-group
+        /// index range, not the filtered _measureLookups, so every row is aggregated regardless of the filter.
+        /// (FILTER on min/max etc. works; only the stateless Compute path drops it.)
+        /// </summary>
+        [Fact(Skip = "Known bug: FILTER on a stateless aggregate (sum/count/avg/sum0) is ignored - the Compute path uses the unfiltered group range.")]
+        public async Task BulkAggregateSum_WithFilter_Stateless()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 10 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "B", Visits = 1 });
+            AddUser(new Entities.User { UserKey = 5, CompanyId = "B", Visits = 2 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE visits > 3) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            // Only visits > 3 should be summed. A: 5+10=15. B: nothing passes -> null. (Actual: A=17, B=3.)
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", Sum = (long?)15 },
+                new { CompanyId = "B", Sum = (long?)null },
+            });
+        }
+
+        /// <summary>
+        /// DISTINCT is not honoured for sum/avg/sum0 (the planner only routes count(DISTINCT) to a
+        /// distinct-aware implementation). Rather than silently summing duplicates, sum(DISTINCT) must now be
+        /// rejected at plan time. (min/max DISTINCT remains a valid no-op.)
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSum_Distinct_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, sum(DISTINCT visits) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("sum does not support DISTINCT.", ex.Message);
+        }
+
+        [Fact]
+        public async Task BulkAggregateAvg_Distinct_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, avg(DISTINCT visits) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("avg does not support DISTINCT.", ex.Message);
+        }
+
+        /// <summary>
+        /// DISTINCT on min/max is a semantic no-op (min of distinct values == min of all values), so it must
+        /// keep working rather than being rejected alongside sum/avg.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMin_Distinct_NoOp()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, min(DISTINCT visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Min = (int?)5 } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateGroupByNullableColumn()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "C", Visits = null });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "D", Visits = null });
+            await StartStream("INSERT INTO output SELECT visits, count(*) FROM users GROUP BY visits");
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.Visits).OrderBy(x => x.Key)
+                .Select(x => new { Visits = x.Key, Cnt = x.Count() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateAvg_RetractToNull()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, avg(visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            var u = Users.First(x => x.UserKey == 2);
+            u.Visits = null;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            // Both groups all-null now -> avg null for both.
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", Avg = (double?)null },
+                new { CompanyId = "B", Avg = (double?)null },
+            });
+        }
+
+        [Fact]
+        public async Task BulkAggregateDecimalSum_ThroughCrash()
+        {
+            for (int g = 0; g < 5; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = g * 3 + m, CompanyId = "co_" + g, Visits = (g + 1) * 10 + m });
+            await StartStream("INSERT INTO output SELECT companyId, sum(CAST(visits AS DECIMAL)) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            await Crash();
+            var u = Users.First(x => x.UserKey == 0);
+            u.Visits = 999;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key)
+                .Select(x => new { Key = x.Key, Sum = (decimal)x.Sum(y => (long)y.Visits!.Value) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateEmptyGlobal_AfterDeletingAllRows()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 7 });
+            await StartStream("INSERT INTO output SELECT count(*), sum(visits), min(visits) FROM users");
+            await WaitForUpdate();
+
+            DeleteUser(Users.First(x => x.UserKey == 1));
+            DeleteUser(Users.First(x => x.UserKey == 2));
+            await WaitForUpdate();
+
+            // SQL semantics for an empty global aggregate: one row, count=0, sum=null, min=null.
+            AssertCurrentDataEqual(new[] { new { Cnt = 0L, Sum = (long?)null, Min = (long?)null } });
+        }
+
         [Fact]
         public async Task BulkAggregateSum0_AllNullGroup_TypeConsistency()
         {
