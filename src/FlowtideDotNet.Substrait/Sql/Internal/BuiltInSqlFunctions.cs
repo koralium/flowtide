@@ -727,6 +727,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         returnType = new Fp64Type();
                     }
+                    else if (argExpr.Type.Type == SubstraitType.Decimal)
+                    {
+                        // Preserve the decimal type so an empty/all-null group emits a Decimal zero rather
+                        // than the untyped (Double) floor, which would mismatch valued Decimal groups.
+                        returnType = new DecimalType()
+                        {
+                            Precision = (argExpr.Type as DecimalType)?.Precision,
+                            Scale = (argExpr.Type as DecimalType)?.Scale
+                        };
+                    }
 
                     return new AggregateResponse(
                         new AggregateFunction()

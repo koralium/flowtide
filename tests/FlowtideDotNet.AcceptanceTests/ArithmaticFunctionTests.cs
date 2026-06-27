@@ -1405,7 +1405,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users WHERE userkey = -1");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = default(double) } });
+            AssertCurrentDataEqual(new[] { new { Sum = 0L } });
         }
 
         [Fact]

@@ -2057,6 +2057,73 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// Differential stress for list_union_distinct_agg under churn + crash on a multi-leaf tree. Each row
+        /// contributes a single-element list, so the per-group result is the distinct set of firstNames. A
+        /// small name pool forces frequent duplicates: deleting one holder of a duplicated name must NOT drop
+        /// it from the union (another holder remains) — exercising weighted dedup and partial retraction
+        /// through the flattened-offset insert path that was the recent fix.
+        /// </summary>
+        [Theory]
+        [InlineData(5)]
+        [InlineData(9)]
+        public async Task BulkAggregateListUnionDistinctAgg_RandomizedStress_WithCrash(int seed)
+        {
+            SetPageSizeBytes(160);
+            var rnd = new Random(seed);
+            int nextKey = 0;
+            // Small pool => frequent duplicate names within a group (tests weighted dedup under retraction).
+            string NewName() => "p" + rnd.Next(15).ToString("D2");
+
+            for (int g = 0; g < 60; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName() });
+
+            await StartStream("INSERT INTO output SELECT companyId, list_union_distinct_agg(list(firstName)) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key)
+                    .Select(x => new { Key = x.Key, Names = x.Select(y => y.FirstName).Distinct().OrderBy(n => n).ToList() });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 30 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        int g = rnd.Next(60);
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName() });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+
+                if (round == 10)
+                {
+                    await Crash();
+                }
+
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
+
+        /// <summary>
         /// Stateless measures (count/avg/sum) over a multi-leaf tree with values that vary per group, plus
         /// churn. These forward their value per persisted leaf via GetValuesAsync (appended by the operator,
         /// not via InsertFrom), so this confirms the stateless path aligns on multi-leaf the same way the
@@ -2205,6 +2272,60 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// Regression: sum0 of an empty/all-null group must emit a zero TYPED to the declared return type, so
+        /// it matches valued groups. A never-valued group has no value to infer a type from, so the zero is
+        /// taken from the aggregate's output type (Substrait AggregateFunction.output_type). For an integer
+        /// sum0, both a never-valued group and a valued-then-retracted group must be Int64 0 (previously the
+        /// never-valued one leaked a Double 0.0 fallback into the Int64 column).
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSum0_AllNullGroup_TypeConsistency()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, sum0(visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            var u = Users.First(x => x.UserKey == 2);
+            u.Visits = null;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            // Both groups are logically identical (one null-valued row each); both must be Int64 0.
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", S = 0L },
+                new { CompanyId = "B", S = 0L },
+            });
+        }
+
+        /// <summary>
+        /// Same as above for a Decimal sum0 (reached via CAST). Decimal previously fell through the planner's
+        /// type mapping to AnyType, so the empty-group zero used the Double 0.0 floor and mismatched valued
+        /// Decimal groups. With the Decimal arm added, a never-valued group must emit a Decimal 0 matching the
+        /// retracted-to-zero group.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSum0_AllNullGroup_Decimal_TypeConsistency()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, sum0(CAST(visits AS DECIMAL)) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            var u = Users.First(x => x.UserKey == 2);
+            u.Visits = null;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", S = 0m },
+                new { CompanyId = "B", S = 0m },
+            });
+        }
+
+        /// <summary>
         /// Deepest stress: nullable values (null-handling under churn), smaller pages (more leaves), and a
         /// crash/restore mid-stream (restore from an arbitrary random state). min/max/sum return null for an
         /// all-null group; count(*) still counts the rows.
@@ -2226,7 +2347,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
             await StartStream(@"
                 INSERT INTO output
-                SELECT companyId, min(visits), max(visits), sum(visits), count(*), list_agg(firstName)
+                SELECT companyId, min(visits), max(visits), sum(visits), count(DISTINCT visits), count(*), list_agg(firstName), string_agg(firstName, ',')
                 FROM users
                 GROUP BY companyId");
 
@@ -2242,8 +2363,171 @@ namespace FlowtideDotNet.AcceptanceTests
                         Max = nn.Count > 0 ? (int?)nn.Max(y => y.Visits!.Value) : null,
                         // SQL SUM over an all-null group is null (not 0); sum0 is the always-0 variant.
                         Sum = nn.Count > 0 ? (long?)nn.Sum(y => (long)y.Visits!.Value) : null,
+                        // COUNT(DISTINCT visits) excludes null.
+                        DistinctVisits = nn.Select(y => y.Visits!.Value).Distinct().Count(),
                         Cnt = x.Count(),
-                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList(),
+                        NamesStr = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n))
+                    };
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 40 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        int g = rnd.Next(80);
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = RandVisits() });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.Visits = RandVisits();
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+
+                if (round == 10)
+                {
+                    await Crash();
+                }
+
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
+
+        /// <summary>
+        /// Differential stress for a GLOBAL aggregate (no GROUP BY) under churn + crash. With grouping length
+        /// 0 the shared-tree comparers take a dedicated branch (whole-leaf boundaries, single logical group),
+        /// so the carry across many leaves is exercised differently than the grouped case. A row floor avoids
+        /// the separate empty-global-aggregate question. Checks min/max/sum/count/count_distinct/list_agg/
+        /// string_agg against LINQ over all rows.
+        /// </summary>
+        [Theory]
+        [InlineData(4)]
+        [InlineData(8)]
+        public async Task BulkAggregateGlobalNoGroupBy_RandomizedStress_WithCrash(int seed)
+        {
+            SetPageSizeBytes(160);
+            var rnd = new Random(seed);
+            int nextKey = 0;
+            string NewName() => "n" + rnd.Next(1_000_000).ToString("D7");
+            int? RandVisits() => rnd.Next(4) == 0 ? (int?)null : rnd.Next(1, 1000);
+
+            for (int i = 0; i < 200; i++)
+                AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "c", FirstName = NewName(), Visits = RandVisits() });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT min(visits), max(visits), sum(visits), count(DISTINCT visits), count(*), list_agg(firstName), string_agg(firstName, ',')
+                FROM users");
+
+            void AssertExpected()
+            {
+                var nn = Users.Where(y => y.Visits.HasValue).ToList();
+                var row = new
+                {
+                    Min = nn.Count > 0 ? (int?)nn.Min(y => y.Visits!.Value) : null,
+                    Max = nn.Count > 0 ? (int?)nn.Max(y => y.Visits!.Value) : null,
+                    Sum = nn.Count > 0 ? (long?)nn.Sum(y => (long)y.Visits!.Value) : null,
+                    DistinctVisits = nn.Select(y => y.Visits!.Value).Distinct().Count(),
+                    Cnt = Users.Count,
+                    Names = Users.Select(y => y.FirstName).OrderBy(n => n).ToList(),
+                    NamesStr = string.Join(",", Users.Select(y => y.FirstName).OrderBy(n => n))
+                };
+                AssertCurrentDataEqual(new[] { row });
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 20 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "c", FirstName = NewName(), Visits = RandVisits() });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.Visits = RandVisits();
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+
+                if (round == 10)
+                {
+                    await Crash();
+                }
+
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
+
+        /// <summary>
+        /// Differential stress for min_by/max_by under churn + crash on a multi-leaf own-tree. Order-by
+        /// (visits) values are globally unique so there are no ties — min_by/max_by are then unambiguous and
+        /// can be checked against LINQ. visits is nullable (a null order-by member is ignored, like min);
+        /// a group with no non-null order-by yields null. Deletes regularly remove the current min/max member
+        /// so the result must move to the next member, and shifting leaf boundaries exercise the forward/
+        /// backward carry.
+        /// </summary>
+        [Theory]
+        [InlineData(7)]
+        [InlineData(13)]
+        public async Task BulkAggregateMinByMaxBy_RandomizedStress_WithCrash(int seed)
+        {
+            SetPageSizeBytes(160);
+            var rnd = new Random(seed);
+            int nextKey = 0;
+            int nextVisit = 1; // monotonically increasing => globally unique, no order-by ties
+            string NewName() => "n" + rnd.Next(1_000_000).ToString("D7");
+            int? RandVisits() => rnd.Next(4) == 0 ? (int?)null : nextVisit++;
+
+            for (int g = 0; g < 80; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = RandVisits() });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min_by(firstName, visits), max_by(firstName, visits)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+                {
+                    var nn = x.Where(y => y.Visits.HasValue).OrderBy(y => y.Visits!.Value).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        MinByName = nn.Count > 0 ? nn.First().FirstName : null,
+                        MaxByName = nn.Count > 0 ? nn.Last().FirstName : null,
                     };
                 });
                 AssertCurrentDataEqual(expected);

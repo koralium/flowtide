@@ -856,6 +856,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
 
                 var aggregateResponse = mapper(foundMeasure, exprVisitor, parent.EmitData);
+                // Carry the resolved return type onto the function (Substrait places output_type on
+                // AggregateFunction). Measures that need a typed output for empty groups (e.g. sum0) read it.
+                aggregateResponse.AggregateFunction.OutputType = aggregateResponse.Type;
                 aggRel.Measures.Add(new AggregateMeasure()
                 {
                     Filter = filter,

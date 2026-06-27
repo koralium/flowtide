@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Substrait.Type;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -29,7 +30,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         public IColumnBulkAggregation Create(AggregateFunction aggregateFunction, IFunctionsRegister functionsRegister)
         {
             var compiledValue = ColumnProjectCompiler.CompileToValue(aggregateFunction.Arguments[0], functionsRegister);
-            return new Sum0Aggregation(compiledValue);
+            return new Sum0Aggregation(compiledValue, aggregateFunction.OutputType);
         }
 
         public static void Register(IFunctionsRegister functionsRegister)
@@ -42,11 +43,28 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
     {
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
         private readonly DataValueContainer _dataValueContainer;
+        // The zero emitted for an empty/all-null group, typed to the declared return type so it matches the
+        // type of valued groups (a never-valued group has no value to infer a type from). When the type is
+        // unknown (AnyType / not resolved) this falls back to Double 0.0 - the only case where a mixed type
+        // can still occur, and one where there is no concrete type contract to honour anyway.
+        private readonly IDataValue _zero;
 
-        public Sum0Aggregation(Func<EventBatchData, int, IDataValue> projectionFunction)
+        public Sum0Aggregation(Func<EventBatchData, int, IDataValue> projectionFunction, SubstraitBaseType? outputType)
         {
             this.projectionFunction = projectionFunction;
             _dataValueContainer = new DataValueContainer();
+            _zero = ZeroForType(outputType);
+        }
+
+        private static IDataValue ZeroForType(SubstraitBaseType? outputType)
+        {
+            return outputType?.Type switch
+            {
+                SubstraitType.Int64 or SubstraitType.Int32 => new Int64Value(0),
+                SubstraitType.Fp64 or SubstraitType.Fp32 => new DoubleValue(0.0),
+                SubstraitType.Decimal => new DecimalValue(0m),
+                _ => new DoubleValue(0.0)
+            };
         }
 
         public Task CommitAsync()
@@ -73,7 +91,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
                 groupStates[i].GetValue(_dataValueContainer);
                 if (_dataValueContainer.Type == ArrowTypeId.Null)
                 {
-                    outputColumn.Add(new DoubleValue(0.0));
+                    outputColumn.Add(_zero);
                 }
                 else
                 {
