@@ -2762,6 +2762,222 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(new[] { new { CompanyId = "A", MnBy = "second", MxBy = "first" } });
         }
 
+        /// <summary>
+        /// Parallel aggregation via the optimizer setting (PlanOptimizerSettings.Parallelization). The
+        /// optimizer scatters by the group key into N independent per-partition bulk aggregators, then
+        /// combines — so each group lands in exactly one partition. Verifies all measure types stay correct
+        /// under churn when the operator runs in parallel.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(4)]
+        public async Task BulkAggregateParallel_AllMeasures_WithChurn(int parallelization)
+        {
+            int nextKey = 0;
+            for (int g = 0; g < 60; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = "n" + (g * 100 + m).ToString("D5"), Visits = g * 10 + m + 1 });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), count(*), count(DISTINCT visits), list_agg(firstName)
+                FROM users GROUP BY companyId",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { Parallelization = parallelization });
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new
+                {
+                    Key = x.Key,
+                    Min = x.Min(y => y.Visits),
+                    Max = x.Max(y => y.Visits),
+                    Sum = x.Sum(y => (long)(y.Visits ?? 0)),
+                    Cnt = (long)x.Count(),
+                    DCnt = (long)x.Select(y => y.Visits).Distinct().Count(),
+                    Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Churn across many groups (which span partitions): update some, delete some.
+            for (int g = 0; g < 60; g += 2)
+            {
+                var u = Users.First(uu => uu.UserKey == g * 3 + 1);
+                u.Visits = u.Visits!.Value + 5000;
+                AddOrUpdateUser(u);
+            }
+            for (int g = 1; g < 60; g += 3)
+                DeleteUser(Users.First(uu => uu.UserKey == g * 3));
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Randomized differential stress of parallel aggregation (optimizer setting) with a crash/restore
+        /// mid-stream. Each parallel partition has its own trees/state; this checks the scatter+combine and
+        /// per-partition state survive churn and restore.
+        /// </summary>
+        [Theory]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task BulkAggregateParallel_RandomizedStress_WithCrash(int parallelization)
+        {
+            var rnd = new Random(parallelization * 1000 + 7);
+            int nextKey = 0;
+            string NewName() => "n" + rnd.Next(1_000_000).ToString("D7");
+
+            for (int g = 0; g < 100; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = rnd.Next(1, 1000) });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), count(*), list_agg(firstName)
+                FROM users GROUP BY companyId",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { Parallelization = parallelization });
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new
+                {
+                    Key = x.Key,
+                    Min = x.Min(y => y.Visits),
+                    Max = x.Max(y => y.Visits),
+                    Sum = x.Sum(y => (long)(y.Visits ?? 0)),
+                    Cnt = (long)x.Count(),
+                    Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 40 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        int g = rnd.Next(100);
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = rnd.Next(1, 1000) });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.Visits = rnd.Next(1, 1000);
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+
+                if (round == 10)
+                {
+                    await Crash();
+                }
+
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
+
+        [Theory]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task BulkAggregateParallel_MinByMaxBy_StringAgg(int parallelization)
+        {
+            int nextKey = 0;
+            int nextVisit = 1; // globally unique -> no order-by ties
+            for (int g = 0; g < 60; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = "n" + (g * 100 + m).ToString("D5"), Visits = nextVisit++ });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min_by(firstName, visits), max_by(firstName, visits), string_agg(firstName, ',')
+                FROM users GROUP BY companyId",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { Parallelization = parallelization });
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+                {
+                    var ord = x.OrderBy(y => y.Visits!.Value).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        MinBy = ord.First().FirstName,
+                        MaxBy = ord.Last().FirstName,
+                        Str = string.Join(",", x.Select(y => y.FirstName).OrderBy(n => n))
+                    };
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            // Delete each group's current min-visits member so min_by must move.
+            foreach (var g in Users.GroupBy(x => x.CompanyId).ToList())
+            {
+                var minMember = g.OrderBy(y => y.Visits!.Value).First();
+                DeleteUser(minMember);
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        [Fact]
+        public async Task BulkAggregateParallel_WithFilter()
+        {
+            for (int g = 0; g < 40; g++)
+                for (int m = 0; m < 4; m++)
+                    AddUser(new Entities.User { UserKey = g * 4 + m, CompanyId = "co_" + g.ToString("D4"), Visits = m * 30 }); // 0,30,60,90
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(visits) FILTER (WHERE visits > 50), count(*) FILTER (WHERE visits > 50)
+                FROM users GROUP BY companyId",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { Parallelization = 3 });
+
+            var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+            {
+                var f = x.Where(y => y.Visits!.Value > 50).ToList();
+                return new { Key = x.Key, Sum = f.Count > 0 ? (long?)f.Sum(y => (long)y.Visits!.Value) : null, Cnt = (long)f.Count };
+            });
+            await WaitForUpdate();
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateParallel_MorePartitionsThanGroups()
+        {
+            // Only 2 distinct groups but 4 partitions -> some partitions receive no groups.
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "B", Visits = 7 });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, sum(visits), count(*)
+                FROM users GROUP BY companyId",
+                planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings { Parallelization = 4 });
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", Sum = (long?)15, Cnt = 2L },
+                new { CompanyId = "B", Sum = (long?)7, Cnt = 1L },
+            });
+        }
+
         [Fact]
         public async Task BulkAggregateGroupByNullableColumn()
         {
