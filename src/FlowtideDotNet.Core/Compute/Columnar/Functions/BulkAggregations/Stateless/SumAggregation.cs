@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
@@ -41,13 +42,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
 
     internal class SumAggregation : IColumnBulkAggregation
     {
+        // sum keeps a non-null contributor count alongside the running sum so it can revert to
+        // null once every non-null contributor has been retracted. A plain numeric state cannot
+        // distinguish "no contributors" from "contributors that happen to sum to 0", which made the
+        // all-null result history-dependent (null if never valued, 0 if set then retracted). SQL SUM
+        // is null for an all-null group; sum0 is the always-0 variant.
+        private static readonly StructHeader SumStateHeader = StructHeader.Create("sum", "count");
+
         private readonly Func<EventBatchData, int, IDataValue> projectionFunction;
         private readonly DataValueContainer _dataValueContainer;
+        private readonly DataValueContainer _sumContainer;
 
         public SumAggregation(Func<EventBatchData, int, IDataValue> projectionFunction)
         {
             this.projectionFunction = projectionFunction;
             _dataValueContainer = new DataValueContainer();
+            _sumContainer = new DataValueContainer();
         }
 
         public Task CommitAsync()
@@ -58,11 +68,43 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
         public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState, int sortedIndex)
         {
             groupState.GetValue(_dataValueContainer);
+
+            long currentCount = 0;
+
+            if (_dataValueContainer.Type == ArrowTypeId.Struct)
+            {
+                var structValue = _dataValueContainer.AsStruct;
+                structValue.GetAt(0, _sumContainer);
+                currentCount = structValue.GetAt(1).AsLong;
+            }
+            else
+            {
+                _sumContainer._type = ArrowTypeId.Null;
+            }
+
             for (int i = 0; i < indices.Length; i++)
             {
                 var value = projectionFunction(data, indices[i]);
-                DoSum(value, _dataValueContainer, weights[indices[i]]);
+                if (value.Type != ArrowTypeId.Null)
+                {
+                    var weight = weights[indices[i]];
+                    DoSum(value, _sumContainer, weight);
+                    currentCount += weight;
+                }
             }
+
+            if (currentCount <= 0 || _sumContainer.Type == ArrowTypeId.Null)
+            {
+                _dataValueContainer._type = ArrowTypeId.Null;
+            }
+            else
+            {
+                var countVal = new Int64Value(currentCount);
+                var structVal = new StructValue(SumStateHeader, _sumContainer, countVal);
+                _dataValueContainer._structValue = structVal;
+                _dataValueContainer._type = ArrowTypeId.Struct;
+            }
+
             groupState.Update(_dataValueContainer);
             return true;
         }
@@ -161,7 +203,24 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
             for (int i = startIndex; i < startIndex + length; i++)
             {
                 groupStates[i].GetValue(_dataValueContainer);
-                outputColumn.Add(_dataValueContainer);
+                if (_dataValueContainer.Type == ArrowTypeId.Struct)
+                {
+                    var structValue = _dataValueContainer.AsStruct;
+                    structValue.GetAt(0, _sumContainer);
+                    var count = structValue.GetAt(1).AsLong;
+                    if (count > 0 && _sumContainer.Type != ArrowTypeId.Null)
+                    {
+                        outputColumn.Add(_sumContainer);
+                    }
+                    else
+                    {
+                        outputColumn.Add(NullValue.Instance);
+                    }
+                }
+                else
+                {
+                    outputColumn.Add(NullValue.Instance);
+                }
             }
             return ValueTask.CompletedTask;
         }

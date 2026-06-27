@@ -2055,5 +2055,235 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertExpected();
         }
+
+        /// <summary>
+        /// Stateless measures (count/avg/sum) over a multi-leaf tree with values that vary per group, plus
+        /// churn. These forward their value per persisted leaf via GetValuesAsync (appended by the operator,
+        /// not via InsertFrom), so this confirms the stateless path aligns on multi-leaf the same way the
+        /// shared-tree measures now do.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateStatelessMeasures_MultiLeaf_VaryingValues()
+        {
+            SetPageSizeBytes(256);
+            for (int g = 0; g < 80; g++)
+                for (int m = 0; m < 4; m++)
+                    AddUser(new Entities.User { UserKey = g * 4 + m, CompanyId = "co_" + g.ToString("D4"), Visits = g * 100 + (m + 1) * 10 });
+            await StartStream("INSERT INTO output SELECT companyId, count(*), avg(visits), sum(visits) FROM users GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new
+                {
+                    Key = x.Key,
+                    Cnt = x.Count(),
+                    Avg = (double)x.Average(y => y.Visits!.Value),
+                    Sum = x.Sum(y => (long)(y.Visits ?? 0))
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int g = 0; g < 80; g++)
+            {
+                if (g % 3 == 0)
+                {
+                    DeleteUser(Users.First(u => u.UserKey == g * 4));
+                }
+                else
+                {
+                    var u = Users.First(uu => uu.UserKey == g * 4 + 1);
+                    u.Visits = (u.Visits ?? 0) + 100000;
+                    AddOrUpdateUser(u);
+                }
+            }
+            await WaitForUpdate();
+            AssertExpected();
+        }
+
+        /// <summary>
+        /// Randomized differential stress: many random add/update/delete operations across many watermarks
+        /// on a multi-leaf tree, with min/max/sum/count/list_agg together, each round checked against a
+        /// LINQ ground truth. Exercises carry-over, leaf split/merge, retraction and every measure in
+        /// combinations no targeted test covers. Avg is omitted (floating-point order sensitivity).
+        /// </summary>
+        [Theory]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        public async Task BulkAggregateRandomizedStress_MultiLeaf(int seed)
+        {
+            SetPageSizeBytes(256);
+            var rnd = new Random(seed);
+            int nextKey = 0;
+            string NewName() => "n" + rnd.Next(1_000_000).ToString("D7");
+
+            for (int g = 0; g < 100; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = rnd.Next(1, 1000) });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), count(*), list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new
+                {
+                    Key = x.Key,
+                    Min = x.Min(y => y.Visits),
+                    Max = x.Max(y => y.Visits),
+                    Sum = x.Sum(y => (long)(y.Visits ?? 0)),
+                    Cnt = x.Count(),
+                    Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 50 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        int g = rnd.Next(100);
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = rnd.Next(1, 1000) });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.Visits = rnd.Next(1, 1000);
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
+
+        /// <summary>
+        /// Regression: sum must not be history-dependent for an all-null group. A group whose member never
+        /// had a non-null value and a group whose value was set then retracted to null are logically
+        /// identical (one null-valued row each), so both must report sum = NULL. Previously the second
+        /// reported 0, because the stateless sum landed at numeric 0 after the last contributor was retracted
+        /// (5 + 5*-1 = 0) with no way to revert to null. sum now tracks a non-null contributor count (like
+        /// avg) and emits null once it returns to 0. (sum0 is the always-0 variant.)
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSum_AllNullGroup_HistoryDependent()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            var u = Users.First(x => x.UserKey == 2);
+            u.Visits = null;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            // Both groups now contain only null values, so SQL SUM should be null for both.
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", Sum = (long?)null },
+                new { CompanyId = "B", Sum = (long?)null },
+            });
+        }
+
+        /// <summary>
+        /// Deepest stress: nullable values (null-handling under churn), smaller pages (more leaves), and a
+        /// crash/restore mid-stream (restore from an arbitrary random state). min/max/sum return null for an
+        /// all-null group; count(*) still counts the rows.
+        /// </summary>
+        [Theory]
+        [InlineData(11)]
+        [InlineData(22)]
+        public async Task BulkAggregateRandomizedStress_Nullable_WithCrash(int seed)
+        {
+            SetPageSizeBytes(160);
+            var rnd = new Random(seed);
+            int nextKey = 0;
+            string NewName() => "n" + rnd.Next(1_000_000).ToString("D7");
+            int? RandVisits() => rnd.Next(4) == 0 ? (int?)null : rnd.Next(1, 1000);
+
+            for (int g = 0; g < 80; g++)
+                for (int m = 0; m < 3; m++)
+                    AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = RandVisits() });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), count(*), list_agg(firstName)
+                FROM users
+                GROUP BY companyId");
+
+            void AssertExpected()
+            {
+                var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x =>
+                {
+                    var nn = x.Where(y => y.Visits.HasValue).ToList();
+                    return new
+                    {
+                        Key = x.Key,
+                        Min = nn.Count > 0 ? (int?)nn.Min(y => y.Visits!.Value) : null,
+                        Max = nn.Count > 0 ? (int?)nn.Max(y => y.Visits!.Value) : null,
+                        // SQL SUM over an all-null group is null (not 0); sum0 is the always-0 variant.
+                        Sum = nn.Count > 0 ? (long?)nn.Sum(y => (long)y.Visits!.Value) : null,
+                        Cnt = x.Count(),
+                        Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList()
+                    };
+                });
+                AssertCurrentDataEqual(expected);
+            }
+
+            await WaitForUpdate();
+            AssertExpected();
+
+            for (int round = 0; round < 20; round++)
+            {
+                int ops = rnd.Next(10, 40);
+                for (int o = 0; o < ops; o++)
+                {
+                    var action = Users.Count < 40 ? 0 : rnd.Next(3);
+                    if (action == 0)
+                    {
+                        int g = rnd.Next(80);
+                        AddUser(new Entities.User { UserKey = nextKey++, CompanyId = "co_" + g.ToString("D4"), FirstName = NewName(), Visits = RandVisits() });
+                    }
+                    else if (action == 1)
+                    {
+                        var u = Users[rnd.Next(Users.Count)];
+                        u.Visits = RandVisits();
+                        u.FirstName = NewName();
+                        AddOrUpdateUser(u);
+                    }
+                    else
+                    {
+                        DeleteUser(Users[rnd.Next(Users.Count)]);
+                    }
+                }
+
+                if (round == 10)
+                {
+                    await Crash();
+                }
+
+                await WaitForUpdate();
+                AssertExpected();
+            }
+        }
     }
 }
