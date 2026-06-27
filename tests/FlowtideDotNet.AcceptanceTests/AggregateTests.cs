@@ -2373,6 +2373,92 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(new[] { new { CompanyId = "A", Min = (int?)5 } });
         }
 
+        /// <summary>
+        /// list_agg/string_agg order by the aggregated value (their shared tree is keyed by it), so a
+        /// user-specified ORDER BY cannot be honoured. Rather than silently producing value-order, it is now
+        /// rejected at plan time.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateListAgg_OrderBy_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 1 });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, list_agg(firstName ORDER BY visits) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("list_agg does not support ORDER BY.", ex.Message);
+        }
+
+        /// <summary>
+        /// list_agg/string_agg do not honour DISTINCT (they keep weighted duplicates), so it is rejected at
+        /// plan time rather than silently keeping duplicates. (list_union_distinct_agg covers distinct lists.)
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateListAgg_Distinct_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, list_agg(DISTINCT firstName) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("list_agg does not support DISTINCT.", ex.Message);
+        }
+
+        /// <summary>
+        /// count(DISTINCT) combined with FILTER works (the filter is applied by the shared tree, the distinct
+        /// count by the count_distinct measure). Regression guard for the combination.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateCountDistinct_WithFilter()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, count(DISTINCT visits) FILTER (WHERE visits > 3) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            // Distinct visits > 3 are {5, 10} -> 2.
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Cnt = 2L } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateStringAgg_OrderBy_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 1 });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, string_agg(firstName, ',' ORDER BY visits) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("string_agg does not support ORDER BY.", ex.Message);
+        }
+
+        [Fact]
+        public async Task BulkAggregateStringAgg_Distinct_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, string_agg(DISTINCT firstName, ',') FROM users GROUP BY companyId");
+            });
+            Assert.Equal("string_agg does not support DISTINCT.", ex.Message);
+        }
+
+        /// <summary>
+        /// min_by returns the value at the smallest order-by row even when that value is null (the order-by is
+        /// non-null, so the row is not skipped). Regression guard.
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateMinBy_NullValue()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = null, Visits = 1 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "x", Visits = 2 });
+            await StartStream("INSERT INTO output SELECT companyId, min_by(firstName, visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Name = default(string) } });
+        }
+
         [Fact]
         public async Task BulkAggregateGroupByNullableColumn()
         {

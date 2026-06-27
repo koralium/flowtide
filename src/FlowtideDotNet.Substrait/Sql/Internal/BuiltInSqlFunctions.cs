@@ -43,6 +43,40 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new SubstraitParseException("Unknown function argument type");
             }
         }
+
+        /// <summary>
+        /// Rejects DISTINCT and ORDER BY on an aggregate that does not honour them (e.g. list_agg/string_agg,
+        /// which order by the aggregated value via their shared tree). Without this they are silently dropped,
+        /// producing a wrong (duplicate-bearing or wrongly-ordered) result rather than an error.
+        /// </summary>
+        private static void RejectOrderByAndDistinct(string functionName, SqlParser.Ast.Expression.Function f, FunctionArgumentList argList)
+        {
+            if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+            {
+                throw new InvalidOperationException($"{functionName} does not support DISTINCT.");
+            }
+            if (f.WithinGroup != null || HasOrderByClause(argList))
+            {
+                throw new InvalidOperationException($"{functionName} does not support ORDER BY.");
+            }
+        }
+
+        private static bool HasOrderByClause(FunctionArgumentList argList)
+        {
+            var clauses = argList.Clauses;
+            if (clauses != null)
+            {
+                foreach (var clause in clauses)
+                {
+                    if (clause is FunctionArgumentClause.OrderBy)
+                    {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
         {
             sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, visitor, emitData) =>
@@ -785,6 +819,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
                 }
+                RejectOrderByAndDistinct("list_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
@@ -841,6 +876,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
                 }
+                RejectOrderByAndDistinct("string_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
