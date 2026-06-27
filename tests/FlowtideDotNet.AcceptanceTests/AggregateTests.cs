@@ -1509,26 +1509,38 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        /// <summary>
+        /// Min/max/list_agg over a multi-leaf shared tree on the initial load, with min and max that
+        /// differ for every group (visits = g*100 + ...). The distinct-per-group values are the point: a
+        /// column reversal or row-misalignment between the measure columns and the group column (e.g. the
+        /// shared-measure output being front-inserted per persisted leaf, or a partial-key routing miss)
+        /// produces wrong values and is caught here. Uniform values would hide it.
+        /// </summary>
         [Fact]
-        public async Task Diag_MultiLeaf_Initial()
+        public async Task BulkAggregateMinMaxListAgg_MultiLeaf_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
                 for (int m = 0; m < 5; m++)
-                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = (m + 1) * 10 });
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = g * 100 + (m + 1) * 10 });
             await StartStream("INSERT INTO output SELECT companyId, min(visits), max(visits), list_agg(firstName) FROM users GROUP BY companyId");
             await WaitForUpdate();
             var expected = Users.GroupBy(x => x.CompanyId).OrderBy(x => x.Key).Select(x => new { Key = x.Key, Min = x.Min(y => y.Visits), Max = x.Max(y => y.Visits), Names = x.Select(y => y.FirstName).OrderBy(n => n).ToList() });
             AssertCurrentDataEqual(expected);
         }
 
+        /// <summary>
+        /// Same multi-leaf, distinct-per-group setup, but deletes each group's min member so min must rise
+        /// to the next value (still distinct per group). Exercises shared-tree retraction on the
+        /// incremental path with values that vary across groups, so a reversal/misalignment is observable.
+        /// </summary>
         [Fact]
-        public async Task Diag_MultiLeaf_DeleteMin()
+        public async Task BulkAggregateMinMaxListAgg_MultiLeaf_DeleteMinMember()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
                 for (int m = 0; m < 5; m++)
-                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = (m + 1) * 10 });
+                    AddUser(new Entities.User { UserKey = g * 5 + m, CompanyId = "co_" + g.ToString("D4"), FirstName = "name_" + (g * 5 + m), Visits = g * 100 + (m + 1) * 10 });
             await StartStream("INSERT INTO output SELECT companyId, min(visits), max(visits), list_agg(firstName) FROM users GROUP BY companyId");
 
             void AssertExpected()
@@ -1540,6 +1552,7 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertExpected();
 
+            // Delete each group's smallest member (m == 0) so min must rise to the next value per group.
             for (int g = 0; g < 50; g++)
                 DeleteUser(Users.First(u => u.UserKey == g * 5));
             await WaitForUpdate();
