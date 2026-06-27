@@ -25,13 +25,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private readonly DataValueContainer _dataValueContainer;
         private readonly DataValueContainer _dataValueContainer2;
         private readonly ColumnBoundarySearch _columnBoundarySearch;
+        private readonly bool _seekNextPageForValue;
 
-        public BulkMinSearchComparer(int groupingKeyLength)
+        public BulkMinSearchComparer(int groupingKeyLength, bool seekNextPageForValue = false)
         {
             _groupingKeyLength = groupingKeyLength;
+            _seekNextPageForValue = seekNextPageForValue;
             _dataValueContainer = new DataValueContainer();
             _dataValueContainer2 = new DataValueContainer();
-            
+
             var columnOrder = new List<int>();
             for (int i = 0; i < groupingKeyLength; i++)
             {
@@ -40,7 +42,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             _columnBoundarySearch = new ColumnBoundarySearch(columnOrder, columnOrder);
         }
 
-        public bool SeekNextPageForValue => false;
+        public bool SeekNextPageForValue => _seekNextPageForValue;
 
         public int Start { get; set; }
         public int End { get; set; }

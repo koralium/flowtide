@@ -41,7 +41,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private IBplusTreeBulkSearch<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>, BulkMinSearchComparer>? _bulkSearcher;
         private int _groupingLength;
         private bool _isShared;
-        private int[]? _sortedBuffer;
+        private int[]? _sourceIndices;
+        private int[]? _insertPositions;
         private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
         private int[] _storeWeightArrayBuffer = Array.Empty<int>();
         private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
@@ -61,7 +62,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         {
             _tree = sharedTree;
             _groupingLength = groupingLength;
-            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength));
+            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength, seekNextPageForValue: true));
             _isShared = true;
         }
 
@@ -159,12 +160,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public async Task InitializeAsync(int groupingLength, IStateManagerClient stateManagerClient, IMemoryAllocator memoryAllocator)
         {
+            // Needed by FetchValuesAsync (temp column) even when shared, so set it before the early return.
+            _memoryAllocator = memoryAllocator;
             if (_isShared)
             {
                 return;
             }
             _groupingLength = groupingLength;
-            _memoryAllocator = memoryAllocator;
             _tree = await stateManagerClient.GetOrCreateTree("mintree",
                 new FlowtideDotNet.Storage.Tree.BPlusTreeOptions<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>>()
                 {
@@ -176,7 +178,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 });
 
             _bulkInserter = _tree.CreateBulkInserter();
-            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength));
+            _bulkSearcher = _tree.CreateBulkSearcher(new BulkMinSearchComparer(groupingLength, seekNextPageForValue: true));
         }
 
         public void NewBatch(PrimitiveList<int> weights, EventBatchData batchData)
@@ -219,34 +221,44 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 };
             }
 
-            if (_sortedBuffer == null || _sortedBuffer.Length < length)
+            if (_sourceIndices == null || _sourceIndices.Length < length)
             {
-                _sortedBuffer = new int[length];
-            }
-            for (int i = 0; i < length; i++)
-            {
-                _sortedBuffer[i] = i;
+                _sourceIndices = new int[length];
+                _insertPositions = new int[length];
             }
 
-            await _bulkSearcher!.Start(rowReferences, length, _sortedBuffer);
-            int foundCount = 0;
-            while (foundCount < length && await _bulkSearcher.MoveNextLeaf())
+            System.Array.Fill(_sourceIndices, -1, 0, length);
+
+            Debug.Assert(_memoryAllocator != null);
+            using var tempColumn = new Column(_memoryAllocator);
+
+            await _bulkSearcher!.Start(rowReferences, length);
+            while (await _bulkSearcher.MoveNextLeaf())
             {
                 var leaf = _bulkSearcher.CurrentLeaf;
 
                 for (int i = 0; i < _bulkSearcher.CurrentResults.Count; i++)
                 {
                     var result = _bulkSearcher.CurrentResults[i];
-                    if (result.LowerBound >= 0)
+                    if (result.LowerBound >= 0 && _sourceIndices[result.KeyIndex] == -1)
                     {
-                        outputColumn.Add(leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, default));
-                    }
-                    else
-                    {
-                        outputColumn.Add(NullValue.Instance);
+                        _sourceIndices[result.KeyIndex] = tempColumn.Count;
+                        tempColumn.Add(leaf.keys._data.Columns[_groupingLength].GetValueAt(result.LowerBound, default));
                     }
                 }
             }
+
+            InsertFromHelper(outputColumn, tempColumn, length);
+        }
+
+        private void InsertFromHelper(Column outputColumn, Column tempColumn, int length)
+        {
+            Debug.Assert(_sourceIndices != null);
+            Debug.Assert(_insertPositions != null);
+            System.Array.Fill(_insertPositions, outputColumn.Count, 0, length);
+            ReadOnlySpan<int> sortedLookupSpan = _sourceIndices.AsSpan(0, length);
+            ReadOnlySpan<int> insertPositionsSpan = _insertPositions.AsSpan(0, length);
+            outputColumn.InsertFrom(tempColumn, in sortedLookupSpan, in insertPositionsSpan, -1);
         }
     }
 

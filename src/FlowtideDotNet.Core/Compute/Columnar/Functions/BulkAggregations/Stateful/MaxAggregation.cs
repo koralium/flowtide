@@ -230,8 +230,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
 
             System.Array.Fill(_sourceIndices, -1, 0, length);
-            Debug.Assert(_insertPositions != null);
-            System.Array.Clear(_insertPositions, 0, length);
 
             Debug.Assert(_memoryAllocator != null);
             using var tempColumn = new Column(_memoryAllocator);
@@ -260,6 +258,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         {
             Debug.Assert(_sourceIndices != null);
             Debug.Assert(_insertPositions != null);
+            System.Array.Fill(_insertPositions, outputColumn.Count, 0, length);
             ReadOnlySpan<int> sortedLookupSpan = _sourceIndices.AsSpan(0, length);
             ReadOnlySpan<int> insertPositionsSpan = _insertPositions.AsSpan(0, length);
             outputColumn.InsertFrom(tempColumn, in sortedLookupSpan, in insertPositionsSpan, -1);
