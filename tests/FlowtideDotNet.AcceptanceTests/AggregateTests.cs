@@ -2460,6 +2460,247 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task BulkAggregateAllMeasureTypes_OneQuery()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 10 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "a", Visits = 30 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", FirstName = "b", Visits = 20 });
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId, min(visits), max(visits), sum(visits), count(*), count(DISTINCT visits),
+                       list_agg(firstName), string_agg(firstName, ','), min_by(firstName, visits),
+                       max_by(firstName, visits), avg(visits)
+                FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new
+                {
+                    CompanyId = "A",
+                    Min = (int?)10,
+                    Max = (int?)30,
+                    Sum = (long?)60,
+                    Cnt = 3L,
+                    DCnt = 3L,
+                    Names = new List<string> { "a", "b", "c" },
+                    Str = "a,b,c",
+                    MnBy = "c",  // value at min visits (10)
+                    MxBy = "a",  // value at max visits (30)
+                    Avg = (double?)20.0
+                }
+            });
+        }
+
+        [Fact]
+        public async Task BulkAggregateFilter_OnDifferentColumn()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 20 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "A", Visits = 40 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE userkey > 2) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            // userkey > 2 -> uk 3,4 -> 20+40 = 60
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", S = (long?)60 } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateTwoDifferentFiltersOnSameMeasure()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE visits > 3), sum(visits) FILTER (WHERE visits > 8) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", S1 = (long?)15, S2 = (long?)10 } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateFilter_StatelessAndSharedMixed()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE visits > 3), min(visits) FILTER (WHERE visits > 3) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Sum = (long?)15, Min = (int?)5 } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateDecimalSum_RetractToNull()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(CAST(visits AS DECIMAL)) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            var u = Users.First(x => x.UserKey == 2);
+            u.Visits = null;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "A", Sum = (decimal?)null },
+                new { CompanyId = "B", Sum = (decimal?)null },
+            });
+        }
+
+        [Fact]
+        public async Task BulkAggregateAvgDecimal()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, avg(CAST(visits AS DECIMAL)) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Avg = (decimal?)7.5m } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateGroupByExpression_WithNull()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 4 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = null });
+            await StartStream("INSERT INTO output SELECT visits % 2, count(*) FROM users GROUP BY visits % 2");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.Visits.HasValue ? (long?)(x.Visits.Value % 2) : null)
+                .OrderBy(g => g.Key)
+                .Select(g => new { M = g.Key, Cnt = (long)g.Count() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateGroupByMultipleColumnsWithExpression()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 3 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 4 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "B", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, visits % 2, count(*) FROM users GROUP BY companyId, visits % 2");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => new { x.CompanyId, M = (long)(x.Visits!.Value % 2) })
+                .OrderBy(g => g.Key.CompanyId).ThenBy(g => g.Key.M)
+                .Select(g => new { g.Key.CompanyId, g.Key.M, Cnt = (long)g.Count() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateZeroMeasureGroupBy()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "B" });
+            await StartStream("INSERT INTO output SELECT companyId FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A" }, new { CompanyId = "B" } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateDecimalMinMaxSum()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, min(CAST(visits AS DECIMAL)), max(CAST(visits AS DECIMAL)), sum(CAST(visits AS DECIMAL)) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Mn = 5m, Mx = 10m, Sum = 15m } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateNetZeroGroupInBatch()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+
+            // In a single batch: create a brand-new group then immediately delete it (net zero).
+            var z = new Entities.User { UserKey = 100, CompanyId = "Z", Visits = 99 };
+            AddUser(z);
+            DeleteUser(z);
+            await WaitForUpdate();
+
+            // Z must not appear.
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Sum = (long?)5 } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateGroupByBooleanExpression()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 8 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT visits > 5, count(*) FROM users GROUP BY visits > 5");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => x.Visits!.Value > 5).OrderBy(g => g.Key)
+                .Select(g => new { B = g.Key, Cnt = (long)g.Count() });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateOverExpression()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits * 2), min(visits + userkey), max(visits + userkey) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            // sum(visits*2)=30; visits+userkey = {6,12} -> min 6, max 12
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", S = 30L, Mn = 6L, Mx = 12L } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateGroupByExpression()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 4 });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "A", Visits = 7 });
+            await StartStream("INSERT INTO output SELECT visits % 2, count(*), sum(visits) FROM users GROUP BY visits % 2");
+            await WaitForUpdate();
+            var expected = Users.GroupBy(x => (long)(x.Visits!.Value % 2)).OrderBy(g => g.Key)
+                .Select(g => new { M = g.Key, Cnt = (long)g.Count(), Sum = (long)g.Sum(x => x.Visits!.Value) });
+            AssertCurrentDataEqual(expected);
+        }
+
+        [Fact]
+        public async Task BulkAggregateMinMaxString_WithChurn()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "banana" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "apple" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", FirstName = "cherry" });
+            await StartStream("INSERT INTO output SELECT companyId, min(firstName), max(firstName) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Mn = "apple", Mx = "cherry" } });
+
+            DeleteUser(Users.First(x => x.UserKey == 2)); // remove current min "apple"
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Mn = "banana", Mx = "cherry" } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateCountDistinctString()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "x" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "x" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", FirstName = "y" });
+            await StartStream("INSERT INTO output SELECT companyId, count(DISTINCT firstName) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Cnt = 2L } });
+        }
+
+        [Fact]
+        public async Task BulkAggregateMinBy_StringOrderBy()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "first", LastName = "zeta" });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "second", LastName = "alpha" });
+            AddUser(new Entities.User { UserKey = 3, CompanyId = "A", FirstName = "third", LastName = "mid" });
+            await StartStream("INSERT INTO output SELECT companyId, min_by(firstName, lastName), max_by(firstName, lastName) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            // min lastName = "alpha" -> "second"; max lastName = "zeta" -> "first"
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", MnBy = "second", MxBy = "first" } });
+        }
+
+        [Fact]
         public async Task BulkAggregateGroupByNullableColumn()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
