@@ -2272,20 +2272,13 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// Regression: sum0 of an empty/all-null group must emit a zero TYPED to the declared return type, so
-        /// it matches valued groups. A never-valued group has no value to infer a type from, so the zero is
-        /// taken from the aggregate's output type (Substrait AggregateFunction.output_type). For an integer
-        /// sum0, both a never-valued group and a valued-then-retracted group must be Int64 0 (previously the
-        /// never-valued one leaked a Double 0.0 fallback into the Int64 column).
+        /// Regression: a FILTER clause on a STATELESS aggregate (sum/count/avg) must be honoured. These
+        /// measures aggregate in the Compute path (driven by BulkAggregateMutator), which previously used the
+        /// full per-group index range and ignored the filter; the mutator now compacts each group's rows to
+        /// those passing the measure's filter before calling Compute. A: visits {2,5,10}, >3 -> {5,10}
+        /// (sum=15, count=2, avg=7.5). B: visits {1,2}, nothing passes (sum=null, count=0, avg=null).
         /// </summary>
-        /// <summary>
-        /// KNOWN BUG: a FILTER clause on a STATELESS aggregate (sum/sum0/count/avg) is silently ignored. The
-        /// filter is wired into StoreAsync (shared-tree measures and min_by/max_by honour it) but the Compute
-        /// path - which stateless measures use - is driven by BulkAggregateMutator with the full per-group
-        /// index range, not the filtered _measureLookups, so every row is aggregated regardless of the filter.
-        /// (FILTER on min/max etc. works; only the stateless Compute path drops it.)
-        /// </summary>
-        [Fact(Skip = "Known bug: FILTER on a stateless aggregate (sum/count/avg/sum0) is ignored - the Compute path uses the unfiltered group range.")]
+        [Fact]
         public async Task BulkAggregateSum_WithFilter_Stateless()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
@@ -2293,15 +2286,49 @@ namespace FlowtideDotNet.AcceptanceTests
             AddUser(new Entities.User { UserKey = 3, CompanyId = "A", Visits = 10 });
             AddUser(new Entities.User { UserKey = 4, CompanyId = "B", Visits = 1 });
             AddUser(new Entities.User { UserKey = 5, CompanyId = "B", Visits = 2 });
-            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE visits > 3) FROM users GROUP BY companyId");
+            await StartStream(@"
+                INSERT INTO output
+                SELECT companyId,
+                       sum(visits) FILTER (WHERE visits > 3),
+                       count(*) FILTER (WHERE visits > 3),
+                       avg(visits) FILTER (WHERE visits > 3)
+                FROM users GROUP BY companyId");
             await WaitForUpdate();
 
-            // Only visits > 3 should be summed. A: 5+10=15. B: nothing passes -> null. (Actual: A=17, B=3.)
             AssertCurrentDataEqual(new[]
             {
-                new { CompanyId = "A", Sum = (long?)15 },
-                new { CompanyId = "B", Sum = (long?)null },
+                new { CompanyId = "A", Sum = (long?)15, Cnt = 2L, Avg = (double?)7.5 },
+                new { CompanyId = "B", Sum = (long?)null, Cnt = 0L, Avg = (double?)null },
             });
+        }
+
+        /// <summary>
+        /// The stateless FILTER must also be honoured on retractions: updating a row across the filter
+        /// boundary retracts/adds its contribution only when the row's own value passes the predicate (the
+        /// filter is evaluated per row, weights carry insert/retract).
+        /// </summary>
+        [Fact]
+        public async Task BulkAggregateSum_WithFilter_Churn()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
+            AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
+            await StartStream("INSERT INTO output SELECT companyId, sum(visits) FILTER (WHERE visits > 3) FROM users GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Sum = (long?)15 } });
+
+            // 5 -> 2 : drops below the filter, contribution removed -> only 10 remains.
+            var u = Users.First(x => x.UserKey == 1);
+            u.Visits = 2;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Sum = (long?)10 } });
+
+            // 2 -> 20 : rises above the filter, contribution added back -> 10 + 20 = 30.
+            u = Users.First(x => x.UserKey == 1);
+            u.Visits = 20;
+            AddOrUpdateUser(u);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { CompanyId = "A", Sum = (long?)30 } });
         }
 
         /// <summary>
@@ -2417,6 +2444,13 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(new[] { new { Cnt = 0L, Sum = (long?)null, Min = (long?)null } });
         }
 
+        /// <summary>
+        /// Regression: sum0 of an empty/all-null group must emit a zero TYPED to the declared return type, so
+        /// it matches valued groups. A never-valued group has no value to infer a type from, so the zero is
+        /// taken from the aggregate's output type (Substrait AggregateFunction.output_type). For an integer
+        /// sum0, both a never-valued group and a valued-then-retracted group must be Int64 0 (previously the
+        /// never-valued one leaked a Double 0.0 fallback into the Int64 column).
+        /// </summary>
         [Fact]
         public async Task BulkAggregateSum0_AllNullGroup_TypeConsistency()
         {

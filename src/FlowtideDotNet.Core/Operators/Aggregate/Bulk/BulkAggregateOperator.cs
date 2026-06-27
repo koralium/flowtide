@@ -67,6 +67,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private int[] _noDuplicateIndices = Array.Empty<int>();
         private bool[] _outputToTemp = Array.Empty<bool>();
         private bool[] _isDeleted = Array.Empty<bool>();
+        // Scratch buffer the mutator uses to compact a group's rows to those passing a measure FILTER.
+        private int[] _filterIndicesBuffer = Array.Empty<int>();
         private readonly int[][] _measureLookups;
         private ColumnRowReference[] _rowReferenceBuffer;
         private ColumnAggregateStateReference[] _rowValuesBuffer;
@@ -649,6 +651,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 _noDuplicateIndices = new int[dataCount];
                 _outputToTemp = new bool[dataCount];
                 _isDeleted = new bool[dataCount];
+                _filterIndicesBuffer = new int[dataCount];
             }
 
             for (int i = 0; i < dataCount; i++)
@@ -831,13 +834,15 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             
             var mutator = new BulkAggregateMutator(
-                _measures, 
-                data.Weights, 
-                data.EventBatchData, 
-                _groupedSortIndices, 
-                _computeRanges, 
-                outputColumns, 
-                weights, 
+                _measures,
+                _measureFilters,
+                _filterIndicesBuffer,
+                data.Weights,
+                data.EventBatchData,
+                _groupedSortIndices,
+                _computeRanges,
+                outputColumns,
+                weights,
                 _outputToTemp,
                 _isDeleted);
 

@@ -28,6 +28,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
     internal struct BulkAggregateMutator : IRowMutator<ColumnRowReference, ColumnAggregateStateReference>
     {
         private readonly IColumnBulkAggregation[] measures;
+        private readonly Func<EventBatchData, int, bool>?[] measureFilters;
+        private readonly int[] filterScratch;
         private readonly PrimitiveList<int> weights;
         private readonly EventBatchData incomingData;
         private readonly int[] groupSortIndices;
@@ -38,8 +40,10 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
         private readonly bool[] isDeleted;
 
         public BulkAggregateMutator(
-            IColumnBulkAggregation[] measures, 
-            PrimitiveList<int> weights, 
+            IColumnBulkAggregation[] measures,
+            Func<EventBatchData, int, bool>?[] measureFilters,
+            int[] filterScratch,
+            PrimitiveList<int> weights,
             EventBatchData incomingData,
             int[] indices,
             List<AggregateComputeRange> computeRanges,
@@ -49,6 +53,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             bool[] isDeleted)
         {
             this.measures = measures;
+            this.measureFilters = measureFilters;
+            this.filterScratch = filterScratch;
             this.weights = weights;
             this.incomingData = incomingData;
             this.groupSortIndices = indices;
@@ -57,6 +63,31 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             this.outputWeights = outputWeights;
             this.outputToTemp = outputToTemp;
             this.isDeleted = isDeleted;
+        }
+
+        /// <summary>
+        /// Restricts a group's row range to the rows that pass the measure's FILTER predicate. Stateless
+        /// measures (sum/sum0/count/avg) aggregate over the indices they are given, so a FILTER is applied by
+        /// handing Compute only the rows that match. Measures without a filter get the full range unchanged.
+        /// The scratch buffer is reused per measure since Compute consumes the span synchronously.
+        /// </summary>
+        private ReadOnlySpan<int> ApplyMeasureFilter(int measureIndex, ReadOnlySpan<int> indiceSpan)
+        {
+            var filter = measureFilters[measureIndex];
+            if (filter == null)
+            {
+                return indiceSpan;
+            }
+            int count = 0;
+            for (int j = 0; j < indiceSpan.Length; j++)
+            {
+                var physicalIndex = indiceSpan[j];
+                if (filter(incomingData, physicalIndex))
+                {
+                    filterScratch[count++] = physicalIndex;
+                }
+            }
+            return filterScratch.AsSpan(0, count);
         }
 
         public void GetSizePrefixSum(ColumnRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
@@ -84,7 +115,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     var colReference = new ColumnReference(stateCol, existing.RowIndex, default);
                     var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = groupSortIndices.AsSpan(computeRange.start, computeRange.length);
-                    writeToTemp |= measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
+                    ReadOnlySpan<int> measureSpan = ApplyMeasureFilter(i, indiceSpan);
+                    writeToTemp |= measures[i].Compute(measureSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 
                 if (incoming.weight == 0)
@@ -144,7 +176,8 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     // Compute should be called here for each row, need alot of extra input here though.
                     var computeRange = computeRanges[sortedIndex];
                     var indiceSpan = groupSortIndices.AsSpan(computeRange.start, computeRange.length);
-                    measures[i].Compute(indiceSpan, weights, incomingData, colReference, sortedIndex);
+                    ReadOnlySpan<int> measureSpan = ApplyMeasureFilter(i, indiceSpan);
+                    measures[i].Compute(measureSpan, weights, incomingData, colReference, sortedIndex);
                 }
                 // New data should always be output no matter what compute says
                 outputToTemp[sortedIndex] = true;
