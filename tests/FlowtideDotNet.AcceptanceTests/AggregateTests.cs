@@ -2030,16 +2030,15 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
-        /// KNOWN ISSUE (separate from the min/max/_by fixes): list_union_distinct_agg with a GROUP BY
-        /// crashes during insert with NotSupportedException. The list argument is flattened into a
-        /// ColumnWithOffset value column, and the shared-tree insert's boundary search
-        /// (BulkMinInsertComparer -> ColumnBoundarySearch) calls ColumnWithOffset.GetColumnState(), which
-        /// throws when the inner column is not a plain Column. Reproduces at any scale / page size, so it
-        /// is unrelated to the multi-leaf carry/front-insert bugs. Needs its own fix in the boundary-search
-        /// / ColumnWithOffset support; skipped until then so the suite stays green.
+        /// Regression: list_union_distinct_agg with a GROUP BY used to crash during insert with
+        /// NotSupportedException. The list argument is flattened (each element a shared-tree entry) and the
+        /// group column was wrapped again with 'new ColumnWithOffset'; since the incoming group column is
+        /// already a ColumnWithOffset under GROUP BY, that nested ColumnWithOffset and tripped
+        /// GetColumnState in the insert boundary search. Fixed by using ColumnWithOffset.CreateFlattened
+        /// (composes offsets instead of nesting).
         /// </summary>
-        [Fact(Skip = "Known bug: grouped list_union_distinct_agg throws NotSupportedException via ColumnWithOffset.GetColumnState during shared-tree insert; tracked separately.")]
-        public async Task BulkAggregateListUnionDistinctAgg_Grouped_KnownIssue()
+        [Fact]
+        public async Task BulkAggregateListUnionDistinctAgg_Grouped()
         {
             for (int g = 0; g < 3; g++)
                 for (int m = 0; m < 2; m++)

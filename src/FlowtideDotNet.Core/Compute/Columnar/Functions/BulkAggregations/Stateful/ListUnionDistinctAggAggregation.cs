@@ -40,6 +40,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
         private PrimitiveList<int>? _offsets;
         private Column? _projectedDataColumn;
         private PrimitiveList<int>? _weightList;
+        private bool[] _offsetComposed = Array.Empty<bool>();
         private BulkGroupValueRowReference[] _storeRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
         private int[] _storeWeightArrayBuffer = Array.Empty<int>();
         private BulkGroupValueRowReference[] _fetchRowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
@@ -166,10 +167,23 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
                 return ValueTask.CompletedTask;
             }
 
+            return StoreFlattenedAsync(groupValueColumns, totalInserted);
+        }
+
+        private async ValueTask StoreFlattenedAsync(IColumn[] groupValueColumns, int totalInserted)
+        {
+            Debug.Assert(_offsets != null && _projectedDataColumn != null && _weightList != null && _bulkInserter != null);
+
+            if (_offsetComposed.Length < groupValueColumns.Length)
+            {
+                _offsetComposed = new bool[groupValueColumns.Length];
+            }
+
             var allColumns = new IColumn[groupValueColumns.Length + 1];
             for (int i = 0; i < groupValueColumns.Length; i++)
             {
-                allColumns[i] = new ColumnWithOffset(groupValueColumns[i], _offsets);
+                allColumns[i] = ColumnWithOffset.CreateFlattened(groupValueColumns[i], _offsets, _memoryAllocator!, out var usedOffset);
+                _offsetComposed[i] = !usedOffset;
             }
             allColumns[groupValueColumns.Length] = _projectedDataColumn;
             var groupingBatch = new EventBatchData(allColumns);
@@ -199,7 +213,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
             }
             totalBatchSize += _projectedDataColumn.GetByteSize();
 
-            return _bulkInserter!.ApplyBatch(rowReferences, weightArray, totalInserted, new ListUnionDistinctAggRowMutator(), totalBatchSize);
+            await _bulkInserter.ApplyBatch(rowReferences, weightArray, totalInserted, new ListUnionDistinctAggRowMutator(), totalBatchSize);
+
+            for (int i = 0; i < groupValueColumns.Length; i++)
+            {
+                if (_offsetComposed[i])
+                {
+                    ((ColumnWithOffset)allColumns[i]).Offsets.Dispose();
+                }
+            }
         }
 
         public bool Compute(ReadOnlySpan<int> indices, PrimitiveList<int> weights, EventBatchData data, ColumnReference groupState, int sortedIndex)
