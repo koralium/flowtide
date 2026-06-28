@@ -53,6 +53,13 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
     {
         public required string StreamName { get; init; }
 
+        /// <summary>
+        /// The unique, restart-stable name of the source operator. Two operators can read the same table (e.g. both
+        /// sides of a self-join); this disambiguates them so each gets its own slot (per-table mode) or its own channel
+        /// off the shared reader (shared mode).
+        /// </summary>
+        public required string OperatorName { get; init; }
+
         public required string Schema { get; init; }
 
         public required string Table { get; init; }
@@ -60,8 +67,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         public required IReadOnlyList<string> SchemaNames { get; init; }
 
         public required IReadOnlyList<int> KeySchemaIndices { get; init; }
-
-        public required Func<Exception, Task> FaultHandler { get; init; }
     }
 
     /// <summary>
@@ -82,16 +87,28 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
     internal interface IPostgresChangeSource : IAsyncDisposable
     {
         /// <summary>
-        /// Prepares the source. Returns the snapshot to use for the initial full load, or null if no fresh snapshot is
-        /// available (e.g. a re-snapshot after a reconnect, which reads current data instead).
+        /// Prepares the source. <paramref name="resumeLsn"/> is the last durably-checkpointed LSN from operator state
+        /// (0 if none). Returns a snapshot to read for the initial full load, or <c>null</c> when the source can resume
+        /// an existing persistent slot from its confirmed position (no snapshot needed).
         /// </summary>
-        Task<PostgresSnapshotInfo?> InitializeAsync(CancellationToken ct);
+        Task<PostgresSnapshotInfo?> InitializeAsync(long resumeLsn, CancellationToken ct);
 
         /// <summary>
         /// Signals that this table's initial snapshot read has completed. The shared reader will not begin streaming
         /// until every attached table has reported snapshot completion.
         /// </summary>
         Task SnapshotCompleteAsync(CancellationToken ct);
+
+        /// <summary>
+        /// Begins streaming without a snapshot, used when resuming a persistent slot from its confirmed position.
+        /// </summary>
+        Task BeginStreamingAsync(CancellationToken ct);
+
+        /// <summary>
+        /// Reports the latest LSN that has been durably checkpointed. For a persistent slot this is what is confirmed
+        /// to the server (advancing <c>confirmed_flush_lsn</c> and releasing WAL); for a temporary slot it is ignored.
+        /// </summary>
+        void SetConfirmedFlushLsn(ulong lsn);
 
         /// <summary>
         /// Reads the next buffered change without blocking. Returns false when nothing is currently available.
@@ -111,5 +128,12 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         bool NeedsResnapshot { get; }
 
         void ClearResnapshot();
+
+        /// <summary>
+        /// Set (from the background streaming loop) when the replication stream has faulted. The operator polls this
+        /// from its own thread and triggers a rollback - the loop must never drive the rollback itself, because rolling
+        /// back disposes this change source, which waits for the loop to finish (a deadlock).
+        /// </summary>
+        Exception? Fault { get; }
     }
 }

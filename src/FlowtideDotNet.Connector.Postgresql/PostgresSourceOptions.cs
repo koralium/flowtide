@@ -48,6 +48,14 @@ namespace FlowtideDotNet.Connector.PostgreSQL
         public PostgresReplicationMode ReplicationMode { get; set; } = PostgresReplicationMode.Shared;
 
         /// <summary>
+        /// Controls whether the replication slot is temporary (dropped on disconnect, re-snapshot on restart) or
+        /// persistent (survives restarts, resumes from the last checkpoint). Defaults to
+        /// <see cref="PostgresSlotDurability.Temporary"/>. Persistent is currently only supported in
+        /// <see cref="PostgresReplicationMode.PerTable"/> mode.
+        /// </summary>
+        public PostgresSlotDurability SlotDurability { get; set; } = PostgresSlotDurability.Temporary;
+
+        /// <summary>
         /// When set, the source uses an existing, user-managed publication with this name instead of creating and
         /// managing one itself. The publication must already contain every table the stream reads from.
         /// When null (the default) Flowtide creates and manages a publication automatically.

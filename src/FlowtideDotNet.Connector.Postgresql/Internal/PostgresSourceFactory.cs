@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private readonly PostgresTableProvider _tableProvider;
         private readonly PostgresReplicationCoordinator _coordinator;
         private readonly object _validateLock = new();
-        private bool _validated;
+        private volatile bool _validated;
 
         public PostgresSourceFactory(PostgresSourceOptions options)
         {
@@ -75,6 +75,25 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             var tableName = _options.TableNameTransform?.Invoke(readRelation) ?? readRelation.NamedTable.Names;
             var (schema, table) = PostgresUtils.ResolveSchemaAndTable(tableName);
 
+            // Fail fast at startup: the source needs a primary key (it keys its reconciling state on it), and the table
+            // must have a replica identity that carries the key in UPDATE/DELETE WAL records (default = PK, or FULL).
+            using (var connection = new NpgsqlConnection(_options.ConnectionStringFunc()))
+            {
+                connection.Open();
+                var primaryKeys = PostgresUtils.GetPrimaryKeys(connection, schema, table, default).GetAwaiter().GetResult();
+                if (primaryKeys.Count == 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Table {schema}.{table} has no primary key. A primary key is required for the PostgreSQL source.");
+                }
+                var replicaIdentity = PostgresUtils.GetReplicaIdentity(connection, schema, table, default).GetAwaiter().GetResult();
+                if (replicaIdentity == 'n')
+                {
+                    throw new InvalidOperationException(
+                        $"Table {schema}.{table} has REPLICA IDENTITY NOTHING, so UPDATE/DELETE changes carry no key and cannot be applied. Set REPLICA IDENTITY to DEFAULT (the primary key) or FULL.");
+                }
+            }
+
             // Record table membership at plan time so the shared reader can build one publication for all tables.
             _coordinator.RegisterTable(schema, table);
 
@@ -83,11 +102,11 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 PostgresReplicationMode.PerTable => context => new PerTableChangeSource(
                     _options,
                     context.StreamName,
+                    context.OperatorName,
                     context.Schema,
                     context.Table,
                     context.SchemaNames,
-                    context.KeySchemaIndices,
-                    context.FaultHandler),
+                    context.KeySchemaIndices),
                 PostgresReplicationMode.Shared => context => _coordinator.CreateChangeSource(context),
                 _ => throw new NotSupportedException($"Unknown replication mode {_options.ReplicationMode}.")
             };

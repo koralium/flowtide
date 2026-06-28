@@ -47,6 +47,20 @@ The connector can consume replication either per table or shared across a databa
 Both modes use the same snapshot-then-stream logic; only where the slot lives differs. In a multi-node deployment the
 shared reader is scoped per (stream, database, node), so each node decodes only the tables it hosts.
 
+## Slot durability
+
+`PostgresSourceOptions.SlotDurability` controls whether the slot is temporary or persistent:
+
+| Durability | Restart behaviour | Cleanup |
+| --- | --- | --- |
+| `Temporary` (default) | The slot is dropped when the connection closes, so a restart **re-snapshots** the whole table and reconciles it against the checkpointed state. Cost grows with table size. | None — nothing is ever left on the server. |
+| `Persistent` | A named slot survives restarts, so the stream **resumes** from the last durably-checkpointed position instead of re-snapshotting. The confirmed position is advanced only after a checkpoint, so resuming never loses or (thanks to the reconciling apply) duplicates rows. If the slot has been invalidated (`wal_status = 'lost'`) it falls back to a re-snapshot. | The slot is **not** dropped automatically. You must `pg_drop_replication_slot(...)` it when the stream is permanently retired, otherwise it retains WAL on the server. Bound the retention with `max_slot_wal_keep_size`. |
+
+`Persistent` is the right choice for large tables where a full re-snapshot on every restart is too expensive. It works
+in both `PerTable` and `Shared` mode. In `Shared` mode the single slot's confirmed position only advances to the
+**minimum** position all of its tables have durably checkpointed, so a table that is ahead simply re-processes the gap
+on resume (which is idempotent).
+
 ## Publications
 
 By default Flowtide creates and manages a publication automatically (one publication per table in `PerTable` mode,
@@ -93,6 +107,7 @@ SELECT id, name FROM public.users
 | --- | --- | --- |
 | `ConnectionStringFunc` | required | Connection string for both snapshot reads and the replication connection. |
 | `ReplicationMode` | `Shared` | `PerTable` or `Shared`. |
+| `SlotDurability` | `Temporary` | `Temporary` (re-snapshot on restart) or `Persistent` (resume from checkpoint). |
 | `PublicationName` | `null` | Use an existing publication instead of auto-managing one. |
 | `TableNameTransform` | `null` | Map a read relation to the actual schema/table parts. |
 | `SlotPrefix` | `flowtide` | Prefix for generated replication slot names. |
@@ -105,7 +120,8 @@ SELECT id, name FROM public.users
 ## Supported data types
 
 PostgreSQL types are mapped to Flowtide types as follows. Unmapped types (arrays, ranges, network types, enums, …)
-are read as their text representation.
+are read as their PostgreSQL text representation — consistently in both the snapshot and the replication stream (the
+snapshot reads them with a `::text` cast so the two paths agree).
 
 | PostgreSQL | Flowtide |
 | --- | --- |
@@ -127,9 +143,16 @@ are read as their text representation.
 
 ## Notes and limitations
 
-* **Re-snapshot on restart.** Because slots are temporary, a restart re-reads the table and reconciles it against
-  existing state. For very large tables this can be costly; a bounded permanent-slot mode may be added later.
+* **Re-snapshot on restart (temporary slots).** With the default `Temporary` durability a restart re-reads the table
+  and reconciles it against existing state. For very large tables this can be costly — use `SlotDurability = Persistent`
+  to resume from the last checkpoint instead.
 * **TOAST.** When an `UPDATE` omits an unchanged out-of-line (TOAST) column, the value is backfilled from the previous
   row, so the row is emitted with its full, correct value. (If the previous row is unexpectedly missing, the table
   falls back to a reconciling reload.)
 * **TRUNCATE** is reflected by reconciling against the now-empty table, which retracts all of its rows.
+* **Replica identity.** Tables need a primary key and a replica identity that carries the key in WAL (the default
+  identity, which is the primary key, or `FULL`). `REPLICA IDENTITY NOTHING` is rejected at startup.
+* **Type-fidelity caveats.** `bytea` assumes the default `bytea_output = hex`. `numeric`/`decimal` values of `NaN`
+  are not supported. `timestamptz`/`timetz` are decoded from the replication text using the server's `TimeZone`;
+  standard whole-hour offsets are handled, but exotic sub-hour zones may need the server session in UTC. `money` is
+  surfaced as its text representation rather than a decimal (its text form is locale-dependent).

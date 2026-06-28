@@ -27,7 +27,9 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         private readonly PostgresSourceOptions _options;
         private readonly object _membershipLock = new();
-        private readonly HashSet<(string schema, string table)> _registeredTables = new();
+        // One entry per source operator (a self-join registers the same table more than once, and each occurrence is its
+        // own operator that must be waited for before streaming starts).
+        private readonly List<(string schema, string table)> _registrations = new();
         private readonly string _databaseId;
 
         public PostgresReplicationCoordinator(PostgresSourceOptions options)
@@ -45,7 +47,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         {
             lock (_membershipLock)
             {
-                _registeredTables.Add((schema, table));
+                _registrations.Add((schema, table));
             }
         }
 
@@ -57,12 +59,16 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         public SharedReplicationReader GetOrCreateReader(string streamName)
         {
             List<(string schema, string table)> membership;
+            int sourceCount;
             lock (_membershipLock)
             {
-                membership = _registeredTables.ToList();
+                // Distinct tables drive the single publication; the raw registration count is how many source operators
+                // the reader must wait to be ready before streaming (a self-join contributes two for one table).
+                membership = _registrations.Distinct().ToList();
+                sourceCount = _registrations.Count;
             }
 
-            return Readers.GetOrAdd((streamName, _databaseId), key => new SharedReplicationReader(_options, key.stream, key.db, membership));
+            return Readers.GetOrAdd((streamName, _databaseId), key => new SharedReplicationReader(_options, key.stream, key.db, membership, sourceCount));
         }
 
         internal static void RemoveReader(string streamName, string databaseId)

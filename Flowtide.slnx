@@ -13,7 +13,6 @@
     <Project Path="samples/SqlServerToSqlServerStream/SqlServerToSqlServerStream.csproj" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.AspNetCore/FlowtideDotNet.AspNetCore.csproj" />
     <Project Path="src/FlowtideDotNet.Base/FlowtideDotNet.Base.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.CosmosDB/FlowtideDotNet.Connector.CosmosDB.csproj" />
@@ -23,8 +22,10 @@
     <Project Path="src/FlowtideDotNet.Connector.Kafka/FlowtideDotNet.Connector.Kafka.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj" />
-    <Project Path="src/FlowtideDotNet.Connector.PostgreSQL/FlowtideDotNet.Connector.PostgreSQL.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Permify/FlowtideDotNet.Connector.Permify.csproj" />
+    <Project Path="src/FlowtideDotNet.Connector.PostgreSQL/FlowtideDotNet.Connector.PostgreSQL.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj" />
@@ -33,6 +34,7 @@
     <Project Path="src/FlowtideDotNet.Core/FlowtideDotNet.Core.csproj" />
     <Project Path="src/FlowtideDotNet.DependencyInjection/FlowtideDotNet.DependencyInjection.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.Azure/FlowtideDotNet.Storage.AzureBlobs.csproj" />
+    <Project Path="src/FlowtideDotNet.Storage.FasterKV/FlowtideDotNet.Storage.FasterKV.csproj" />
     <Project Path="src/FlowtideDotNet.Storage.SqlServer/FlowtideDotNet.Storage.SqlServer.csproj" />
     <Project Path="src/FlowtideDotNet.Storage/FlowtideDotNet.Storage.csproj" />
     <Project Path="src/FlowtideDotNet.Substrait/FlowtideDotNet.Substrait.csproj" />
@@ -52,8 +54,10 @@
     <Project Path="tests/FlowtideDotNet.Connector.Kafka.Tests/FlowtideDotNet.Connector.Kafka.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.MongoDB.Tests/FlowtideDotNet.Connector.MongoDB.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.OpenFGA.Tests/FlowtideDotNet.Connector.OpenFGA.Tests.csproj" />
-    <Project Path="tests/FlowtideDotNet.Connector.PostgreSQL.Tests/FlowtideDotNet.Connector.PostgreSQL.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.Permify.Tests/FlowtideDotNet.Connector.Permify.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Connector.PostgreSQL.Tests/FlowtideDotNet.Connector.PostgreSQL.Tests.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="tests/FlowtideDotNet.Connector.Qdrant.Tests/FlowtideDotNet.Connector.Qdrant.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.SpiceDB.Tests/FlowtideDotNet.Connector.SpiceDB.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.Starrocks.Tests/FlowtideDotNet.Connector.StarRocks.Tests.csproj" />

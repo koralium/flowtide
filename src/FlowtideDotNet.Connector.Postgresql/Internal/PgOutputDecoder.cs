@@ -51,21 +51,39 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         }
     }
 
+    /// <summary>
+    /// A change decoded from the WAL into <b>relation</b>-column order (one entry per published column). The wire tuple
+    /// can only be read once, so the streaming loop reads it into this form and then projects it onto each interested
+    /// source's schema via <see cref="PgOutputDecoder.Project"/> - which is what lets several operators (e.g. both sides
+    /// of a self-join) consume the same table's changes.
+    /// </summary>
+    internal sealed class RawPgChange
+    {
+        public required PostgresChangeKind Kind { get; init; }
+
+        /// <summary>New tuple (insert/update) or the deleted row's key, in relation column order.</summary>
+        public required object?[] NewRelationValues { get; init; }
+
+        /// <summary>Old tuple image for an update (relation order), when the replica identity provides one. Null otherwise.</summary>
+        public object?[]? OldRelationValues { get; init; }
+
+        public required ulong Lsn { get; init; }
+    }
+
     internal static class PgOutputDecoder
     {
-        public static async Task<PostgresChange> DecodeInsertAsync(InsertMessage message, RelationColumnMap map, CancellationToken ct)
+        public static async Task<RawPgChange> ReadInsertAsync(InsertMessage message, CancellationToken ct)
         {
-            var values = new object?[map.SchemaWidth];
-            await ReadTupleAsync(message.NewRow, map, values, ct);
-            return new PostgresChange
+            var values = await ReadTupleAsync(message.NewRow, message.Relation.Columns.Count, ct);
+            return new RawPgChange
             {
                 Kind = PostgresChangeKind.Insert,
-                Values = values,
+                NewRelationValues = values,
                 Lsn = (ulong)message.WalEnd
             };
         }
 
-        public static async Task<PostgresChange> DecodeUpdateAsync(UpdateMessage message, RelationColumnMap map, CancellationToken ct)
+        public static async Task<RawPgChange> ReadUpdateAsync(UpdateMessage message, CancellationToken ct)
         {
             object?[]? oldImage = null;
 
@@ -73,67 +91,98 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             switch (message)
             {
                 case IndexUpdateMessage indexUpdate:
-                    oldImage = new object?[map.SchemaWidth];
-                    await ReadTupleAsync(indexUpdate.Key, map, oldImage, ct);
+                    oldImage = await ReadTupleAsync(indexUpdate.Key, message.Relation.Columns.Count, ct);
                     break;
                 case FullUpdateMessage fullUpdate:
-                    oldImage = new object?[map.SchemaWidth];
-                    await ReadTupleAsync(fullUpdate.OldRow, map, oldImage, ct);
+                    oldImage = await ReadTupleAsync(fullUpdate.OldRow, message.Relation.Columns.Count, ct);
                     break;
             }
 
-            var values = new object?[map.SchemaWidth];
-            await ReadTupleAsync(message.NewRow, map, values, ct);
+            var values = await ReadTupleAsync(message.NewRow, message.Relation.Columns.Count, ct);
 
-            object?[]? oldKey = null;
-            if (oldImage != null && KeyDiffers(oldImage, values, map.KeySchemaIndices))
-            {
-                oldKey = oldImage;
-            }
-
-            return new PostgresChange
+            return new RawPgChange
             {
                 Kind = PostgresChangeKind.Update,
-                Values = values,
-                OldKeyValues = oldKey,
+                NewRelationValues = values,
+                OldRelationValues = oldImage,
                 Lsn = (ulong)message.WalEnd
             };
         }
 
-        public static async Task<PostgresChange> DecodeDeleteAsync(DeleteMessage message, RelationColumnMap map, CancellationToken ct)
+        public static async Task<RawPgChange> ReadDeleteAsync(DeleteMessage message, CancellationToken ct)
         {
-            var key = new object?[map.SchemaWidth];
-            switch (message)
+            object?[] key = message switch
             {
-                case KeyDeleteMessage keyDelete:
-                    await ReadTupleAsync(keyDelete.Key, map, key, ct);
-                    break;
-                case FullDeleteMessage fullDelete:
-                    await ReadTupleAsync(fullDelete.OldRow, map, key, ct);
-                    break;
+                KeyDeleteMessage keyDelete => await ReadTupleAsync(keyDelete.Key, message.Relation.Columns.Count, ct),
+                FullDeleteMessage fullDelete => await ReadTupleAsync(fullDelete.OldRow, message.Relation.Columns.Count, ct),
+                _ => new object?[message.Relation.Columns.Count]
+            };
+
+            return new RawPgChange
+            {
+                Kind = PostgresChangeKind.Delete,
+                NewRelationValues = key,
+                Lsn = (ulong)message.WalEnd
+            };
+        }
+
+        /// <summary>
+        /// Projects a relation-order raw change onto one source's schema column order, producing the change that source's
+        /// operator consumes. Safe to call several times for the same <paramref name="raw"/> (once per interested source).
+        /// </summary>
+        public static PostgresChange Project(RawPgChange raw, RelationColumnMap map)
+        {
+            var values = ProjectValues(raw.NewRelationValues, map);
+
+            object?[]? oldKey = null;
+            if (raw.Kind == PostgresChangeKind.Update && raw.OldRelationValues != null)
+            {
+                var oldImage = ProjectValues(raw.OldRelationValues, map);
+                if (KeyDiffers(oldImage, values, map.KeySchemaIndices))
+                {
+                    oldKey = oldImage;
+                }
             }
 
             return new PostgresChange
             {
-                Kind = PostgresChangeKind.Delete,
-                Values = key,
-                Lsn = (ulong)message.WalEnd
+                Kind = raw.Kind,
+                Values = values,
+                OldKeyValues = oldKey,
+                Lsn = raw.Lsn
             };
         }
 
-        private static async Task ReadTupleAsync(ReplicationTuple tuple, RelationColumnMap map, object?[] target, CancellationToken ct)
+        private static object?[] ProjectValues(object?[] relationValues, RelationColumnMap map)
         {
+            var schemaValues = new object?[map.SchemaWidth];
+            var relationToSchema = map.RelationToSchema;
+            int count = Math.Min(relationValues.Length, relationToSchema.Length);
+            for (int i = 0; i < count; i++)
+            {
+                int schemaIndex = relationToSchema[i];
+                if (schemaIndex >= 0)
+                {
+                    schemaValues[schemaIndex] = relationValues[i];
+                }
+            }
+            return schemaValues;
+        }
+
+        private static async Task<object?[]> ReadTupleAsync(ReplicationTuple tuple, int relationColumnCount, CancellationToken ct)
+        {
+            var values = new object?[relationColumnCount];
             int position = 0;
             await foreach (var value in tuple.WithCancellation(ct))
             {
-                int schemaIndex = position < map.RelationToSchema.Length ? map.RelationToSchema[position] : -1;
                 var read = await ReadValueAsync(value, ct);
-                if (schemaIndex >= 0)
+                if (position < values.Length)
                 {
-                    target[schemaIndex] = read;
+                    values[position] = read;
                 }
                 position++;
             }
+            return values;
         }
 
         private static async ValueTask<object?> ReadValueAsync(ReplicationValue value, CancellationToken ct)

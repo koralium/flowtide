@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private SharedReplicationReader? _reader;
         private ChannelReader<PostgresChange>? _channel;
         private volatile bool _needsResnapshot;
+        private volatile Exception? _fault;
 
         public SharedChangeSource(PostgresReplicationCoordinator coordinator, PostgresChangeSourceContext context)
         {
@@ -33,11 +34,11 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             _context = context;
         }
 
+        public string OperatorName => _context.OperatorName;
         public string Schema => _context.Schema;
         public string Table => _context.Table;
         public IReadOnlyList<string> SchemaNames => _context.SchemaNames;
         public IReadOnlyList<int> KeySchemaIndices => _context.KeySchemaIndices;
-        public Func<Exception, Task> FaultHandler => _context.FaultHandler;
 
         public bool NeedsResnapshot => _needsResnapshot;
 
@@ -45,17 +46,40 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         internal void RequestResnapshot() => _needsResnapshot = true;
 
-        public async Task<PostgresSnapshotInfo?> InitializeAsync(CancellationToken ct)
+        public Exception? Fault => _fault;
+
+        internal void SetFault(Exception exception) => _fault = exception;
+
+        public async Task<PostgresSnapshotInfo?> InitializeAsync(long resumeLsn, CancellationToken ct)
         {
-            _reader = _coordinator.GetOrCreateReader(_context.StreamName);
-            var (snapshot, channel) = await _reader.AttachAsync(this, ct);
-            _channel = channel;
-            return snapshot;
+            // Retry to handle a rollback race: the reader we obtained may have been torn down between GetOrCreate and
+            // Attach. Once disposed it is removed from the registry, so the next GetOrCreate returns a fresh one.
+            while (true)
+            {
+                _reader = _coordinator.GetOrCreateReader(_context.StreamName);
+                var result = await _reader.AttachAsync(this, resumeLsn, ct);
+                if (result.HasValue)
+                {
+                    _channel = result.Value.channel;
+                    return result.Value.snapshot;
+                }
+            }
         }
 
         public Task SnapshotCompleteAsync(CancellationToken ct)
         {
-            return _reader!.SignalSnapshotCompleteAsync(ct);
+            return _reader!.SignalReadyAsync(ct);
+        }
+
+        public Task BeginStreamingAsync(CancellationToken ct)
+        {
+            // Resume path (persistent slot): this table is ready to stream without a snapshot.
+            return _reader!.SignalReadyAsync(ct);
+        }
+
+        public void SetConfirmedFlushLsn(ulong lsn)
+        {
+            _reader?.ReportDurableLsn(OperatorName, lsn);
         }
 
         public bool TryRead([NotNullWhen(true)] out PostgresChange? change)
@@ -68,7 +92,11 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             return false;
         }
 
-        public void Acknowledge(ulong lsn) => _reader?.Acknowledge(lsn);
+        public void Acknowledge(ulong lsn)
+        {
+            // The shared reader confirms WAL positions in its own loop (the latest received position for a temporary
+            // slot, or the minimum durable position for a persistent slot), so per-table acks are not needed here.
+        }
 
         public async ValueTask DisposeAsync()
         {

@@ -13,6 +13,10 @@
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.PostgreSQL;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Storage.Persistence;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 
 namespace FlowtideDotNet.Connector.PostgreSQL.Tests
 {
@@ -23,15 +27,28 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Tests
     internal sealed class PostgresTestStream : FlowtideTestStream
     {
         private readonly PostgresSourceOptions _options;
+        private readonly MemoryFileProvider? _fileProvider;
 
-        public PostgresTestStream(string testName, PostgresSourceOptions options) : base(testName)
+        public PostgresTestStream(string testName, PostgresSourceOptions options, MemoryFileProvider? fileProvider = null) : base(testName)
         {
             _options = options;
+            _fileProvider = fileProvider;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManager)
         {
             connectorManager.AddPostgresSource(_options);
+        }
+
+        protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
+        {
+            // When a shared file provider is supplied, checkpoint data survives the stream instance, so a second
+            // stream over the same provider restores from the first stream's checkpoint (simulating a restart).
+            if (_fileProvider != null)
+            {
+                return new ReservoirPersistentStorage(new ReservoirStorageOptions { FileProvider = _fileProvider });
+            }
+            return base.CreatePersistentStorage(testName, ignoreSameDataCheck);
         }
     }
 }

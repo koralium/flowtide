@@ -58,8 +58,9 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                     return new Fp64Type();
                 case "numeric":
                 case "decimal":
-                case "money":
                     return new DecimalType();
+                // 'money' is intentionally not mapped to Decimal: its text form is locale-formatted ($1,234.56), which
+                // does not parse as an invariant decimal. It falls through to AnyType and is read as text on both paths.
                 case "bytea":
                     return new BinaryType();
                 case "date":
@@ -118,7 +119,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                     return (c, v) => { if (IsNull(v)) { c.Add(NullValue.Instance); } else { c.Add(new DoubleValue(ToDouble(v!))); } };
                 case "numeric":
                 case "decimal":
-                case "money":
                     return (c, v) => { if (IsNull(v)) { c.Add(NullValue.Instance); } else { c.Add(new DecimalValue(ToDecimal(v!))); } };
                 case "bytea":
                     return (c, v) => { if (IsNull(v)) { c.Add(NullValue.Instance); } else { c.Add(new BinaryValue(ToBytes(v!))); } };
@@ -199,11 +199,14 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             return QuoteIdentifier(schema) + "." + QuoteIdentifier(table);
         }
 
-        public static string BuildSnapshotSelect(string schema, string table, IReadOnlyList<string> columnNames, IReadOnlyList<string> orderByColumns)
+        public static string BuildSnapshotSelect(string schema, string table, IReadOnlyList<string> columnNames, IReadOnlyList<string> orderByColumns, IReadOnlySet<string>? castToText = null)
         {
             var sb = new StringBuilder();
             sb.Append("SELECT ");
-            sb.Append(string.Join(", ", columnNames.Select(QuoteIdentifier)));
+            // Columns without a typed converter are read as their PostgreSQL text representation so the snapshot
+            // matches the text the replication stream produces (otherwise e.g. an array reads as "System.Int32[]").
+            sb.Append(string.Join(", ", columnNames.Select(name =>
+                castToText != null && castToText.Contains(name) ? QuoteIdentifier(name) + "::text" : QuoteIdentifier(name))));
             sb.Append(" FROM ");
             sb.Append(QualifiedName(schema, table));
             if (orderByColumns.Count > 0)

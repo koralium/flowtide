@@ -50,5 +50,27 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Tests
             command.CommandText = sql;
             await command.ExecuteNonQueryAsync();
         }
+
+        public async Task<object?> ExecuteScalarAsync(string sql)
+        {
+            await using var connection = new NpgsqlConnection(ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            return await command.ExecuteScalarAsync();
+        }
+
+        public async Task ExecuteAsync(string sql, params (string name, object? value)[] parameters)
+        {
+            await using var connection = new NpgsqlConnection(ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = sql;
+            foreach (var (name, value) in parameters)
+            {
+                command.Parameters.AddWithValue(name, value ?? DBNull.Value);
+            }
+            await command.ExecuteNonQueryAsync();
+        }
     }
 }

@@ -12,6 +12,8 @@
 
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
+using FlowtideDotNet.Base.Vertices;
+using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -20,6 +22,7 @@ using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using System.Data;
@@ -48,13 +51,15 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private HashSet<int>? _keyColumnSet;
         private Dictionary<int, int>? _schemaToValueIndex;
         private Action<IColumn, object?>[]? _converters;
+        private HashSet<string>? _castToTextColumns;
         private IObjectState<PostgresState>? _state;
         private IPostgresChangeSource? _changeSource;
         private PostgresSnapshotInfo? _snapshot;
         private bool _streamingStarted;
         private bool _pendingReload;
+        private bool _faultRaised;
         private long _lastLsn;
-        private ICounter<long>? _eventsCounter;
+        private long _pendingConfirmLsn;
         private IObservableGauge<long>? _appliedLsnGauge;
 
         public ColumnPostgresDeltaSource(
@@ -80,15 +85,30 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
-            _eventsCounter ??= Metrics.CreateCounter<long>("events");
+            // The base operator already registers and increments an "events" counter for emitted rows.
             _appliedLsnGauge ??= Metrics.CreateObservableGauge("postgres_applied_lsn", () => Interlocked.Read(ref _lastLsn));
 
             List<(string name, string udtName)> columns;
             await using (var connection = new NpgsqlConnection(_options.ConnectionStringFunc()))
             {
                 await PostgresUtils.OpenWithResilienceAsync(connection, _options.ResiliencePipeline, default);
+                // Re-validate prerequisites on every (re)start, not just at plan build: the server config or the table
+                // can change while the stream is stopped, so a rollback-driven restart must surface a clear error here
+                // rather than failing opaquely deep inside slot creation or the replication loop.
+                var walLevel = await PostgresUtils.GetWalLevel(connection, default);
+                if (!string.Equals(walLevel, "logical", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException(
+                        $"PostgreSQL logical replication requires 'wal_level = logical' but the server reports '{walLevel}'.");
+                }
                 _primaryKeys = await PostgresUtils.GetPrimaryKeys(connection, _schema, _table, default);
                 columns = await PostgresUtils.GetColumns(connection, _schema, _table, default);
+                var replicaIdentity = await PostgresUtils.GetReplicaIdentity(connection, _schema, _table, default);
+                if (replicaIdentity == 'n')
+                {
+                    throw new InvalidOperationException(
+                        $"Table {_schema}.{_table} has REPLICA IDENTITY NOTHING, so UPDATE/DELETE changes carry no key and cannot be applied. Set REPLICA IDENTITY to DEFAULT (the primary key) or FULL.");
+                }
             }
 
             // Build a converter per read-schema column from its PostgreSQL type so the snapshot (typed) and the
@@ -100,15 +120,23 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             }
             var schemaNames = _readRelation.BaseSchema.Names;
             _converters = new Action<IColumn, object?>[schemaNames.Count];
+            _castToTextColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             for (int i = 0; i < schemaNames.Count; i++)
             {
-                _converters[i] = PostgresUtils.BuildColumnConverter(typeByName.TryGetValue(schemaNames[i], out var udt) ? udt : "text");
+                var udt = typeByName.TryGetValue(schemaNames[i], out var u) ? u : "text";
+                _converters[i] = PostgresUtils.BuildColumnConverter(udt);
+                // Types without a typed converter (arrays, ranges, network, geometric, ...) are read as text in both
+                // the snapshot and the replication stream so the two paths produce identical values.
+                if (PostgresUtils.GetSubstraitType(udt) is AnyType)
+                {
+                    _castToTextColumns.Add(schemaNames[i]);
+                }
             }
 
             if (_primaryKeys.Count == 0)
             {
                 throw new InvalidOperationException(
-                    $"Table {_schema}.{_table} has no primary key. A primary key (or REPLICA IDENTITY FULL) is required for replication.");
+                    $"Table {_schema}.{_table} has no primary key. A primary key is required for replication.");
             }
 
             _keyOrdinals = new List<int>();
@@ -125,6 +153,13 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
             _state = await stateManagerClient.GetOrCreateObjectStateAsync<PostgresState>("postgres_state");
             _state.Value ??= new PostgresState();
+            // The restored LSN belongs to a globally-committed checkpoint (we recovered from it), so it is safe to confirm.
+            // Seed both the confirm cursor AND the live position from durable state: on a persistent-slot resume no
+            // snapshot runs to set _lastLsn, so without this an idle checkpoint would persist LastLsn=0 (defeating the
+            // resume on the next restart), and a post-rollback resume would leave _lastLsn stale (risking confirming a
+            // position past data not yet re-applied). On the snapshot path FullLoad overwrites _lastLsn anyway.
+            _pendingConfirmLsn = _state.Value.LastLsn;
+            _lastLsn = _state.Value.LastLsn;
 
             // On a rollback-driven restart InitializeOrRestore runs again on the same instance; tear down the previous
             // change source (which drops its temporary slot) before creating a fresh one that re-snapshots.
@@ -136,17 +171,19 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 _streamingStarted = false;
             }
 
+            _faultRaised = false;
             _changeSource = _changeSourceFactory(new PostgresChangeSourceContext
             {
                 StreamName = StreamName,
+                OperatorName = Name,
                 Schema = _schema,
                 Table = _table,
                 SchemaNames = _readRelation.BaseSchema.Names,
-                KeySchemaIndices = _keyOrdinals,
-                FaultHandler = OnChangeSourceFaultAsync
+                KeySchemaIndices = _keyOrdinals
             });
 
-            _snapshot = await _changeSource.InitializeAsync(default);
+            // Pass the last durably-checkpointed LSN so a persistent slot can resume from it instead of re-snapshotting.
+            _snapshot = await _changeSource.InitializeAsync(_state.Value!.LastLsn, default);
 
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
 
@@ -160,14 +197,29 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             }
         }
 
-        private async Task OnChangeSourceFaultAsync(Exception exception)
+        protected override async Task SendInitial(IngressOutput<StreamEventBatch> output)
         {
-            Logger.LogError(exception, "PostgreSQL replication stream for {Schema}.{Table} faulted; rolling back to re-establish the slot and re-snapshot.", _schema, _table);
-            SetHealth(false);
-            // The temporary slot is gone, so rolling back to the last checkpoint and re-initializing is the recovery
-            // path: a fresh slot is created and the table is re-snapshotted, reconciled against existing state.
-            await FailAndRollback(exception);
+            await base.SendInitial(output);
+
+            // On a cold start the base ran the full load (which starts streaming). On a restore the base skips it
+            // (initial data was already sent), so we resume here:
+            //   - snapshot available (temporary slot, or a persistent slot that was invalid/lost) -> re-snapshot, which
+            //     reconciles the fresh snapshot against the restored state and restarts the stream;
+            //   - no snapshot (persistent slot resuming from its confirmed position) -> just restart streaming.
+            if (!_streamingStarted)
+            {
+                if (_snapshot != null)
+                {
+                    await DoFullLoad(output);
+                }
+                else
+                {
+                    await _changeSource!.BeginStreamingAsync(output.CancellationToken);
+                    _streamingStarted = true;
+                }
+            }
         }
+
 
         protected override ValueTask<List<int>> GetPrimaryKeyColumns()
         {
@@ -185,10 +237,27 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             Debug.Assert(_state != null);
             _state.Value!.LastLsn = _lastLsn;
             await _state.Commit();
+            // Confirm only the PREVIOUS checkpoint's LSN, which is now globally committed. Checkpoints are sequential,
+            // so checkpoint N-1 has fully completed before checkpoint N runs; the in-flight checkpoint is not yet
+            // known-durable, and confirming it would risk losing data if this global checkpoint failed and rolled back
+            // (PostgreSQL would have released WAL we never durably stored). Lagging by one checkpoint is safe: a resume
+            // just replays a little more, which the reconciling apply makes idempotent.
+            _changeSource?.SetConfirmedFlushLsn((ulong)_pendingConfirmLsn);
+            _pendingConfirmLsn = _lastLsn;
         }
 
         public override Task OnTrigger(string triggerName, object? state)
         {
+            // Surface a replication-loop fault from the operator thread (never from the loop): roll back to re-establish
+            // the slot and re-snapshot/resume. Done once per fault; a fresh change source resets _faultRaised.
+            if (!_faultRaised && _changeSource?.Fault is { } fault)
+            {
+                _faultRaised = true;
+                Logger.LogError(fault, "PostgreSQL replication stream for {Schema}.{Table} faulted; rolling back to recover.", _schema, _table);
+                SetHealth(false);
+                return FailAndRollback(fault);
+            }
+
             // If a change could not be applied incrementally, redirect the next delta tick into a reconciling full reload.
             if (triggerName == DeltaLoadTriggerName && _changeSource != null && (_pendingReload || _changeSource.NeedsResnapshot))
             {
@@ -227,7 +296,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             using (var command = connection.CreateCommand())
             {
                 command.Transaction = transaction;
-                command.CommandText = PostgresUtils.BuildSnapshotSelect(_schema, _table, columnNames, _primaryKeys!);
+                command.CommandText = PostgresUtils.BuildSnapshotSelect(_schema, _table, columnNames, _primaryKeys!, _castToTextColumns);
 
                 InitializeBatchCollections(out var weights, out var iterations, out var columns);
                 int countInBatch = 0;
@@ -243,7 +312,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                     iterations.Add(0);
                     countInBatch++;
 
-                    if (countInBatch >= 100)
+                    if (countInBatch >= _options.SnapshotBatchSize)
                     {
                         yield return new ColumnReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), _lastLsn);
                         InitializeBatchCollections(out weights, out iterations, out columns);
@@ -287,7 +356,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
         {
             Debug.Assert(_changeSource != null);
-            Debug.Assert(_eventsCounter != null);
 
             await enterCheckpointLock();
 
@@ -342,7 +410,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
                 if (countInBatch >= 100)
                 {
-                    _eventsCounter.Add(countInBatch);
                     yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), null);
                     InitializeBatchCollections(out weights, out iterations, out columns);
                     countInBatch = 0;
@@ -351,7 +418,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
             if (countInBatch > 0)
             {
-                _eventsCounter.Add(countInBatch);
                 var watermark = new Watermark(_watermarkName, LongWatermarkValue.Create(_lastLsn));
                 yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), watermark);
             }

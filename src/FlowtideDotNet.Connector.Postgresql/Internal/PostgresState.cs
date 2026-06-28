@@ -13,8 +13,10 @@
 namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 {
     /// <summary>
-    /// Persisted operator state. With temporary slots the source re-snapshots on restart, so the LSN is only kept for
-    /// observability; correctness comes from the reconciling full load in the base read operator.
+    /// Persisted operator state. <see cref="LastLsn"/> is the last WAL position applied by a globally-committed
+    /// checkpoint. With a temporary slot the source re-snapshots on restart, so it is mainly informational there;
+    /// with a persistent slot it is load-bearing — it is the position the slot resumes from (and is confirmed to the
+    /// server one checkpoint behind), so it must never run ahead of durably-applied data.
     /// </summary>
     internal class PostgresState
     {
