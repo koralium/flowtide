@@ -2506,6 +2506,28 @@ namespace FlowtideDotNet.AcceptanceTests
             Assert.Equal("string_agg does not support DISTINCT.", ex.Message);
         }
 
+        [Fact]
+        public async Task BulkAggregateListUnionDistinctAgg_OrderBy_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a", Visits = 1 });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, list_union_distinct_agg(list(firstName) ORDER BY visits) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("list_union_distinct_agg does not support ORDER BY.", ex.Message);
+        }
+
+        [Fact]
+        public async Task BulkAggregateListUnionDistinctAgg_Distinct_Throws()
+        {
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await StartStream("INSERT INTO output SELECT companyId, list_union_distinct_agg(DISTINCT list(firstName)) FROM users GROUP BY companyId");
+            });
+            Assert.Equal("list_union_distinct_agg does not support DISTINCT.", ex.Message);
+        }
+
         /// <summary>
         /// min_by returns the value at the smallest order-by row even when that value is null (the order-by is
         /// non-null, so the row is not skipped). Regression guard.

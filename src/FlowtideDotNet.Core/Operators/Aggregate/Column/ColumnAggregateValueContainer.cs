@@ -95,10 +95,6 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Column
 
         public ColumnAggregateStateReference Get(int index)
         {
-            if (index < 0 || index >= _weights.Count)
-            {
-                throw new InvalidOperationException($"Out of bounds in Get: index={index}, _weights.Count={_weights.Count}, _eventBatch.Count={_eventBatch.Count}, _previousValueSent.Count={_previousValueSent.Count}");
-            }
             return new ColumnAggregateStateReference()
             {
                 referenceBatch = _eventBatch,

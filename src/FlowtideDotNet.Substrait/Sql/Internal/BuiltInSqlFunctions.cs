@@ -848,6 +848,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
                 }
+                RejectOrderByAndDistinct("list_union_distinct_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
