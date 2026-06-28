@@ -359,15 +359,16 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
             await enterCheckpointLock();
 
+            // Read the last fully-committed position BEFORE draining, so the watermark we emit below can only cover
+            // transactions whose changes are already in the channel (and which we therefore drain in full here). A
+            // transaction that commits while we drain is released on the next tick instead - never mid-transaction.
+            var commitLsn = (long)_changeSource.LastCommitLsn;
+
             InitializeBatchCollections(out var weights, out var iterations, out var columns);
             int countInBatch = 0;
-            bool any = false;
 
             while (_changeSource.TryRead(out var change))
             {
-                any = true;
-                _lastLsn = (long)change.Lsn;
-
                 switch (change.Kind)
                 {
                     case PostgresChangeKind.Insert:
@@ -416,9 +417,18 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 }
             }
 
+            // Advance the watermark to the last committed transaction, and only when it moves forward, so a transaction
+            // is released exactly once - never as a duplicate of an earlier watermark, and never sitting on the
+            // snapshot's consistent point (the commit LSN is always strictly past it).
+            bool advance = commitLsn > _lastLsn;
+            if (advance)
+            {
+                _lastLsn = commitLsn;
+            }
+            var watermark = advance ? new Watermark(_watermarkName, LongWatermarkValue.Create(commitLsn)) : null;
+
             if (countInBatch > 0)
             {
-                var watermark = new Watermark(_watermarkName, LongWatermarkValue.Create(_lastLsn));
                 yield return new DeltaReadEvent(new EventBatchWeighted(weights, iterations, new EventBatchData(columns)), watermark);
             }
             else
@@ -429,15 +439,15 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 {
                     column.Dispose();
                 }
-                if (any)
+                if (watermark != null)
                 {
-                    yield return new DeltaReadEvent(null, new Watermark(_watermarkName, LongWatermarkValue.Create(_lastLsn)));
+                    yield return new DeltaReadEvent(null, watermark);
                 }
             }
 
-            if (any)
+            if (advance)
             {
-                _changeSource.Acknowledge((ulong)_lastLsn);
+                _changeSource.Acknowledge((ulong)commitLsn);
             }
 
             exitCheckpointLock();

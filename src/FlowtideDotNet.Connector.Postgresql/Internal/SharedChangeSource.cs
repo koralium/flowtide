@@ -48,6 +48,8 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         public Exception? Fault => _fault;
 
+        public ulong LastCommitLsn => _reader?.LastCommitLsn ?? 0;
+
         internal void SetFault(Exception exception) => _fault = exception;
 
         public async Task<PostgresSnapshotInfo?> InitializeAsync(long resumeLsn, CancellationToken ct)

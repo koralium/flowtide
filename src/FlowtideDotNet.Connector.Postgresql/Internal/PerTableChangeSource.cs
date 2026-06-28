@@ -49,6 +49,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private volatile bool _needsResnapshot;
         private int _disposed;
         private long _confirmedLsn;
+        private long _lastCommitLsn;
         private DateTime _lastStatusSent = DateTime.MinValue;
 
         public PerTableChangeSource(
@@ -81,6 +82,8 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         public void ClearResnapshot() => _needsResnapshot = false;
 
         public Exception? Fault => _fault;
+
+        public ulong LastCommitLsn => (ulong)Interlocked.Read(ref _lastCommitLsn);
 
         public async Task<PostgresSnapshotInfo?> InitializeAsync(long resumeLsn, CancellationToken ct)
         {
@@ -251,6 +254,10 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                         case TruncateMessage:
                             // Re-snapshot to reflect the truncate; refined in a later phase to emit precise retractions.
                             _needsResnapshot = true;
+                            break;
+                        case CommitMessage commit:
+                            // A transaction is now complete; publish its commit LSN as the latest releasable position.
+                            Interlocked.Exchange(ref _lastCommitLsn, (long)(ulong)commit.CommitLsn);
                             break;
                     }
 

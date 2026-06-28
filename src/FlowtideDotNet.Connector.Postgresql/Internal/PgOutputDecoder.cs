@@ -66,8 +66,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
 
         /// <summary>Old tuple image for an update (relation order), when the replica identity provides one. Null otherwise.</summary>
         public object?[]? OldRelationValues { get; init; }
-
-        public required ulong Lsn { get; init; }
     }
 
     internal static class PgOutputDecoder
@@ -78,8 +76,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             return new RawPgChange
             {
                 Kind = PostgresChangeKind.Insert,
-                NewRelationValues = values,
-                Lsn = (ulong)message.WalEnd
+                NewRelationValues = values
             };
         }
 
@@ -104,8 +101,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             {
                 Kind = PostgresChangeKind.Update,
                 NewRelationValues = values,
-                OldRelationValues = oldImage,
-                Lsn = (ulong)message.WalEnd
+                OldRelationValues = oldImage
             };
         }
 
@@ -121,8 +117,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             return new RawPgChange
             {
                 Kind = PostgresChangeKind.Delete,
-                NewRelationValues = key,
-                Lsn = (ulong)message.WalEnd
+                NewRelationValues = key
             };
         }
 
@@ -148,8 +143,7 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
             {
                 Kind = raw.Kind,
                 Values = values,
-                OldKeyValues = oldKey,
-                Lsn = raw.Lsn
+                OldKeyValues = oldKey
             };
         }
 

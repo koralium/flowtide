@@ -68,6 +68,9 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         private PostgresSnapshotInfo? _snapshot;
         private Task? _streamTask;
         private DateTime _lastStatusSent = DateTime.MinValue;
+        private long _lastCommitLsn;
+
+        public ulong LastCommitLsn => (ulong)Interlocked.Read(ref _lastCommitLsn);
 
         public SharedReplicationReader(PostgresSourceOptions options, string streamName, string databaseId, List<(string schema, string table)> membership, int expectedSourceCount)
         {
@@ -354,6 +357,11 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                             {
                                 entry.Source.RequestResnapshot();
                             }
+                            break;
+                        case CommitMessage commit:
+                            // One transaction (possibly spanning several of the shared tables) is complete; publish its
+                            // commit LSN so every table's operator can advance its watermark to a real commit boundary.
+                            Interlocked.Exchange(ref _lastCommitLsn, (long)(ulong)commit.CommitLsn);
                             break;
                     }
 

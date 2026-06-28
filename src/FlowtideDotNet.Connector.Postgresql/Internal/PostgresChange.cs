@@ -42,8 +42,6 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         /// positions only). Null otherwise.
         /// </summary>
         public object?[]? OldKeyValues { get; init; }
-
-        public ulong Lsn { get; init; }
     }
 
     /// <summary>
@@ -109,6 +107,14 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
         /// to the server (advancing <c>confirmed_flush_lsn</c> and releasing WAL); for a temporary slot it is ignored.
         /// </summary>
         void SetConfirmedFlushLsn(ulong lsn);
+
+        /// <summary>
+        /// The commit LSN of the most recently received <b>complete</b> transaction (0 before any is seen). The operator
+        /// advances its watermark to this - and only when it moves forward - so a transaction is released exactly once,
+        /// never mid-transaction and never as a duplicate of an earlier watermark. Using the commit LSN (rather than a
+        /// per-change WAL position) also keeps it strictly ahead of the snapshot's consistent point.
+        /// </summary>
+        ulong LastCommitLsn { get; }
 
         /// <summary>
         /// Reads the next buffered change without blocking. Returns false when nothing is currently available.
