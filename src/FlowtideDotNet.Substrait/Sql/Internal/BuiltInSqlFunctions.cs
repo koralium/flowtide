@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Linq;
 using static SqlParser.Ast.WindowType;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -64,17 +65,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static bool HasOrderByClause(FunctionArgumentList argList)
         {
             var clauses = argList.Clauses;
-            if (clauses != null)
-            {
-                foreach (var clause in clauses)
-                {
-                    if (clause is FunctionArgumentClause.OrderBy)
-                    {
-                        return true;
-                    }
-                }
-            }
-            return false;
+            return clauses != null && clauses.Any(clause => clause is FunctionArgumentClause.OrderBy);
         }
 
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
