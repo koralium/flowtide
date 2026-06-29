@@ -49,6 +49,10 @@ namespace FlowtideDotNet.Core.ColumnStore.BoundarySearching
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int16, ArrowTypeId.Int16)] = BoundarySearchPrimitiveNoNullWithInputOffsets<short>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int32, ArrowTypeId.Int32)] = BoundarySearchPrimitiveNoNullWithInputOffsets<int>;
             _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.Int64, ArrowTypeId.Int64)] = BoundarySearchPrimitiveNoNullWithInputOffsets<long>;
+
+            // String
+            _delegateCache[GetKeyFromTypeNoNull(ArrowTypeId.String, ArrowTypeId.String)] = BoundarySearchString.RunStringBoundarySearchNoNull;
+            _delegateCache[GetKeyFromTypeTreeNoNullInputWithOffset(ArrowTypeId.String, ArrowTypeId.String)] = BoundarySearchString.BoundarySearchStringNoNullWithInputOffsets;
         }
 
         private static int GetKeyFromTypeNoNull(ArrowTypeId key1, ArrowTypeId key2)
