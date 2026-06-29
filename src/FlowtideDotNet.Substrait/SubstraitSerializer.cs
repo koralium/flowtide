@@ -726,6 +726,10 @@ namespace FlowtideDotNet.Substrait
                                     });
                                 }
                             }
+                            if (measure.Measure.OutputType != null)
+                            {
+                                m.Measure_.OutputType = state.GetType(measure.Measure.OutputType);
+                            }
                         }
                         aggRel.Measures.Add(m);
                     }

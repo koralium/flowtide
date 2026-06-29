@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateless;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.MinMax;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
@@ -26,6 +28,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             ColumnMinMaxAggregation.RegisterMax(functionsRegister);
             ColumnMinMaxByAggregation.RegisterMinBy(functionsRegister);
             ColumnMinMaxByAggregation.RegisterMaxBy(functionsRegister);
+
+            // Bulk
+            SumAggregationDefinition.Register(functionsRegister);
+            Sum0AggregationDefinition.Register(functionsRegister);
+            MinAggregationDefinition.Register(functionsRegister);
+            MaxAggregationDefinition.Register(functionsRegister);
+            MinByAggregationDefinition.Register(functionsRegister);
+            MaxByAggregationDefinition.Register(functionsRegister);
+            CountAggregationDefinition.Register(functionsRegister);
+            AvgAggregationDefinition.Register(functionsRegister);
 
             functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>

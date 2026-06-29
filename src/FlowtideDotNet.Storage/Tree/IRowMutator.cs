@@ -22,6 +22,6 @@ namespace FlowtideDotNet.Storage.Tree
     {
         void GetSizePrefixSum(K[] keys, ReadOnlySpan<int> indices, Span<int> sizes);
 
-        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
+        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData, int sortedIndex);
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -1372,6 +1372,25 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectSumAddRemove()
+        {
+            var userInitial = new Entities.User { UserKey = 0, CompanyId = "1", FirstName = "A", LastName = "B" };
+            AddOrUpdateUser(userInitial);
+            await StartStream("INSERT INTO output SELECT sum(userkey) FROM users WHERE UserKey = 5");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = default(double?) } });
+
+            var user = new Entities.User { UserKey = 5, CompanyId = "1", FirstName = "A", LastName = "B" };
+            AddOrUpdateUser(user);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = 5L } });
+
+            DeleteUser(user);
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[] { new { Sum = default(double?) } });
+        }
+
+        [Fact]
         public async Task SelectSum0()
         {
             GenerateData();
@@ -1386,7 +1405,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT sum0(userkey) FROM users WHERE userkey = -1");
             await WaitForUpdate();
-            AssertCurrentDataEqual(new[] { new { Sum = default(double) } });
+            AssertCurrentDataEqual(new[] { new { Sum = 0L } });
         }
 
         [Fact]

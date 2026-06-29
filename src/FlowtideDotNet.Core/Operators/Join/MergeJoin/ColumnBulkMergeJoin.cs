@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
         }
 
-        public GenericWriteOperation Process(ColumnRowReference key, bool exists, in JoinWeights existingData, ref JoinWeights incomingData)
+        public GenericWriteOperation Process(ColumnRowReference key, bool exists, in JoinWeights existingData, ref JoinWeights incomingData, int sortedIndex)
         {
             if (exists)
             {

@@ -286,7 +286,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         Debug.Assert(insertCounter > 0);
                         var prevInsertKeyIndex = _insertSortedIndices[insertCounter - 1];
                         var pendingValue = _values[prevInsertKeyIndex];
-                        var operation = mutator.Process(key, true, in pendingValue, ref _values[keyIndex]);
+                        var operation = mutator.Process(key, true, in pendingValue, ref _values[keyIndex], sortedIndex);
 
                         if (operation == GenericWriteOperation.Upsert)
                         {
@@ -315,7 +315,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     else if (prevWasPendingDelete)
                     {
                         Debug.Assert(deleteCounter > 0);
-                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex], sortedIndex);
 
                         if (operation == GenericWriteOperation.Upsert)
                         {
@@ -333,7 +333,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         // Key exists in the original leaf and was updated/no-oped.
                         // Process as exists=true with the current leaf value.
                         var existingValue = leaf.values.Get(previousIndex);
-                        var operation = mutator.Process(key, true, in existingValue, ref _values[keyIndex]);
+                        var operation = mutator.Process(key, true, in existingValue, ref _values[keyIndex], sortedIndex);
 
                         if (operation == GenericWriteOperation.Upsert)
                         {
@@ -349,7 +349,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     }
                     else
                     {
-                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+                        var operation = mutator.Process(key, false, default!, ref _values[keyIndex], sortedIndex);
 
                         if (operation == GenericWriteOperation.Upsert)
                         {
@@ -369,7 +369,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 if (previousIndex == leafCount)
                 {
                     // This means all the remaining keys in the batch are greater than the keys in the leaf, so we can just append them to the end of the leaf without searching
-                    var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+                    var operation = mutator.Process(key, false, default!, ref _values[keyIndex], sortedIndex);
                     if (operation == GenericWriteOperation.Upsert)
                     {
                         // Insert the key and value into the leaf at the correct position
@@ -395,7 +395,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     leafIndex = ~leafIndex;
                     previousIndex = leafIndex;
-                    var operation = mutator.Process(key, false, default!, ref _values[keyIndex]);
+                    var operation = mutator.Process(key, false, default!, ref _values[keyIndex], sortedIndex);
 
                     if (operation == GenericWriteOperation.Upsert)
                     {
@@ -415,7 +415,7 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 {
                     previousIndex = leafIndex;
                     var existingValue = leaf.values.Get(leafIndex);
-                    var operation = mutator.Process(key, true, in existingValue, ref _values[keyIndex]);
+                    var operation = mutator.Process(key, true, in existingValue, ref _values[keyIndex], sortedIndex);
 
                     if (operation == GenericWriteOperation.Upsert)
                     {
@@ -842,9 +842,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             }
 
             var keepCount = _splitPointsBuffer[0].LeafIndex;
-            leaf.keys.RemoveRange(keepCount, leafCount - keepCount);
-            leaf.values.RemoveRange(keepCount, leafCount - keepCount);
-
+            var toRemoveCount = leafCount - keepCount;
+            if (toRemoveCount > 0)
+            {
+                leaf.keys.RemoveRange(keepCount, toRemoveCount);
+                leaf.values.RemoveRange(keepCount, toRemoveCount);
+            }
             
             parent.ExitWriteLock();
 

@@ -621,19 +621,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (other is StructColumn otherStruct)
             {
-                for (int i = sortedLookup.Length - 1; i >= 0; i--)
+                for (int i = 0; i < _columns.Length; i++)
                 {
-                    int oIdx = sortedLookup[i];
-                    if (oIdx == lookupNullIndex)
-                    {
-                        InsertAt(insertPositions[i], NullValue.Instance);
-                    }
-                    else
-                    {
-                        var value = otherStruct.GetValueAt(oIdx, default);
-                        InsertAt(insertPositions[i], value);
-                    }
+                    _columns[i].InsertFrom(otherStruct._columns[i], in sortedLookup, in insertPositions, lookupNullIndex);
                 }
+                _count += sortedLookup.Length;
                 return;
             }
             throw new NotImplementedException();
@@ -641,10 +633,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
-            for (int i = targets.Length - 1; i >= 0; i--)
+            for (int i = 0; i < _columns.Length; i++)
             {
-                RemoveAt(targets[i]);
+                _columns[i].DeleteBatch(targets);
             }
+            _count -= targets.Length;
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()

@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return GenericWriteOperation.Upsert;
             }
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return exists ? GenericWriteOperation.Delete : GenericWriteOperation.None;
             }
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return exists ? GenericWriteOperation.Delete : GenericWriteOperation.Upsert;
             }
@@ -129,7 +129,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 if (!exists || incomingData > existingData)
                 {
@@ -152,7 +152,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return GenericWriteOperation.None;
             }
@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Storage.Tests
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 if (exists && !_deletedInThisBatch.Contains(key))
                 {

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -77,5 +77,10 @@ namespace FlowtideDotNet.Storage.Tree
         /// and the key to search was the largest in the page.
         /// </summary>
         bool SeekNextPageForValue { get; }
+
+        /// <summary>
+        /// Set to true if seek in iterator should check the previous page for the value if it is not found in the current page.
+        /// </summary>
+        bool SeekPreviousPageForValue => false;
     }
 }
