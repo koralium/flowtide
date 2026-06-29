@@ -18,7 +18,7 @@ using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    public class BulkGroupValueKeyStorageSerializer : IBPlusTreeKeySerializer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
+    internal class BulkGroupValueKeyStorageSerializer : IBPlusTreeKeySerializer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
     {
         private readonly int _groupingKeyLength;
         private readonly IMemoryAllocator _memoryAllocator;

@@ -20,7 +20,7 @@ using System.Collections.Generic;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    public class BulkMinInsertComparer : IBplusTreeComparer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
+    internal class BulkMinInsertComparer : IBplusTreeComparer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
     {
         private readonly DataValueContainer dataValueContainer;
         private readonly DataValueContainer dataValueContainer2;

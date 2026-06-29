@@ -19,7 +19,7 @@ using System.Collections.Generic;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
 {
-    public class BulkMaxSearchComparer : IBplusTreeComparer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
+    internal class BulkMaxSearchComparer : IBplusTreeComparer<BulkGroupValueRowReference, BulkGroupValueKeyContainer>
     {
         private readonly int _groupingKeyLength;
         private readonly DataValueContainer _dataValueContainer;
