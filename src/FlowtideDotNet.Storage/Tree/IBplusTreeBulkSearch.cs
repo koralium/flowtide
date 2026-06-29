@@ -46,6 +46,11 @@ namespace FlowtideDotNet.Storage.Tree
         public bool ContinuesToNextLeaf;
 
         /// <summary>
+        /// True if this key may continue into the previous leaf (lower bound is the first index of the leaf).
+        /// </summary>
+        public bool ContinuesToPreviousLeaf;
+
+        /// <summary>
         /// True when the key was found in the leaf, that is when <see cref="LowerBound"/> is non-negative.
         /// </summary>
         public bool Found => LowerBound >= 0;

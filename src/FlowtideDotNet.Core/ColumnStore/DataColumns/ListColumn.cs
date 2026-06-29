@@ -285,7 +285,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (list is ReferenceListValue referenceListVal)
             {
-                _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                if (referenceListVal.Count > 0)
+                {
+                    _internalColumn.InsertRangeFrom(startOffset, referenceListVal.column, referenceListVal.start, referenceListVal.Count);
+                }
                 _offsets.InsertAt(index + 1, startOffset + referenceListVal.Count, referenceListVal.Count);
             }
             else

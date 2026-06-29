@@ -1,0 +1,189 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//  
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Storage.DataStructures;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using System.Diagnostics;
+
+namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful
+{
+    internal class SharedGroupValueTree
+    {
+        public string TreeName { get; }
+        public Func<EventBatchData, int, IDataValue> ProjectionFunction { get; }
+
+        public IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> Tree { get; }
+        public IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> BulkInserter { get; }
+
+        public Func<EventBatchData, int, bool>? Filter { get; }
+        private Column? _projectedDataColumn;
+        private readonly List<ISharedTreeColumnAggregation> _boundMeasures = new();
+        private BatchSorter? _batchSorter;
+        private int[] _indirectBuffer = Array.Empty<int>();
+        private int[] _duplicateTags = Array.Empty<int>();
+        private readonly bool _ignoreNulls;
+        private BulkGroupValueRowReference[] _rowReferencesBuffer = Array.Empty<BulkGroupValueRowReference>();
+        private int[] _weightArrayBuffer = Array.Empty<int>();
+
+        public SharedGroupValueTree(
+            string treeName, 
+            Func<EventBatchData, int, IDataValue> projectionFunction,
+            IBPlusTree<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> tree,
+            IBPlusTreeBulkInserter<BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer<int>> bulkInserter,
+            Func<EventBatchData, int, bool>? filter = null, 
+            bool ignoreNulls = true)
+        {
+            TreeName = treeName;
+            Tree = tree;
+            BulkInserter = bulkInserter;
+            ProjectionFunction = projectionFunction;
+            Filter = filter;
+            _ignoreNulls = ignoreNulls;
+        }
+
+        public void BindMeasure(ISharedTreeColumnAggregation measure)
+        {
+            _boundMeasures.Add(measure);
+        }
+
+        public void NewBatch(PrimitiveList<int> weights, EventBatchData batchData, IMemoryAllocator memoryAllocator)
+        {
+            _projectedDataColumn?.Dispose();
+            _projectedDataColumn = new Column(memoryAllocator);
+            for (int i = 0; i < weights.Count; i++)
+            {
+                _projectedDataColumn.Add(ProjectionFunction(batchData, i));
+            }
+        }
+
+        public ValueTask StoreAsync(PrimitiveList<int> weights, IColumn[] groupValueColumns, ReadOnlySpan<int> sortedByGroupIndices, EventBatchData incoming)
+        {
+            Debug.Assert(_projectedDataColumn != null);
+
+            int len = sortedByGroupIndices.Length;
+
+            if (_rowReferencesBuffer.Length < len)
+            {
+                _rowReferencesBuffer = new BulkGroupValueRowReference[len];
+                _weightArrayBuffer = new int[len];
+            }
+            var rowReferences = _rowReferencesBuffer;
+            var weightArray = _weightArrayBuffer;
+
+            var allColumns = new IColumn[groupValueColumns.Length + 1];
+            System.Array.Copy(groupValueColumns, allColumns, groupValueColumns.Length);
+            allColumns[groupValueColumns.Length] = _projectedDataColumn;
+            var groupingBatch = new EventBatchData(allColumns);
+
+            if (_indirectBuffer.Length < len)
+            {
+                _indirectBuffer = new int[len];
+                _duplicateTags = new int[len];
+            }
+
+            int actualLength = 0;
+            int writeIndex = 0;
+            for (int i = 0; i < sortedByGroupIndices.Length; i++)
+            {
+                var physicalIndex = sortedByGroupIndices[i];
+                if (Filter == null || Filter(incoming, physicalIndex))
+                {
+                    if (_ignoreNulls && _projectedDataColumn.GetValueAt(physicalIndex, default).IsNull)
+                    {
+                        continue;
+                    }
+                    _indirectBuffer[writeIndex++] = physicalIndex;
+                    actualLength++;
+                }
+            }
+
+            if (actualLength > 1)
+            {
+                if (_batchSorter == null)
+                {
+                    _batchSorter = new BatchSorter(allColumns.Length);
+                }
+                var indirectSpan = _indirectBuffer.AsSpan(0, actualLength);
+                var duplicateSpan = _duplicateTags.AsSpan(0, actualLength);
+                _batchSorter.SortDataWithTags(allColumns, ref indirectSpan, ref duplicateSpan);
+            }
+
+            for (int i = 0; i < len; i++)
+            {
+                rowReferences[i] = new BulkGroupValueRowReference()
+                {
+                    batch = groupingBatch,
+                    index = i
+                };
+                weightArray[i] = weights.Get(i);
+            }
+
+            int totalBatchSize = 0;
+            for (int i = 0; i < groupValueColumns.Length; i++)
+            {
+                totalBatchSize += groupValueColumns[i].GetByteSize();
+            }
+            totalBatchSize += _projectedDataColumn.GetByteSize();
+
+            var mutator = new SharedRowMutator(_boundMeasures);
+            return BulkInserter.ApplyBatch(rowReferences, weightArray, actualLength, _indirectBuffer, _duplicateTags,  mutator, totalBatchSize);
+        }
+    }
+
+    internal struct SharedRowMutator : IRowMutator<BulkGroupValueRowReference, int>
+    {
+        private readonly List<ISharedTreeColumnAggregation> _boundMeasures;
+
+        public SharedRowMutator(List<ISharedTreeColumnAggregation> boundMeasures)
+        {
+            _boundMeasures = boundMeasures;
+        }
+
+        public void GetSizePrefixSum(BulkGroupValueRowReference[] keys, ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            var columns = keys[0].batch.GetColumns_Unsafe();
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i].GetPrefixSumByteSizes(indices, sizes);
+            }
+        }
+
+        public GenericWriteOperation Process(BulkGroupValueRowReference key, bool exists, in int existing, ref int incoming, int sortedIndex)
+        {
+            int oldWeight = exists ? existing : 0;
+            int newWeight = incoming;
+            if (exists)
+            {
+                newWeight += existing;
+            }
+
+            // Notify each bound measure of the mutation (insertion, update, or deletion) with its unique sortedIndex
+            for (int i = 0; i < _boundMeasures.Count; i++)
+            {
+                _boundMeasures[i].OnValueMutated(key, exists, oldWeight, newWeight, sortedIndex);
+            }
+
+            if (newWeight == 0)
+            {
+                return GenericWriteOperation.Delete;
+            }
+            incoming = newWeight;
+            return GenericWriteOperation.Upsert;
+        }
+    }
+}

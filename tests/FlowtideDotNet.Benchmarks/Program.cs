@@ -18,9 +18,6 @@ using FlowtideDotNet.Benchmarks.Stream;
 //BatchSortBenchmark batchSortBenchmark = new BatchSortBenchmark();
 //batchSortBenchmark.GlobalSetup();
 
-//StreamBenchmark streamBenchmark = new StreamBenchmark();
-//streamBenchmark.IterationSetup();
-//await streamBenchmark.InnerJoin();
 //for (int i = 0; i < 10000; i++)
 //{
 //    batchSortBenchmark.BeforeIteration();

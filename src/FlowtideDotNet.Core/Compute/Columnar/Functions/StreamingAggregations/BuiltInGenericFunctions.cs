@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -65,6 +65,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
 
             SurrogateKeyInt64Aggregation.Register(functionsRegister);
             CountDistinctAggregation.RegisterCountDistinct(functionsRegister);
+            FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.CountDistinctAggregationDefinition.Register(functionsRegister);
+            BulkAggregations.Stateful.SurrogateKeyAggregationDefinition.Register(functionsRegister);
         }
 
         private static LambdaExpression GetCountWithArgBody(System.Type inputType)

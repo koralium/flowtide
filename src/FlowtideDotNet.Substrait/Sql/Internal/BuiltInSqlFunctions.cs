@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,6 +18,7 @@ using FlowtideDotNet.Substrait.Sql.Internal.TableFunctions;
 using FlowtideDotNet.Substrait.Type;
 using SqlParser.Ast;
 using System.Diagnostics;
+using System.Linq;
 using static SqlParser.Ast.WindowType;
 
 namespace FlowtideDotNet.Substrait.Sql.Internal
@@ -43,6 +44,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new SubstraitParseException("Unknown function argument type");
             }
         }
+
+        /// <summary>
+        /// Rejects DISTINCT and ORDER BY on an aggregate that does not honour them (e.g. list_agg/string_agg,
+        /// which order by the aggregated value via their shared tree). Without this they are silently dropped,
+        /// producing a wrong (duplicate-bearing or wrongly-ordered) result rather than an error.
+        /// </summary>
+        private static void RejectOrderByAndDistinct(string functionName, SqlParser.Ast.Expression.Function f, FunctionArgumentList argList)
+        {
+            if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+            {
+                throw new InvalidOperationException($"{functionName} does not support DISTINCT.");
+            }
+            if (f.WithinGroup != null || HasOrderByClause(argList))
+            {
+                throw new InvalidOperationException($"{functionName} does not support ORDER BY.");
+            }
+        }
+
+        private static bool HasOrderByClause(FunctionArgumentList argList)
+        {
+            var clauses = argList.Clauses;
+            return clauses != null && clauses.Any(clause => clause is FunctionArgumentClause.OrderBy);
+        }
+
         public static void AddBuiltInFunctions(SqlFunctionRegister sqlFunctionRegister)
         {
             sqlFunctionRegister.RegisterScalarFunction("ceiling", (f, visitor, emitData) =>
@@ -656,6 +681,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
                 }
+                if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for sum; reject rather than silently summing duplicates.
+                    throw new InvalidOperationException("sum does not support DISTINCT.");
+                }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("sum must have exactly one argument, and not be '*'");
@@ -702,6 +732,11 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
                 }
+                if (argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for sum0; reject rather than silently summing duplicates.
+                    throw new InvalidOperationException("sum0 does not support DISTINCT.");
+                }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
@@ -727,6 +762,16 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         returnType = new Fp64Type();
                     }
+                    else if (argExpr.Type.Type == SubstraitType.Decimal)
+                    {
+                        // Preserve the decimal type so an empty/all-null group emits a Decimal zero rather
+                        // than the untyped (Double) floor, which would mismatch valued Decimal groups.
+                        returnType = new DecimalType()
+                        {
+                            Precision = (argExpr.Type as DecimalType)?.Precision,
+                            Scale = (argExpr.Type as DecimalType)?.Scale
+                        };
+                    }
 
                     return new AggregateResponse(
                         new AggregateFunction()
@@ -743,6 +788,18 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, p1 => p1);
             RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, p1 => p1);
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, p1 =>
+            {
+                if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64 || p1.Type == SubstraitType.Int32 || p1.Type == SubstraitType.Fp32)
+                {
+                    return new Fp64Type() { Nullable = true };
+                }
+                else if (p1.Type == SubstraitType.Decimal)
+                {
+                    return p1;
+                }
+                return AnyType.Instance;
+            }, rejectDistinct: true);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
             RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 
@@ -753,6 +810,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
                 }
+                RejectOrderByAndDistinct("list_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("list_agg must have exactly one argument, and not be '*'");
@@ -781,6 +839,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
                 }
+                RejectOrderByAndDistinct("list_union_distinct_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("list_union_distinct_agg must have exactly one argument, and not be '*'");
@@ -809,6 +868,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
                 }
+                RejectOrderByAndDistinct("string_agg", f, argList);
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {
                     throw new InvalidOperationException("string_agg must have exactly two arguments, and not be '*'");
@@ -1313,7 +1373,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             string functionName,
             string extensionUri,
             string extensionName,
-            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc)
+            Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
+            bool rejectDistinct = false)
         {
             sqlFunctionRegister.RegisterAggregateFunction(functionName, (f, visitor, emitData) =>
             {
@@ -1321,6 +1382,12 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 if (argList.Args == null || argList.Args.Count != 1)
                 {
                     throw new InvalidOperationException($"{functionName} must have exactly one argument, and not be '*'");
+                }
+                if (rejectDistinct && argList.DuplicateTreatment == DuplicateTreatment.Distinct)
+                {
+                    // DISTINCT is not honoured for this aggregate; reject rather than silently return a
+                    // wrong result. (count(DISTINCT) is routed to count_distinct; min/max DISTINCT is a no-op.)
+                    throw new InvalidOperationException($"{functionName} does not support DISTINCT.");
                 }
                 if ((argList.Args[0] is FunctionArg.Unnamed unnamed && unnamed.FunctionArgExpression is FunctionArgExpression.Wildcard))
                 {

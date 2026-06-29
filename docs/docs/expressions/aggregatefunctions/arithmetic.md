@@ -30,6 +30,19 @@ if a value is non numeric such as a string or null, those values are ignored.
 SELECT sum0(column1) FROM ...
 ```
 
+## Avg
+
+[Substrait definition](https://substrait.io/extensions/functions_arithmetic/#avg)
+
+Calculates the average of numeric values, if there are no rows a NULL value is returned.
+if a value is non numeric such as a string or null, those values are ignored.
+
+### SQL Usage
+
+```sql
+SELECT avg(column1) FROM ...
+```
+
 ## Min
 
 [Substrait definition](https://substrait.io/extensions/functions_arithmetic/#min)

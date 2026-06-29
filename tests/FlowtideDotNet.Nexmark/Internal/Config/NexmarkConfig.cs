@@ -32,7 +32,7 @@ public class NexmarkConfig
     public int HotBidderRatio2 { get; set; } = 100;
     public int PersonProportion { get; set; } = 1;
     public int AuctionProportion { get; set; } = 3;
-    public int BidProportion { get; set; } = 3;
+    public int BidProportion { get; set; } = 46;
     public int ProportionDenominator => PersonProportion + AuctionProportion + BidProportion;
     public long FirstAuctionId { get; set; } = 1000;
     public long FirstPersonId { get; set; } = 1000;

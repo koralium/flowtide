@@ -11,6 +11,8 @@
 // limitations under the License.
 
 
+using FlowtideDotNet.Substrait.Type;
+
 namespace FlowtideDotNet.Substrait.Expressions
 {
     public sealed class AggregateFunction : IEquatable<AggregateFunction>
@@ -21,6 +23,15 @@ namespace FlowtideDotNet.Substrait.Expressions
         public required List<Expression> Arguments { get; set; }
 
         public SortedList<string, string>? Options { get; set; }
+
+        /// <summary>
+        /// The declared output (return) type of the aggregate, matching Substrait's
+        /// AggregateFunction.output_type. Optional: front-ends that do not resolve it leave it null.
+        /// Deliberately excluded from Equals/GetHashCode below - it is a derived annotation of
+        /// (name, arguments), not part of the function's identity, so including it would needlessly
+        /// perturb measure de-duplication.
+        /// </summary>
+        public SubstraitBaseType? OutputType { get; set; }
 
         public override bool Equals(object? obj)
         {

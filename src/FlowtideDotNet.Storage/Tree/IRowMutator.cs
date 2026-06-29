@@ -45,6 +45,6 @@ namespace FlowtideDotNet.Storage.Tree
         /// <param name="existingData">The current stored value, when <paramref name="exists"/> is true.</param>
         /// <param name="incomingData">The incoming value, which may be modified in place, for example to merge it with the existing value.</param>
         /// <returns>The operation to apply for this row.</returns>
-        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData);
+        GenericWriteOperation Process(K key, bool exists, in V existingData, ref V incomingData, int sortedIndex);
     }
 }
