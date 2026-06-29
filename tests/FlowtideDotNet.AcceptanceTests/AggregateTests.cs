@@ -61,7 +61,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMin()
+        public async Task AggregateMin()
         {
             GenerateData(100);
             await StartStream(@"
@@ -76,7 +76,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMax()
+        public async Task AggregateMax()
         {
             GenerateData(10_000);
             await StartStream(@"
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAvg()
+        public async Task AggregateAvg()
         {
             GenerateData(100);
             await StartStream(@"
@@ -106,7 +106,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAvgWithUpdatesAndDeletes()
+        public async Task AggregateAvgWithUpdatesAndDeletes()
         {
             GenerateData(100);
             await StartStream(@"
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMinWithUpdatesAndDeletes()
+        public async Task AggregateMinWithUpdatesAndDeletes()
         {
             GenerateData(100);
             await StartStream(@"
@@ -180,7 +180,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMaxWithUpdatesAndDeletes()
+        public async Task AggregateMaxWithUpdatesAndDeletes()
         {
             GenerateData(100);
             await StartStream(@"
@@ -249,7 +249,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// different batches that are still covered by a single watermark.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateNewGroupCreatedAndRemovedInSameWatermark()
+        public async Task AggregateNewGroupCreatedAndRemovedInSameBatch()
         {
             // Baseline group so the first watermark emits initial data and the operator switches
             // into incremental (temporary tree) mode.
@@ -300,7 +300,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// (BulkMinInsertComparer guards this case, but AggregateInsertComparer did not).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateEmptyBatchDoesNotCrash()
+        public async Task AggregateEmptyBatchDoesNotCrash()
         {
             SourceImmutable();
             AddUser(new Entities.User { UserKey = 1, CompanyId = "a" });
@@ -697,7 +697,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGrouplessSurrogateKeyOverEmptyInput()
+        public async Task AggregateGrouplessSurrogateKeyOverEmptyInput()
         {
             SourceImmutable();
             await StartStream(@"
@@ -1132,7 +1132,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// the next group's weight counter could be initialized to -1 instead of +1.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSumWithCrossGroupDeletesAndInserts()
+        public async Task AggregateSumWithCrossGroupDeletesAndInserts()
         {
             GenerateData(100);
             await StartStream(@"
@@ -1203,7 +1203,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// group boundaries.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMinWithCrossGroupDeletesAndInserts()
+        public async Task AggregateMinWithCrossGroupDeletesAndInserts()
         {
             SourceImmutable();
             GenerateData(100);
@@ -1278,7 +1278,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// current group's first row weight.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateWeightAtGroupBoundaryDeletion()
+        public async Task AggregateGroupBoundaryDeletion()
         {
             // Create exactly 2 users in 2 different companies - no random data
             var userA = new Entities.User
@@ -1353,7 +1353,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// FetchValuesAsync, so the crash was in the retraction / previousValueSent loop.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMultiLeafBoundary_ListAgg()
+        public async Task AggregateListAgg_ManyGroups()
         {
             SetPageSizeBytes(256); // tiny leaves -> many separators in the main tree
             // 250 groups, 2 members each (a member update never empties a group).
@@ -1394,7 +1394,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// misalignment cancels out, hiding the bug.)
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMultiLeafBoundary_Sum()
+        public async Task AggregateSum_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int i = 0; i < 1000; i++)
@@ -1431,7 +1431,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// stateless measure (sum) on a multi-leaf tree.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMultiLeafBoundary_GroupDeletions_Sum()
+        public async Task AggregateSum_ManyGroups_GroupDeletions()
         {
             SetPageSizeBytes(256);
             for (int i = 0; i < 1000; i++)
@@ -1479,7 +1479,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// retraction rows.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMultiLeafBoundary_MixedMeasures()
+        public async Task AggregateMixedMeasures_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int i = 0; i < 1000; i++)
@@ -1517,7 +1517,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// produces wrong values and is caught here. Uniform values would hide it.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMinMaxListAgg_MultiLeaf_VaryingValues()
+        public async Task AggregateMinMaxListAgg_ManyGroups_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -1535,7 +1535,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// incremental path with values that vary across groups, so a reversal/misalignment is observable.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMinMaxListAgg_MultiLeaf_DeleteMinMember()
+        public async Task AggregateMinMaxListAgg_ManyGroups_DeleteMinMember()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -1566,7 +1566,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// boundary miss or column misalignment observable.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMinBy_MultiLeaf_VaryingValues()
+        public async Task AggregateMinBy_ManyGroups_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -1601,7 +1601,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// Varying per-group results make any reversal/misalignment observable.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMaxBy_MultiLeaf_VaryingValues()
+        public async Task AggregateMaxBy_ManyGroups_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -1624,7 +1624,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// This is the closest stress to the original production failure (list_agg member update).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSharedTreeRetractionChurn_MultiLeaf()
+        public async Task AggregateRetractionChurn_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 200; g++)
@@ -1697,7 +1697,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// independent and can be compared exactly.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSumMixedNumericTypes()
+        public async Task AggregateSumMixedNumericTypes()
         {
             for (int i = 0; i < 200; i++)
             {
@@ -1742,7 +1742,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// group columns must stay aligned across the two key columns and the measures.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMultiColumnGroupKey_MultiLeaf()
+        public async Task AggregateMultiColumnGroupKey_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int i = 0; i < 600; i++)
@@ -1797,7 +1797,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// instead of the direct-column path.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateComputedGroupKey_MultiLeaf()
+        public async Task AggregateComputedGroupKey_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int i = 0; i < 600; i++)
@@ -1838,7 +1838,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// correctly and the operator keeps incrementally updating afterwards.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateCrashRestore_MultiLeaf_SharedTree()
+        public async Task AggregateCrashRestore_ManyGroups()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 200; g++)
@@ -1891,7 +1891,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkListAggWithCrossGroupDeletesAndInserts()
+        public async Task AggregateListAggWithCrossGroupDeletesAndInserts()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "aaa_co", FirstName = "Alice", LastName = "A" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "aaa_co", FirstName = "Bob", LastName = "A" });
@@ -1929,7 +1929,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkStringAggWithCrossGroupDeletesAndInserts()
+        public async Task AggregateStringAggWithCrossGroupDeletesAndInserts()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "aaa_co", FirstName = "Alice", LastName = "A" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "aaa_co", FirstName = "Bob", LastName = "A" });
@@ -1973,7 +1973,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// the shared distinct tree observable.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateCountDistinct_MultiLeaf_VaryingCounts()
+        public async Task AggregateCountDistinct_ManyGroups_VaryingCounts()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -2005,7 +2005,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// Varying per-group strings make any reversal/misalignment observable.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateStringAgg_MultiLeaf_VaryingValues()
+        public async Task AggregateStringAgg_ManyGroups_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 50; g++)
@@ -2038,7 +2038,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// (composes offsets instead of nesting).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateListUnionDistinctAgg_Grouped()
+        public async Task AggregateListUnionDistinctAgg_Grouped()
         {
             for (int g = 0; g < 3; g++)
                 for (int m = 0; m < 2; m++)
@@ -2066,7 +2066,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(5)]
         [InlineData(9)]
-        public async Task BulkAggregateListUnionDistinctAgg_RandomizedStress_WithCrash(int seed)
+        public async Task AggregateListUnionDistinctAgg_RandomizedStress_WithCrash(int seed)
         {
             SetPageSizeBytes(160);
             var rnd = new Random(seed);
@@ -2130,7 +2130,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// shared-tree measures now do.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateStatelessMeasures_MultiLeaf_VaryingValues()
+        public async Task AggregateStatelessMeasures_ManyGroups_VaryingValues()
         {
             SetPageSizeBytes(256);
             for (int g = 0; g < 80; g++)
@@ -2180,7 +2180,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [InlineData(1)]
         [InlineData(2)]
         [InlineData(3)]
-        public async Task BulkAggregateRandomizedStress_MultiLeaf(int seed)
+        public async Task AggregateRandomizedStress_ManyGroups(int seed)
         {
             SetPageSizeBytes(256);
             var rnd = new Random(seed);
@@ -2251,7 +2251,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// avg) and emits null once it returns to 0. (sum0 is the always-0 variant.)
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum_AllNullGroup_HistoryDependent()
+        public async Task AggregateSum_AllNullGroup_HistoryDependent()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
@@ -2279,7 +2279,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// (sum=15, count=2, avg=7.5). B: visits {1,2}, nothing passes (sum=null, count=0, avg=null).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum_WithFilter_Stateless()
+        public async Task AggregateSum_WithFilter_Stateless()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
@@ -2308,7 +2308,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// filter is evaluated per row, weights carry insert/retract).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum_WithFilter_Churn()
+        public async Task AggregateSum_WithFilter_Churn()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2337,7 +2337,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// rejected at plan time. (min/max DISTINCT remains a valid no-op.)
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum_Distinct_Throws()
+        public async Task AggregateSum_Distinct_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2348,7 +2348,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAvg_Distinct_Throws()
+        public async Task AggregateAvg_Distinct_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2363,7 +2363,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// keep working rather than being rejected alongside sum/avg.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMin_Distinct_NoOp()
+        public async Task AggregateMin_Distinct_NoOp()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
@@ -2379,7 +2379,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// rejected at plan time.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateListAgg_OrderBy_Throws()
+        public async Task AggregateListAgg_OrderBy_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 1 });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2394,7 +2394,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// plan time rather than silently keeping duplicates. (list_union_distinct_agg covers distinct lists.)
         /// </summary>
         [Fact]
-        public async Task BulkAggregateListAgg_Distinct_Throws()
+        public async Task AggregateListAgg_Distinct_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2409,7 +2409,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// count by the count_distinct measure). Regression guard for the combination.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateCountDistinct_WithFilter()
+        public async Task AggregateCountDistinct_WithFilter()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
@@ -2432,7 +2432,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(128)]
         [InlineData(200)]
-        public async Task BulkAggregateIncrementalWatermark_ManyLeafBoundaries(int pageBytes)
+        public async Task AggregateIncrementalUpdate_ManyGroups(int pageBytes)
         {
             SetPageSizeBytes(pageBytes);
             int nextKey = 0;
@@ -2485,7 +2485,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateStringAgg_OrderBy_Throws()
+        public async Task AggregateStringAgg_OrderBy_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 1 });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2496,7 +2496,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateStringAgg_Distinct_Throws()
+        public async Task AggregateStringAgg_Distinct_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2507,7 +2507,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateListUnionDistinctAgg_OrderBy_Throws()
+        public async Task AggregateListUnionDistinctAgg_OrderBy_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a", Visits = 1 });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2518,7 +2518,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateListUnionDistinctAgg_Distinct_Throws()
+        public async Task AggregateListUnionDistinctAgg_Distinct_Throws()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "a" });
             var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -2533,7 +2533,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// non-null, so the row is not skipped). Regression guard.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateMinBy_NullValue()
+        public async Task AggregateMinBy_NullValue()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = null, Visits = 1 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "x", Visits = 2 });
@@ -2544,7 +2544,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAllMeasureTypes_OneQuery()
+        public async Task AggregateAllMeasureTypes_OneQuery()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "c", Visits = 10 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "a", Visits = 30 });
@@ -2577,7 +2577,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateFilter_OnDifferentColumn()
+        public async Task AggregateFilter_OnDifferentColumn()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2590,7 +2590,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateTwoDifferentFiltersOnSameMeasure()
+        public async Task AggregateTwoDifferentFiltersOnSameMeasure()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2600,7 +2600,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateFilter_StatelessAndSharedMixed()
+        public async Task AggregateFilter_MixedMeasures()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
@@ -2611,7 +2611,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateDecimalSum_RetractToNull()
+        public async Task AggregateDecimalSum_RetractToNull()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
@@ -2631,7 +2631,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAvgDecimal()
+        public async Task AggregateAvgDecimal()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2641,7 +2641,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGroupByExpression_WithNull()
+        public async Task AggregateGroupByExpression_WithNull()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 4 });
@@ -2655,7 +2655,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGroupByMultipleColumnsWithExpression()
+        public async Task AggregateGroupByMultipleColumnsWithExpression()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 3 });
@@ -2670,7 +2670,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateZeroMeasureGroupBy()
+        public async Task AggregateZeroMeasureGroupBy()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A" });
@@ -2681,7 +2681,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateDecimalMinMaxSum()
+        public async Task AggregateDecimalMinMaxSum()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2691,7 +2691,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateNetZeroGroupInBatch()
+        public async Task AggregateNetZeroGroupInBatch()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             await StartStream("INSERT INTO output SELECT companyId, sum(visits) FROM users GROUP BY companyId");
@@ -2708,7 +2708,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGroupByBooleanExpression()
+        public async Task AggregateGroupByBooleanExpression()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 5 });
@@ -2722,7 +2722,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateOverExpression()
+        public async Task AggregateOverExpression()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 10 });
@@ -2733,7 +2733,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGroupByExpression()
+        public async Task AggregateGroupByExpression()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 2 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", Visits = 4 });
@@ -2747,7 +2747,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMinMaxString_WithChurn()
+        public async Task AggregateMinMaxString_WithChurn()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "banana" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "apple" });
@@ -2762,7 +2762,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateCountDistinctString()
+        public async Task AggregateCountDistinctString()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "x" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "x" });
@@ -2773,7 +2773,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateMinBy_StringOrderBy()
+        public async Task AggregateMinBy_StringOrderBy()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", FirstName = "first", LastName = "zeta" });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "A", FirstName = "second", LastName = "alpha" });
@@ -2793,7 +2793,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(2)]
         [InlineData(4)]
-        public async Task BulkAggregateParallel_AllMeasures_WithChurn(int parallelization)
+        public async Task AggregateParallel_AllMeasures_WithChurn(int parallelization)
         {
             int nextKey = 0;
             for (int g = 0; g < 60; g++)
@@ -2845,7 +2845,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(2)]
         [InlineData(3)]
-        public async Task BulkAggregateParallel_RandomizedStress_WithCrash(int parallelization)
+        public async Task AggregateParallel_RandomizedStress_WithCrash(int parallelization)
         {
             var rnd = new Random(parallelization * 1000 + 7);
             int nextKey = 0;
@@ -2915,7 +2915,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(2)]
         [InlineData(3)]
-        public async Task BulkAggregateParallel_MinByMaxBy_StringAgg(int parallelization)
+        public async Task AggregateParallel_MinByMaxBy_StringAgg(int parallelization)
         {
             int nextKey = 0;
             int nextVisit = 1; // globally unique -> no order-by ties
@@ -2959,7 +2959,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateParallel_WithFilter()
+        public async Task AggregateParallel_WithFilter()
         {
             for (int g = 0; g < 40; g++)
                 for (int m = 0; m < 4; m++)
@@ -2981,7 +2981,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateParallel_MorePartitionsThanGroups()
+        public async Task AggregateParallel_MorePartitionsThanGroups()
         {
             // Only 2 distinct groups but 4 partitions -> some partitions receive no groups.
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
@@ -3001,7 +3001,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateGroupByNullableColumn()
+        public async Task AggregateGroupByNullableColumn()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
@@ -3016,7 +3016,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateAvg_RetractToNull()
+        public async Task AggregateAvg_RetractToNull()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 10 });
@@ -3037,7 +3037,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateDecimalSum_ThroughCrash()
+        public async Task AggregateDecimalSum_ThroughCrash()
         {
             for (int g = 0; g < 5; g++)
                 for (int m = 0; m < 3; m++)
@@ -3056,7 +3056,7 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
-        public async Task BulkAggregateEmptyGlobal_AfterDeletingAllRows()
+        public async Task AggregateEmptyGlobal_AfterDeletingAllRows()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = 5 });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 7 });
@@ -3079,7 +3079,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// never-valued one leaked a Double 0.0 fallback into the Int64 column).
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum0_AllNullGroup_TypeConsistency()
+        public async Task AggregateSum0_AllNullGroup_TypeConsistency()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
@@ -3106,7 +3106,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// retracted-to-zero group.
         /// </summary>
         [Fact]
-        public async Task BulkAggregateSum0_AllNullGroup_Decimal_TypeConsistency()
+        public async Task AggregateSum0_AllNullGroup_Decimal_TypeConsistency()
         {
             AddUser(new Entities.User { UserKey = 1, CompanyId = "A", Visits = null });
             AddUser(new Entities.User { UserKey = 2, CompanyId = "B", Visits = 5 });
@@ -3133,7 +3133,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(11)]
         [InlineData(22)]
-        public async Task BulkAggregateRandomizedStress_Nullable_WithCrash(int seed)
+        public async Task AggregateRandomizedStress_Nullable_WithCrash(int seed)
         {
             SetPageSizeBytes(160);
             var rnd = new Random(seed);
@@ -3220,7 +3220,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(4)]
         [InlineData(8)]
-        public async Task BulkAggregateGlobalNoGroupBy_RandomizedStress_WithCrash(int seed)
+        public async Task AggregateGlobalNoGroupBy_RandomizedStress_WithCrash(int seed)
         {
             SetPageSizeBytes(160);
             var rnd = new Random(seed);
@@ -3299,7 +3299,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Theory]
         [InlineData(7)]
         [InlineData(13)]
-        public async Task BulkAggregateMinByMaxBy_RandomizedStress_WithCrash(int seed)
+        public async Task AggregateMinByMaxBy_RandomizedStress_WithCrash(int seed)
         {
             SetPageSizeBytes(160);
             var rnd = new Random(seed);
