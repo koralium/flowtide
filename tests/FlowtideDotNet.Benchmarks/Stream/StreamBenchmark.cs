@@ -121,12 +121,8 @@ namespace FlowtideDotNet.Benchmarks.Stream
         {
             await _stream!.StartStream(@"
             INSERT INTO output
-            SELECT min(u.userkey) FROM users u
-            GROUP BY userkey
-            ", 1, planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
-            {
-                                           Parallelization = 1
-            });
+            SELECT sum(u.userkey) FROM users u
+            ", 1);
             await _stream.WaitForUpdate();
         }
 
