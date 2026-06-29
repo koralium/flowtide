@@ -15,6 +15,15 @@ using FlowtideDotNet.Storage.Tree.Internal;
 
 namespace FlowtideDotNet.Storage.Tree
 {
+    /// <summary>
+    /// A view over a single leaf page yielded while iterating a B+ tree. It enumerates the page's key/value entries,
+    /// exposes the page's <see cref="Keys"/> and <see cref="Values"/> containers, supports write locking, and can persist
+    /// in-place edits through <see cref="SavePage"/>.
+    /// </summary>
+    /// <typeparam name="K">The key type.</typeparam>
+    /// <typeparam name="V">The value type.</typeparam>
+    /// <typeparam name="TKeyContainer">The container used to store the keys of the page.</typeparam>
+    /// <typeparam name="TValueContainer">The container used to store the values of the page.</typeparam>
     public interface IBPlusTreePageIterator<K, V, TKeyContainer, TValueContainer> : IEnumerable<KeyValuePair<K, V>>, ILockableObject
         where TKeyContainer : IKeyContainer<K>
         where TValueContainer : IValueContainer<V>
@@ -22,7 +31,9 @@ namespace FlowtideDotNet.Storage.Tree
         /// <summary>
         /// Saves the current page, allows the user to modify values on the page and then trigger a save.
         /// </summary>
-        /// <returns></returns>
+        /// <param name="checkForResize">
+        /// When true, checks whether the page has grown past the page size and, if so, triggers a tree traversal so the page can be split.
+        /// </param>
         ValueTask SavePage(bool checkForResize);
 
         /// <summary>
@@ -30,8 +41,14 @@ namespace FlowtideDotNet.Storage.Tree
         /// </summary>
         LeafNode<K, V, TKeyContainer, TValueContainer> CurrentPage { get; }
 
+        /// <summary>
+        /// The key container of the current page.
+        /// </summary>
         TKeyContainer Keys { get; }
 
+        /// <summary>
+        /// The value container of the current page.
+        /// </summary>
         TValueContainer Values { get; }
     }
 }

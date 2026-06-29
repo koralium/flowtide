@@ -15,6 +15,12 @@ using System.Collections;
 
 namespace FlowtideDotNet.Storage.Comparers
 {
+    /// <summary>
+    /// A B+ tree comparer for keys that are unmanaged, naturally comparable values stored in a
+    /// <see cref="PrimitiveListKeyContainer{T}"/>. It orders keys using their <see cref="IComparable{T}"/> implementation
+    /// and locates them with a binary search over the container's contiguous buffer.
+    /// </summary>
+    /// <typeparam name="T">The unmanaged, comparable key type.</typeparam>
     public class PrimitiveListComparer<T> : IBplusTreeComparer<T, PrimitiveListKeyContainer<T>>
         where T : unmanaged, IComparable<T>
     {
@@ -28,27 +34,37 @@ namespace FlowtideDotNet.Storage.Comparers
 
         private Comparer m_comparer;
 
+        /// <summary>
+        /// Creates a comparer that orders keys by their natural ordering.
+        /// </summary>
         public PrimitiveListComparer()
         {
             m_comparer = new Comparer();
         }
+
+        /// <inheritdoc/>
         public bool SeekNextPageForValue => true;
 
+        /// <inheritdoc/>
         public int CompareTo(in T x, in T y)
         {
             return x.CompareTo(y);
         }
 
+        /// <inheritdoc/>
+        /// <remarks>Not implemented by this comparer.</remarks>
         public int CompareTo(in T key, in PrimitiveListKeyContainer<T> keyContainer, in int index)
         {
             throw new NotImplementedException();
         }
 
+        /// <inheritdoc/>
         public int FindIndex(in T key, in PrimitiveListKeyContainer<T> keyContainer)
         {
             return keyContainer.BinarySearch(key, m_comparer);
         }
 
+        /// <inheritdoc/>
         public FindBoundriesResult FindBoundries(in T key, in PrimitiveListKeyContainer<T> keyContainer, int startIndex, int endIndex)
         {
             int lo = startIndex;
