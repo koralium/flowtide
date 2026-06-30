@@ -17,6 +17,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
     internal class ExpressionFieldReplaceVisitor : ExpressionVisitor<object, object?>
     {
         private readonly Dictionary<int, int> oldToNew;
+        private HashSet<DirectFieldReference> visitedReferences = new HashSet<DirectFieldReference>(ReferenceEqualityComparer.Instance);
 
         public ExpressionFieldReplaceVisitor(Dictionary<int, int> oldToNew)
         {
@@ -25,6 +26,10 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
         public override object? VisitDirectFieldReference(DirectFieldReference directFieldReference, object? state)
         {
+            if (visitedReferences.Contains(directFieldReference))
+            {
+                return default;
+            }
             if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
                 if (oldToNew.TryGetValue(structReferenceSegment.Field, out var newField))
@@ -35,6 +40,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
                 {
                     throw new NotImplementedException("Only struct reference segments is supported at this time for emit optimizer");
                 }
+                visitedReferences.Add(directFieldReference);
             }
             return base.VisitDirectFieldReference(directFieldReference, state);
         }
