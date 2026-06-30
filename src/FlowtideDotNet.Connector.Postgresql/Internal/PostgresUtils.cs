@@ -169,7 +169,12 @@ namespace FlowtideDotNet.Connector.PostgreSQL.Internal
                 case DateOnly d:
                     return DateTime.SpecifyKind(d.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
                 default:
-                    return DateTime.Parse((string)v, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
+                    var s = (string)v;
+                    // Infinite timestamps arrive as text on the replication path; map them the way the typed snapshot
+                    // reader does (DateTime.Max/MinValue) so the snapshot and stream paths agree.
+                    if (string.Equals(s, "infinity", StringComparison.OrdinalIgnoreCase)) { return DateTime.MaxValue; }
+                    if (string.Equals(s, "-infinity", StringComparison.OrdinalIgnoreCase)) { return DateTime.MinValue; }
+                    return DateTime.Parse(s, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal);
             }
         }
 
