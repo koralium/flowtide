@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
     internal class ExpressionFieldReplaceVisitor : ExpressionVisitor<object, object?>
     {
         private readonly Dictionary<int, int> oldToNew;
-        private HashSet<DirectFieldReference> visitedReferences = new HashSet<DirectFieldReference>(ReferenceEqualityComparer.Instance);
+        private readonly HashSet<DirectFieldReference> visitedReferences = new HashSet<DirectFieldReference>(ReferenceEqualityComparer.Instance);
 
         public ExpressionFieldReplaceVisitor(Dictionary<int, int> oldToNew)
         {
