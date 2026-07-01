@@ -196,7 +196,7 @@ namespace FlowtideDotNet.Core.Compute
         public void RegisterColumnTableFunction(
             string uri,
             string name,
-            Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult> mapFunc)
+            Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult> mapFunc)
         {
             _columnTableFunctions.Add($"{uri}:{name}", new ColumnTableFunctionDefinition(uri, name, mapFunc));
         }

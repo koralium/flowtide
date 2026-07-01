@@ -28,7 +28,8 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
         private IReadOnlySet<string>? _watermarkNames;
         private readonly TableFunctionRelation _tableFunctionRelation;
         private readonly IFunctionsRegister _functionsRegister;
-        private Func<EventBatchData, int, IEnumerable<EventBatchWeighted>>? _func;
+        private TableFunctionEmit? _func;
+        private int _functionOutputLength;
         private IObjectState<TableFunctionReadState>? _state;
 
         private ICounter<long>? _eventsCounter;
@@ -88,7 +89,8 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             _watermarkNames = new HashSet<string>() { Name };
 
             var compileResult = ColumnTableFunctionCompiler.CompileWithArg(_tableFunctionRelation.TableFunction, _functionsRegister, MemoryAllocator);
-            _func = compileResult.Function;
+            _func = compileResult.Emit;
+            _functionOutputLength = _tableFunctionRelation.TableFunction.TableSchema.Names.Count;
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -106,14 +108,18 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
             if (!_state.Value.HasSentInitial)
             {
-                var batches = _func(new EventBatchData(Array.Empty<IColumn>()), 0);
+                var buffer = new TableFunctionRowBuffer(_functionOutputLength, MemoryAllocator);
+                _func(new EventBatchData(Array.Empty<IColumn>()), 0, buffer);
 
-
-                foreach (var batch in batches)
+                if (buffer.Count > 0)
                 {
-                    _eventsCounter.Add(batch.Count);
-                    _eventsProcessed.Add(batch.Count);
-                    await output.SendAsync(new StreamEventBatch(batch));
+                    _eventsCounter.Add(buffer.Count);
+                    _eventsProcessed.Add(buffer.Count);
+                    await output.SendAsync(new StreamEventBatch(buffer.ToBatch()));
+                }
+                else
+                {
+                    buffer.Dispose();
                 }
 
                 await output.SendWatermark(new Base.Watermark(Name, new LongWatermarkValue(1)));
