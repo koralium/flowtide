@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ListColumn | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ListColumn | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_ColumnStore_ListColumn.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.ColumnStore.ListColumn%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn">
+
+
+
+  <h1 id="FlowtideDotNet_Core_ColumnStore_ListColumn" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn" class="text-break">
+Class ListColumn  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.ColumnStore.html">ColumnStore</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ListColumn : IDataColumn, IDisposable, IEnumerable&lt;IEnumerable&lt;IDataValue&gt;&gt;, IEnumerable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ListColumn</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a>&gt;&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.ienumerable">IEnumerable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Core_ColumnStore_Column_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Core.ColumnStore.Column,System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  ListColumn(Column, IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ListColumn(Column internalColumn, IMemoryOwner&lt;byte&gt; offsetMemory, int offsetCount, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>internalColumn</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.Column.html">Column</a></dt>
+    <dd></dd>
+    <dt><code>offsetMemory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>offsetCount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  ListColumn(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ListColumn(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_FlowtideDotNet_Core_ColumnStore_ColumnSizeInfo_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo)">
+  ListColumn(IMemoryAllocator, ColumnSizeInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ListColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+    <dt><code>columnSizeInfo</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo.html">ColumnSizeInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Count_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Count" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_StructHeader_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.StructHeader*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_StructHeader" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.StructHeader">
+  StructHeader
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Only used for struct column, added for ease of access.
+Returns the header of a struct (column names).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StructHeader StructHeader { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.DataValues.StructHeader.html">StructHeader</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Type_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Type*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Type" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Type">
+  Type
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ArrowTypeId Type { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.ArrowTypeId.html">ArrowTypeId</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Add_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Add_FlowtideDotNet_Core_ColumnStore_IDataValue__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Add(FlowtideDotNet.Core.ColumnStore.IDataValue@)">
+  Add(in IDataValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Add(in IDataValue value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_AddToHash_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AddToHash*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_AddToHash_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_IO_Hashing_NonCryptographicHashAlgorithm_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AddToHash(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.IO.Hashing.NonCryptographicHashAlgorithm)">
+  AddToHash(in int, ReferenceSegment?, NonCryptographicHashAlgorithm)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L555"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+    <dt><code>hashAlgorithm</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.io.hashing.noncryptographichashalgorithm">NonCryptographicHashAlgorithm</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_AddToNewList_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_AddToNewList__1___0__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AddToNewList``1(``0@)">
+  AddToNewList&lt;T&gt;(in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L403"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Allows adding values to a new list directly without creating a list value type.
+This allows for more efficient list creation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddToNewList&lt;T&gt;(in T value) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Add_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Add__1___0__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Add``1(``0@)">
+  Add&lt;T&gt;(in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Add&lt;T&gt;(in T value) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_AppendToList_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToList*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_AppendToList__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToList``1(System.Int32@,``0@)">
+  AppendToList&lt;T&gt;(in int, in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L311"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AppendToList&lt;T&gt;(in int index, in T value) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Clear_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Clear*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Clear" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Clear">
+  Clear()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L390"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_CompareTo_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_CompareTo_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.Int32@,System.Int32@)">
+  CompareTo(in IDataColumn, in int, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>otherColumn</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></dt>
+    <dd></dd>
+    <dt><code>thisIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>otherIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_CompareTo_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__FlowtideDotNet_Storage_DataStructures_BitmapList__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,FlowtideDotNet.Storage.DataStructures.BitmapList@)">
+  CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?, in BitmapList?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CompareTo&lt;T&gt;(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+    <dt><code>validityList</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html">BitmapList</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Copy_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Copy*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Copy(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L550"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDataColumn Copy(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_DeleteBatch_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L622"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; targets)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targets</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L378"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Dispose(System.Boolean)">
+  Dispose(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L364"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual void Dispose(bool disposing)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>disposing</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_EndNewList_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_EndNewList" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.EndNewList">
+  EndNewList()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L412"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals an end to a list created with AddToNewList.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int EndNewList()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize">
+  GetByteSize()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L500"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetByteSize(System.Int32,System.Int32)">
+  GetByteSize(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L463"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize(int start, int end)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>end</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetColumnSizeInfo_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetColumnSizeInfo*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetColumnSizeInfo" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetColumnSizeInfo">
+  GetColumnSizeInfo()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L630"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ColumnSizeInfo GetColumnSizeInfo()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.ColumnSizeInfo.html">ColumnSizeInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetColumnState_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetColumnState*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetColumnState" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetColumnState">
+  GetColumnState()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L643"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public CompareColumnState GetColumnState()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html">CompareColumnState</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetEnumerator_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetEnumerator*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetEnumerator" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetEnumerator">
+  GetEnumerator()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L438"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns an enumerator that iterates through the collection.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerator&lt;IEnumerable&lt;IDataValue&gt;&gt; GetEnumerator()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1">IEnumerator</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a>&gt;&gt;</dt>
+    <dd><p>An enumerator that can be used to iterate through the collection.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListElementValue_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListElementValue*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListElementValue_System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListElementValue(System.Int32@,System.Int32@)">
+  GetListElementValue(in int, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L338"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDataValue GetListElementValue(in int index, in int listIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>listIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListElementValue_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListElementValue*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListElementValue_System_Int32__System_Int32__FlowtideDotNet_Core_ColumnStore_DataValueContainer_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListElementValue(System.Int32@,System.Int32@,FlowtideDotNet.Core.ColumnStore.DataValueContainer)">
+  GetListElementValue(in int, in int, DataValueContainer)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L346"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GetListElementValue(in int index, in int listIndex, DataValueContainer dataValueContainer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>listIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>dataValueContainer</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.DataValueContainer.html">DataValueContainer</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListLength_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListLength*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetListLength_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetListLength(System.Int32@)">
+  GetListLength(in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L305"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetListLength(in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetPrefixSumByteSizes_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetPrefixSumByteSizes*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L475"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt; indices, Span&lt;int&gt; sizes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>indices</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>sizes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetSerializationEstimate_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetSerializationEstimate*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetSerializationEstimate" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetSerializationEstimate">
+  GetSerializationEstimate()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L575"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public SerializationEstimation GetSerializationEstimate()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.SerializationEstimation.html">SerializationEstimation</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetTypeAt_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetTypeAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetTypeAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetTypeAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
+  GetTypeAt(in int, in ReferenceSegment?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L385"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.ArrowTypeId.html">ArrowTypeId</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetValueAt_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetValueAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetValueAt_System_Int32__FlowtideDotNet_Core_ColumnStore_DataValueContainer__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetValueAt(System.Int32@,FlowtideDotNet.Core.ColumnStore.DataValueContainer@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
+  GetValueAt(in int, in DataValueContainer, in ReferenceSegment?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L190"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>dataValueContainer</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.DataValueContainer.html">DataValueContainer</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetValueAt_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetValueAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_GetValueAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.GetValueAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
+  GetValueAt(in int, in ReferenceSegment?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L185"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDataValue GetValueAt(in int index, in ReferenceSegment? child)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertAt_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertAt__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertAt``1(System.Int32@,``0@)">
+  InsertAt&lt;T&gt;(in int, in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L274"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertAt&lt;T&gt;(in int index, in T value) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IDataColumn__System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IDataColumn@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
+  InsertFrom(in IDataColumn, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L600"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan&lt;int&gt; sortedLookup, ref readonly ReadOnlySpan&lt;int&gt; insertPositions, in int lookupNullIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></dt>
+    <dd></dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>lookupNullIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertNullRange_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertNullRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertNullRange(System.Int32,System.Int32)">
+  InsertNullRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L529"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts null on all elements in the range.
+Used as an optimization to not have to insert nulls one by one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertNullRange(int index, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IDataColumn_System_Int32_System_Int32_FlowtideDotNet_Storage_DataStructures_BitmapList_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IDataColumn,System.Int32,System.Int32,FlowtideDotNet.Storage.DataStructures.BitmapList)">
+  InsertRangeFrom(int, IDataColumn, int, int, BitmapList?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L505"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataColumn.html">IDataColumn</a></dt>
+    <dd></dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>validityList</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.BitmapList.html">BitmapList</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveAt_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveAt_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveAt(System.Int32@)">
+  RemoveAt(in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveListElement_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveListElement*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveListElement_System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveListElement(System.Int32@,System.Int32@)">
+  RemoveListElement(in int, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L328"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveListElement(in int index, in int listIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>listIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveRange_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.RemoveRange(System.Int32,System.Int32)">
+  RemoveRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L448"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_SearchBoundries_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.SearchBoundries*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_SearchBoundries__1___0__System_Int32__System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.SearchBoundries``1(``0@,System.Int32@,System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,System.Boolean)">
+  SearchBoundries&lt;T&gt;(in T, in int, in int, in ReferenceSegment?, bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public (int, int) SearchBoundries&lt;T&gt;(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>dataValue</code> <span class="xref">T</span></dt>
+    <dd></dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>end</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+    <dt><code>desc</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>)</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_ToArrowArray_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.ToArrowArray*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_ToArrowArray_Apache_Arrow_ArrowBuffer_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.ToArrowArray(Apache.Arrow.ArrowBuffer,System.Int32)">
+  ToArrowArray(ArrowBuffer, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L354"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nullBuffer</code> <span class="xref">ArrowBuffer</span></dt>
+    <dd></dd>
+    <dt><code>nullCount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>(<span class="xref">IArrowArray</span>, <span class="xref">IArrowType</span>)</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_UpdateListElement_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.UpdateListElement*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_UpdateListElement_System_Int32__System_Int32__FlowtideDotNet_Core_ColumnStore_IDataValue__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.UpdateListElement(System.Int32@,System.Int32@,FlowtideDotNet.Core.ColumnStore.IDataValue@)">
+  UpdateListElement(in int, in int, in IDataValue)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L320"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void UpdateListElement(in int index, in int listIndex, in IDataValue value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>listIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_Update_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_Update__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.Update``1(System.Int32@,``0@)">
+  Update&lt;T&gt;(in int, in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L206"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Update&lt;T&gt;(in int index, in T value) where T : IDataValue</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_ListColumn_WriteToJson_" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.WriteToJson*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_ListColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.ListColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)">
+  WriteToJson(ref readonly Utf8JsonWriter, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L535"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>writer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.text.json.utf8jsonwriter">Utf8JsonWriter</a></dt>
+    <dd></dd>
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/DataColumns/ListColumn.cs/#L34" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ColumnBatchReadBaseOperator | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ColumnBatchReadBaseOperator | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator" class="text-break">
+Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.html">Operators</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.Read.html">Read</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class ColumnBatchReadBaseOperator : ReadBaseOperator, ISourceBlock&lt;IStreamEvent&gt;, IDataflowBlock, IStreamIngressVertex, IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html">IngressVertex</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</div>
+      <div><a class="xref" href="FlowtideDotNet.Core.Operators.Read.ReadBaseOperator.html">ReadBaseOperator</a></div>
+      <div><span class="xref">ColumnBatchReadBaseOperator</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.idataflowblock">IDataflowBlock</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html">IStreamIngressVertex</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Operators.Read.ReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ReadBaseOperator_Compact">ReadBaseOperator.Compact()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Name">IngressVertex&lt;StreamEventBatch&gt;.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamName">IngressVertex&lt;StreamEventBatch&gt;.StreamName</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamVersion">IngressVertex&lt;StreamEventBatch&gt;.StreamVersion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_DisplayName">IngressVertex&lt;StreamEventBatch&gt;.DisplayName</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Metrics">IngressVertex&lt;StreamEventBatch&gt;.Metrics</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Logger">IngressVertex&lt;StreamEventBatch&gt;.Logger</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_MemoryAllocator">IngressVertex&lt;StreamEventBatch&gt;.MemoryAllocator</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_AutoCompleteDependencies">IngressVertex&lt;StreamEventBatch&gt;.AutoCompleteDependencies</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Completion">IngressVertex&lt;StreamEventBatch&gt;.Completion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Complete">IngressVertex&lt;StreamEventBatch&gt;.Complete()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_ConsumeMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean__">IngressVertex&lt;StreamEventBatch&gt;.ConsumeMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;, out bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Fault_System_Exception_">IngressVertex&lt;StreamEventBatch&gt;.Fault(Exception)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_LinkTo_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Threading_Tasks_Dataflow_DataflowLinkOptions_">IngressVertex&lt;StreamEventBatch&gt;.LinkTo(ITargetBlock&lt;IStreamEvent&gt;, DataflowLinkOptions)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_ReleaseReservation_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__">IngressVertex&lt;StreamEventBatch&gt;.ReleaseReservation(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_ReserveMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__">IngressVertex&lt;StreamEventBatch&gt;.ReserveMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_GetWatermarkNames">IngressVertex&lt;StreamEventBatch&gt;.GetWatermarkNames()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_SetDependenciesDone">IngressVertex&lt;StreamEventBatch&gt;.SetDependenciesDone()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_DoLockingEvent_FlowtideDotNet_Base_ILockingEvent_">IngressVertex&lt;StreamEventBatch&gt;.DoLockingEvent(ILockingEvent)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_ScheduleCheckpoint_System_TimeSpan_">IngressVertex&lt;StreamEventBatch&gt;.ScheduleCheckpoint(TimeSpan)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_RunTask_System_Func_FlowtideDotNet_Base_Vertices_IngressOutput__0__System_Object_System_Threading_Tasks_Task__System_Object_System_Threading_Tasks_TaskCreationOptions_">IngressVertex&lt;StreamEventBatch&gt;.RunTask(Func&lt;IngressOutput&lt;StreamEventBatch&gt;, object, Task&gt;, object, TaskCreationOptions)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_InitializationCompleted">IngressVertex&lt;StreamEventBatch&gt;.InitializationCompleted()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_">IngressVertex&lt;StreamEventBatch&gt;.Initialize(string, long, long, IVertexHandler, StreamVersionInformation)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_SetHealth_System_Boolean_">IngressVertex&lt;StreamEventBatch&gt;.SetHealth(bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_">IngressVertex&lt;StreamEventBatch&gt;.QueueTrigger(TriggerEvent)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_RegisterTrigger_System_String_System_Nullable_System_TimeSpan__">IngressVertex&lt;StreamEventBatch&gt;.RegisterTrigger(string, TimeSpan?)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_DisposeAsync">IngressVertex&lt;StreamEventBatch&gt;.DisposeAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Link">IngressVertex&lt;StreamEventBatch&gt;.Link()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CreateBlock">IngressVertex&lt;StreamEventBatch&gt;.CreateBlock()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Setup_System_String_System_String_">IngressVertex&lt;StreamEventBatch&gt;.Setup(string, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_GetLinks">IngressVertex&lt;StreamEventBatch&gt;.GetLinks()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_CheckpointDone_System_Int64_">IngressVertex&lt;StreamEventBatch&gt;.CheckpointDone(long)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Pause">IngressVertex&lt;StreamEventBatch&gt;.Pause()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Resume">IngressVertex&lt;StreamEventBatch&gt;.Resume()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_BeforeSaveCheckpoint">IngressVertex&lt;StreamEventBatch&gt;.BeforeSaveCheckpoint()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__">IngressVertex&lt;StreamEventBatch&gt;.FailAndRollback(Exception, long?)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_OnFailure_System_Int64_">IngressVertex&lt;StreamEventBatch&gt;.OnFailure(long)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator__ctor_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator__ctor_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_DataflowBlockOptions_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.#ctor(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions)">
+  ColumnBatchReadBaseOperator(ReadRelation, IFunctionsRegister, DataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>readRelation</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ReadRelation.html">ReadRelation</a></dt>
+    <dd></dd>
+    <dt><code>functionsRegister</code> <a class="xref" href="FlowtideDotNet.Core.Compute.IFunctionsRegister.html">IFunctionsRegister</a></dt>
+    <dd></dd>
+    <dt><code>options</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowblockoptions">DataflowBlockOptions</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadTriggerName" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTriggerName">
+  DeltaLoadTriggerName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const string DeltaLoadTriggerName = &quot;delta_load&quot;</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadTriggerName" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadTriggerName">
+  FullLoadTriggerName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public const string FullLoadTriggerName = &quot;full_load&quot;</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadInterval_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadInterval*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadInterval" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadInterval">
+  DeltaLoadInterval
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L886"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual TimeSpan? DeltaLoadInterval { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadInterval_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadInterval*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadInterval" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadInterval">
+  FullLoadInterval
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L888"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual TimeSpan? FullLoadInterval { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_Checkpoint_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.Checkpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_Checkpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.Checkpoint(System.Int64)">
+  Checkpoint(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L267"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task Checkpoint(long checkpointTime)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeleteAsync_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeleteAsync" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Deletes any persistent state associated with this vertex from the state storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the deletion operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoad_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoad*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoad_System_Func_System_Threading_Tasks_Task__System_Action_System_Threading_CancellationToken_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoad(System.Func{System.Threading.Tasks.Task},System.Action,System.Threading.CancellationToken,System.Threading.CancellationToken)">
+  DeltaLoad(Func&lt;Task&gt;, Action, CancellationToken, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L278"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when loading delta, the enterCheckpointLock must be called by the the source to make sure that the checkpoint lock is held.
+The lock is released after the data has been sent out completely on the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IAsyncEnumerable&lt;DeltaReadEvent&gt; DeltaLoad(Func&lt;Task&gt; EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>EnterCheckpointLock</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-1">Func</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>ExitCheckpointLock</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action">Action</a></dt>
+    <dd></dd>
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+    <dt><code>enumeratorCancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Operators.Read.DeltaReadEvent.html">DeltaReadEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadTrigger_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadTrigger_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTrigger(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch},System.Object)">
+  DeltaLoadTrigger(IngressOutput&lt;StreamEventBatch&gt;, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L152"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual Task DeltaLoadTrigger(IngressOutput&lt;StreamEventBatch&gt; output, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoDeltaLoad_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoDeltaLoad*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoDeltaLoad_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoDeltaLoad(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
+  DoDeltaLoad(IngressOutput&lt;StreamEventBatch&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L327"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task DoDeltaLoad(IngressOutput&lt;StreamEventBatch&gt; output)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoFullLoad_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoFullLoad*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoFullLoad_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoFullLoad(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
+  DoFullLoad(IngressOutput&lt;StreamEventBatch&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L514"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task DoFullLoad(IngressOutput&lt;StreamEventBatch&gt; output)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoad_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoad*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoad_System_Threading_CancellationToken_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoad(System.Threading.CancellationToken,System.Threading.CancellationToken)">
+  FullLoad(CancellationToken, CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L269"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IAsyncEnumerable&lt;ColumnReadEvent&gt; FullLoad(CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+    <dt><code>enumeratorCancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Operators.Read.ColumnReadEvent.html">ColumnReadEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadTrigger_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadTrigger_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadTrigger(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch},System.Object)">
+  FullLoadTrigger(IngressOutput&lt;StreamEventBatch&gt;, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L157"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual Task FullLoadTrigger(IngressOutput&lt;StreamEventBatch&gt; output, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_GetPrimaryKeyColumns_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.GetPrimaryKeyColumns*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_GetPrimaryKeyColumns" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.GetPrimaryKeyColumns">
+  GetPrimaryKeyColumns()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L280"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract ValueTask&lt;List&lt;int&gt;&gt; GetPrimaryKeyColumns()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.list-1">List</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_InitializeOrRestore_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.InitializeOrRestore*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.InitializeOrRestore(System.Int64,FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
+  InitializeOrRestore(long, IStateManagerClient)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L179"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs the specific state initialization or restoration logic using the state manager.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The time to restore from.</p>
+</dd>
+    <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd><p>The state manager client used to access persistent state.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the state initialization/restoration operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowValue_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowValue*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowValue_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowValue(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
+  LookupRowValue(ColumnRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L501"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected ValueTask&lt;(bool found, ColumnRowReference value)&gt; LookupRowValue(ColumnRowReference rowKeyReference)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>rowKeyReference</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask-1">ValueTask</a>&lt;(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.boolean,flowtidedotnet.core.columnstore.treestorage.columnrowreference-.found">found</a>, <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetuple-system.boolean,flowtidedotnet.core.columnstore.treestorage.columnrowreference-.value">value</a>)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnCheckpoint_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnCheckpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnCheckpoint(System.Int64)">
+  OnCheckpoint(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L258"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a checkpoint is triggered. Allows the vertex to persist any required state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override Task OnCheckpoint(long checkpointTime)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The logical timestamp for this checkpoint.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the state persistence operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnTrigger_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnTrigger(System.String,System.Object)">
+  OnTrigger(string, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a trigger activates.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task OnTrigger(string triggerName, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>triggerName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the fired trigger.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The optional state associated with the trigger.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the trigger processing operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_SendInitial_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.SendInitial*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_SendInitial_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.SendInitial(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
+  SendInitial(IngressOutput&lt;StreamEventBatch&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L870"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked after initialization has completed to send the initial data over the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override Task SendInitial(IngressOutput&lt;StreamEventBatch&gt; output)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput&lt;T&gt;</a> used to emit events.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the initial data generation operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L38" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

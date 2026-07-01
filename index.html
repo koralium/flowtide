@@ -1,17 +1,207 @@
-<!doctype html>
-<html lang="en" dir="ltr" data-has-hydrated="false">
-<head>
-<meta charset="UTF-8">
-<meta name="generator" content="Docusaurus v3.9.2">
-<title data-rh="true">Flowtide</title><meta data-rh="true" property="og:title" content="Flowtide"><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://koralium.github.io/flowtide/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://koralium.github.io/flowtide/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://koralium.github.io/flowtide/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docusaurus_tag" content="default"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docsearch:docusaurus_tag" content="default"><link data-rh="true" rel="icon" href="/flowtide/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://koralium.github.io/flowtide/"><link data-rh="true" rel="alternate" href="https://koralium.github.io/flowtide/" hreflang="en"><link data-rh="true" rel="alternate" href="https://koralium.github.io/flowtide/" hreflang="x-default"><script data-rh="true">function insertBanner(){var n=document.createElement("div");n.id="__docusaurus-base-url-issue-banner-container";n.innerHTML='\n<div id="__docusaurus-base-url-issue-banner" style="border: thick solid red; background-color: rgb(255, 230, 179); margin: 20px; padding: 20px; font-size: 20px;">\n   <p style="font-weight: bold; font-size: 30px;">Your Docusaurus site did not load properly.</p>\n   <p>A very common reason is a wrong site <a href="https://docusaurus.io/docs/docusaurus.config.js/#baseUrl" style="font-weight: bold;">baseUrl configuration</a>.</p>\n   <p>Current configured baseUrl = <span style="font-weight: bold; color: red;">/flowtide/</span> </p>\n   <p>We suggest trying baseUrl = <span id="__docusaurus-base-url-issue-banner-suggestion-container" style="font-weight: bold; color: green;"></span></p>\n</div>\n',document.body.prepend(n);var e=document.getElementById("__docusaurus-base-url-issue-banner-suggestion-container"),s=window.location.pathname,o="/"===s.substr(-1)?s:s+"/";e.innerHTML=o}document.addEventListener("DOMContentLoaded",function(){void 0===window.docusaurus&&insertBanner()})</script><link rel="alternate" type="application/rss+xml" href="/flowtide/blog/rss.xml" title="Flowtide RSS Feed">
-<link rel="alternate" type="application/atom+xml" href="/flowtide/blog/atom.xml" title="Flowtide Atom Feed"><link rel="stylesheet" href="/flowtide/assets/css/styles.bfd07c2f.css">
-<script src="/flowtide/assets/js/runtime~main.0ccdcf6f.js" defer="defer"></script>
-<script src="/flowtide/assets/js/main.07dca57b.js" defer="defer"></script>
-</head>
-<body class="navigation-with-keyboard">
-<svg style="display: none;"><defs>
-<symbol id="theme-svg-external-link" viewBox="0 0 24 24"><path fill="currentColor" d="M21 13v10h-21v-19h12v2h-10v15h17v-8h2zm3-12h-10.988l4.035 4-6.977 7.07 2.828 2.828 6.977-7.07 4.125 4.172v-11z"/></symbol>
-</defs></svg>
-<script>!function(){var t=function(){try{return new URLSearchParams(window.location.search).get("docusaurus-theme")}catch(t){}}()||function(){try{return window.localStorage.getItem("theme")}catch(t){}}();document.documentElement.setAttribute("data-theme",t||"light"),document.documentElement.setAttribute("data-theme-choice",t||"light")}(),function(){try{const c=new URLSearchParams(window.location.search).entries();for(var[t,e]of c)if(t.startsWith("docusaurus-data-")){var a=t.replace("docusaurus-data-","data-");document.documentElement.setAttribute(a,e)}}catch(t){}}()</script><div id="__docusaurus"><div>If you are not redirected automatically, follow this <a href="docs/intro.html">link</a>.</div></div>
-</body>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Getting started | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Getting started | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="images/favicon.ico">
+      <link rel="stylesheet" href="public/docfx.min.css">
+      <link rel="stylesheet" href="public/main.css">
+      <meta name="docfx:navrel" content="toc.html">
+      <meta name="docfx:tocrel" content="docs/toc.html">
+      
+      <meta name="docfx:rel" content="">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="index.html">
+            <img id="logo" class="svg" src="images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="getting-started">Getting started</h1>
+
+<p>To get started with Flowtide, the easiest way is to create a new C# project. This guide will show an example with SQL Server, but you can change
+to another connector as well.</p>
+<p>Create a minimal API AspNetCore application and install the following nuget package:</p>
+<ul>
+<li>FlowtideDotNet.AspNetCore</li>
+<li>FlowtideDotNet.Connector.SqlServer</li>
+</ul>
+<h2 id="writing-the-sql-code">Writing the SQL code</h2>
+<p>The first step is to create an execution plan, this can be be done with any substrait plan creator.
+But it is also possible to do it with SQL inside flowtide. This tutorial will show you how to create a plan with SQL.</p>
+<pre><code class="lang-csharp">var sqlText = @&quot;
+INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
+SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
+LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
+ON t.val = o.val
+WHERE t.val = 123;
+&quot;;
+</code></pre>
+<p>Replace all values with that are between { } with your own table names in your SQL Server.</p>
+<h2 id="configure-the-stream">Configure the stream</h2>
+<p>Next we will add a Flowtide stream to the service collection and add our SQL text as a execution plan:</p>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideStream(&quot;myStream)
+  .AddSqlTextAsPlan(sqlText)
+</code></pre>
+<p>The stream name is added on all logs and metrics, so keeping it unique in your environment can help when setting up monitoring.</p>
+<h2 id="add-connectors">Add connectors</h2>
+<p>So far we have written SQL code and started configuring the stream. But we have not yet instructed Flowtide what it should connect to.
+Some examples of sinks and sources are:</p>
+<ul>
+<li>MS SQL</li>
+<li>Kafka</li>
+<li>Elasticsearch</li>
+<li>And more</li>
+</ul>
+<p>This is done by using the <em>AddConnectors</em> method:</p>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideStream(&quot;myStream)
+  ...
+  .AddConnectors(connectorManager =&gt; {
+    // Add a SQL Server database as an available source
+    connectorManager.AddSqlServerSource(() =&gt; &quot;Server={your server};Database={your database};Trusted_Connection=True;&quot;);
+    // Add another SQL Server database as a sink
+    connectorManager.AddSqlServerSink(() =&gt; &quot;Server={your server};Database={your database};Trusted_Connection=True;&quot;);
+  })
+</code></pre>
+<h2 id="configuring-state-storage">Configuring state storage</h2>
+<p>A Flowtide stream requires state storage to function. This can be stored on a file system or on a cloud storage solution.</p>
+<p>In this tutorial we will use a local development storage. This storage gets cleared between each test run which make it good for development.</p>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideStream(&quot;myStream)
+  ...
+  .AddStorage(storage =&gt; {
+    storage.AddTemporaryDevelopmentStorage();
+  });
+</code></pre>
+<p>If you want to use persistent storage on the local file system, you can instead use:</p>
+<pre><code class="lang-csharp">.AddStorage(storage =&gt; {
+  storage.AddFasterKVFileSystemStorage(&quot;./stateData&quot;);
+});
+</code></pre>
+<h2 id="adding-the-ui">Adding the UI</h2>
+<p>If you want to add the UI to visualize the progress of the stream, add the following code after &quot;var app = builder.Build();&quot;.</p>
+<pre><code>app.UseFlowtideUI(&quot;/stream&quot;);
+</code></pre>
+<h2 id="full-example">Full example</h2>
+<p>Here is the full code example to get started:</p>
+<pre><code class="lang-csharp">var builder = WebApplication.CreateBuilder(args);
+
+var sqlText = @&quot;
+INSERT INTO {sqlserver database name}.{schema name}.{destinationname}
+SELECT t.val FROM {sqlserver database name}.{schema name}.{tablename} t
+LEFT JOIN {sqlserver database name}.{schema name}.{othertablename} o
+ON t.val = o.val
+WHERE t.val = 123;
+&quot;;
+
+builder.Services.AddFlowtideStream(&quot;myStream)
+  .AddSqlTextAsPlan(sqlText)
+  .AddConnectors(connectorManager =&gt; {
+    // Add a SQL Server database as an available source
+    connectorManager.AddSqlServerSource(() =&gt; &quot;Server={your server};Database={your database};Trusted_Connection=True;&quot;);
+    // Add another SQL Server database as a sink
+    connectorManager.AddSqlServerSink(() =&gt; &quot;Server={your server};Database={your database};Trusted_Connection=True;&quot;);
+  })
+  .AddStorage(storage =&gt; {
+    storage.AddTemporaryDevelopmentStorage();
+  });
+
+var app = builder.Build();
+app.UseFlowtideUI(&quot;/stream&quot;);
+
+app.Run();
+</code></pre>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
 </html>

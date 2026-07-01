@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class BulkGroupValueKeyContainer | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class BulkGroupValueKeyContainer | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer" class="text-break">
+Class BulkGroupValueKeyContainer  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.html">Compute</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.html">Columnar</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.html">Functions</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.html">BulkAggregations</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.html">Stateful</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class BulkGroupValueKeyContainer : IKeyContainer&lt;BulkGroupValueRowReference&gt;, IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">BulkGroupValueKeyContainer</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer__ctor_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  BulkGroupValueKeyContainer(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BulkGroupValueKeyContainer(int groupingKeyLength, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>groupingKeyLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Count_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Count" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of keys in the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Add_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Add_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Add(FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference)">
+  Add(BulkGroupValueRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L46"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a key to the end of the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(BulkGroupValueRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd><p>The key to append.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_AddRangeFrom_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.AddRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_AddRangeFrom_FlowtideDotNet_Storage_Tree_IKeyContainer_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.AddRangeFrom(FlowtideDotNet.Storage.Tree.IKeyContainer{FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference},System.Int32,System.Int32)">
+  AddRangeFrom(IKeyContainer&lt;BulkGroupValueRowReference&gt;, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a range of keys copied from another container of the same kind.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddRangeFrom(IKeyContainer&lt;BulkGroupValueRowReference&gt; container, int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>container</code> <a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a>&gt;</dt>
+    <dd><p>The container to copy keys from.</p>
+</dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index in <code class="paramref">container</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to copy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_BinarySearch_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.BinarySearch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_BinarySearch_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_System_Collections_Generic_IComparer_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference__" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.BinarySearch(FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference,System.Collections.Generic.IComparer{FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference})">
+  BinarySearch(BulkGroupValueRowReference, IComparer&lt;BulkGroupValueRowReference&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binary searches the container for the key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BinarySearch(BulkGroupValueRowReference key, IComparer&lt;BulkGroupValueRowReference&gt; comparer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd><p>The key to locate.</p>
+</dd>
+    <dt><code>comparer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.icomparer-1">IComparer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a>&gt;</dt>
+    <dd><p>The comparer that defines the key ordering.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key, or the bitwise complement of the index where it would be inserted when not found.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_DeleteBatch_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.DeleteBatch(System.ReadOnlySpan{System.Int32})">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the keys at the given sorted positions in a single pass.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; positions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>positions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The ascending indices of the keys to delete.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Dispose_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Dispose" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L167"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Get_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Get*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Get_System_Int32__" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Get(System.Int32@)">
+  Get(in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L156"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public BulkGroupValueRowReference Get(in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_GetByteSize_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_GetByteSize" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.GetByteSize">
+  GetByteSize()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L165"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of all keys, or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_GetByteSize_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.GetByteSize(System.Int32,System.Int32)">
+  GetByteSize(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of the keys between <code class="paramref">start</code> (inclusive) and
+<code class="paramref">end</code> (exclusive), or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize(int start, int end)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key in the range.</p>
+</dd>
+    <dt><code>end</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The exclusive index of the end of the range.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Insert_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Insert*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Insert_System_Int32_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Insert(System.Int32,FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference)">
+  Insert(int, BulkGroupValueRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a key at the given index, shifting later keys up. Used for keys stored in a leaf node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert(int index, BulkGroupValueRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_InsertFrom_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_InsertFrom_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.InsertFrom(FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  InsertFrom(BulkGroupValueRowReference[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts selected keys from an array at scattered positions in a single pass, used when merging a batch into the node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(BulkGroupValueRowReference[] keys, ReadOnlySpan&lt;int&gt; sortedLookup, ReadOnlySpan&lt;int&gt; targetPositions, Span&lt;int&gt; lookupBuffer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keys</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a>[]</dt>
+    <dd><p>The array to insert keys from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The indices in <code class="paramref">keys</code> of the keys to insert.</p>
+</dd>
+    <dt><code>targetPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The positions to insert at, in pre-insert coordinate space, in ascending order.</p>
+</dd>
+    <dt><code>lookupBuffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A scratch buffer the implementation may use during the insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Insert_Internal_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Insert_Internal*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Insert_Internal_System_Int32_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Insert_Internal(System.Int32,FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference)">
+  Insert_Internal(int, BulkGroupValueRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a separator key at the given index for use in an internal node, shifting later keys up.
+Containers that store leaf and internal keys differently can handle this case separately.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert_Internal(int index, BulkGroupValueRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_RemoveAt_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.RemoveAt(System.Int32)">
+  RemoveAt(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the key at the given index, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_RemoveRange_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.RemoveRange(System.Int32,System.Int32)">
+  RemoveRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L131"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes a run of keys, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key to remove.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Update_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_Update_System_Int32_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.Update(System.Int32,FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference)">
+  Update(int, BulkGroupValueRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Replaces the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Update(int index, BulkGroupValueRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to overwrite.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd><p>The new key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/Stateful/BulkGroupValueKeyContainer.cs/#L19" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

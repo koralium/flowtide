@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class IngressVertex&lt;TData&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class IngressVertex&lt;TData&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="Base class for stream ingress vertices (sources) that produce stream events into the dataflow pipeline.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Vertices_IngressVertex_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Vertices.IngressVertex%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Vertices_IngressVertex_1" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1" class="text-break">
+Class IngressVertex&lt;TData&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Vertices.html">Vertices</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base class for stream ingress vertices (sources) that produce stream events into the dataflow pipeline.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class IngressVertex&lt;TData&gt; : ISourceBlock&lt;IStreamEvent&gt;, IDataflowBlock, IStreamIngressVertex, IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TData</code></dt>
+    <dd><p>The type of the underlying data payload produced by this vertex.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">IngressVertex&lt;TData&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.idataflowblock">IDataflowBlock</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html">IStreamIngressVertex</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Core.Operators.Read.ReadBaseOperator.html">ReadBaseOperator</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This vertex acts as an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a> in the TPL Dataflow pipeline.
+It handles common stream lifecycle events: state initialization or restoration, generating checkpoints,
+managing triggers, and forwarding locking events. Derived classes must implement
+custom data source reading logic and use <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput&lt;T&gt;</a> to emit events.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1__ctor_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1__ctor_System_Threading_Tasks_Dataflow_DataflowBlockOptions_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.#ctor(System.Threading.Tasks.Dataflow.DataflowBlockOptions)">
+  IngressVertex(DataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L112"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html">IngressVertex&lt;TData&gt;</a> class with the specified execution options.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IngressVertex(DataflowBlockOptions options)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>options</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowblockoptions">DataflowBlockOptions</a></dt>
+    <dd><p>The options that govern the execution behavior of the inner dataflow block.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_AutoCompleteDependencies_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.AutoCompleteDependencies*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_AutoCompleteDependencies" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.AutoCompleteDependencies">
+  AutoCompleteDependencies
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets a value indicating whether dependencies should be automatically completed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected bool AutoCompleteDependencies { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Vertices_IngressVertex_1_AutoCompleteDependencies_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Dependencies could be other streams when running in a distributed mode, a checkpoint is not considered
+fully complete until all dependencies are completed.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Completion_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Completion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Completion" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Completion">
+  Completion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> that represents the asynchronous operation and completion of the dataflow block.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Completion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DisplayName_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DisplayName*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DisplayName" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DisplayName">
+  DisplayName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the display name for the specific vertex type, used mainly in logging and metrics.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract string DisplayName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Logger_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Logger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Logger" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Logger">
+  Logger
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L92"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the logger instance associated with this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ILogger Logger { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger">ILogger</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_MemoryAllocator_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.MemoryAllocator*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_MemoryAllocator" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.MemoryAllocator">
+  MemoryAllocator
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the memory allocator for managing native memory allocations within this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMemoryAllocator MemoryAllocator { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Metrics_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Metrics*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Metrics" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Metrics">
+  Metrics
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the meter instance used to create metrics for this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMeter Metrics { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Metrics.IMeter.html">IMeter</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Name_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Name*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Name" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Name">
+  Name
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the configured name of the vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Name { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamName_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.StreamName*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamName" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.StreamName">
+  StreamName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the name of the stream this vertex belongs to.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected string StreamName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamVersion_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.StreamVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_StreamVersion" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.StreamVersion">
+  StreamVersion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the version information of the currently running stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamVersionInformation? StreamVersion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_BeforeSaveCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.BeforeSaveCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_BeforeSaveCheckpoint" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.BeforeSaveCheckpoint">
+  BeforeSaveCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L715"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Overridable lifecycle method invoked before the save checkpoint step completes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task BeforeSaveCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the pre-checkpoint operations.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_CheckpointDone_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.CheckpointDone*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_CheckpointDone_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.CheckpointDone(System.Int64)">
+  CheckpointDone(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L688"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a checkpoint has successfully completed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task CheckpointDone(long checkpointVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The completed checkpoint version.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the completion callback operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Compact_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Compact*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Compact" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Compact">
+  Compact()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L292"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals the vertex to perform state compaction.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract Task Compact()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the compaction process.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Complete_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Complete*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Complete" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Complete">
+  Complete()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L197"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals to the dataflow block that it should not accept nor produce any more messages nor consume any more postponed messages.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Complete()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ConsumeMessage_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ConsumeMessage*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ConsumeMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ConsumeMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Boolean@)">
+  ConsumeMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;, out bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L217"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called by a linked <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> to accept and consume a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a> previously offered by this <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IStreamEvent? ConsumeMessage(DataflowMessageHeader messageHeader, ITargetBlock&lt;IStreamEvent&gt; target, out bool messageConsumed)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>messageHeader</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a></dt>
+    <dd><p>The message header to consume.</p>
+</dd>
+    <dt><code>target</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd><p>The target returning the message.</p>
+</dd>
+    <dt><code>messageConsumed</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>true if the message was successfully consumed; otherwise, false.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a></dt>
+    <dd><p>The value of the consumed message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_CreateBlock_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.CreateBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_CreateBlock" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.CreateBlock">
+  CreateBlock()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L652"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates and configures the internal Dataflow block based on the generated execution options.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void CreateBlock()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DeleteAsync_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DeleteAsync" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L661"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Deletes any persistent state associated with this vertex from the state storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the deletion operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DisposeAsync_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DisposeAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DisposeAsync" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L617"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously frees, releases, or resets unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A task representing the asynchronous dispose operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DoLockingEvent_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DoLockingEvent*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DoLockingEvent_FlowtideDotNet_Base_ILockingEvent_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.DoLockingEvent(FlowtideDotNet.Base.ILockingEvent)">
+  DoLockingEvent(ILockingEvent)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L359"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Triggers a locking event asynchronously for the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DoLockingEvent(ILockingEvent lockingEvent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>lockingEvent</code> <a class="xref" href="FlowtideDotNet.Base.ILockingEvent.html">ILockingEvent</a></dt>
+    <dd><p>The locking event to execute.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Vertices_IngressVertex_1_DoLockingEvent_FlowtideDotNet_Base_ILockingEvent__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is used to send checkpoints or other event types that require synchronization with the stream's processing.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_FailAndRollback_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.FailAndRollback*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.FailAndRollback(System.Exception,System.Nullable{System.Int64})">
+  FailAndRollback(Exception?, long?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L726"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Triggers a rollback sequence on the data pipeline flow, optionally specifying the version and error.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exception</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd><p>The exception that triggered the rollback.</p>
+</dd>
+    <dt><code>restoreVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>?</dt>
+    <dd><p>The optional target version to restore state from.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the faulting sequence.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Fault_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Fault*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Fault_System_Exception_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Fault(System.Exception)">
+  Fault(Exception)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L228"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Causes the dataflow block to complete in a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskstatus#system-threading-tasks-taskstatus-faulted">Faulted</a> state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Fault(Exception exception)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exception</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a> that caused the faulting.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_GetLinks_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.GetLinks*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_GetLinks" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.GetLinks">
+  GetLinks()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L678"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets an enumeration of the current target links registered to this output block.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerable&lt;ITargetBlock&lt;IStreamEvent&gt;&gt; GetLinks()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;&gt;</dt>
+    <dd><p>An enumeration of linked <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> instances.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_GetWatermarkNames_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.GetWatermarkNames*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_GetWatermarkNames" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.GetWatermarkNames">
+  GetWatermarkNames()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L335"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Retrieves the set of watermark names supported by this ingress vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task&lt;IReadOnlySet&lt;string&gt;&gt; GetWatermarkNames()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task-1">Task</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlyset-1">IReadOnlySet</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;&gt;</dt>
+    <dd><p>A read-only set of watermark names.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_InitializationCompleted_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.InitializationCompleted*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_InitializationCompleted" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.InitializationCompleted">
+  InitializationCompleted()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L438"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when the internal initialization sequence has completed successfully.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task InitializationCompleted()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task that handles post-initialization tasks, such as triggering initial data emission.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Initialize_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Initialize*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)">
+  Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L456"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously initializes the vertex, wiring up metrics, dependencies, and persistent state retrieval.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name assigned to the vertex.</p>
+</dd>
+    <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The time representing the last known good state to restore from.</p>
+</dd>
+    <dt><code>newTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The new logical stream execution time.</p>
+</dd>
+    <dt><code>vertexHandler</code> <a class="xref" href="FlowtideDotNet.Base.IVertexHandler.html">IVertexHandler</a></dt>
+    <dd><p>The handler containing stream environment references like state client and metrics.</p>
+</dd>
+    <dt><code>streamVersionInformation</code> <a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a></dt>
+    <dd><p>Configuration tracking the overall version of stream changes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_InitializeOrRestore_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.InitializeOrRestore*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.InitializeOrRestore(System.Int64,FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
+  InitializeOrRestore(long, IStateManagerClient)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L576"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs the specific state initialization or restoration logic using the state manager.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The time to restore from.</p>
+</dd>
+    <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd><p>The state manager client used to access persistent state.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the state initialization/restoration operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Link_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Link*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Link" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Link">
+  Link()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L638"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Establishes the previously configured links to target blocks in the dataflow pipeline.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Link()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_LinkTo_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.LinkTo*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_LinkTo_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Threading_Tasks_Dataflow_DataflowLinkOptions_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.LinkTo(System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Threading.Tasks.Dataflow.DataflowLinkOptions)">
+  LinkTo(ITargetBlock&lt;IStreamEvent&gt;, DataflowLinkOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L246"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Links the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a> to the specified <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IDisposable LinkTo(ITargetBlock&lt;IStreamEvent&gt; target, DataflowLinkOptions linkOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>target</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> to which to connect this source.</p>
+</dd>
+    <dt><code>linkOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowlinkoptions">DataflowLinkOptions</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowlinkoptions">DataflowLinkOptions</a> instance that configures the link.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></dt>
+    <dd><p>An IDisposable that, upon calling Dispose, will disconnect the source from the target.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnCheckpoint_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnCheckpoint(System.Int64)">
+  OnCheckpoint(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L192"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a checkpoint is triggered. Allows the vertex to persist any required state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task OnCheckpoint(long checkpointTime)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>checkpointTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The logical timestamp for this checkpoint.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the state persistence operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnFailure_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnFailure*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnFailure_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnFailure(System.Int64)">
+  OnFailure(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L746"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task OnFailure(long rollbackVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>rollbackVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The version that the stream will be rolled back to.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnTrigger_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_OnTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.OnTrigger(System.String,System.Object)">
+  OnTrigger(string, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L594"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked when a trigger activates.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract Task OnTrigger(string triggerName, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>triggerName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the fired trigger.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The optional state associated with the trigger.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the trigger processing operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Pause_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Pause*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Pause" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Pause">
+  Pause()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L696"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Temporarily stops the data output generation for the connected streams.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Pause()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_QueueTrigger_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.QueueTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)">
+  QueueTrigger(TriggerEvent)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L583"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Queues a trigger event for asynchronous processing.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task QueueTrigger(TriggerEvent triggerEvent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>triggerEvent</code> <a class="xref" href="FlowtideDotNet.Base.TriggerEvent.html">TriggerEvent</a></dt>
+    <dd><p>The trigger event to process.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the queueing operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_RegisterTrigger_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.RegisterTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_RegisterTrigger_System_String_System_Nullable_System_TimeSpan__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.RegisterTrigger(System.String,System.Nullable{System.TimeSpan})">
+  RegisterTrigger(string, TimeSpan?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L602"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a trigger to fire optionally on a recurring schedule.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task RegisterTrigger(string name, TimeSpan? scheduleInterval = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The trigger name.</p>
+</dd>
+    <dt><code>scheduleInterval</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd><p>An optional interval indicating how often the trigger fires.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the trigger registration operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ReleaseReservation_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ReleaseReservation*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ReleaseReservation_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ReleaseReservation(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})">
+  ReleaseReservation(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L263"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called by a linked <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> to release a previously reserved <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a> by this <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void ReleaseReservation(DataflowMessageHeader messageHeader, ITargetBlock&lt;IStreamEvent&gt; target)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>messageHeader</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a></dt>
+    <dd><p>The message header being released.</p>
+</dd>
+    <dt><code>target</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd><p>The target that reserved the message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ReserveMessage_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ReserveMessage*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ReserveMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ReserveMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})">
+  ReserveMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L275"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called by a linked <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> to reserve a previously offered <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a> by this <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool ReserveMessage(DataflowMessageHeader messageHeader, ITargetBlock&lt;IStreamEvent&gt; target)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>messageHeader</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a></dt>
+    <dd><p>The message header to reserve.</p>
+</dd>
+    <dt><code>target</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd><p>The target reserving the message.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>true if the message was successfully reserved; otherwise, false.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Resume_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Resume*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Resume" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Resume">
+  Resume()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L705"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resumes normal data output generation for previously paused streams.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Resume()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_RunTask_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.RunTask*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_RunTask_System_Func_FlowtideDotNet_Base_Vertices_IngressOutput__0__System_Object_System_Threading_Tasks_Task__System_Object_System_Threading_Tasks_TaskCreationOptions_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.RunTask(System.Func{FlowtideDotNet.Base.Vertices.IngressOutput{`0},System.Object,System.Threading.Tasks.Task},System.Object,System.Threading.Tasks.TaskCreationOptions)">
+  RunTask(Func&lt;IngressOutput&lt;TData&gt;, object?, Task&gt;, object?, TaskCreationOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L388"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts a background task linked to the stream's lifecycle that can output data to the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task RunTask(Func&lt;IngressOutput&lt;TData&gt;, object?, Task&gt; task, object? state = null, TaskCreationOptions taskCreationOptions = TaskCreationOptions.None)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>task</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;TData&gt;, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>&gt;</dt>
+    <dd><p>The task function taking an <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput&lt;T&gt;</a> and an optional state.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>Optional state passed to the task.</p>
+</dd>
+    <dt><code>taskCreationOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskcreationoptions">TaskCreationOptions</a></dt>
+    <dd><p>Options to customize the task's creation and execution behavior.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>The started <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ScheduleCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ScheduleCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_ScheduleCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.ScheduleCheckpoint(System.TimeSpan)">
+  ScheduleCheckpoint(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L368"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Schedules a checkpoint to occur after the specified delay.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void ScheduleCheckpoint(TimeSpan inTime)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>inTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>The timespan indicating how long to wait before checkpointing.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SendInitial_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SendInitial*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SendInitial_FlowtideDotNet_Base_Vertices_IngressOutput__0__" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SendInitial(FlowtideDotNet.Base.Vertices.IngressOutput{`0})">
+  SendInitial(IngressOutput&lt;TData&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L286"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invoked after initialization has completed to send the initial data over the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task SendInitial(IngressOutput&lt;TData&gt; output)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>output</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput</a>&lt;TData&gt;</dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressOutput-1.html">IngressOutput&lt;T&gt;</a> used to emit events.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the initial data generation operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SetDependenciesDone_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SetDependenciesDone*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SetDependenciesDone" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SetDependenciesDone">
+  SetDependenciesDone()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L340"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Marks the dependencies for this vertex as completed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void SetDependenciesDone()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SetHealth_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SetHealth*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_SetHealth_System_Boolean_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.SetHealth(System.Boolean)">
+  SetHealth(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L565"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the health status of this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void SetHealth(bool healthy)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>healthy</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>True if healthy, false otherwise.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Setup_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Setup*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_IngressVertex_1_Setup_System_String_System_String_" data-uid="FlowtideDotNet.Base.Vertices.IngressVertex`1.Setup(System.String,System.String)">
+  Setup(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L668"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Assigns the stream configuration onto the vertex before initialization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Setup(string streamName, string operatorName)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the stream.</p>
+</dd>
+    <dt><code>operatorName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the operator.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/Ingress/IngressVertex.cs/#L52" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class PrimitiveList&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class PrimitiveList&lt;T&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="A growable list of unmanaged values stored in native memory allocated from an . It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer, which can be exposed as a  or  and serialized without copying element by element. Ownership is reference counted through  and , and the buffer is released when the list is disposed or the last reference is returned.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_DataStructures_PrimitiveList_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.DataStructures.PrimitiveList%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1" class="text-break">
+Class PrimitiveList&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.DataStructures.html">DataStructures</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>A growable list of unmanaged values stored in native memory allocated from an <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>.
+It behaves like a list (add, insert, remove, index) but keeps its elements in a contiguous unmanaged buffer,
+which can be exposed as a <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span">Span</a> or <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory">Memory</a> and serialized without copying element by element.
+Ownership is reference counted through <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_System_Int32_">Rent(int)</a> and <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return">Return()</a>, and the buffer is
+released when the list is disposed or the last reference is returned.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class PrimitiveList&lt;T&gt; : IDisposable, IReadOnlyList&lt;T&gt;, IReadOnlyCollection&lt;T&gt;, IEnumerable&lt;T&gt;, IEnumerable where T : unmanaged</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The unmanaged element type.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">PrimitiveList&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlycollection-1">IReadOnlyCollection</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.ienumerable">IEnumerable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveList(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an empty list that allocates backing memory from the given allocator on demand.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for backing memory.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Int32)">
+  PrimitiveList(IMemoryAllocator, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an empty list with backing memory pre-allocated for at least <code class="paramref">initialCapacity</code> elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList(IMemoryAllocator memoryAllocator, int initialCapacity)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for backing memory.</p>
+</dd>
+    <dt><code>initialCapacity</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to reserve capacity for up front.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveList(IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a list that wraps already populated memory, taking ownership of it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList(IMemoryOwner&lt;byte&gt; memory, int length, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The memory holding the elements.</p>
+</dd>
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of valid elements in <code class="paramref">memory</code>.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for any later growth.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1__ctor_System_Void__System_Int32_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.#ctor(System.Void*,System.Int32,System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveList(void*, int, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a list over an existing raw memory pointer. The caller is responsible for keeping the memory alive.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList(void* data, int dataLength, int length, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd><p>Pointer to the element data.</p>
+</dd>
+    <dt><code>dataLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The capacity, in elements, of the buffer at <code class="paramref">data</code>.</p>
+</dd>
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of valid elements.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for any later growth.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Count_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Count" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L483"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of elements in the list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Item_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Item*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Item_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Item(System.Int32)">
+  this[int]
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L468"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T this[int index] { get; set; }</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Memory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Memory" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Memory">
+  Memory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L85"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The full backing memory buffer in bytes, including any capacity beyond the current elements, or empty when nothing is allocated.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Memory&lt;byte&gt; Memory { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.memory-1">Memory</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedMemory_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedMemory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SlicedMemory" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SlicedMemory">
+  SlicedMemory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The portion of the backing memory in bytes that actually holds the current elements.
+Use this when serializing or copying the list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Memory&lt;byte&gt; SlicedMemory { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.memory-1">Memory</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Span*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Span" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Span">
+  Span
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A span over the current elements of the list.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Span&lt;T&gt; Span { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Add_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Add__0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Add(`0)">
+  Add(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a value to the end of the list, growing it by one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to append.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_AddRangeFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.AddRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_AddRangeFrom_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.AddRangeFrom(FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0},System.Int32,System.Int32)">
+  AddRangeFrom(PrimitiveList&lt;T&gt;, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L174"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a run of elements copied from another list to the end of this one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddRangeFrom(PrimitiveList&lt;T&gt; list, int index, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>list</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html">PrimitiveList</a>&lt;T&gt;</dt>
+    <dd><p>The list to copy elements from.</p>
+</dd>
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in <code class="paramref">list</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to copy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_BinarySearch_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.BinarySearch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_BinarySearch__1___0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.BinarySearch``1(``0)">
+  BinarySearch&lt;TComp&gt;(TComp)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L584"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs a binary search over the elements. The list must be sorted with respect to <code class="paramref">value</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BinarySearch&lt;TComp&gt;(TComp value) where TComp : IComparable&lt;T&gt;</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>value</code> <span class="xref">TComp</span></dt>
+    <dd><p>The comparable to search for.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the matching element, or the bitwise complement of the index of the next larger element when no match is found.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TComp</code></dt>
+    <dd><p>A comparable that defines the ordering against the elements.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Clear_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Clear*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Clear" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Clear">
+  Clear()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L557"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resets the count to zero, keeping the backing memory for reuse.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Clear()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Copy_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Copy*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  Copy(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L567"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a deep copy of the list, allocating new backing memory from the given allocator.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveList&lt;T&gt; Copy(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The allocator used for the copy's backing memory.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html">PrimitiveList</a>&lt;T&gt;</dt>
+    <dd><p>A new list with the same elements.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_DeleteBatch_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.DeleteBatch(System.ReadOnlySpan{System.Int32})">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L298"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Batch delete elements at the specified sorted indices.
+This is more efficient than calling RemoveAt repeatedly because it processes
+contiguous blocks of retained data in a single left-to-right sweep.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; targets)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targets</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span of sorted indices (ascending) of elements to delete.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L505"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Dispose(System.Boolean)">
+  Dispose(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L485"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual void Dispose(bool disposing)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>disposing</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Finalize_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Finalize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Finalize" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Finalize">
+  ~PrimitiveList()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L500"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected ~PrimitiveList()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Get_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Get*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Get_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Get(System.Int32)">
+  Get(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L437"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T Get(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetEnumerator_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetEnumerator*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetEnumerator" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetEnumerator">
+  GetEnumerator()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L522"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Enumerates the elements in order from index 0 to <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Count">Count</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerator&lt;T&gt; GetEnumerator()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerator-1">IEnumerator</a>&lt;T&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetPrefixSumByteSizes_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetPrefixSumByteSizes*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L607"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds this list's per-index byte size contribution to the running totals in <code class="paramref">sizes</code>, where each
+element contributes <code>sizeof(T)</code> bytes. Used together with the other containers to build prefix-sum sizes
+when computing serialized batch sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt; indices, Span&lt;int&gt; sizes)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>indices</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The indices the sizes are being accumulated for.</p>
+</dd>
+    <dt><code>sizes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The running per-index byte size totals to add to.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetRef_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetRef*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_GetRef_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.GetRef(System.Int32@)">
+  GetRef(scoped in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L448"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a reference to the element at the given index, allowing it to be read or modified in place.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ref T GetRef(scoped in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertAt_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertAt*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertAt_System_Int32__0_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertAt(System.Int32,`0)">
+  InsertAt(int, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L188"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a value at the given index, shifting every element at or after that index up by one.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertAt(int index, T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index to insert at.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0___System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom(FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0}@,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
+  InsertFrom(ref readonly PrimitiveList&lt;T&gt;, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L249"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from another primitive list at specific positions.
+This is used when merging two lists together more memory efficiently than inserting each element one by one.
+The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the other list.
+The positions in <code class="paramref">insertPositions</code> are interpreted relative to the original contents of the current list before any elements are inserted.
+Conceptually, this behaves like inserting the selected elements in order using <code>InsertAt(insertPositions[i] + i, ...)</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(ref readonly PrimitiveList&lt;T&gt; other, ref readonly ReadOnlySpan&lt;int&gt; sortedLookup, ref readonly ReadOnlySpan&lt;int&gt; insertPositions, in int lookupNullIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html">PrimitiveList</a>&lt;T&gt;</dt>
+    <dd><p>The other primitive list to insert data from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the indices of the elements to insert from the other list.</p>
+</dd>
+    <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</p>
+</dd>
+    <dt><code>lookupNullIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A sentinel value in <code class="paramref">sortedLookup</code> that inserts a default element instead of reading from <code class="paramref">other</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertFrom__0___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32})">
+  InsertFrom(T[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L353"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Special case insert that allows inserting a subset of elements from an array at specific positions.
+This is used when merging two lists together more memory efficiently than inserting each element one by one.
+The sortedLookup and insertPositions spans must have the same length, but do not need to cover every element in the array.
+The positions in <code class="paramref">insertPositions</code> are interpreted relative to the original contents of the current list before any elements are inserted.
+Conceptually, this behaves like inserting the selected elements in order using <code>InsertAt(insertPositions[i] + i, ...)</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(T[] keys, ReadOnlySpan&lt;int&gt; sortedLookup, ReadOnlySpan&lt;int&gt; insertPositions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keys</code> T[]</dt>
+    <dd><p>The array to insert data from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the indices of the elements to insert from the array.</p>
+</dd>
+    <dt><code>insertPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertRangeFrom_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertRangeFrom_System_Int32_FlowtideDotNet_Storage_DataStructures_PrimitiveList__0__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertRangeFrom(System.Int32,FlowtideDotNet.Storage.DataStructures.PrimitiveList{`0},System.Int32,System.Int32)">
+  InsertRangeFrom(int, PrimitiveList&lt;T&gt;, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L210"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a run of elements copied from another list, shifting existing elements up to make room.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertRangeFrom(int index, PrimitiveList&lt;T&gt; other, int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in this list to insert at.</p>
+</dd>
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html">PrimitiveList</a>&lt;T&gt;</dt>
+    <dd><p>The list to copy elements from.</p>
+</dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index in <code class="paramref">other</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to copy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertStaticRange_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertStaticRange*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_InsertStaticRange_System_Int32__0_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.InsertStaticRange(System.Int32,`0,System.Int32)">
+  InsertStaticRange(int, T, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L226"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts the same value <code class="paramref">count</code> times at the given index, shifting existing elements up to make room.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertStaticRange(int index, T value, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index to insert at.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The value to insert repeatedly.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of copies to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_MoveAtIndex_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.MoveAtIndex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_MoveAtIndex_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.MoveAtIndex(System.Int32,System.Int32)">
+  MoveAtIndex(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L399"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Opens a gap of <code class="paramref">count</code> elements at the given index by shifting the elements at or after it up,
+without writing any values into the gap. The list grows by <code class="paramref">count</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void MoveAtIndex(int index, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index at which to open the gap.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of element slots to open.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveAt_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveAt(System.Int32)">
+  RemoveAt(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L411"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the element at the given index and shifts all elements above it down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index of the element to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveRange_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.RemoveRange(System.Int32,System.Int32)">
+  RemoveRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L424"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes a run of elements starting at the given index and shifts all elements above the range down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int index, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index of the first element to remove.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of elements to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Rent*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Rent_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Rent(System.Int32)">
+  Rent(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L537"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Increases the reference count by <code class="paramref">count</code> to share ownership of the list.
+Each rent must be matched by a <a class="xref" href="FlowtideDotNet.Storage.DataStructures.PrimitiveList-1.html#FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return">Return()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Rent(int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of references to add.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Return*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Return" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Return">
+  Return()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L545"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases one reference. When the reference count reaches zero the list is disposed and its memory freed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Return()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SetLength_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SetLength*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_SetLength_System_Int32_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.SetLength(System.Int32)">
+  SetLength(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L595"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the element count directly, without allocating or clearing memory. The caller must ensure the backing
+memory already holds that many valid elements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void SetLength(int newLength)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>newLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The new element count.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Update_" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_DataStructures_PrimitiveList_1_Update_System_Int32___0__" data-uid="FlowtideDotNet.Storage.DataStructures.PrimitiveList`1.Update(System.Int32@,`0@)">
+  Update(in int, in T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L459"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Overwrites the element at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Update(in int index, in T value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero based index.</p>
+</dd>
+    <dt><code>value</code> <span class="xref">T</span></dt>
+    <dd><p>The new value.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/DataStructures/PrimitiveList.cs/#L30" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

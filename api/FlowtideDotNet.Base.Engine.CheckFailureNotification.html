@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Struct CheckFailureNotification | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Struct CheckFailureNotification | Flowtide.NET ">
+      
+      <meta name="description" content="A stack-allocated notification carrying data quality check failure information delivered to  implementations.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Engine_CheckFailureNotification.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Engine.CheckFailureNotification%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Engine_CheckFailureNotification" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification" class="text-break">
+Struct CheckFailureNotification  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L153"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Engine.html">Engine</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>A stack-allocated notification carrying data quality check failure information
+delivered to <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a> implementations.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ref struct CheckFailureNotification</code></pre>
+  </div>
+
+
+
+
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.equals">ValueType.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.gethashcode">ValueType.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.valuetype.tostring">ValueType.ToString()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+This type is a <code>ref struct</code> to avoid heap allocation on each check failure
+and to allow its <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html#FlowtideDotNet_Base_Engine_CheckFailureNotification_Tags">Tags</a> field to hold a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan&lt;T&gt;</a>, which
+itself cannot appear as a field in a non-ref-struct type.
+It must not be stored or accessed beyond the duration of the
+<a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckFailure_FlowtideDotNet_Base_Engine_CheckFailureNotification__">OnCheckFailure(ref readonly CheckFailureNotification)</a> call in which it is received; copy any
+required fields to local variables if they must outlive the call.
+</p>
+<p>
+Instances are created internally by <code>StreamNotificationReceiver</code> each time a compiled
+SQL <code>CHECK</code> expression calls <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckNotificationReceiver.html#FlowtideDotNet_Base_Engine_ICheckNotificationReceiver_OnCheckFailure_System_String__System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___">OnCheckFailure(in string, ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt;)</a>
+with a failing message and diagnostic tags.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification__ctor_System_String__System_String_System_ReadOnlySpan_System_Collections_Generic_KeyValuePair_System_String_System_Object___" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.#ctor(System.String@,System.String,System.ReadOnlySpan{System.Collections.Generic.KeyValuePair{System.String,System.Object}})">
+  CheckFailureNotification(ref string, string, ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L187"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new <a class="xref" href="FlowtideDotNet.Base.Engine.CheckFailureNotification.html">CheckFailureNotification</a> with a reference to the
+stream name, the failure message, and the associated diagnostic tags.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public CheckFailureNotification(ref string streamName, string message, ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt; tags)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/ref">ref</a> to the stream name string held by <code>StreamNotificationReceiver</code>.</p>
+</dd>
+    <dt><code>message</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The human-readable failure message from the SQL <code>CHECK</code> expression.</p>
+</dd>
+    <dt><code>tags</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;&gt;</dt>
+    <dd><p>A stack-allocated span of key-value diagnostic tag pairs from the <code>CHECK</code> expression.
+Must not be stored beyond the scope of the constructor call.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_Message" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.Message">
+  Message
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The human-readable failure message declared in the SQL <code>CHECK</code> expression.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly string Message</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_StreamName" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.StreamName">
+  StreamName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L158"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A read-only managed reference to the name of the stream in which the check failed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly ref string StreamName</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <h3 id="FlowtideDotNet_Base_Engine_CheckFailureNotification_Tags" data-uid="FlowtideDotNet.Base.Engine.CheckFailureNotification.Tags">
+  Tags
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L171"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A stack-allocated span of named diagnostic key-value pairs declared as tag arguments
+in the SQL <code>CHECK</code> expression.
+Must not be stored or accessed after the enclosing
+<a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html#FlowtideDotNet_Base_Engine_ICheckFailureListener_OnCheckFailure_FlowtideDotNet_Base_Engine_CheckFailureNotification__">OnCheckFailure(ref readonly CheckFailureNotification)</a> call returns.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public readonly ReadOnlySpan&lt;KeyValuePair&lt;string, object?&gt;&gt; Tags</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/Notifications/StreamEventNotifications.cs/#L153" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

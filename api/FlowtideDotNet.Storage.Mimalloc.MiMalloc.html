@@ -1,0 +1,5756 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class MiMalloc | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class MiMalloc | Flowtide.NET ">
+      
+      <meta name="description" content="https://github.com/microsoft/mimalloc">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_Mimalloc_MiMalloc.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.Mimalloc.MiMalloc%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc" class="text-break">
+Class MiMalloc  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.Mimalloc.html">Mimalloc</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p><a href="https://github.com/microsoft/mimalloc">https://github.com/microsoft/mimalloc</a></p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class MiMalloc</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">MiMalloc</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="fields">Fields
+</h2>
+
+
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_MI_SMALL_SIZE_MAX" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.MI_SMALL_SIZE_MAX">
+  MI_SMALL_SIZE_MAX
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L199"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static readonly nuint MI_SMALL_SIZE_MAX</code></pre>
+  </div>
+
+
+
+
+  <h4 class="section">Field Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi__expand_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi__expand*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi__expand_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi__expand(System.Void*,System.UIntPtr)">
+  mi__expand(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi__expand(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi__posix_memalign_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi__posix_memalign*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi__posix_memalign_System_Void___System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi__posix_memalign(System.Void**,System.UIntPtr,System.UIntPtr)">
+  mi__posix_memalign(void**, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi__posix_memalign(void** p, nuint alignment, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>**</dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_abandoned_visit_blocks_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_abandoned_visit_blocks*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_abandoned_visit_blocks_FlowtideDotNet_Storage_Mimalloc_mi_subproc_id_t_System_Int32_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_block_visit_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_abandoned_visit_blocks(FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t,System.Int32,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun*,System.Void*)">
+  mi_abandoned_visit_blocks(mi_subproc_id_t, int, bool, mi_block_visit_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_abandoned_visit_blocks(mi_subproc_id_t subproc_id, int heap_tag, bool visit_blocks, mi_block_visit_fun* visitor, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>subproc_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
+    <dd></dd>
+    <dt><code>heap_tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>visit_blocks</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>visitor</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun.html">mi_block_visit_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_alloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_alloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_alloc_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_alloc(System.UIntPtr,System.UIntPtr)">
+  mi_aligned_alloc(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_aligned_alloc(nuint alignment, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_offset_recalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_offset_recalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_offset_recalloc_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_offset_recalloc(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_aligned_offset_recalloc(void*, nuint, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_aligned_offset_recalloc(void* p, nuint newcount, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_recalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_recalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_aligned_recalloc_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_aligned_recalloc(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_aligned_recalloc(void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_aligned_recalloc(void* p, nuint newcount, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_arena_area_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_arena_area*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_arena_area_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t_System_UIntPtr__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_arena_area(FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t,System.UIntPtr*)">
+  mi_arena_area(mi_arena_id_t, nuint*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_arena_area(mi_arena_id_t arena_id, nuint* size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc(System.UIntPtr,System.UIntPtr)">
+  mi_calloc(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_calloc(nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_aligned_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_aligned(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_calloc_aligned(nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_calloc_aligned(nuint count, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_aligned_at_System_UIntPtr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_aligned_at(System.UIntPtr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_calloc_aligned_at(nuint, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_calloc_aligned_at(nuint count, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_calloc_tp__1_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_calloc_tp``1(System.UIntPtr)">
+  mi_calloc_tp&lt;T&gt;(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L768"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_calloc_tp&lt;T&gt;(nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_cfree_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_cfree*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_cfree_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_cfree(System.Void*)">
+  mi_cfree(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_cfree(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_check_owned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_check_owned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_check_owned_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_check_owned(System.Void*)">
+  mi_check_owned(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_check_owned(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_collect_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_collect*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_collect_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_collect(System.Boolean)">
+  mi_collect(bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_collect(bool force)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>force</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_debug_show_arenas_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_debug_show_arenas*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_debug_show_arenas_System_Boolean_System_Boolean_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_debug_show_arenas(System.Boolean,System.Boolean,System.Boolean)">
+  mi_debug_show_arenas(bool, bool, bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_debug_show_arenas(bool show_inuse, bool show_abandoned, bool show_purge)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>show_inuse</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>show_abandoned</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>show_purge</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_dupenv_s_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_dupenv_s*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_dupenv_s_System_Byte___System_UIntPtr__System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_dupenv_s(System.Byte**,System.UIntPtr*,System.Byte*)">
+  mi_dupenv_s(byte**, nuint*, byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_dupenv_s(byte** buf, nuint* size, byte* name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>buf</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>**</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_expand_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_expand*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_expand_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_expand(System.Void*,System.UIntPtr)">
+  mi_expand(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_expand(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free(System.Void*)">
+  mi_free(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_free(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_aligned_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_aligned(System.Void*,System.UIntPtr)">
+  mi_free_aligned(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_free_aligned(void* p, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_size_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_size(System.Void*,System.UIntPtr)">
+  mi_free_size(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_free_size(void* p, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_size_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_size_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_free_size_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_free_size_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_free_size_aligned(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_free_size_aligned(void* p, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_good_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_good_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_good_size_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_good_size(System.UIntPtr)">
+  mi_good_size(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_good_size(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_calloc(mi_heap_t_ptr, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_calloc(mi_heap_t_ptr heap, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_calloc_aligned(mi_heap_t_ptr, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_calloc_aligned(mi_heap_t_ptr heap, nuint count, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_calloc_aligned_at(mi_heap_t_ptr, nuint, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_calloc_aligned_at(mi_heap_t_ptr heap, nuint count, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_calloc_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_calloc_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr)">
+  mi_heap_calloc_tp&lt;T&gt;(mi_heap_t_ptr, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L788"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_calloc_tp&lt;T&gt;(mi_heap_t_ptr hp, nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_check_owned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_check_owned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_check_owned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_check_owned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*)">
+  mi_heap_check_owned(mi_heap_t_ptr, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_heap_check_owned(mi_heap_t_ptr heap, void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_collect_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_collect*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_collect_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_collect(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Boolean)">
+  mi_heap_collect(mi_heap_t_ptr, bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_heap_collect(mi_heap_t_ptr heap, bool force)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>force</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_contains_block_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_contains_block*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_contains_block_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_contains_block(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*)">
+  mi_heap_contains_block(mi_heap_t_ptr, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_heap_contains_block(mi_heap_t_ptr heap, void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_delete_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_delete*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_delete_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_delete(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr)">
+  mi_heap_delete(mi_heap_t_ptr)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_heap_delete(mi_heap_t_ptr heap)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_destroy_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_destroy*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_destroy_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_destroy(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr)">
+  mi_heap_destroy(mi_heap_t_ptr)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_heap_destroy(mi_heap_t_ptr heap)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_get_backing_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_get_backing*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_get_backing" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_get_backing">
+  mi_heap_get_backing()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_get_backing()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_get_default_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_get_default*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_get_default" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_get_default">
+  mi_heap_get_default()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_get_default()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr)">
+  mi_heap_malloc(mi_heap_t_ptr, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_malloc(mi_heap_t_ptr heap, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_malloc_aligned(mi_heap_t_ptr, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_malloc_aligned(mi_heap_t_ptr heap, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_malloc_aligned_at(mi_heap_t_ptr, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_malloc_aligned_at(mi_heap_t_ptr heap, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_small_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_small*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_small_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_small(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr)">
+  mi_heap_malloc_small(mi_heap_t_ptr, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_malloc_small(mi_heap_t_ptr heap, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_malloc_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_malloc_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr)">
+  mi_heap_malloc_tp&lt;T&gt;(mi_heap_t_ptr)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L780"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_malloc_tp&lt;T&gt;(mi_heap_t_ptr hp) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_mallocn_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_mallocn*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_mallocn_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_mallocn(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_mallocn(mi_heap_t_ptr, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_mallocn(mi_heap_t_ptr heap, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_mallocn_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_mallocn_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_mallocn_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_mallocn_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr)">
+  mi_heap_mallocn_tp&lt;T&gt;(mi_heap_t_ptr, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L792"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_mallocn_tp&lt;T&gt;(mi_heap_t_ptr hp, nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new">
+  mi_heap_new()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_new()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new_ex_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new_ex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new_ex_System_Int32_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new_ex(System.Int32,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t)">
+  mi_heap_new_ex(int, bool, mi_arena_id_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_new_ex(int heap_tag, bool allow_destroy, mi_arena_id_t arena_id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap_tag</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>allow_destroy</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new_in_arena_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new_in_arena*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_new_in_arena_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_new_in_arena(FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t)">
+  mi_heap_new_in_arena(mi_arena_id_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_new_in_arena(mi_arena_id_t arena_id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr)">
+  mi_heap_realloc(mi_heap_t_ptr, void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_realloc(mi_heap_t_ptr heap, void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_heap_realloc_aligned(mi_heap_t_ptr, void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_realloc_aligned(mi_heap_t_ptr heap, void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_realloc_aligned_at(mi_heap_t_ptr, void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_realloc_aligned_at(mi_heap_t_ptr heap, void* p, nuint newsize, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocf_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocf*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocf_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocf(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr)">
+  mi_heap_reallocf(mi_heap_t_ptr, void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_reallocf(mi_heap_t_ptr heap, void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocn_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocn*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocn_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocn(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_heap_reallocn(mi_heap_t_ptr, void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_reallocn(mi_heap_t_ptr heap, void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocn_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocn_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_reallocn_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_reallocn_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr)">
+  mi_heap_reallocn_tp&lt;T&gt;(mi_heap_t_ptr, void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L796"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_reallocn_tp&lt;T&gt;(mi_heap_t_ptr hp, void* p, nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realpath_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realpath*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_realpath_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Byte__System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_realpath(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Byte*,System.Byte*)">
+  mi_heap_realpath(mi_heap_t_ptr, byte*, byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_heap_realpath(mi_heap_t_ptr heap, byte* fname, byte* resolved_name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>fname</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+    <dt><code>resolved_name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_heap_recalloc(mi_heap_t_ptr, void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_recalloc(mi_heap_t_ptr heap, void* p, nuint newcount, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_recalloc_aligned(mi_heap_t_ptr, void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_recalloc_aligned(mi_heap_t_ptr heap, void* p, nuint newcount, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_recalloc_aligned_at(mi_heap_t_ptr, void*, nuint, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_recalloc_aligned_at(mi_heap_t_ptr heap, void* p, nuint newcount, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_recalloc_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_recalloc_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr)">
+  mi_heap_recalloc_tp&lt;T&gt;(mi_heap_t_ptr, void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L800"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_recalloc_tp&lt;T&gt;(mi_heap_t_ptr hp, void* p, nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr)">
+  mi_heap_rezalloc(mi_heap_t_ptr, void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_rezalloc(mi_heap_t_ptr heap, void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_heap_rezalloc_aligned(mi_heap_t_ptr, void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_rezalloc_aligned(mi_heap_t_ptr heap, void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_rezalloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_rezalloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_rezalloc_aligned_at(mi_heap_t_ptr, void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_rezalloc_aligned_at(mi_heap_t_ptr heap, void* p, nuint newsize, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_set_default_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_set_default*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_set_default_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_set_default(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr)">
+  mi_heap_set_default(mi_heap_t_ptr)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_heap_t_ptr mi_heap_set_default(mi_heap_t_ptr heap)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_strdup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_strdup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_strdup_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_strdup(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Byte*)">
+  mi_heap_strdup(mi_heap_t_ptr, byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_heap_strdup(mi_heap_t_ptr heap, byte* s)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_strndup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_strndup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_strndup_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Byte__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_strndup(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Byte*,System.UIntPtr)">
+  mi_heap_strndup(mi_heap_t_ptr, byte*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_heap_strndup(mi_heap_t_ptr heap, byte* s, nuint n)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_visit_blocks_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_visit_blocks*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_visit_blocks_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_block_visit_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_visit_blocks(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun*,System.Void*)">
+  mi_heap_visit_blocks(mi_heap_t_ptr, bool, mi_block_visit_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_heap_visit_blocks(mi_heap_t_ptr heap, bool visit_all_blocks, mi_block_visit_fun* visitor, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>visit_all_blocks</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>visitor</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_block_visit_fun.html">mi_block_visit_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr)">
+  mi_heap_zalloc(mi_heap_t_ptr, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_zalloc(mi_heap_t_ptr heap, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_aligned_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_aligned(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_zalloc_aligned(mi_heap_t_ptr, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_zalloc_aligned(mi_heap_t_ptr heap, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_aligned_at_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_aligned_at(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_heap_zalloc_aligned_at(mi_heap_t_ptr, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_heap_zalloc_aligned_at(mi_heap_t_ptr heap, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>heap</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_heap_zalloc_tp__1_FlowtideDotNet_Storage_Mimalloc_mi_heap_t_ptr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_heap_zalloc_tp``1(FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr)">
+  mi_heap_zalloc_tp&lt;T&gt;(mi_heap_t_ptr)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L784"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_heap_zalloc_tp&lt;T&gt;(mi_heap_t_ptr hp) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hp</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_heap_t_ptr.html">mi_heap_t_ptr</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_is_in_heap_region_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_is_in_heap_region*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_is_in_heap_region_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_is_in_heap_region(System.Void*)">
+  mi_is_in_heap_region(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_is_in_heap_region(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_is_redirected_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_is_redirected*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_is_redirected" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_is_redirected">
+  mi_is_redirected()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_is_redirected()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc(System.UIntPtr)">
+  mi_malloc(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_malloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_aligned_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_aligned(System.UIntPtr,System.UIntPtr)">
+  mi_malloc_aligned(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_malloc_aligned(nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_aligned_at_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_aligned_at(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_malloc_aligned_at(nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_malloc_aligned_at(nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_good_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_good_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_good_size_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_good_size(System.UIntPtr)">
+  mi_malloc_good_size(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_malloc_good_size(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_size_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_size(System.Void*)">
+  mi_malloc_size(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_malloc_size(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_small_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_small*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_small_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_small(System.UIntPtr)">
+  mi_malloc_small(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_malloc_small(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_tp__1" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_tp``1">
+  mi_malloc_tp&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L760"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_malloc_tp&lt;T&gt;() where T : unmanaged</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_usable_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_usable_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_malloc_usable_size_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_malloc_usable_size(System.Void*)">
+  mi_malloc_usable_size(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_malloc_usable_size(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mallocn_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mallocn*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mallocn_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mallocn(System.UIntPtr,System.UIntPtr)">
+  mi_mallocn(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_mallocn(nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mallocn_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mallocn_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mallocn_tp__1_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mallocn_tp``1(System.UIntPtr)">
+  mi_mallocn_tp&lt;T&gt;(nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L772"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_mallocn_tp&lt;T&gt;(nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_manage_os_memory_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_manage_os_memory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_manage_os_memory_System_Void__System_UIntPtr_System_Boolean_System_Boolean_System_Boolean_System_Int32_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_manage_os_memory(System.Void*,System.UIntPtr,System.Boolean,System.Boolean,System.Boolean,System.Int32)">
+  mi_manage_os_memory(void*, nuint, bool, bool, bool, int)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_manage_os_memory(void* start, nuint size, bool is_committed, bool is_pinned, bool is_zero, int numa_node)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>is_committed</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>is_pinned</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>is_zero</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>numa_node</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_manage_os_memory_ex_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_manage_os_memory_ex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_manage_os_memory_ex_System_Void__System_UIntPtr_System_Boolean_System_Boolean_System_Boolean_System_Int32_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_manage_os_memory_ex(System.Void*,System.UIntPtr,System.Boolean,System.Boolean,System.Boolean,System.Int32,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t*)">
+  mi_manage_os_memory_ex(void*, nuint, bool, bool, bool, int, bool, mi_arena_id_t*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_manage_os_memory_ex(void* start, nuint size, bool is_committed, bool is_large, bool is_zero, int numa_node, bool exclusive, mi_arena_id_t* arena_id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>is_committed</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>is_large</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>is_zero</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>numa_node</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>exclusive</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mbsdup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mbsdup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_mbsdup_System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_mbsdup(System.Byte*)">
+  mi_mbsdup(byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_mbsdup(byte* s)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_memalign_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_memalign*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_memalign_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_memalign(System.UIntPtr,System.UIntPtr)">
+  mi_memalign(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_memalign(nuint alignment, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new(System.UIntPtr)">
+  mi_new(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new(nuint n)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_aligned_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_aligned(System.UIntPtr,System.UIntPtr)">
+  mi_new_aligned(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_aligned(nuint n, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_aligned_nothrow_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_aligned_nothrow*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_aligned_nothrow_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_aligned_nothrow(System.UIntPtr,System.UIntPtr)">
+  mi_new_aligned_nothrow(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_aligned_nothrow(nuint n, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_n_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_n*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_n_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_n(System.UIntPtr,System.UIntPtr)">
+  mi_new_n(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_n(nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_nothrow_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_nothrow*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_nothrow_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_nothrow(System.UIntPtr)">
+  mi_new_nothrow(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_nothrow(nuint n)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_realloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_realloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_realloc_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_realloc(System.Void*,System.UIntPtr)">
+  mi_new_realloc(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_realloc(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_reallocn_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_reallocn*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_new_reallocn_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_new_reallocn(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_new_reallocn(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_new_reallocn(void* p, nuint newcount, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_disable_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_disable*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_disable_FlowtideDotNet_Storage_Mimalloc_mi_option_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_disable(FlowtideDotNet.Storage.Mimalloc.mi_option_t)">
+  mi_option_disable(mi_option_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_disable(mi_option_t option)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_enable_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_enable*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_enable_FlowtideDotNet_Storage_Mimalloc_mi_option_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_enable(FlowtideDotNet.Storage.Mimalloc.mi_option_t)">
+  mi_option_enable(mi_option_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_enable(mi_option_t option)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_FlowtideDotNet_Storage_Mimalloc_mi_option_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get(FlowtideDotNet.Storage.Mimalloc.mi_option_t)">
+  mi_option_get(mi_option_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern long mi_option_get(mi_option_t option)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_clamp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get_clamp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_clamp_FlowtideDotNet_Storage_Mimalloc_mi_option_t_System_Int64_System_Int64_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get_clamp(FlowtideDotNet.Storage.Mimalloc.mi_option_t,System.Int64,System.Int64)">
+  mi_option_get_clamp(mi_option_t, long, long)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern long mi_option_get_clamp(mi_option_t option, long min, long max)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+    <dt><code>min</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>max</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_get_size_FlowtideDotNet_Storage_Mimalloc_mi_option_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_get_size(FlowtideDotNet.Storage.Mimalloc.mi_option_t)">
+  mi_option_get_size(mi_option_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_option_get_size(mi_option_t option)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_is_enabled_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_is_enabled*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_is_enabled_FlowtideDotNet_Storage_Mimalloc_mi_option_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_is_enabled(FlowtideDotNet.Storage.Mimalloc.mi_option_t)">
+  mi_option_is_enabled(mi_option_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern bool mi_option_is_enabled(mi_option_t option)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_FlowtideDotNet_Storage_Mimalloc_mi_option_t_System_Int64_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set(FlowtideDotNet.Storage.Mimalloc.mi_option_t,System.Int64)">
+  mi_option_set(mi_option_t, long)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_set(mi_option_t option, long value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_default_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_default*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_default_FlowtideDotNet_Storage_Mimalloc_mi_option_t_System_Int64_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_default(FlowtideDotNet.Storage.Mimalloc.mi_option_t,System.Int64)">
+  mi_option_set_default(mi_option_t, long)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_set_default(mi_option_t option, long value)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+    <dt><code>value</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_enabled_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_enabled*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_enabled_FlowtideDotNet_Storage_Mimalloc_mi_option_t_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_enabled(FlowtideDotNet.Storage.Mimalloc.mi_option_t,System.Boolean)">
+  mi_option_set_enabled(mi_option_t, bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_set_enabled(mi_option_t option, bool enable)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+    <dt><code>enable</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_enabled_default_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_enabled_default*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_option_set_enabled_default_FlowtideDotNet_Storage_Mimalloc_mi_option_t_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_option_set_enabled_default(FlowtideDotNet.Storage.Mimalloc.mi_option_t,System.Boolean)">
+  mi_option_set_enabled_default(mi_option_t, bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_option_set_enabled_default(mi_option_t option, bool enable)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>option</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_option_t.html">mi_option_t</a></dt>
+    <dd></dd>
+    <dt><code>enable</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_posix_memalign_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_posix_memalign*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_posix_memalign_System_Void___System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_posix_memalign(System.Void**,System.UIntPtr,System.UIntPtr)">
+  mi_posix_memalign(void**, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_posix_memalign(void** p, nuint alignment, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>**</dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_process_info_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_process_info*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_process_info_System_UIntPtr__System_UIntPtr__System_UIntPtr__System_UIntPtr__System_UIntPtr__System_UIntPtr__System_UIntPtr__System_UIntPtr__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_process_info(System.UIntPtr*,System.UIntPtr*,System.UIntPtr*,System.UIntPtr*,System.UIntPtr*,System.UIntPtr*,System.UIntPtr*,System.UIntPtr*)">
+  mi_process_info(nuint*, nuint*, nuint*, nuint*, nuint*, nuint*, nuint*, nuint*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_process_info(nuint* elapsed_msecs, nuint* user_msecs, nuint* system_msecs, nuint* current_rss, nuint* peak_rss, nuint* current_commit, nuint* peak_commit, nuint* page_faults)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>elapsed_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>user_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>system_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>current_rss</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>peak_rss</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>current_commit</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>peak_commit</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>page_faults</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_pvalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_pvalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_pvalloc_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_pvalloc(System.UIntPtr)">
+  mi_pvalloc(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_pvalloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc(System.Void*,System.UIntPtr)">
+  mi_realloc(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_realloc(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_realloc_aligned(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_realloc_aligned(void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realloc_aligned_at_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realloc_aligned_at(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_realloc_aligned_at(void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_realloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocarr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocarr*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocarr_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocarr(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_reallocarr(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reallocarr(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocarray_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocarray*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocarray_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocarray(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_reallocarray(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_reallocarray(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocf_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocf*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocf_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocf(System.Void*,System.UIntPtr)">
+  mi_reallocf(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_reallocf(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocn_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocn*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocn_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocn(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_reallocn(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_reallocn(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocn_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocn_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reallocn_tp__1_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reallocn_tp``1(System.Void*,System.UIntPtr)">
+  mi_reallocn_tp&lt;T&gt;(void*, nuint)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L776"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_reallocn_tp&lt;T&gt;(void* p, nuint count) where T : unmanaged</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realpath_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realpath*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_realpath_System_Byte__System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_realpath(System.Byte*,System.Byte*)">
+  mi_realpath(byte*, byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_realpath(byte* fname, byte* resolved_name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>fname</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+    <dt><code>resolved_name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_recalloc(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_recalloc(void* p, nuint count, nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_aligned_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc_aligned(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_recalloc_aligned(void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_recalloc_aligned(void* p, nuint newcount, nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_recalloc_aligned_at_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_recalloc_aligned_at(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_recalloc_aligned_at(void*, nuint, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_recalloc_aligned_at(void* p, nuint newcount, nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newcount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_deferred_free_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_deferred_free*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_deferred_free_FlowtideDotNet_Storage_Mimalloc_mi_deferred_free_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_deferred_free(FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun*,System.Void*)">
+  mi_register_deferred_free(mi_deferred_free_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_register_deferred_free(mi_deferred_free_fun* deferred_free, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>deferred_free</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_deferred_free_fun.html">mi_deferred_free_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_error_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_error*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_error_FlowtideDotNet_Storage_Mimalloc_mi_error_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_error(FlowtideDotNet.Storage.Mimalloc.mi_error_fun*,System.Void*)">
+  mi_register_error(mi_error_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_register_error(mi_error_fun* errfun, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>errfun</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_error_fun.html">mi_error_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_output_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_output*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_register_output_FlowtideDotNet_Storage_Mimalloc_mi_output_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_register_output(FlowtideDotNet.Storage.Mimalloc.mi_output_fun*,System.Void*)">
+  mi_register_output(mi_output_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_register_output(mi_output_fun* @out, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>out</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_output_fun.html">mi_output_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_at_System_UIntPtr_System_Int32_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_at(System.UIntPtr,System.Int32,System.UIntPtr)">
+  mi_reserve_huge_os_pages_at(nuint, int, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reserve_huge_os_pages_at(nuint pages, int numa_node, nuint timeout_msecs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>pages</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>numa_node</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>timeout_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_at_ex_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_at_ex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_at_ex_System_UIntPtr_System_Int32_System_UIntPtr_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_at_ex(System.UIntPtr,System.Int32,System.UIntPtr,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t*)">
+  mi_reserve_huge_os_pages_at_ex(nuint, int, nuint, bool, mi_arena_id_t*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reserve_huge_os_pages_at_ex(nuint pages, int numa_node, nuint timeout_msecs, bool exclusive, mi_arena_id_t* arena_id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>pages</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>numa_node</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>timeout_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>exclusive</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_interleave_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_interleave*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_huge_os_pages_interleave_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_huge_os_pages_interleave(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_reserve_huge_os_pages_interleave(nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reserve_huge_os_pages_interleave(nuint pages, nuint numa_nodes, nuint timeout_msecs)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>pages</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>numa_nodes</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>timeout_msecs</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_os_memory_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_os_memory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_os_memory_System_UIntPtr_System_Boolean_System_Boolean_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_os_memory(System.UIntPtr,System.Boolean,System.Boolean)">
+  mi_reserve_os_memory(nuint, bool, bool)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reserve_os_memory(nuint size, bool commit, bool allow_large)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>commit</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>allow_large</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_os_memory_ex_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_os_memory_ex*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_reserve_os_memory_ex_System_UIntPtr_System_Boolean_System_Boolean_System_Boolean_FlowtideDotNet_Storage_Mimalloc_mi_arena_id_t__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_reserve_os_memory_ex(System.UIntPtr,System.Boolean,System.Boolean,System.Boolean,FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t*)">
+  mi_reserve_os_memory_ex(nuint, bool, bool, bool, mi_arena_id_t*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_reserve_os_memory_ex(nuint size, bool commit, bool allow_large, bool exclusive, mi_arena_id_t* arena_id)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>commit</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>allow_large</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>exclusive</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>arena_id</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_arena_id_t.html">mi_arena_id_t</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_System_Void__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc(System.Void*,System.UIntPtr)">
+  mi_rezalloc(void*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_rezalloc(void* p, nuint newsize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_aligned_System_Void__System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc_aligned(System.Void*,System.UIntPtr,System.UIntPtr)">
+  mi_rezalloc_aligned(void*, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_rezalloc_aligned(void* p, nuint newsize, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_rezalloc_aligned_at_System_Void__System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_rezalloc_aligned_at(System.Void*,System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_rezalloc_aligned_at(void*, nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_rezalloc_aligned_at(void* p, nuint newsize, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+    <dt><code>newsize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_merge_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_merge*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_merge" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_merge">
+  mi_stats_merge()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_stats_merge()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_print_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_print*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_print_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_print(System.Void*)">
+  mi_stats_print(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_stats_print(void* ut)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ut</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_print_out_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_print_out*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_print_out_FlowtideDotNet_Storage_Mimalloc_mi_output_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_print_out(FlowtideDotNet.Storage.Mimalloc.mi_output_fun*,System.Void*)">
+  mi_stats_print_out(mi_output_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_stats_print_out(mi_output_fun* @out, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>out</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_output_fun.html">mi_output_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_reset_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_reset*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_stats_reset" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_stats_reset">
+  mi_stats_reset()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_stats_reset()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_strdup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_strdup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_strdup_System_Byte__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_strdup(System.Byte*)">
+  mi_strdup(byte*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_strdup(byte* s)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_strndup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_strndup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_strndup_System_Byte__System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_strndup(System.Byte*,System.UIntPtr)">
+  mi_strndup(byte*, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern byte* mi_strndup(byte* s, nuint n)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+    <dt><code>n</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_add_current_thread_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_add_current_thread*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_add_current_thread_FlowtideDotNet_Storage_Mimalloc_mi_subproc_id_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_add_current_thread(FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t)">
+  mi_subproc_add_current_thread(mi_subproc_id_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_subproc_add_current_thread(mi_subproc_id_t subproc)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>subproc</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_delete_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_delete*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_delete_FlowtideDotNet_Storage_Mimalloc_mi_subproc_id_t_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_delete(FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t)">
+  mi_subproc_delete(mi_subproc_id_t)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_subproc_delete(mi_subproc_id_t subproc)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>subproc</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_main_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_main*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_main" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_main">
+  mi_subproc_main()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_subproc_id_t mi_subproc_main()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_new_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_new*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_subproc_new" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_subproc_new">
+  mi_subproc_new()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern mi_subproc_id_t mi_subproc_new()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_subproc_id_t.html">mi_subproc_id_t</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_done_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_done*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_done" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_done">
+  mi_thread_done()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_thread_done()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_init_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_init*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_init" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_init">
+  mi_thread_init()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_thread_init()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_stats_print_out_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_stats_print_out*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_thread_stats_print_out_FlowtideDotNet_Storage_Mimalloc_mi_output_fun__System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_thread_stats_print_out(FlowtideDotNet.Storage.Mimalloc.mi_output_fun*,System.Void*)">
+  mi_thread_stats_print_out(mi_output_fun*, void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void mi_thread_stats_print_out(mi_output_fun* @out, void* arg)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>out</code> <a class="xref" href="FlowtideDotNet.Storage.Mimalloc.mi_output_fun.html">mi_output_fun</a>*</dt>
+    <dd></dd>
+    <dt><code>arg</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_usable_size_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_usable_size*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_usable_size_System_Void__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_usable_size(System.Void*)">
+  mi_usable_size(void*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern nuint mi_usable_size(void* p)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>p</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_valloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_valloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_valloc_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_valloc(System.UIntPtr)">
+  mi_valloc(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_valloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_version_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_version*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_version" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_version">
+  mi_version()
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_version()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_wcsdup_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_wcsdup*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_wcsdup_System_UInt16__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_wcsdup(System.UInt16*)">
+  mi_wcsdup(ushort*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern ushort* mi_wcsdup(ushort* s)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>s</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_wdupenv_s_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_wdupenv_s*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_wdupenv_s_System_UInt16___System_UIntPtr__System_UInt16__" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_wdupenv_s(System.UInt16**,System.UIntPtr*,System.UInt16*)">
+  mi_wdupenv_s(ushort**, nuint*, ushort*)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern int mi_wdupenv_s(ushort** buf, nuint* size, ushort* name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>buf</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>**</dt>
+    <dd></dd>
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a>*</dt>
+    <dd></dd>
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint16">ushort</a>*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc(System.UIntPtr)">
+  mi_zalloc(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_zalloc(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_aligned_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_aligned*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_aligned_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_aligned(System.UIntPtr,System.UIntPtr)">
+  mi_zalloc_aligned(nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_zalloc_aligned(nuint size, nuint alignment)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_aligned_at_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_aligned_at*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_aligned_at_System_UIntPtr_System_UIntPtr_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_aligned_at(System.UIntPtr,System.UIntPtr,System.UIntPtr)">
+  mi_zalloc_aligned_at(nuint, nuint, nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_zalloc_aligned_at(nuint size, nuint alignment, nuint offset)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>alignment</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+    <dt><code>offset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_small_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_small*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_small_System_UIntPtr_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_small(System.UIntPtr)">
+  mi_zalloc_small(nuint)
+  
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static extern void* mi_zalloc_small(nuint size)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>size</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uintptr">nuint</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.void">void</a>*</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_tp_" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_tp*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Mimalloc_MiMalloc_mi_zalloc_tp__1" data-uid="FlowtideDotNet.Storage.Mimalloc.MiMalloc.mi_zalloc_tp``1">
+  mi_zalloc_tp&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L764"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static T* mi_zalloc_tp&lt;T&gt;() where T : unmanaged</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt>T*</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Mimalloc/MiMalloc.cs/#L27" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

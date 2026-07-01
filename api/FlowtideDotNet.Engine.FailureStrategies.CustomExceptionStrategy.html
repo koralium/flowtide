@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class CustomExceptionStrategy | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class CustomExceptionStrategy | Flowtide.NET ">
+      
+      <meta name="description" content="An  that delegates stream failure notifications to a caller-supplied  callback.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy">
+
+
+
+  <h1 id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy" data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy" class="text-break">
+Class CustomExceptionStrategy  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/FailureStrategies/CustomExceptionStrategy.cs/#L36"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Engine.html">Engine</a>.<a class="xref" href="FlowtideDotNet.Engine.FailureStrategies.html">FailureStrategies</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>An <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a> that delegates stream failure notifications to a
+caller-supplied <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action&lt;T&gt;</a> callback.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class CustomExceptionStrategy : IFailureListener</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">CustomExceptionStrategy</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+Register this strategy via <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddFailureListener_FlowtideDotNet_Base_Engine_IFailureListener_">AddFailureListener(IFailureListener)</a> or use
+<code>FlowtideBuilder.WithFailureListener(Action&lt;Exception?&gt;)</code>, which constructs a
+<a class="xref" href="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.html">CustomExceptionStrategy</a> internally, to react to stream failures without
+implementing the full <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a> interface.
+</p>
+<p>
+Unlike <a class="xref" href="FlowtideDotNet.Engine.FailureStrategies.ExitProcessStrategy.html">ExitProcessStrategy</a> and <a class="xref" href="FlowtideDotNet.Engine.FailureStrategies.KillProcessStrategy.html">KillProcessStrategy</a>, this strategy
+does not terminate the process. After the callback returns, the stream's built-in automatic
+recovery sequence continues normally, restarting the stream from the last committed checkpoint.
+Typical uses for the callback include custom logging, sending an alert, incrementing a failure
+metric, or signalling an external monitoring system.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy__ctor_" data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy__ctor_System_Action_System_Exception__" data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.#ctor(System.Action{System.Exception})">
+  CustomExceptionStrategy(Action&lt;Exception?&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/FailureStrategies/CustomExceptionStrategy.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new <a class="xref" href="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.html">CustomExceptionStrategy</a> with the specified failure callback.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public CustomExceptionStrategy(Action&lt;Exception?&gt; handler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>handler</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>&gt;</dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action&lt;T&gt;</a> to invoke when a stream failure occurs.
+Receives the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a> that caused the failure, or <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a>
+if no specific exception was captured at the point of failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy_OnFailure_" data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.OnFailure*"></a>
+
+  <h3 id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy_OnFailure_FlowtideDotNet_Base_Engine_StreamFailureNotification_" data-uid="FlowtideDotNet.Engine.FailureStrategies.CustomExceptionStrategy.OnFailure(FlowtideDotNet.Base.Engine.StreamFailureNotification)">
+  OnFailure(StreamFailureNotification)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/FailureStrategies/CustomExceptionStrategy.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Invokes the callback supplied at construction time, passing the exception that caused
+the stream failure.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void OnFailure(StreamFailureNotification notification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html">StreamFailureNotification</a></dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html">StreamFailureNotification</a> describing the stream failure. Only
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html#FlowtideDotNet_Base_Engine_StreamFailureNotification_Exception">Exception</a> is forwarded to the callback;
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html#FlowtideDotNet_Base_Engine_StreamFailureNotification_StreamName">StreamName</a> is available if a custom
+<a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a> implementation is preferred over this strategy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Engine_FailureStrategies_CustomExceptionStrategy_OnFailure_FlowtideDotNet_Base_Engine_StreamFailureNotification__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The callback receives <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html#FlowtideDotNet_Base_Engine_StreamFailureNotification_Exception">Exception</a>, which may be
+<a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> if no specific exception was captured. After the callback returns,
+the stream's built-in automatic recovery proceeds normally; the callback must not block
+indefinitely, as this method is invoked synchronously within the failure transition.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/FailureStrategies/CustomExceptionStrategy.cs/#L36" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

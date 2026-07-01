@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class DataflowStream | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class DataflowStream | Flowtide.NET ">
+      
+      <meta name="description" content="The primary public-facing handle for a Flowtide dataflow stream, providing lifecycle management, monitoring, and operational control over the stream.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Engine_DataflowStream.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Engine.DataflowStream%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Engine.DataflowStream">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Engine_DataflowStream" data-uid="FlowtideDotNet.Base.Engine.DataflowStream" class="text-break">
+Class DataflowStream  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L55"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Engine.html">Engine</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>The primary public-facing handle for a Flowtide dataflow stream, providing lifecycle management,
+monitoring, and operational control over the stream.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class DataflowStream : IAsyncDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">DataflowStream</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Engine_DataflowStream_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+A <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a> wraps an internal <code>StreamContext</code> state machine and exposes
+an API for starting, stopping, pausing, checkpointing, and inspecting the stream.
+Instances are created via <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build">Build()</a> and are not intended to be
+constructed directly.
+</p>
+<p>
+The stream can be driven in two ways depending on the configured <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a>:
+<ul><li>
+      Call <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_RunAsync">RunAsync()</a> to start the stream and block the caller within a scheduler
+      tick loop. This is the typical usage when using the <a class="xref" href="FlowtideDotNet.Base.Engine.DefaultStreamScheduler.html">DefaultStreamScheduler</a>,
+      and is how the hosted service <code>StreamWorkerService</code> operates it.
+    </li><li>
+      Call <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_StartAsync">StartAsync()</a> to initiate the startup sequence only, leaving scheduler
+      tick management to the caller. This is appropriate for custom <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a>
+      implementations.
+    </li></ul>
+
+<p>
+The stream progresses through <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html">StreamStateValue</a> states (e.g. <code>NotStarted</code>,
+<code>Starting</code>, <code>Running</code>, <code>Failure</code>) and <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html">StreamStatus</a> operational
+statuses (e.g. <code>Running</code>, <code>Paused</code>, <code>Failing</code>). The combined <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Health">Health</a>
+property derives a <a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html">FlowtideHealth</a> value suitable for health checks and monitoring.
+</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_Health_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Health*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Health" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Health">
+  Health
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the overall health of the stream, derived from the combination of <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_State">State</a>
+and <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Status">Status</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideHealth Health { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html">FlowtideHealth</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_Health_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Returns <a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html#FlowtideDotNet_Base_FlowtideHealth_Healthy">Healthy</a> when the stream is running normally,
+<a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html#FlowtideDotNet_Base_FlowtideHealth_Degraded">Degraded</a> during start-up or when paused, and
+<a class="xref" href="FlowtideDotNet.Base.FlowtideHealth.html#FlowtideDotNet_Base_FlowtideHealth_Unhealthy">Unhealthy</a> when the stream has faulted or stopped.
+Suitable for use with health check integrations.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_Scheduler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Scheduler*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Scheduler" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Scheduler">
+  Scheduler
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a> instance responsible for scheduling and firing
+registered trigger events within this stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IStreamScheduler Scheduler { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_State_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.State*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_State" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.State">
+  State
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the current high-level state machine value of the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamStateValue State { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html">StreamStateValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_State_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Reflects the current position within the stream lifecycle, such as
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html#FlowtideDotNet_Base_Engine_StreamStateValue_NotStarted">NotStarted</a>, <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html#FlowtideDotNet_Base_Engine_StreamStateValue_Running">Running</a>,
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html#FlowtideDotNet_Base_Engine_StreamStateValue_Failure">Failure</a>, or <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html#FlowtideDotNet_Base_Engine_StreamStateValue_Stopping">Stopping</a>.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_Status_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Status*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Status" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Status">
+  Status
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the current operational status of the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamStatus Status { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html">StreamStatus</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_Status_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Provides finer-grained operational information than <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_State">State</a>, including
+values such as <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html#FlowtideDotNet_Base_Engine_StreamStatus_Running">Running</a>, <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html#FlowtideDotNet_Base_Engine_StreamStatus_Paused">Paused</a>,
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html#FlowtideDotNet_Base_Engine_StreamStatus_Degraded">Degraded</a>, and <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html#FlowtideDotNet_Base_Engine_StreamStatus_Failing">Failing</a>.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_WantedState_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.WantedState*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_WantedState" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.WantedState">
+  WantedState
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the desired target state that the stream is transitioning towards.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamStateValue WantedState { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html">StreamStateValue</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_WantedState_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>During a state transition the current <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_State">State</a> may differ from
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_WantedState">WantedState</a> until the transition completes.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_CallTrigger_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.CallTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_CallTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.CallTrigger(System.String,System.Object)">
+  CallTrigger(string, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L215"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Manually invokes a named trigger on all operators registered to handle it.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task CallTrigger(string name, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the trigger to invoke.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>Optional state object passed to the trigger handler.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task that completes when all trigger handlers have been queued.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_DeleteAsync_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_DeleteAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L225"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Transitions the stream to the deleting state, permanently removing all persistent state
+associated with every vertex in the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the asynchronous delete operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_DisposeAsync_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DisposeAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_DisposeAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L235"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases all resources held by the stream asynchronously, completing all dataflow blocks
+and disposing each vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a> representing the asynchronous dispose operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_GetDiagnosticsGraph_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetDiagnosticsGraph*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_GetDiagnosticsGraph" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetDiagnosticsGraph">
+  GetDiagnosticsGraph()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a <a class="xref" href="FlowtideDotNet.Base.Metrics.StreamGraph.html">StreamGraph</a> describing the current operator topology of the stream,
+including per-vertex metric snapshots and the directed edges between operators.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamGraph GetDiagnosticsGraph()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Metrics.StreamGraph.html">StreamGraph</a></dt>
+    <dd><p>A <a class="xref" href="FlowtideDotNet.Base.Metrics.StreamGraph.html">StreamGraph</a> containing all operator nodes with their current metric counters
+and gauges, the edges between them, and the current <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_State">State</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_GetLatestState_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetLatestState*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_GetLatestState" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.GetLatestState">
+  GetLatestState()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L204"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the latest persisted <a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a>, or <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> if no
+state has been saved yet.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamState? GetLatestState()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a></dt>
+    <dd><p>The most recent <a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a> loaded or saved by the stream, or
+<a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> if the stream has not yet completed its first checkpoint.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_Pause_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Pause*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Pause" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Pause">
+  Pause()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L270"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Suspends message processing throughout the stream. Data will continue to queue but will
+not be processed until <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Resume">Resume()</a> is called.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Pause()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_Pause_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Sets the operational <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Status">Status</a> to <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStatus.html#FlowtideDotNet_Base_Engine_StreamStatus_Paused">Paused</a> for the
+duration of the pause. Has no effect if the stream is already paused.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_Resume_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Resume*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_Resume" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.Resume">
+  Resume()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L279"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resumes message processing after a prior call to <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Pause">Pause()</a>, restoring the
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_Status">Status</a> to its value before the pause was applied.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Resume()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_RunAsync_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.RunAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_RunAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.RunAsync">
+  RunAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L142"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Starts the stream and drives the scheduler tick loop until the stream transitions to
+<a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html#FlowtideDotNet_Base_Engine_StreamStateValue_NotStarted">NotStarted</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task RunAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task that completes when the stream stops running.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStream_RunAsync_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+This method is only active when the configured <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a> is a
+<a class="xref" href="FlowtideDotNet.Base.Engine.DefaultStreamScheduler.html">DefaultStreamScheduler</a>. It calls <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_StartAsync">StartAsync()</a> internally,
+then enters a 10 ms periodic timer loop that calls <code>Tick</code> on the scheduler to
+dispatch any due trigger events.
+</p>
+<p>
+A full garbage collection is performed once every 10 seconds (every 1000 ticks)
+to manage native memory pressure from large stream workloads.
+</p>
+<p>
+When using a custom <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a>, use <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_StartAsync">StartAsync()</a>
+directly instead and manage the scheduler externally.
+</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_StartAsync_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StartAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_StartAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StartAsync">
+  StartAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initiates the stream startup sequence, setting up all blocks, linking them, and restoring
+state from the last checkpoint if available.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task StartAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the asynchronous startup operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_StopAsync_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StopAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_StopAsync" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.StopAsync">
+  StopAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L257"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gracefully stops the stream, waiting for the stop sequence to complete before returning.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task StopAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task that completes when the stream has fully stopped.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_TriggerCheckpoint_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TriggerCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_TriggerCheckpoint" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TriggerCheckpoint">
+  TriggerCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L181"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Triggers a manual checkpoint on the stream, requesting all vertices to persist their
+current state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task TriggerCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the asynchronous checkpoint trigger operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStream_TryScheduleCheckpoint_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TryScheduleCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStream_TryScheduleCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Engine.DataflowStream.TryScheduleCheckpoint(System.TimeSpan)">
+  TryScheduleCheckpoint(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L191"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Schedules a checkpoint to be triggered after the specified delay, respecting any
+configured minimum time between checkpoints.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void TryScheduleCheckpoint(TimeSpan timeSpan)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeSpan</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>The delay after which the checkpoint should be triggered.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStream.cs/#L55" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

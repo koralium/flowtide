@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class PartitionVertex&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class PartitionVertex&lt;T&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="Vertex responsible for partitioning an input stream into multiple target streams.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Vertices_PartitionVertex_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Vertices.PartitionVertex%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1" class="text-break">
+Class PartitionVertex&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Vertices.html">Vertices</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Vertex responsible for partitioning an input stream into multiple target streams.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class PartitionVertex&lt;T&gt; : ITargetBlock&lt;IStreamEvent&gt;, IDataflowBlock, IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the underlying data payload processed by this vertex.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">PartitionVertex&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.idataflowblock">IDataflowBlock</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This vertex acts as a router. It accepts a single stream of events and distributes them to multiple linked
+target blocks based on predefined logic. It ensures that control events (watermarks, checkpoints) are multiplexed
+accurately to all downstream targets keeping the pipeline synchronized.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1__ctor_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1__ctor_System_Int32_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.#ctor(System.Int32,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
+  PartitionVertex(int, ExecutionDataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="FlowtideDotNet.Base.Vertices.PartitionVertex-1.html">PartitionVertex&lt;T&gt;</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PartitionVertex(int targetNumber, ExecutionDataflowBlockOptions executionDataflowBlockOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targetNumber</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of outgoing target partitions.</p>
+</dd>
+    <dt><code>executionDataflowBlockOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.executiondataflowblockoptions">ExecutionDataflowBlockOptions</a></dt>
+    <dd><p>The execution options covering bounded capacity and parallelism.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Completion_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Completion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Completion" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Completion">
+  Completion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a task that represents the completion of the vertex processing block.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Completion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DisplayName_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DisplayName*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DisplayName" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DisplayName">
+  DisplayName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the display name for the specific partitioning logic type, largely used for logging and metrics visualization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract string DisplayName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Logger_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Logger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Logger" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Logger">
+  Logger
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the logger instance associated with this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ILogger Logger { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger">ILogger</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_MemoryAllocator_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.MemoryAllocator*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_MemoryAllocator" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.MemoryAllocator">
+  MemoryAllocator
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMemoryAllocator MemoryAllocator { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Metrics_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Metrics*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Metrics" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Metrics">
+  Metrics
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMeter Metrics { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Metrics.IMeter.html">IMeter</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Name_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Name*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Name" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Name">
+  Name
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the configured explicit identifier name of the vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Name { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Sources_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Sources*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Sources" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Sources">
+  Sources
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L68"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the array of source blocks representing the output partitions maintained by this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ISourceBlock&lt;IStreamEvent&gt;[] Sources { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;[]</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_StreamVersion_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.StreamVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_StreamVersion" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.StreamVersion">
+  StreamVersion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the overall version information of the running stream, if applicable.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamVersionInformation? StreamVersion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_BeforeSaveCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.BeforeSaveCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_BeforeSaveCheckpoint" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.BeforeSaveCheckpoint">
+  BeforeSaveCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L470"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A notification hook invoked prior to finalizing changes in persistent stores for a checkpoint.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task BeforeSaveCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Compact_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Compact*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Compact" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Compact">
+  Compact()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals the vertex to compress or compact any underlying persistent state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Compact()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Complete_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Complete*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Complete" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Complete">
+  Complete()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals to the initial input block that it should not receive any more inputs natively triggering sequence completion.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Complete()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_CreateBlock_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.CreateBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_CreateBlock" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.CreateBlock">
+  CreateBlock()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L125"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Instantiates underlying processing pipeline dataflow blocks to route and branch messages to target components.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void CreateBlock()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DeleteAsync_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DeleteAsync" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L266"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Explicitly deletes any persistent resources corresponding to this partitioning operator's internal tracking configuration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DisposeAsync_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DisposeAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_DisposeAsync" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L274"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases all underlying data structures inherently attached.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_FailAndRollback_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.FailAndRollback*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.FailAndRollback(System.Exception,System.Nullable{System.Int64})">
+  FailAndRollback(Exception?, long?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L475"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task FailAndRollback(Exception? exception = null, long? restoreVersion = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exception</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd></dd>
+    <dt><code>restoreVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a>?</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Fault_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Fault*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Fault_System_Exception_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Fault(System.Exception)">
+  Fault(Exception)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L291"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Manually trips the processing block into a permanently faulted state based on a registered exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Fault(Exception exception)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exception</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_GetLinks_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.GetLinks*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_GetLinks" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.GetLinks">
+  GetLinks()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L434"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Emits a collection composed uniquely to list downstream pipeline targets attached resolving flow branches.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerable&lt;ITargetBlock&lt;IStreamEvent&gt;&gt; GetLinks()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Initialize_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Initialize*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)">
+  Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L309"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes logical resources metrics and states for routing context prior to start execution.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+    <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>newTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+    <dt><code>vertexHandler</code> <a class="xref" href="FlowtideDotNet.Base.IVertexHandler.html">IVertexHandler</a></dt>
+    <dd></dd>
+    <dt><code>streamVersionInformation</code> <a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_InitializeOrRestore_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.InitializeOrRestore*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_InitializeOrRestore_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
+  InitializeOrRestore(IStateManagerClient)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L390"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Link_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Link*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Link" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Link">
+  Link()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L395"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Links internal mapping routines dynamically to downstream destinations configured on sources representation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Link()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OfferMessage_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OfferMessage*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OfferMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_FlowtideDotNet_Base_IStreamEvent_System_Threading_Tasks_Dataflow_ISourceBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OfferMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,FlowtideDotNet.Base.IStreamEvent,System.Threading.Tasks.Dataflow.ISourceBlock{FlowtideDotNet.Base.IStreamEvent},System.Boolean)">
+  OfferMessage(DataflowMessageHeader, IStreamEvent, ISourceBlock&lt;IStreamEvent&gt;?, bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L282"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Attempts to dispatch a generic dataflow message to this operator. Exposes the TPL pipeline interface.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowMessageStatus OfferMessage(DataflowMessageHeader messageHeader, IStreamEvent messageValue, ISourceBlock&lt;IStreamEvent&gt;? source, bool consumeToAccept)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>messageHeader</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessageheader">DataflowMessageHeader</a></dt>
+    <dd></dd>
+    <dt><code>messageValue</code> <a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a></dt>
+    <dd></dd>
+    <dt><code>source</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>consumeToAccept</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.dataflowmessagestatus">DataflowMessageStatus</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnFailure_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnFailure*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnFailure_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnFailure(System.Int64)">
+  OnFailure(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L490"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task OnFailure(long rollbackVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>rollbackVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The version that the stream will be rolled back to.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnLockingEvent_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnLockingEvent*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnLockingEvent_FlowtideDotNet_Base_ILockingEvent_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnLockingEvent(FlowtideDotNet.Base.ILockingEvent)">
+  OnLockingEvent(ILockingEvent)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual Task OnLockingEvent(ILockingEvent lockingEvent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>lockingEvent</code> <a class="xref" href="FlowtideDotNet.Base.ILockingEvent.html">ILockingEvent</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnWatermark_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnWatermark*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_OnWatermark_FlowtideDotNet_Base_Watermark_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.OnWatermark(FlowtideDotNet.Base.Watermark)">
+  OnWatermark(Watermark)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L225"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual Task OnWatermark(Watermark watermark)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>watermark</code> <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_PartitionData_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.PartitionData*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_PartitionData__0_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.PartitionData(`0,System.Int64)">
+  PartitionData(T, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L120"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IAsyncEnumerable&lt;KeyValuePair&lt;int, StreamMessage&lt;T&gt;&gt;&gt; PartitionData(T data, long time)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <span class="xref">T</span></dt>
+    <dd></dd>
+    <dt><code>time</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Base.StreamMessage-1.html">StreamMessage</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Pause_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Pause*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Pause" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Pause">
+  Pause()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L447"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Halts current processing. Used during debug or suspension states.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Pause()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_QueueTrigger_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.QueueTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)">
+  QueueTrigger(TriggerEvent)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L417"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Enqueues an execution trigger.
+Triggers are not supported in this vertex implementation as it is designed to operate purely as a data router without any internal stateful
+processing logic that would require time-based or event-based triggers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task QueueTrigger(TriggerEvent triggerEvent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>triggerEvent</code> <a class="xref" href="FlowtideDotNet.Base.TriggerEvent.html">TriggerEvent</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_RegisterTrigger_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.RegisterTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_RegisterTrigger_System_String_System_Nullable_System_TimeSpan__" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.RegisterTrigger(System.String,System.Nullable{System.TimeSpan})">
+  RegisterTrigger(string, TimeSpan?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L403"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected Task RegisterTrigger(string name, TimeSpan? scheduleInterval = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+    <dt><code>scheduleInterval</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Resume_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Resume*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Resume" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Resume">
+  Resume()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L458"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resumes processing of events queued while suspended.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Resume()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_ScheduleCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.ScheduleCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_ScheduleCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.ScheduleCheckpoint(System.TimeSpan)">
+  ScheduleCheckpoint(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L422"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected void ScheduleCheckpoint(TimeSpan inTime)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>inTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Setup_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Setup*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionVertex_1_Setup_System_String_System_String_" data-uid="FlowtideDotNet.Base.Vertices.PartitionVertex`1.Setup(System.String,System.String)">
+  Setup(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L300"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Connects operator identity properties dynamically ahead of structural linking sequences.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Setup(string streamName, string operatorName)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+    <dt><code>operatorName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionVertex.cs/#L35" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class FlowtideBuilder | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class FlowtideBuilder | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Engine_FlowtideBuilder.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Engine.FlowtideBuilder%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Engine_FlowtideBuilder" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder" class="text-break">
+Class FlowtideBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Engine.html">Engine</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class FlowtideBuilder</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">FlowtideBuilder</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder__ctor_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder__ctor_System_String_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.#ctor(System.String)">
+  FlowtideBuilder(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder(string streamName)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_FunctionsRegister_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.FunctionsRegister*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_FunctionsRegister" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.FunctionsRegister">
+  FunctionsRegister
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IFunctionsRegister FunctionsRegister { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Compute.IFunctionsRegister.html">IFunctionsRegister</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddConnectorManager_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddConnectorManager*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddConnectorManager_FlowtideDotNet_Core_IConnectorManager_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddConnectorManager(FlowtideDotNet.Core.IConnectorManager)">
+  AddConnectorManager(IConnectorManager)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L75"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder AddConnectorManager(IConnectorManager connectorManager)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>connectorManager</code> <a class="xref" href="FlowtideDotNet.Core.IConnectorManager.html">IConnectorManager</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddPlan_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddPlan*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddPlan_FlowtideDotNet_Substrait_Plan_System_Boolean_FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddPlan(FlowtideDotNet.Substrait.Plan,System.Boolean,FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings)">
+  AddPlan(Plan, bool, PlanOptimizerSettings?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder AddPlan(Plan plan, bool optimize = true, PlanOptimizerSettings? planOptimizerSettings = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>plan</code> <a class="xref" href="FlowtideDotNet.Substrait.Plan.html">Plan</a></dt>
+    <dd></dd>
+    <dt><code>optimize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>planOptimizerSettings</code> <a class="xref" href="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html">PlanOptimizerSettings</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddReadWriteFactory_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddReadWriteFactory*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddReadWriteFactory_FlowtideDotNet_Core_Engine_IReadWriteFactory_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddReadWriteFactory(FlowtideDotNet.Core.Engine.IReadWriteFactory)">
+  AddReadWriteFactory(IReadWriteFactory)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">[Obsolete(&quot;Use ConnectorManager instead&quot;)]
+public FlowtideBuilder AddReadWriteFactory(IReadWriteFactory readWriteFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>readWriteFactory</code> <a class="xref" href="FlowtideDotNet.Core.Engine.IReadWriteFactory.html">IReadWriteFactory</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddStateHandler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddStateHandler*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_AddStateHandler_FlowtideDotNet_Base_Engine_IStateHandler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.AddStateHandler(FlowtideDotNet.Base.Engine.IStateHandler)">
+  AddStateHandler(IStateHandler)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L94"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder AddStateHandler(IStateHandler stateHandler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateHandler</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStateHandler.html">IStateHandler</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_Build_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.Build*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_Build" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.Build">
+  Build()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L265"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStream Build()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_ColumnStore_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.ColumnStore*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_ColumnStore_System_Boolean_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.ColumnStore(System.Boolean)">
+  ColumnStore(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder ColumnStore(bool use)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>use</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetGetTimestampUpdateInterval_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetGetTimestampUpdateInterval*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetGetTimestampUpdateInterval_System_TimeSpan_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetGetTimestampUpdateInterval(System.TimeSpan)">
+  SetGetTimestampUpdateInterval(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetGetTimestampUpdateInterval(TimeSpan interval)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>interval</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMessageQueueSize_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMessageQueueSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMessageQueueSize_System_Int32_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMessageQueueSize(System.Int32)">
+  SetMessageQueueSize(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L171"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetMessageQueueSize(int queueSize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>queueSize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMinimumTimeBetweenCheckpoint_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMinimumTimeBetweenCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMinimumTimeBetweenCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMinimumTimeBetweenCheckpoint(System.TimeSpan)">
+  SetMinimumTimeBetweenCheckpoint(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L189"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeSpan</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetParallelism_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetParallelism*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetParallelism_System_Int32_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetParallelism(System.Int32)">
+  SetParallelism(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L177"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetParallelism(int parallelism)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>parallelism</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetTaskScheduler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetTaskScheduler*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetTaskScheduler_System_Threading_Tasks_TaskScheduler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetTaskScheduler(System.Threading.Tasks.TaskScheduler)">
+  SetTaskScheduler(TaskScheduler)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetTaskScheduler(TaskScheduler taskScheduler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>taskScheduler</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.taskscheduler">TaskScheduler</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersion_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersion_System_String_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersion(System.String)">
+  SetVersion(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L207"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetVersion(string version)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>version</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersionParts_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersionParts*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_SetVersionParts_System_Collections_Generic_IEnumerable_System_ValueTuple_System_String_System_Nullable_System_Boolean____" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.SetVersionParts(System.Collections.Generic.IEnumerable{System.ValueTuple{System.String,System.Nullable{System.Boolean}}})">
+  SetVersionParts(IEnumerable&lt;(string?, bool?)&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L214"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder SetVersionParts(IEnumerable&lt;(string?, bool?)&gt; versionParts)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>versionParts</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;(<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a>?)&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckActivityLogger_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckActivityLogger*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckActivityLogger" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckActivityLogger">
+  WithCheckActivityLogger()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L234"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithCheckActivityLogger()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckFailureListener(FlowtideDotNet.Base.Engine.ICheckFailureListener)">
+  WithCheckFailureListener(ICheckFailureListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithCheckFailureListener(ICheckFailureListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckLogger_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckLogger*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckLogger_Microsoft_Extensions_Logging_LogLevel_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckLogger(Microsoft.Extensions.Logging.LogLevel)">
+  WithCheckLogger(LogLevel)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L220"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithCheckLogger(LogLevel logLevel = LogLevel.Warning)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>logLevel</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.loglevel">LogLevel</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckpointListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckpointListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckpointListener(FlowtideDotNet.Base.Engine.ICheckpointListener)">
+  WithCheckpointListener(ICheckpointListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithCheckpointListener(ICheckpointListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckpointListener.html">ICheckpointListener</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckpointListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckpointListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithCheckpointListener__1" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithCheckpointListener``1">
+  WithCheckpointListener&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithCheckpointListener&lt;T&gt;() where T : ICheckpointListener, new()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener_FlowtideDotNet_Base_Engine_IFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener(FlowtideDotNet.Base.Engine.IFailureListener)">
+  WithFailureListener(IFailureListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L133"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithFailureListener(IFailureListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener_System_Action_System_Exception__" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener(System.Action{System.Exception})">
+  WithFailureListener(Action&lt;Exception?&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L153"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithFailureListener(Action&lt;Exception?&gt; exceptionAction)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exceptionAction</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithFailureListener__1" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithFailureListener``1">
+  WithFailureListener&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithFailureListener&lt;T&gt;() where T : IFailureListener, new()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithLoggerFactory_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithLoggerFactory*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithLoggerFactory_Microsoft_Extensions_Logging_ILoggerFactory_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory)">
+  WithLoggerFactory(ILoggerFactory)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L159"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithLoggerFactory(ILoggerFactory loggerFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>loggerFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.iloggerfactory">ILoggerFactory</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithOpenLineageHttp_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithOpenLineageHttp*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithOpenLineageHttp_FlowtideDotNet_Core_Lineage_OpenLineageHttpOptions_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithOpenLineageHttp(FlowtideDotNet.Core.Lineage.OpenLineageHttpOptions)">
+  WithOpenLineageHttp(OpenLineageHttpOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L240"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithOpenLineageHttp(OpenLineageHttpOptions options)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>options</code> <a class="xref" href="FlowtideDotNet.Core.Lineage.OpenLineageHttpOptions.html">OpenLineageHttpOptions</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithPauseMonitor_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithPauseMonitor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithPauseMonitor_Microsoft_Extensions_Options_IOptionsMonitor_FlowtideDotNet_Base_FlowtidePauseOptions__" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithPauseMonitor(Microsoft.Extensions.Options.IOptionsMonitor{FlowtideDotNet.Base.FlowtidePauseOptions})">
+  WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L165"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt; pauseMonitor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>pauseMonitor</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptionsmonitor-1">IOptionsMonitor</a>&lt;<a class="xref" href="FlowtideDotNet.Base.FlowtidePauseOptions.html">FlowtidePauseOptions</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithScheduler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithScheduler*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithScheduler_FlowtideDotNet_Base_Engine_IStreamScheduler_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithScheduler(FlowtideDotNet.Base.Engine.IStreamScheduler)">
+  WithScheduler(IStreamScheduler)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithScheduler(IStreamScheduler streamScheduler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamScheduler</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateChangeListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateChangeListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateChangeListener_FlowtideDotNet_Base_Engine_IStreamStateChangeListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateChangeListener(FlowtideDotNet.Base.Engine.IStreamStateChangeListener)">
+  WithStateChangeListener(IStreamStateChangeListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L113"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithStateChangeListener(IStreamStateChangeListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamStateChangeListener.html">IStreamStateChangeListener</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateChangeListener_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateChangeListener*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateChangeListener__1" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateChangeListener``1">
+  WithStateChangeListener&lt;T&gt;()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L126"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithStateChangeListener&lt;T&gt;() where T : IStreamStateChangeListener, new()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateOptions_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateOptions*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Engine_FlowtideBuilder_WithStateOptions_FlowtideDotNet_Storage_StateManager_StateManagerOptions_" data-uid="FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateOptions(FlowtideDotNet.Storage.StateManager.StateManagerOptions)">
+  WithStateOptions(StateManagerOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FlowtideBuilder WithStateOptions(StateManagerOptions stateManagerOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateManagerOptions</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.StateManagerOptions.html">StateManagerOptions</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Engine/FlowtideBuilder.cs/#L34" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

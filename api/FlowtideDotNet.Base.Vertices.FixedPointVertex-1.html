@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class FixedPointVertex&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class FixedPointVertex&lt;T&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="Abstract base class for stream vertices that implement fixed-point iteration over a cyclic dataflow graph.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Vertices_FixedPointVertex_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Vertices.FixedPointVertex%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1" class="text-break">
+Class FixedPointVertex&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Vertices.html">Vertices</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Abstract base class for stream vertices that implement fixed-point iteration over a cyclic dataflow graph.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class FixedPointVertex&lt;T&gt; : IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of the underlying data payload processed by this vertex.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">FixedPointVertex&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+A fixed-point vertex coordinates two distinct input sources — an <em>ingress</em> input carrying new external data
+and a <em>feedback</em> input carrying data recycled from the loop — and routes processed results to two output sources:
+an <em>egress</em> output forwarding results downstream and a <em>loop</em> output feeding data back into the cycle.
+Derived classes express the per-message processing logic via <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnIngressRecieve__0_System_Int64_">OnIngressRecieve(T, long)</a> and
+<a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnFeedbackRecieve__0_System_Int64_">OnFeedbackRecieve(T, long)</a>, mapping each output event to index <code>0</code> (egress) or <code>1</code> (loop).
+</p>
+<p>
+Checkpointing differs fundamentally from <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html">MultipleInputVertex&lt;T&gt;</a>: when a checkpoint arrives on the
+ingress input, the vertex sends a <span class="xref">FlowtideDotNet.Base.LockingEventPrepare</span> into the loop and waits for the loop to confirm
+that no new messages are in flight before propagating the checkpoint to the egress output. The method
+<a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_NoReadSourceInLoop">NoReadSourceInLoop()</a> controls this behaviour — returning <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> indicates no persistent
+read source exists in the loop, allowing the checkpoint to complete without waiting for an upstream acknowledgement.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1__ctor_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1__ctor_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.#ctor(System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
+  FixedPointVertex(ExecutionDataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html">FixedPointVertex&lt;T&gt;</a> with the specified execution options.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public FixedPointVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>executionDataflowBlockOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.executiondataflowblockoptions">ExecutionDataflowBlockOptions</a></dt>
+    <dd><p>Configuration options governing block capacities and parallel properties.
+The bounded capacity is scaled up internally to accommodate both ingress and feedback buffering.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Completion_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Completion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Completion" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Completion">
+  Completion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L149"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a> that represents the asynchronous completion of the vertex's internal processing block.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Completion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when accessed before <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_CreateBlock">CreateBlock()</a> has been called.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DisplayName_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DisplayName*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DisplayName" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DisplayName">
+  DisplayName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L162"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the display name for the specific vertex type, used mainly in logging and metrics visualization.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract string DisplayName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_EgressSource_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.EgressSource*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_EgressSource" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.EgressSource">
+  EgressSource
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a> that emits processed results downstream out of the loop.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ISourceBlock&lt;IStreamEvent&gt; EgressSource { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_FeedbackTarget_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.FeedbackTarget*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_FeedbackTarget" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.FeedbackTarget">
+  FeedbackTarget
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L97"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> that accepts recycled data fed back from the loop output.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ITargetBlock&lt;IStreamEvent&gt; FeedbackTarget { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_IngressTarget_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.IngressTarget*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_IngressTarget" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.IngressTarget">
+  IngressTarget
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L92"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> that accepts new external data entering the fixed-point loop.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ITargetBlock&lt;IStreamEvent&gt; IngressTarget { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Logger_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Logger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Logger" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Logger">
+  Logger
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the logger instance associated with this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ILogger Logger { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.ilogger">ILogger</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_LoopSource_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.LoopSource*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_LoopSource" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.LoopSource">
+  LoopSource
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L107"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock&lt;TOutput&gt;</a> that emits data back into the loop for the next iteration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ISourceBlock&lt;IStreamEvent&gt; LoopSource { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_MemoryAllocator_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.MemoryAllocator*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_MemoryAllocator" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.MemoryAllocator">
+  MemoryAllocator
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the memory allocator for managing native memory allocations within this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMemoryAllocator MemoryAllocator { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Metrics_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Metrics*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Metrics" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Metrics">
+  Metrics
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the meter instance used to create metrics for this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected IMeter Metrics { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Metrics.IMeter.html">IMeter</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Name_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Name*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Name" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Name">
+  Name
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L157"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the unique configured operator name of the vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string Name { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown when accessed before <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Setup_System_String_System_String_">Setup(string, string)</a> or <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_">Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)</a> has been called.</p>
+</dd>
+  </dl>
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_BeforeSaveCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.BeforeSaveCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_BeforeSaveCheckpoint" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.BeforeSaveCheckpoint">
+  BeforeSaveCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L692"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called before the checkpoint state is persisted. Allows the vertex to flush any pending state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task BeforeSaveCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the pre-checkpoint operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Compact_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Compact*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Compact" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Compact">
+  Compact()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L168"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Requests the operator to compact its persistent storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task Compact()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the compaction process.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Complete_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Complete*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Complete" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Complete">
+  Complete()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L682"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Signals to the vertex that both ingress and feedback inputs should not accept any more messages.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Complete()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_CreateBlock_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.CreateBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_CreateBlock" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.CreateBlock">
+  CreateBlock()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Instantiates the internal TPL Dataflow blocks and wires up internal processing logic for the fixed-point loop.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void CreateBlock()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DeleteAsync_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DeleteAsync" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L492"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Deletes any persistent state associated with this vertex.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the delete operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DisposeAsync_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DisposeAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_DisposeAsync" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L500"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases any resources held by this vertex asynchronously.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Fault_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Fault*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Fault_System_Exception_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Fault(System.Exception)">
+  Fault(Exception)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L509"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Puts the underlying dataflow block immediately into a faulted state due to a severe exception.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Fault(Exception exception)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>exception</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.exception">Exception</a></dt>
+    <dd><p>The exception that caused the fault.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_GetLinks_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.GetLinks*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_GetLinks" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.GetLinks">
+  GetLinks()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L521"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns all downstream <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock&lt;TInput&gt;</a> linked to the egress and loop sources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IEnumerable&lt;ITargetBlock&lt;IStreamEvent&gt;&gt; GetLinks()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;&gt;</dt>
+    <dd><p>An enumerable of all target blocks connected to both <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_EgressSource">EgressSource</a> and <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_LoopSource">LoopSource</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Initialize_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Initialize*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)">
+  Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L535"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously initializes the vertex, wiring up metrics, memory, logging, and persistent state retrieval.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name assigned to this vertex.</p>
+</dd>
+    <dt><code>restoreTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The logical time representing the last known good state to restore from.</p>
+</dd>
+    <dt><code>newTime</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The new logical stream execution time after initialization.</p>
+</dd>
+    <dt><code>vertexHandler</code> <a class="xref" href="FlowtideDotNet.Base.IVertexHandler.html">IVertexHandler</a></dt>
+    <dd><p>The handler providing state clients, memory managers, logger factories, and metrics.</p>
+</dd>
+    <dt><code>streamVersionInformation</code> <a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a></dt>
+    <dd><p>Optional version information used to handle stream upgrades or downgrades.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the asynchronous initialization and state restore operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_InitializeOrRestore_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.InitializeOrRestore*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_InitializeOrRestore_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
+  InitializeOrRestore(IStateManagerClient)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L620"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Restores or initializes the operator's persistent state from the provided state manager client.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract Task InitializeOrRestore(IStateManagerClient stateManagerClient)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd><p>The client used to access persistent storage for state restoration.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the asynchronous state restore or initialization operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Link_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Link*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Link" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Link">
+  Link()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L625"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates the actual links between the egress and loop sources and their configured downstream targets.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Link()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_NoReadSourceInLoop_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.NoReadSourceInLoop*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_NoReadSourceInLoop" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.NoReadSourceInLoop">
+  NoReadSourceInLoop()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L141"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns whether there is any persistent read source present within the fixed-point loop.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract bool NoReadSourceInLoop()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if no read source is present in the loop; otherwise <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_NoReadSourceInLoop_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This value directly affects checkpoint coordination. When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a>, the vertex does not wait
+for an upstream loop acknowledgement before propagating the checkpoint, because no external read source
+can produce additional messages mid-checkpoint. When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>, the vertex waits until
+the loop has confirmed it is idle before forwarding the checkpoint to the egress output.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnFailure_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnFailure*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnFailure_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnFailure(System.Int64)">
+  OnFailure(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L702"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when the stream encounters a failure, allowing the vertex to roll back to a safe state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual Task OnFailure(long rollbackVersion)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>rollbackVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The version to roll back to.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the rollback operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnFeedbackRecieve_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnFeedbackRecieve*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnFeedbackRecieve__0_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnFeedbackRecieve(`0,System.Int64)">
+  OnFeedbackRecieve(T, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L461"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when a message arrives on the feedback input from the loop. Determines how the recycled data
+is processed and routed to either the egress or loop output for the next iteration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IAsyncEnumerable&lt;KeyValuePair&lt;int, StreamMessage&lt;T&gt;&gt;&gt; OnFeedbackRecieve(T data, long time)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <span class="xref">T</span></dt>
+    <dd><p>The message payload received from the feedback (loop) input.</p>
+</dd>
+    <dt><code>time</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The logical stream time at which the message was produced.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Base.StreamMessage-1.html">StreamMessage</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd><p>An asynchronous stream of key-value pairs where the key is <code>0</code> to route to <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_EgressSource">EgressSource</a>
+or <code>1</code> to route back into <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_LoopSource">LoopSource</a> for another iteration.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnIngressRecieve_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnIngressRecieve*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnIngressRecieve__0_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnIngressRecieve(`0,System.Int64)">
+  OnIngressRecieve(T, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L449"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when a new message arrives on the ingress input. Determines how the data is processed and
+routed to either the egress or loop output.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected abstract IAsyncEnumerable&lt;KeyValuePair&lt;int, StreamMessage&lt;T&gt;&gt;&gt; OnIngressRecieve(T data, long time)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>data</code> <span class="xref">T</span></dt>
+    <dd><p>The message payload received from the ingress input.</p>
+</dd>
+    <dt><code>time</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The logical stream time at which the message was produced.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Base.StreamMessage-1.html">StreamMessage</a>&lt;T&gt;&gt;&gt;</dt>
+    <dd><p>An asynchronous stream of key-value pairs where the key is <code>0</code> to route to <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_EgressSource">EgressSource</a>
+or <code>1</code> to route back into <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_LoopSource">LoopSource</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnTrigger_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_OnTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.OnTrigger(System.String,System.Object)">
+  OnTrigger(string, object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L469"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Handles custom logic executed when the vertex processes a queued trigger event.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual IAsyncEnumerable&lt;KeyValuePair&lt;int, T&gt;&gt; OnTrigger(string name, object? state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name identifier distinguishing the associated trigger.</p>
+</dd>
+    <dt><code>state</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>Optional state associated with the trigger.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.keyvaluepair-2">KeyValuePair</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, T&gt;&gt;</dt>
+    <dd><p>An asynchronous stream of output key-value pairs generated by the trigger.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Pause_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Pause*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Pause" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Pause">
+  Pause()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L659"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Suspends message processing, causing the vertex to hold output until <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Resume">Resume()</a> is called.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Pause()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_QueueTrigger_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.QueueTrigger*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)">
+  QueueTrigger(TriggerEvent)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L636"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Queuing triggers is not supported for fixed-point vertices.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task QueueTrigger(TriggerEvent triggerEvent)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>triggerEvent</code> <a class="xref" href="FlowtideDotNet.Base.TriggerEvent.html">TriggerEvent</a></dt>
+    <dd><p>The trigger event to queue.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.notsupportedexception">NotSupportedException</a></dt>
+    <dd><p>Always thrown; triggers are not supported in fixed-point vertices.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Resume_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Resume*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Resume" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Resume">
+  Resume()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L670"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Resumes message processing after a prior call to <a class="xref" href="FlowtideDotNet.Base.Vertices.FixedPointVertex-1.html#FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Pause">Pause()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Resume()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Setup_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Setup*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_FixedPointVertex_1_Setup_System_String_System_String_" data-uid="FlowtideDotNet.Base.Vertices.FixedPointVertex`1.Setup(System.String,System.String)">
+  Setup(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L646"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs initial naming configuration for the vertex and its ingress, egress, loop, and feedback sub-components.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Setup(string streamName, string operatorName)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The overarching name of the stream this vertex belongs to.</p>
+</dd>
+    <dt><code>operatorName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique name for this operator within the stream.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/FixedPoint/FixedPointVertex.cs/#L47" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class StreamPageDataReader | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class StreamPageDataReader | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader" class="text-break">
+Class StreamPageDataReader  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.SqlServer.html">SqlServer</a>.<a class="xref" href="FlowtideDotNet.Storage.SqlServer.Data.html">Data</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.SqlServer.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class StreamPageDataReader : DbDataReader, IEnumerable, IDataReader, IDataRecord, IDisposable, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.marshalbyrefobject">MarshalByRefObject</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a></div>
+      <div><span class="xref">StreamPageDataReader</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.ienumerable">IEnumerable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idatareader">IDataReader</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.idatarecord">IDataRecord</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.closeasync">DbDataReader.CloseAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.disposeasync">DbDataReader.DisposeAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getfieldvalueasync#system-data-common-dbdatareader-getfieldvalueasync-1(system-int32)">DbDataReader.GetFieldValueAsync&lt;T&gt;(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getfieldvalueasync#system-data-common-dbdatareader-getfieldvalueasync-1(system-int32-system-threading-cancellationtoken)">DbDataReader.GetFieldValueAsync&lt;T&gt;(int, CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getfieldvalue">DbDataReader.GetFieldValue&lt;T&gt;(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getschematableasync">DbDataReader.GetSchemaTableAsync(CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getcolumnschemaasync">DbDataReader.GetColumnSchemaAsync(CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.getstream">DbDataReader.GetStream(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.gettextreader">DbDataReader.GetTextReader(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.isdbnullasync#system-data-common-dbdatareader-isdbnullasync(system-int32)">DbDataReader.IsDBNullAsync(int)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.isdbnullasync#system-data-common-dbdatareader-isdbnullasync(system-int32-system-threading-cancellationtoken)">DbDataReader.IsDBNullAsync(int, CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.nextresultasync#system-data-common-dbdatareader-nextresultasync">DbDataReader.NextResultAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.nextresultasync#system-data-common-dbdatareader-nextresultasync(system-threading-cancellationtoken)">DbDataReader.NextResultAsync(CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.readasync#system-data-common-dbdatareader-readasync">DbDataReader.ReadAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.readasync#system-data-common-dbdatareader-readasync(system-threading-cancellationtoken)">DbDataReader.ReadAsync(CancellationToken)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.visiblefieldcount">DbDataReader.VisibleFieldCount</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.marshalbyrefobject.getlifetimeservice">MarshalByRefObject.GetLifetimeService()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.marshalbyrefobject.initializelifetimeservice">MarshalByRefObject.InitializeLifetimeService()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.marshalbyrefobject.memberwiseclone">MarshalByRefObject.MemberwiseClone(bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader__ctor_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader__ctor_FlowtideDotNet_Storage_SqlServer_Data_StreamPage___" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.#ctor(FlowtideDotNet.Storage.SqlServer.Data.StreamPage[])">
+  StreamPageDataReader(StreamPage[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StreamPageDataReader(StreamPage[] source)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="FlowtideDotNet.Storage.SqlServer.Data.StreamPage.html">StreamPage</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Depth_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Depth*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Depth" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Depth">
+  Depth
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating the depth of nesting for the current row.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int Depth { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The depth of nesting for the current row.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_FieldCount_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.FieldCount*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_FieldCount" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.FieldCount">
+  FieldCount
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L112"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the number of columns in the current row.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int FieldCount { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of columns in the current row.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.notsupportedexception">NotSupportedException</a></dt>
+    <dd><p>There is no current connection to an instance of SQL Server.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_HasRows_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.HasRows*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_HasRows" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.HasRows">
+  HasRows
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets a value that indicates whether this <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> contains one or more rows.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool HasRows { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> contains one or more rows; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_IsClosed_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.IsClosed*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_IsClosed" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.IsClosed">
+  IsClosed
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L116"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets a value indicating whether the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> is closed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool IsClosed { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> is closed; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> is closed.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Item_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Item*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Item_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Item(System.Int32)">
+  this[int]
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L274"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as an instance of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override object this[int ordinal] { get; }</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Item_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Item*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Item_System_String_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Item(System.String)">
+  this[string]
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L265"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as an instance of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override object this[string name] { get; }</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the column.</p>
+</dd>
+  </dl>
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>No column with the specified name was found.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_RecordsAffected_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.RecordsAffected*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_RecordsAffected" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.RecordsAffected">
+  RecordsAffected
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the number of rows changed, inserted, or deleted by execution of the SQL statement.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int RecordsAffected { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of rows changed, inserted, or deleted. -1 for SELECT statements; 0 if no rows were affected or the statement failed.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Close_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Close*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Close" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Close">
+  Close()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Closes the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override void Close()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Create_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Create*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Create_FlowtideDotNet_Storage_SqlServer_Data_StreamPage___" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Create(FlowtideDotNet.Storage.SqlServer.Data.StreamPage[])">
+  Create(StreamPage[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static StreamPageDataReader Create(StreamPage[] source)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>source</code> <a class="xref" href="FlowtideDotNet.Storage.SqlServer.Data.StreamPage.html">StreamPage</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.html">StreamPageDataReader</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Dispose_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Dispose_System_Boolean_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Dispose(System.Boolean)">
+  Dispose(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Releases the unmanaged resources used by the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> and optionally releases the managed resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override void Dispose(bool disposing)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>disposing</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> to release managed and unmanaged resources; <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> to release only unmanaged resources.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetBoolean_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetBoolean*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetBoolean_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetBoolean(System.Int32)">
+  GetBoolean(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a Boolean.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool GetBoolean(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetByte_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetByte*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetByte_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetByte(System.Int32)">
+  GetByte(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a byte.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override byte GetByte(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetBytes_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetBytes*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetBytes_System_Int32_System_Int64_System_Byte___System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetBytes(System.Int32,System.Int64,System.Byte[],System.Int32,System.Int32)">
+  GetBytes(int, long, byte[]?, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, reads a specified number of bytes from the specified column starting at a specified index and writes them to a buffer starting at a specified position in the buffer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+    <dt><code>dataOffset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The index within the row from which to begin the read operation.</p>
+</dd>
+    <dt><code>buffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>[]</dt>
+    <dd><p>The buffer into which to copy the data.</p>
+</dd>
+    <dt><code>bufferOffset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index with the buffer to which the data will be copied.</p>
+</dd>
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The maximum number of bytes to read.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The actual number of bytes read.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetChar_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetChar*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetChar_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetChar(System.Int32)">
+  GetChar(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a single character.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override char GetChar(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetChars_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetChars*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetChars_System_Int32_System_Int64_System_Char___System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetChars(System.Int32,System.Int64,System.Char[],System.Int32,System.Int32)">
+  GetChars(int, long, char[]?, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L151"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, reads a specified number of characters from a specified column starting at a specified index, and writes them to a buffer starting at a specified position.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+    <dt><code>dataOffset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The index within the row from which to begin the read operation.</p>
+</dd>
+    <dt><code>buffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.char">char</a>[]</dt>
+    <dd><p>The buffer into which to copy the data.</p>
+</dd>
+    <dt><code>bufferOffset</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index with the buffer to which the data will be copied.</p>
+</dd>
+    <dt><code>length</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The maximum number of characters to read.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The actual number of characters read.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDataTypeName_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDataTypeName*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDataTypeName_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDataTypeName(System.Int32)">
+  GetDataTypeName(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L168"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets name of the data type of the specified column.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string GetDataTypeName(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the data type.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDateTime_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDateTime*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDateTime_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDateTime(System.Int32)">
+  GetDateTime(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L173"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a> object.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override DateTime GetDateTime(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.datetime">DateTime</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDbDataReader_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDbDataReader*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDbDataReader_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDbDataReader(System.Int32)">
+  GetDbDataReader(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> object for the requested column ordinal that can be overridden with a provider-specific implementation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override DbDataReader GetDbDataReader(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDecimal_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDecimal*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDecimal_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDecimal(System.Int32)">
+  GetDecimal(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L178"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override decimal GetDecimal(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.decimal">decimal</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDouble_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDouble*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetDouble_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetDouble(System.Int32)">
+  GetDouble(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a double-precision floating point number.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override double GetDouble(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.double">double</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetEnumerator_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetEnumerator*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetEnumerator" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetEnumerator">
+  GetEnumerator()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L246"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, returns an enumerator that can be used to iterate through the rows in the data reader.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override IEnumerator GetEnumerator()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.ienumerator">IEnumerator</a></dt>
+    <dd><p>An enumerator that can be used to iterate through the rows in the data reader.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetFieldType_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetFieldType*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetFieldType_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetFieldType(System.Int32)">
+  GetFieldType(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L188"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the data type of the specified column.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Type GetFieldType(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.type">Type</a></dt>
+    <dd><p>The data type of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetFloat_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetFloat*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetFloat_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetFloat(System.Int32)">
+  GetFloat(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L201"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a single-precision floating point number.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override float GetFloat(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.single">float</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetGuid_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetGuid*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetGuid_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetGuid(System.Int32)">
+  GetGuid(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L206"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a globally unique identifier (GUID).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Guid GetGuid(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.guid">Guid</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt16_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt16*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt16_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt16(System.Int32)">
+  GetInt16(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L211"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a 16-bit signed integer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override short GetInt16(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int16">short</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt32*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt32_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt32(System.Int32)">
+  GetInt32(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L216"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a 32-bit signed integer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetInt32(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt64_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt64*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetInt64_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetInt64(System.Int32)">
+  GetInt64(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L221"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as a 64-bit signed integer.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override long GetInt64(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetName_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetName*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetName_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetName(System.Int32)">
+  GetName(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L226"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the name of the column, given the zero-based column ordinal.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string GetName(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetOrdinal_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetOrdinal*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetOrdinal_System_String_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetOrdinal(System.String)">
+  GetOrdinal(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L231"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the column ordinal given the name of the column.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetOrdinal(string name)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The name of the column.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The name specified is not a valid column name.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetSchemaTable_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetSchemaTable*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetSchemaTable" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetSchemaTable">
+  GetSchemaTable()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns a <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a> that describes the column metadata of the <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a>.
+Returns <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> if the executed command returned no resultset, or after <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader.nextresult">NextResult()</a> returns <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override DataTable GetSchemaTable()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a></dt>
+    <dd><p>A <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.datatable">DataTable</a> that describes the column metadata.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>The <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.data.common.dbdatareader">DbDataReader</a> is closed.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.notsupportedexception">NotSupportedException</a></dt>
+    <dd><p>.NET Core and .NET 5+ only: In all cases.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetString_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetString*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetString_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetString(System.Int32)">
+  GetString(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L236"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as an instance of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string GetString(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidcastexception">InvalidCastException</a></dt>
+    <dd><p>The specified cast is not valid.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetValue_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetValue*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetValue_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetValue(System.Int32)">
+  GetValue(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L241"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets the value of the specified column as an instance of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override object GetValue(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The value of the specified column.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetValues_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetValues*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_GetValues_System_Object___" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.GetValues(System.Object[])">
+  GetValues(object[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L248"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, populates an array of objects with the column values of the current row.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetValues(object[] values)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>values</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a>[]</dt>
+    <dd><p>An array of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a> into which to copy the attribute columns.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of instances of <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a> in the array.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_IsDBNull_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.IsDBNull*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_IsDBNull_System_Int32_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.IsDBNull(System.Int32)">
+  IsDBNull(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L260"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, gets a value that indicates whether the column contains nonexistent or missing values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool IsDBNull(int ordinal)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ordinal</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The zero-based column ordinal.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if the specified column is equivalent to <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.dbnull">DBNull</a>; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.indexoutofrangeexception">IndexOutOfRangeException</a></dt>
+    <dd><p>The column index is out of range.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_NextResult_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.NextResult*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_NextResult" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.NextResult">
+  NextResult()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, advances the reader to the next result when reading the results of a batch of statements.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool NextResult()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if there are more result sets; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Read_" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Read*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_SqlServer_Data_StreamPageDataReader_Read" data-uid="FlowtideDotNet.Storage.SqlServer.Data.StreamPageDataReader.Read">
+  Read()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>When overridden in a derived class, advances the reader to the next record in a result set.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Read()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> if there are more rows; otherwise, <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage.SqlServer/Data/StreamPageDataReader.cs/#L20" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class DataflowStreamBuilder | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class DataflowStreamBuilder | Flowtide.NET ">
+      
+      <meta name="description" content="A fluent builder for configuring and constructing a .">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Engine_DataflowStreamBuilder.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Engine.DataflowStreamBuilder%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder" class="text-break">
+Class DataflowStreamBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Engine.html">Engine</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>A fluent builder for configuring and constructing a <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a>.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class DataflowStreamBuilder</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">DataflowStreamBuilder</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a> assembles all components required to run a dataflow stream:
+ingress vertices (sources), propagator vertices (transforms), and egress vertices (sinks),
+together with state management, scheduling, logging, versioning, and notification callbacks.
+Each configuration method returns the same builder instance to support method chaining.
+</p>
+<p>
+The only required configuration before calling <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build">Build()</a> is
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateOptions_FlowtideDotNet_Storage_StateManager_StateManagerOptions_">WithStateOptions(StateManagerOptions)</a>, which provides the state manager persistence settings.
+All other configuration is optional and falls back to sensible defaults:
+<ul><li><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStreamScheduler_FlowtideDotNet_Base_Engine_IStreamScheduler_">WithStreamScheduler(IStreamScheduler)</a> defaults to <a class="xref" href="FlowtideDotNet.Base.Engine.DefaultStreamScheduler.html">DefaultStreamScheduler</a>.</li><li><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateHandler_FlowtideDotNet_Base_Engine_IStateHandler_">WithStateHandler(IStateHandler)</a> defaults to a no-op <code>NullStateHandler</code>.</li></ul>
+
+<p>
+For higher-level SQL-plan-based stream construction, prefer <code>FlowtideBuilder</code> from
+<code>FlowtideDotNet.Core</code>, which wraps this builder and handles plan compilation, operator
+wiring, and hash-based version tracking automatically.
+</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder__ctor_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder__ctor_System_String_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.#ctor(System.String)">
+  DataflowStreamBuilder(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a> for the stream with the given name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder(string streamName)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique name of the stream. Used to namespace state storage, metrics, and log output
+throughout the lifetime of the stream.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckFailureListener(FlowtideDotNet.Base.Engine.ICheckFailureListener)">
+  AddCheckFailureListener(ICheckFailureListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L303"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a> to receive a notification each time
+a data quality check within the stream fails.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddCheckFailureListener(ICheckFailureListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckFailureListener.html">ICheckFailureListener</a></dt>
+    <dd><p>The listener to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckFailureListener_FlowtideDotNet_Base_Engine_ICheckFailureListener__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
+ensure they cannot disrupt the stream.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckpointListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckpointListener*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddCheckpointListener(FlowtideDotNet.Base.Engine.ICheckpointListener)">
+  AddCheckpointListener(ICheckpointListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L255"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckpointListener.html">ICheckpointListener</a> to receive a notification each time
+the stream completes a checkpoint boundary.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddCheckpointListener(ICheckpointListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.ICheckpointListener.html">ICheckpointListener</a></dt>
+    <dd><p>The listener to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddCheckpointListener_FlowtideDotNet_Base_Engine_ICheckpointListener__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
+ensure they cannot disrupt the stream.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddEgressBlock_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddEgressBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddEgressBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamEgressVertex_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddEgressBlock(System.String,FlowtideDotNet.Base.Vertices.IStreamEgressVertex)">
+  AddEgressBlock(string, IStreamEgressVertex)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers an egress (sink) vertex under the given operator name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddEgressBlock(string name, IStreamEgressVertex block)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique operator name for this vertex within the stream.</p>
+</dd>
+    <dt><code>block</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html">IStreamEgressVertex</a></dt>
+    <dd><p>The egress vertex to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddEgressBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamEgressVertex__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Egress vertices are the terminal points of the stream, consuming <a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a> messages
+and writing results to external systems. <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html#FlowtideDotNet_Base_Vertices_IStreamVertex_Setup_System_String_System_String_">Setup(string, string)</a> is called on the block immediately.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddFailureListener*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddFailureListener_FlowtideDotNet_Base_Engine_IFailureListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddFailureListener(FlowtideDotNet.Base.Engine.IFailureListener)">
+  AddFailureListener(IFailureListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L287"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a> to receive a notification each time
+the stream encounters an unhandled exception and transitions to a failure state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddFailureListener(IFailureListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a></dt>
+    <dd><p>The listener to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddFailureListener_FlowtideDotNet_Base_Engine_IFailureListener__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
+ensure they cannot disrupt the stream.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddIngressBlock_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddIngressBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddIngressBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamIngressVertex_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddIngressBlock(System.String,FlowtideDotNet.Base.Vertices.IStreamIngressVertex)">
+  AddIngressBlock(string, IStreamIngressVertex)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L112"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers an ingress (source) vertex under the given operator name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddIngressBlock(string name, IStreamIngressVertex block)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique operator name for this vertex within the stream.</p>
+</dd>
+    <dt><code>block</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamIngressVertex.html">IStreamIngressVertex</a></dt>
+    <dd><p>The ingress vertex to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddIngressBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamIngressVertex__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Ingress vertices are the entry points of the stream, producing <a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a> messages
+from external data sources. <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html#FlowtideDotNet_Base_Vertices_IStreamVertex_Setup_System_String_System_String_">Setup(string, string)</a> is called on the block immediately.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddPropagatorBlock_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddPropagatorBlock*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddPropagatorBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamVertex_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddPropagatorBlock(System.String,FlowtideDotNet.Base.Vertices.IStreamVertex)">
+  AddPropagatorBlock(string, IStreamVertex)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L95"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Registers a propagator (transform) vertex under the given operator name.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddPropagatorBlock(string name, IStreamVertex block)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The unique operator name for this vertex within the stream.</p>
+</dd>
+    <dt><code>block</code> <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></dt>
+    <dd><p>The propagator vertex to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddPropagatorBlock_System_String_FlowtideDotNet_Base_Vertices_IStreamVertex__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Propagator vertices sit between ingress and egress vertices, transforming or routing stream events.
+The <code class="paramref">name</code> is used as the operator's unique identity for state storage,
+metrics, and inter-vertex linking. <a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html#FlowtideDotNet_Base_Vertices_IStreamVertex_Setup_System_String_System_String_">Setup(string, string)</a> is called on the block
+immediately so it is ready for linking.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddStateChangeListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddStateChangeListener*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddStateChangeListener_FlowtideDotNet_Base_Engine_IStreamStateChangeListener_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.AddStateChangeListener(FlowtideDotNet.Base.Engine.IStreamStateChangeListener)">
+  AddStateChangeListener(IStreamStateChangeListener)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L271"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Subscribes an <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamStateChangeListener.html">IStreamStateChangeListener</a> to receive a notification each time
+the stream transitions to a new <a class="xref" href="FlowtideDotNet.Base.Engine.StreamStateValue.html">StreamStateValue</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder AddStateChangeListener(IStreamStateChangeListener listener)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listener</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamStateChangeListener.html">IStreamStateChangeListener</a></dt>
+    <dd><p>The listener to register.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_AddStateChangeListener_FlowtideDotNet_Base_Engine_IStreamStateChangeListener__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
+ensure they cannot disrupt the stream.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.Build*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.Build">
+  Build()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L363"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Validates the configuration, applies defaults for any unset optional components, and constructs
+the fully configured <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStream Build()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a></dt>
+    <dd><p>A fully configured but not yet started <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+If <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateHandler_FlowtideDotNet_Base_Engine_IStateHandler_">WithStateHandler(IStateHandler)</a> was not called, a no-op <code>NullStateHandler</code> is used.
+If <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStreamScheduler_FlowtideDotNet_Base_Engine_IStreamScheduler_">WithStreamScheduler(IStreamScheduler)</a> was not called, a <a class="xref" href="FlowtideDotNet.Base.Engine.DefaultStreamScheduler.html">DefaultStreamScheduler</a> is created.
+</p>
+<p>
+The returned <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html">DataflowStream</a> is not yet started. Call
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_StartAsync">StartAsync()</a> or <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStream.html#FlowtideDotNet_Base_Engine_DataflowStream_RunAsync">RunAsync()</a> to begin processing.
+</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a></dt>
+    <dd><p>Thrown if <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateOptions_FlowtideDotNet_Storage_StateManager_StateManagerOptions_">WithStateOptions(StateManagerOptions)</a> has not been called before <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build">Build()</a>.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_FromState_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.FromState*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_FromState_FlowtideDotNet_Base_Engine_StreamState_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.FromState(FlowtideDotNet.Base.Engine.StreamState)">
+  FromState(StreamState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L142"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Seeds the builder with a previously persisted <a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a> to restore the stream
+from a known logical time rather than starting fresh.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder FromState(StreamState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Base.Engine.StreamState.html">StreamState</a></dt>
+    <dd><p>The stream state to restore from.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetMinimumTimeBetweenCheckpoint_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetMinimumTimeBetweenCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetMinimumTimeBetweenCheckpoint_System_TimeSpan_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetMinimumTimeBetweenCheckpoint(System.TimeSpan)">
+  SetMinimumTimeBetweenCheckpoint(TimeSpan)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L239"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the minimum time that must elapse between two consecutive checkpoint triggers,
+preventing excessive checkpointing under high-throughput conditions.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder SetMinimumTimeBetweenCheckpoint(TimeSpan timeSpan)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>timeSpan</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a></dt>
+    <dd><p>The minimum interval between checkpoints.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_System_String_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersion(System.String)">
+  SetVersion(string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L338"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the semantic version string for this stream configuration.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder SetVersion(string version)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>version</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A non-null, non-whitespace version string identifying this stream configuration.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersion_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Unlike <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersionInformation_System_String_System_String_">SetVersionInformation(string, string)</a>, this method sets only the human-readable version label
+without a structural hash. It is stored alongside persisted state for diagnostic and upgrade tracking purposes.</p>
+</div>
+
+  <h4 class="section">Exceptions</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.argumentexception">ArgumentException</a></dt>
+    <dd><p>Thrown if <code class="paramref">version</code> is null or whitespace.</p>
+</dd>
+  </dl>
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersionInformation_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersionInformation*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersionInformation_System_String_System_String_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.SetVersionInformation(System.String,System.String)">
+  SetVersionInformation(string, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L208"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the stream's plan hash and human-readable version string, used to detect structural changes
+between stream restarts and guard against incompatible state restores.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder SetVersionInformation(string hash, string version)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>hash</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A content hash of the stream plan, used for structural change detection.</p>
+</dd>
+    <dt><code>version</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>A human-readable version label associated with this stream configuration.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_SetVersionInformation_System_String_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>When set, the stream engine compares <code class="paramref">hash</code> against the hash stored in persisted
+state on startup. A mismatch causes an <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.invalidoperationexception">InvalidOperationException</a> to be thrown,
+preventing accidental state corruption when the stream topology has changed.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WaitForCheckpointAfterInitialData_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WaitForCheckpointAfterInitialData*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WaitForCheckpointAfterInitialData_System_Boolean_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WaitForCheckpointAfterInitialData(System.Boolean)">
+  WaitForCheckpointAfterInitialData(bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L227"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Controls whether the stream should wait for a checkpoint to complete after all ingress vertices
+have finished emitting their initial data load.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WaitForCheckpointAfterInitialData(bool wait)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>wait</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> to wait for a checkpoint after initial data; <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">false</a> to proceed immediately.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WaitForCheckpointAfterInitialData_System_Boolean__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>When <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> (the default), the stream takes a checkpoint immediately after
+initial data is fully propagated, establishing a clean recovery baseline before transitioning
+to incremental processing.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithLoggerFactory_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithLoggerFactory*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithLoggerFactory_Microsoft_Extensions_Logging_ILoggerFactory_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory)">
+  WithLoggerFactory(ILoggerFactory)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L190"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.iloggerfactory">ILoggerFactory</a> used to create loggers for all vertices and
+internal stream components.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WithLoggerFactory(ILoggerFactory loggerFactory)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>loggerFactory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.logging.iloggerfactory">ILoggerFactory</a></dt>
+    <dd><p>The logger factory to use.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithPauseMonitor_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithPauseMonitor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithPauseMonitor_Microsoft_Extensions_Options_IOptionsMonitor_FlowtideDotNet_Base_FlowtidePauseOptions__" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithPauseMonitor(Microsoft.Extensions.Options.IOptionsMonitor{FlowtideDotNet.Base.FlowtidePauseOptions})">
+  WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L320"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Wires up an <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptionsmonitor-1">IOptionsMonitor&lt;TOptions&gt;</a> so that the stream can be
+dynamically paused and resumed at runtime through configuration changes without restarting.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WithPauseMonitor(IOptionsMonitor&lt;FlowtidePauseOptions&gt; pauseMonitor)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>pauseMonitor</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.options.ioptionsmonitor-1">IOptionsMonitor</a>&lt;<a class="xref" href="FlowtideDotNet.Base.FlowtidePauseOptions.html">FlowtidePauseOptions</a>&gt;</dt>
+    <dd><p>The options monitor to observe for pause/resume state changes.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithPauseMonitor_Microsoft_Extensions_Options_IOptionsMonitor_FlowtideDotNet_Base_FlowtidePauseOptions___remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If <a class="xref" href="FlowtideDotNet.Base.FlowtidePauseOptions.html#FlowtideDotNet_Base_FlowtidePauseOptions_IsPaused">IsPaused</a> is already <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/builtin-types/bool">true</a> when
+<a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build">Build()</a> is called, the stream starts in a paused state. Subsequent changes
+to the options monitor are applied immediately via the monitor's change callback.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateHandler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStateHandler*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateHandler_FlowtideDotNet_Base_Engine_IStateHandler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStateHandler(FlowtideDotNet.Base.Engine.IStateHandler)">
+  WithStateHandler(IStateHandler)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <a class="xref" href="FlowtideDotNet.Base.Engine.IStateHandler.html">IStateHandler</a> responsible for persisting and loading top-level stream state
+snapshots. Defaults to a no-op handler if not specified.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WithStateHandler(IStateHandler stateHandler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateHandler</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStateHandler.html">IStateHandler</a></dt>
+    <dd><p>The state handler to use.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateOptions_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStateOptions*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStateOptions_FlowtideDotNet_Storage_StateManager_StateManagerOptions_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStateOptions(FlowtideDotNet.Storage.StateManager.StateManagerOptions)">
+  WithStateOptions(StateManagerOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L178"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the <a class="xref" href="FlowtideDotNet.Storage.StateManager.StateManagerOptions.html">StateManagerOptions</a> that configure how operator state is persisted
+and managed. This is the only required configuration before calling <a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html#FlowtideDotNet_Base_Engine_DataflowStreamBuilder_Build">Build()</a>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WithStateOptions(StateManagerOptions stateManagerOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateManagerOptions</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.StateManagerOptions.html">StateManagerOptions</a></dt>
+    <dd><p>The persistence options for the state manager.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStreamScheduler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStreamScheduler*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Engine_DataflowStreamBuilder_WithStreamScheduler_FlowtideDotNet_Base_Engine_IStreamScheduler_" data-uid="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.WithStreamScheduler(FlowtideDotNet.Base.Engine.IStreamScheduler)">
+  WithStreamScheduler(IStreamScheduler)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Replaces the default <a class="xref" href="FlowtideDotNet.Base.Engine.DefaultStreamScheduler.html">DefaultStreamScheduler</a> with a custom <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a>
+implementation for managing trigger scheduling.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DataflowStreamBuilder WithStreamScheduler(IStreamScheduler streamScheduler)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamScheduler</code> <a class="xref" href="FlowtideDotNet.Base.Engine.IStreamScheduler.html">IStreamScheduler</a></dt>
+    <dd><p>The custom scheduler to use.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.Engine.DataflowStreamBuilder.html">DataflowStreamBuilder</a></dt>
+    <dd><p>This builder instance for method chaining.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Engine/DataflowStreamBuilder.cs/#L49" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

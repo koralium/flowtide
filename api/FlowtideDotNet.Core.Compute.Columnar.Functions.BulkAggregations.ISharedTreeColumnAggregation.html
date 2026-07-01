@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface ISharedTreeColumnAggregation | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface ISharedTreeColumnAggregation | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation" class="text-break">
+Interface ISharedTreeColumnAggregation  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.html">Compute</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.html">Columnar</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.html">Functions</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.html">BulkAggregations</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface ISharedTreeColumnAggregation : IColumnBulkAggregation</code></pre>
+  </div>
+
+
+
+
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_NewBatch_FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_EventBatchData_">IColumnBulkAggregation.NewBatch(PrimitiveList&lt;int&gt;, EventBatchData)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_StoreAsync_FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_IColumn___FlowtideDotNet_Core_ColumnStore_EventBatchData_System_ReadOnlySpan_System_Int32__">IColumnBulkAggregation.StoreAsync(PrimitiveList&lt;int&gt;, IColumn[], EventBatchData, ReadOnlySpan&lt;int&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_Compute_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Storage_DataStructures_PrimitiveList_System_Int32__FlowtideDotNet_Core_ColumnStore_EventBatchData_FlowtideDotNet_Core_ColumnStore_ColumnReference_System_Int32_">IColumnBulkAggregation.Compute(ReadOnlySpan&lt;int&gt;, PrimitiveList&lt;int&gt;, EventBatchData, ColumnReference, int)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_FetchValuesAsync_FlowtideDotNet_Core_ColumnStore_IColumn___System_Int32_FlowtideDotNet_Core_ColumnStore_Column_">IColumnBulkAggregation.FetchValuesAsync(IColumn[], int, Column)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_GetValuesAsync_FlowtideDotNet_Core_ColumnStore_IColumn___FlowtideDotNet_Core_ColumnStore_ColumnReference___System_Int32_System_Int32_FlowtideDotNet_Core_ColumnStore_Column_">IColumnBulkAggregation.GetValuesAsync(IColumn[], ColumnReference[], int, int, Column)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_InitializeAsync_System_Int32_FlowtideDotNet_Storage_StateManager_IStateManagerClient_FlowtideDotNet_Storage_Memory_IMemoryAllocator_">IColumnBulkAggregation.InitializeAsync(int, IStateManagerClient, IMemoryAllocator)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.IColumnBulkAggregation.html#FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_IColumnBulkAggregation_CommitAsync">IColumnBulkAggregation.CommitAsync()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_IgnoreNulls_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.IgnoreNulls*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_IgnoreNulls" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.IgnoreNulls">
+  IgnoreNulls
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether null values should be ignored by the shared tree.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool IgnoreNulls { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_SupportsSharedTree_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.SupportsSharedTree*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_SupportsSharedTree" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.SupportsSharedTree">
+  SupportsSharedTree
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Indicates whether this aggregation supports consuming a shared tree instead of owning its own B+ Tree.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool SupportsSharedTree { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_ValueExpression_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.ValueExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_ValueExpression" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.ValueExpression">
+  ValueExpression
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the Substrait Expression representing the aggregated value.
+This is used by the operator to group measures that share the same expression.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Expression ValueExpression { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Substrait.Expressions.Expression.html">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_ValueProjection_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.ValueProjection*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_ValueProjection" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.ValueProjection">
+  ValueProjection
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Exposes the compiled projection function that extracts the aggregated value from an incoming batch.
+This is retrieved by the operator to populate the shared B+ Tree.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">Func&lt;EventBatchData, int, IDataValue&gt; ValueProjection { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchData.html">EventBatchData</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Core.ColumnStore.IDataValue.html">IDataValue</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_BindSharedTree_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.BindSharedTree*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_BindSharedTree_FlowtideDotNet_Storage_Tree_IBPlusTree_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_System_Int32_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueKeyContainer_FlowtideDotNet_Storage_Tree_PrimitiveListValueContainer_System_Int32___System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.BindSharedTree(FlowtideDotNet.Storage.Tree.IBPlusTree{FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference,System.Int32,FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer,FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer{System.Int32}},System.Int32)">
+  BindSharedTree(IBPlusTree&lt;BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer&lt;int&gt;&gt;, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binds the shared B+ Tree instance to this aggregation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void BindSharedTree(IBPlusTree&lt;BulkGroupValueRowReference, int, BulkGroupValueKeyContainer, PrimitiveListValueContainer&lt;int&gt;&gt; sharedTree, int groupingLength)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>sharedTree</code> <a class="xref" href="FlowtideDotNet.Storage.Tree.IBPlusTree-4.html">IBPlusTree</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueKeyContainer.html">BulkGroupValueKeyContainer</a>, <a class="xref" href="FlowtideDotNet.Storage.Tree.PrimitiveListValueContainer-1.html">PrimitiveListValueContainer</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;&gt;</dt>
+    <dd></dd>
+    <dt><code>groupingLength</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_OnValueMutated_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.OnValueMutated*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_OnValueMutated_FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_Stateful_BulkGroupValueRowReference_System_Boolean_System_Int32_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.OnValueMutated(FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference,System.Boolean,System.Int32,System.Int32,System.Int32)">
+  OnValueMutated(BulkGroupValueRowReference, bool, int, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>A hook called during the shared B+ Tree bulk insertion process when a key/value pair is added, updated, or deleted.
+This allows reactive state tracking (like updating distinct count counters).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void OnValueMutated(BulkGroupValueRowReference key, bool exists, int oldWeight, int newWeight, int sortedIndex)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Stateful.BulkGroupValueRowReference.html">BulkGroupValueRowReference</a></dt>
+    <dd></dd>
+    <dt><code>exists</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+    <dt><code>oldWeight</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>newWeight</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>sortedIndex</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_SetGroupMapping_" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.SetGroupMapping*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_Functions_BulkAggregations_ISharedTreeColumnAggregation_SetGroupMapping_System_Int32___" data-uid="FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.ISharedTreeColumnAggregation.SetGroupMapping(System.Int32[])">
+  SetGroupMapping(int[])
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the mapping from physical row index to group sorted index in the main batch.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetGroupMapping(int[] groupSortLookup)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>groupSortLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>[]</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions/BulkAggregations/ISharedTreeColumnAggregation.cs/#L21" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

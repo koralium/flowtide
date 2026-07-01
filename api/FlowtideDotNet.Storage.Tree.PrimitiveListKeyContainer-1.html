@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class PrimitiveListKeyContainer&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class PrimitiveListKeyContainer&lt;T&gt; | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1" class="text-break">
+Class PrimitiveListKeyContainer&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.Tree.html">Tree</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class PrimitiveListKeyContainer&lt;T&gt; : IKeyContainer&lt;T&gt;, IDisposable where T : unmanaged</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">PrimitiveListKeyContainer&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;T&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveListKeyContainer(IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L32"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveListKeyContainer(IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1__ctor_System_Buffers_IMemoryOwner_System_Byte__System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.#ctor(System.Buffers.IMemoryOwner{System.Byte},System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  PrimitiveListKeyContainer(IMemoryOwner&lt;byte&gt;, int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PrimitiveListKeyContainer(IMemoryOwner&lt;byte&gt; memory, int count, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memory</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.imemoryowner-1">IMemoryOwner</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Count_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Count" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of keys in the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Memory_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Memory*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Memory" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Memory">
+  Memory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Memory&lt;byte&gt; Memory { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.memory-1">Memory</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Add_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Add__0_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Add(`0)">
+  Add(T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a key to the end of the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(T key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <span class="xref">T</span></dt>
+    <dd><p>The key to append.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_AddRangeFrom_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.AddRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_AddRangeFrom_FlowtideDotNet_Storage_Tree_IKeyContainer__0__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.AddRangeFrom(FlowtideDotNet.Storage.Tree.IKeyContainer{`0},System.Int32,System.Int32)">
+  AddRangeFrom(IKeyContainer&lt;T&gt;, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a range of keys copied from another container of the same kind.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddRangeFrom(IKeyContainer&lt;T&gt; container, int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>container</code> <a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;T&gt;</dt>
+    <dd><p>The container to copy keys from.</p>
+</dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index in <code class="paramref">container</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to copy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_BinarySearch_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.BinarySearch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_BinarySearch__0_System_Collections_Generic_IComparer__0__" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.BinarySearch(`0,System.Collections.Generic.IComparer{`0})">
+  BinarySearch(T, IComparer&lt;T&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binary searches the container for the key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BinarySearch(T key, IComparer&lt;T&gt; comparer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <span class="xref">T</span></dt>
+    <dd><p>The key to locate.</p>
+</dd>
+    <dt><code>comparer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.icomparer-1">IComparer</a>&lt;T&gt;</dt>
+    <dd><p>The comparer that defines the key ordering.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key, or the bitwise complement of the index where it would be inserted when not found.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_DeleteBatch_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.DeleteBatch(System.ReadOnlySpan{System.Int32})">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L144"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the keys at the given sorted positions in a single pass.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; positions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>positions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The ascending indices of the keys to delete.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Dispose_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Dispose" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L94"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Get_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Get*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Get_System_Int32__" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Get(System.Int32@)">
+  Get(in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L99"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public T Get(in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">T</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_GetByteSize_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_GetByteSize" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.GetByteSize">
+  GetByteSize()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L104"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of all keys, or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_GetByteSize_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.GetByteSize(System.Int32,System.Int32)">
+  GetByteSize(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of the keys between <code class="paramref">start</code> (inclusive) and
+<code class="paramref">end</code> (exclusive), or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize(int start, int end)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key in the range.</p>
+</dd>
+    <dt><code>end</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The exclusive index of the end of the range.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Insert_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Insert*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Insert_System_Int32__0_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Insert(System.Int32,`0)">
+  Insert(int, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L114"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a key at the given index, shifting later keys up. Used for keys stored in a leaf node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert(int index, T key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <span class="xref">T</span></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_InsertFrom_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_InsertFrom__0___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.InsertFrom(`0[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  InsertFrom(T[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts selected keys from an array at scattered positions in a single pass, used when merging a batch into the node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(T[] keys, ReadOnlySpan&lt;int&gt; sortedLookup, ReadOnlySpan&lt;int&gt; targetPositions, Span&lt;int&gt; lookupBuffer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keys</code> T[]</dt>
+    <dd><p>The array to insert keys from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The indices in <code class="paramref">keys</code> of the keys to insert.</p>
+</dd>
+    <dt><code>targetPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The positions to insert at, in pre-insert coordinate space, in ascending order.</p>
+</dd>
+    <dt><code>lookupBuffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A scratch buffer the implementation may use during the insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Insert_Internal_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Insert_Internal*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Insert_Internal_System_Int32__0_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Insert_Internal(System.Int32,`0)">
+  Insert_Internal(int, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a separator key at the given index for use in an internal node, shifting later keys up.
+Containers that store leaf and internal keys differently can handle this case separately.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert_Internal(int index, T key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <span class="xref">T</span></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_RemoveAt_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.RemoveAt(System.Int32)">
+  RemoveAt(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L124"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the key at the given index, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_RemoveRange_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.RemoveRange(System.Int32,System.Int32)">
+  RemoveRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L129"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes a run of keys, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key to remove.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Update_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Tree_PrimitiveListKeyContainer_1_Update_System_Int32__0_" data-uid="FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer`1.Update(System.Int32,`0)">
+  Update(int, T)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Replaces the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Update(int index, T key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to overwrite.</p>
+</dd>
+    <dt><code>key</code> <span class="xref">T</span></dt>
+    <dd><p>The new key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Tree/PrimitiveListKeyContainer.cs/#L25" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

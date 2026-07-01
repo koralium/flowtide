@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class AbstractWatermarkValue | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class AbstractWatermarkValue | Flowtide.NET ">
+      
+      <meta name="description" content="Base abstract class for watermark values used in the dataflow stream to track data progression.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_AbstractWatermarkValue.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.AbstractWatermarkValue%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.AbstractWatermarkValue">
+
+
+
+  <h1 id="FlowtideDotNet_Base_AbstractWatermarkValue" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue" class="text-break">
+Class AbstractWatermarkValue  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L65"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Base abstract class for watermark values used in the dataflow stream to track data progression.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class AbstractWatermarkValue : IComparable&lt;AbstractWatermarkValue&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">AbstractWatermarkValue</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.icomparable-1">IComparable</a>&lt;<a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a>&gt;</div>
+    </dd>
+  </dl>
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue-1.html">AbstractWatermarkValue&lt;T&gt;</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_AbstractWatermarkValue_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This class provides a common structure for all watermark values,
+including a BatchID that is used to split up a watermark with the same value into multiple batches.</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_BatchID_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.BatchID*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_BatchID" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.BatchID">
+  BatchID
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L83"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the batch identifier associated with this watermark.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long BatchID { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_AbstractWatermarkValue_BatchID_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_BatchID">BatchID</a> is utilized when a single watermark duration or metric needs to be processed
+in chunks. By incrementing this ID, the engine splits a primary watermark value into multiple, ordered sub-batches.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_TypeId_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.TypeId*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_TypeId" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.TypeId">
+  TypeId
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the unique identifier for the specific type of watermark.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract int TypeId { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_AbstractWatermarkValue_TypeId_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Used internally to differentiate between various implementations of watermarks during comparisons.
+Ensures that operations such as equating and sorting only occur between watermarks of the exact same type.</p>
+</div>
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_Compare_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Compare*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_Compare_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Compare(FlowtideDotNet.Base.AbstractWatermarkValue)">
+  Compare(AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Compares the internal value of the watermark with another abstract watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract int Compare(AbstractWatermarkValue? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The other watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>An integer indicating sort order.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_AbstractWatermarkValue_Compare_FlowtideDotNet_Base_AbstractWatermarkValue__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This base implementation ignores <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_BatchID">BatchID</a>. The full comparable sequence is evaluated in <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_CompareTo_FlowtideDotNet_Base_AbstractWatermarkValue_">CompareTo(AbstractWatermarkValue?)</a>.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_CompareTo_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.CompareTo*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_CompareTo_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.CompareTo(FlowtideDotNet.Base.AbstractWatermarkValue)">
+  CompareTo(AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L119"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Compares the current instance with another watermark and returns an integer that indicates their relative position in the sort order.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int CompareTo(AbstractWatermarkValue? other)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>other</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>An abstract watermark to compare with this instance.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A value that indicates the relative order of the objects being compared.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_AbstractWatermarkValue_CompareTo_FlowtideDotNet_Base_AbstractWatermarkValue__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The comparison first checks the core watermark value using <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_Compare_FlowtideDotNet_Base_AbstractWatermarkValue_">Compare(AbstractWatermarkValue?)</a>.
+If the values are equal, the tie is broken by comparing the <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_BatchID">BatchID</a> properties.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_Equals_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Equals*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_Equals_System_Object_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Equals(System.Object)">
+  Equals(object?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L142"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override bool Equals(object? obj)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>obj</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></dt>
+    <dd><p>The object to compare with the current object.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the specified object is equal to the current object; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_GetHashCode_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.GetHashCode*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_GetHashCode" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.GetHashCode">
+  GetHashCode()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L183"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Base hash function of a watermark value, only looks at typeId and batchId.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override int GetHashCode()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>A hash code for the current object.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Base_AbstractWatermarkValue_GetHashCode_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>The base implementation combines <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_TypeId">TypeId</a> and <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html#FlowtideDotNet_Base_AbstractWatermarkValue_BatchID">BatchID</a>, which may result in collisions
+if there are many unique values. Implementors of the abstraction should provide their own hash code logic for fewer collisions.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_Min_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Min*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_Min_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.Min(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  Min(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L91"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the smaller of two watermark values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static AbstractWatermarkValue? Min(AbstractWatermarkValue? a, AbstractWatermarkValue? b)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>a</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark value.</p>
+</dd>
+    <dt><code>b</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark value.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The smaller of the two watermarks, or <code>null</code> if either is <code>null</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="operators">Operators
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_Equality_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_Equality*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_Equality_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_Equality(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator ==(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L161"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two specified watermark values have the same value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator ==(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the value of left is the same as the value of right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_GreaterThan_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_GreaterThan*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_GreaterThan_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_GreaterThan(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator &gt;(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L229"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether one specified watermark value is greater than another specified watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if left is strictly greater than right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_GreaterThanOrEqual_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_GreaterThanOrEqual*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_GreaterThanOrEqual_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_GreaterThanOrEqual(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator &gt;=(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L240"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether one specified watermark value is greater than or equal to another specified watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &gt;=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if left is greater than or equal to right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_Inequality_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_Inequality*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_Inequality_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_Inequality(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator !=(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L196"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether two specified watermark values have different values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator !=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if the value of left is different from the value of right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_LessThan_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_LessThan*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_LessThan_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_LessThan(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator &lt;(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L207"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether one specified watermark value is less than another specified watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if left is strictly less than right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_AbstractWatermarkValue_op_LessThanOrEqual_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_LessThanOrEqual*"></a>
+
+  <h3 id="FlowtideDotNet_Base_AbstractWatermarkValue_op_LessThanOrEqual_FlowtideDotNet_Base_AbstractWatermarkValue_FlowtideDotNet_Base_AbstractWatermarkValue_" data-uid="FlowtideDotNet.Base.AbstractWatermarkValue.op_LessThanOrEqual(FlowtideDotNet.Base.AbstractWatermarkValue,FlowtideDotNet.Base.AbstractWatermarkValue)">
+  operator &lt;=(AbstractWatermarkValue?, AbstractWatermarkValue?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L218"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Determines whether one specified watermark value is less than or equal to another specified watermark value.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static bool operator &lt;=(AbstractWatermarkValue? left, AbstractWatermarkValue? right)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>left</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The first watermark to compare.</p>
+</dd>
+    <dt><code>right</code> <a class="xref" href="FlowtideDotNet.Base.AbstractWatermarkValue.html">AbstractWatermarkValue</a></dt>
+    <dd><p>The second watermark to compare.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd><p><code>true</code> if left is less than or equal to right; otherwise, <code>false</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/AbstractWatermarkValue.cs/#L65" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

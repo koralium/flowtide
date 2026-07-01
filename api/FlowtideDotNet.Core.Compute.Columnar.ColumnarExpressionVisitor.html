@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ColumnarExpressionVisitor | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ColumnarExpressionVisitor | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor" class="text-break">
+Class ColumnarExpressionVisitor  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.html">Compute</a>.<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.html">Columnar</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ColumnarExpressionVisitor : ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html">ExpressionVisitor</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a>&gt;</div>
+      <div><span class="xref">ColumnarExpressionVisitor</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_Visit_FlowtideDotNet_Substrait_Expressions_Expression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.Visit(Expression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitDirectFieldReference_FlowtideDotNet_Substrait_Expressions_DirectFieldReference__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitDirectFieldReference(DirectFieldReference, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStringLiteral_FlowtideDotNet_Substrait_Expressions_Literals_StringLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitStringLiteral(StringLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitArrayLiteral_FlowtideDotNet_Substrait_Expressions_Literals_ArrayLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitArrayLiteral(ArrayLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNumericLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NumericLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitNumericLiteral(NumericLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNullLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NullLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitNullLiteral(NullLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitIfThen_FlowtideDotNet_Substrait_Expressions_IfThen_IfThenExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitIfThen(IfThenExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBoolLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BoolLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitBoolLiteral(BoolLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitScalarFunction_FlowtideDotNet_Substrait_Expressions_ScalarFunction__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitScalarFunction(ScalarFunction, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSingularOrList_FlowtideDotNet_Substrait_Expressions_SingularOrListExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitSingularOrList(SingularOrListExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMultiOrList_FlowtideDotNet_Substrait_Expressions_MultiOrListExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitMultiOrList(MultiOrListExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMapNestedExpression_FlowtideDotNet_Substrait_Expressions_MapNestedExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitMapNestedExpression(MapNestedExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitListNestedExpression_FlowtideDotNet_Substrait_Expressions_ListNestedExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitListNestedExpression(ListNestedExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitCastExpression_FlowtideDotNet_Substrait_Expressions_CastExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitCastExpression(CastExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStructExpression_FlowtideDotNet_Substrait_Expressions_StructExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitStructExpression(StructExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBinaryLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BinaryLiteral__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitBinaryLiteral(BinaryLiteral, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor-2.html#FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSetPredicateExpression_FlowtideDotNet_Substrait_Expressions_SetPredicateExpression__1_">ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;.VisitSetPredicateExpression(SetPredicateExpression, ColumnParameterInfo)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor__ctor_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor__ctor_FlowtideDotNet_Core_Compute_IFunctionsRegister_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.#ctor(FlowtideDotNet.Core.Compute.IFunctionsRegister)">
+  ColumnarExpressionVisitor(IFunctionsRegister)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ColumnarExpressionVisitor(IFunctionsRegister functionsRegister)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>functionsRegister</code> <a class="xref" href="FlowtideDotNet.Core.Compute.IFunctionsRegister.html">IFunctionsRegister</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitArrayLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitArrayLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitArrayLiteral_FlowtideDotNet_Substrait_Expressions_Literals_ArrayLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitArrayLiteral(FlowtideDotNet.Substrait.Expressions.Literals.ArrayLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitArrayLiteral(ArrayLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L139"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitArrayLiteral(ArrayLiteral arrayLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>arrayLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.ArrayLiteral.html">ArrayLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitBinaryLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitBinaryLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitBinaryLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BinaryLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitBinaryLiteral(FlowtideDotNet.Substrait.Expressions.Literals.BinaryLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitBinaryLiteral(BinaryLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L159"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitBinaryLiteral(BinaryLiteral binaryLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>binaryLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.BinaryLiteral.html">BinaryLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitBoolLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitBoolLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitBoolLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BoolLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitBoolLiteral(FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitBoolLiteral(BoolLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitBoolLiteral(BoolLiteral boolLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>boolLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral.html">BoolLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitCastExpression_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitCastExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitCastExpression_FlowtideDotNet_Substrait_Expressions_CastExpression_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitCastExpression(FlowtideDotNet.Substrait.Expressions.CastExpression,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitCastExpression(CastExpression, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L164"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitCastExpression(CastExpression castExpression, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>castExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.CastExpression.html">CastExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitDirectFieldReference_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitDirectFieldReference*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitDirectFieldReference_FlowtideDotNet_Substrait_Expressions_DirectFieldReference_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitDirectFieldReference(FlowtideDotNet.Substrait.Expressions.DirectFieldReference,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitDirectFieldReference(DirectFieldReference, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates the following code:</p>
+<p>batch.GetColumn(columnIndex).GetValueAt(indexParameter, resultDataValue, childReferenceSegment);</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>directFieldReference</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.DirectFieldReference.html">DirectFieldReference</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitIfThen_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitIfThen*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitIfThen_FlowtideDotNet_Substrait_Expressions_IfThen_IfThenExpression_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitIfThen(FlowtideDotNet.Substrait.Expressions.IfThen.IfThenExpression,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitIfThen(IfThenExpression, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L200"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitIfThen(IfThenExpression ifThenExpression, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ifThenExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.IfThen.IfThenExpression.html">IfThenExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitListNestedExpression_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitListNestedExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitListNestedExpression_FlowtideDotNet_Substrait_Expressions_ListNestedExpression_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitListNestedExpression(FlowtideDotNet.Substrait.Expressions.ListNestedExpression,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitListNestedExpression(ListNestedExpression, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L246"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitListNestedExpression(ListNestedExpression listNestedExpression, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listNestedExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ListNestedExpression.html">ListNestedExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitMapNestedExpression_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitMapNestedExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitMapNestedExpression_FlowtideDotNet_Substrait_Expressions_MapNestedExpression_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitMapNestedExpression(FlowtideDotNet.Substrait.Expressions.MapNestedExpression,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitMapNestedExpression(MapNestedExpression, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L265"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>mapNestedExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.MapNestedExpression.html">MapNestedExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitNullLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitNullLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitNullLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NullLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitNullLiteral(FlowtideDotNet.Substrait.Expressions.Literals.NullLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitNullLiteral(NullLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L195"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitNullLiteral(NullLiteral nullLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nullLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.NullLiteral.html">NullLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitNumericLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitNumericLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitNumericLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NumericLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitNumericLiteral(FlowtideDotNet.Substrait.Expressions.Literals.NumericLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitNumericLiteral(NumericLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L150"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitNumericLiteral(NumericLiteral numericLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>numericLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.NumericLiteral.html">NumericLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitScalarFunction_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitScalarFunction*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitScalarFunction_FlowtideDotNet_Substrait_Expressions_ScalarFunction_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitScalarFunction(FlowtideDotNet.Substrait.Expressions.ScalarFunction,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitScalarFunction(ScalarFunction, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitScalarFunction(ScalarFunction scalarFunction, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>scalarFunction</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ScalarFunction.html">ScalarFunction</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitSingularOrList_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitSingularOrList*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitSingularOrList_FlowtideDotNet_Substrait_Expressions_SingularOrListExpression_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitSingularOrList(FlowtideDotNet.Substrait.Expressions.SingularOrListExpression,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitSingularOrList(SingularOrListExpression, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L283"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitSingularOrList(SingularOrListExpression singularOrList, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>singularOrList</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.SingularOrListExpression.html">SingularOrListExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitStringLiteral_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitStringLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_VisitStringLiteral_FlowtideDotNet_Substrait_Expressions_Literals_StringLiteral_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.VisitStringLiteral(FlowtideDotNet.Substrait.Expressions.Literals.StringLiteral,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo)">
+  VisitStringLiteral(StringLiteral, ColumnParameterInfo)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Expression? VisitStringLiteral(StringLiteral stringLiteral, ColumnParameterInfo state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stringLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.StringLiteral.html">StringLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.expression">Expression</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnarExpressionVisitor.cs/#L27" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

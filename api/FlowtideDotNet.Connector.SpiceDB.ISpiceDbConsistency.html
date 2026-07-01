@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface ISpiceDbConsistency | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface ISpiceDbConsistency | Flowtide.NET ">
+      
+      <meta name="description" content="Represents the consistency requirements for a SpiceDB API request, controlling how data freshness is balanced against latency.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency">
+
+
+
+  <h1 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency" class="text-break">
+Interface ISpiceDbConsistency  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Connector.html">Connector</a>.<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.html">SpiceDB</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Connector.SpiceDB.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents the consistency requirements for a SpiceDB API request,
+controlling how data freshness is balanced against latency.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface ISpiceDbConsistency</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This interface wraps the Authzed API v1 <code>Consistency</code> message. Each request must
+specify exactly one consistency requirement. Use the static factory methods
+(<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateFullyConsistent">CreateFullyConsistent()</a>, <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateMinimizeLatency">CreateMinimizeLatency()</a>,
+<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtExactSnapshot_FlowtideDotNet_Connector_SpiceDB_ISpiceDbZedToken_">CreateAtExactSnapshot(ISpiceDbZedToken)</a>, <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtLeastAsFresh_FlowtideDotNet_Connector_SpiceDB_ISpiceDbZedToken_">CreateAtLeastAsFresh(ISpiceDbZedToken)</a>) to create instances.</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtExactSnapshot_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.AtExactSnapshot*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtExactSnapshot" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.AtExactSnapshot">
+  AtExactSnapshot
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L113"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a> that specifies the exact snapshot
+at which all data used in the API call must be evaluated.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">ISpiceDbZedToken AtExactSnapshot { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtExactSnapshot_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>If the specified snapshot is no longer available, an error will be returned to the caller.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtLeastAsFresh_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.AtLeastAsFresh*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtLeastAsFresh" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.AtLeastAsFresh">
+  AtLeastAsFresh
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L123"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a> that specifies the minimum freshness
+of data used in the API call.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">ISpiceDbZedToken AtLeastAsFresh { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtLeastAsFresh_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>All data used in the API call must be at least as fresh as that found in the provided
+<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a>. More recent data may be used if it is available or faster.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_FullyConsistent_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.FullyConsistent*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_FullyConsistent" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.FullyConsistent">
+  FullyConsistent
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets a value indicating that all data used in the API call must be
+at the most recent snapshot found.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool FullyConsistent { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_FullyConsistent_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Using this option can be quite slow. Unless there is a specific need to enforce
+full consistency, it is recommended to use <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtLeastAsFresh">AtLeastAsFresh</a> with a stored
+<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a> instead.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_HasFullyConsistent_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.HasFullyConsistent*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_HasFullyConsistent" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.HasFullyConsistent">
+  HasFullyConsistent
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating whether <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_FullyConsistent">FullyConsistent</a> has been set on this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool HasFullyConsistent { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_HasMinimizeLatency_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.HasMinimizeLatency*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_HasMinimizeLatency" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.HasMinimizeLatency">
+  HasMinimizeLatency
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets a value indicating whether <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_MinimizeLatency">MinimizeLatency</a> has been set on this instance.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool HasMinimizeLatency { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_MinimizeLatency_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.MinimizeLatency*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_MinimizeLatency" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.MinimizeLatency">
+  MinimizeLatency
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L104"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets a value indicating that the latency for the call should be minimized
+by having the system select the fastest snapshot available.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">bool MinimizeLatency { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtExactSnapshot_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateAtExactSnapshot*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtExactSnapshot_FlowtideDotNet_Connector_SpiceDB_ISpiceDbZedToken_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateAtExactSnapshot(FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken)">
+  CreateAtExactSnapshot(ISpiceDbZedToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L166"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> instance that requires all data used
+in the API call to be evaluated at the exact snapshot identified by <code class="paramref">zedToken</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ISpiceDbConsistency CreateAtExactSnapshot(ISpiceDbZedToken zedToken)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>zedToken</code> <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a></dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a> identifying the exact snapshot to use.
+If the snapshot is no longer available, the API call will return an error.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a></dt>
+    <dd><p>An <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> with <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtExactSnapshot">AtExactSnapshot</a> set to <code class="paramref">zedToken</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtLeastAsFresh_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateAtLeastAsFresh*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateAtLeastAsFresh_FlowtideDotNet_Connector_SpiceDB_ISpiceDbZedToken_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateAtLeastAsFresh(FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken)">
+  CreateAtLeastAsFresh(ISpiceDbZedToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L184"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> instance that requires all data used
+in the API call to be at least as fresh as the snapshot identified by <code class="paramref">zedToken</code>.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ISpiceDbConsistency CreateAtLeastAsFresh(ISpiceDbZedToken zedToken)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>zedToken</code> <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a></dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbZedToken.html">ISpiceDbZedToken</a> identifying the minimum required freshness.
+More recent data may be used if it is available or faster.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a></dt>
+    <dd><p>An <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> with <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_AtLeastAsFresh">AtLeastAsFresh</a> set to <code class="paramref">zedToken</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateFullyConsistent_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateFullyConsistent*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateFullyConsistent" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateFullyConsistent">
+  CreateFullyConsistent()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L132"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> instance that requires all data used
+in the API call to be at the most recent snapshot found.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ISpiceDbConsistency CreateFullyConsistent()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a></dt>
+    <dd><p>An <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> with <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_FullyConsistent">FullyConsistent</a> set to <code>true</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateMinimizeLatency_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateMinimizeLatency*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_CreateMinimizeLatency" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.CreateMinimizeLatency">
+  CreateMinimizeLatency()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates an <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> instance that minimizes latency
+by having the system select the fastest available snapshot.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ISpiceDbConsistency CreateMinimizeLatency()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a></dt>
+    <dd><p>An <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html">ISpiceDbConsistency</a> with <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbConsistency.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbConsistency_MinimizeLatency">MinimizeLatency</a> set to <code>true</code>.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbConsistency.cs/#L77" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

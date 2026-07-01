@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ExpressionVisitor&lt;TOutput, TState&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ExpressionVisitor&lt;TOutput, TState&gt; | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Substrait.Expressions.ExpressionVisitor%602%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2">
+
+
+
+  <h1 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2" class="text-break">
+Class ExpressionVisitor&lt;TOutput, TState&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Substrait.html">Substrait</a>.<a class="xref" href="FlowtideDotNet.Substrait.Expressions.html">Expressions</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Substrait.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ExpressionVisitor&lt;TOutput, TState&gt;</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>TOutput</code></dt>
+    <dd></dd>
+    <dt><code>TState</code></dt>
+    <dd></dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ExpressionVisitor&lt;TOutput, TState&gt;</span></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist derived">
+    <dt>Derived</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html">ColumnarExpressionVisitor</a></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_Visit_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.Visit*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_Visit_FlowtideDotNet_Substrait_Expressions_Expression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.Visit(FlowtideDotNet.Substrait.Expressions.Expression,`1)">
+  Visit(Expression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? Visit(Expression expression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>expression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Expression.html">Expression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitArrayLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitArrayLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitArrayLiteral_FlowtideDotNet_Substrait_Expressions_Literals_ArrayLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitArrayLiteral(FlowtideDotNet.Substrait.Expressions.Literals.ArrayLiteral,`1)">
+  VisitArrayLiteral(ArrayLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitArrayLiteral(ArrayLiteral arrayLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>arrayLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.ArrayLiteral.html">ArrayLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBinaryLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitBinaryLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBinaryLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BinaryLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitBinaryLiteral(FlowtideDotNet.Substrait.Expressions.Literals.BinaryLiteral,`1)">
+  VisitBinaryLiteral(BinaryLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L177"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitBinaryLiteral(BinaryLiteral binaryLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>binaryLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.BinaryLiteral.html">BinaryLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBoolLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitBoolLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitBoolLiteral_FlowtideDotNet_Substrait_Expressions_Literals_BoolLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitBoolLiteral(FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral,`1)">
+  VisitBoolLiteral(BoolLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitBoolLiteral(BoolLiteral boolLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>boolLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.BoolLiteral.html">BoolLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitCastExpression_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitCastExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitCastExpression_FlowtideDotNet_Substrait_Expressions_CastExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitCastExpression(FlowtideDotNet.Substrait.Expressions.CastExpression,`1)">
+  VisitCastExpression(CastExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L159"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitCastExpression(CastExpression castExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>castExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.CastExpression.html">CastExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitDirectFieldReference_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitDirectFieldReference*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitDirectFieldReference_FlowtideDotNet_Substrait_Expressions_DirectFieldReference__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitDirectFieldReference(FlowtideDotNet.Substrait.Expressions.DirectFieldReference,`1)">
+  VisitDirectFieldReference(DirectFieldReference, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitDirectFieldReference(DirectFieldReference directFieldReference, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>directFieldReference</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.DirectFieldReference.html">DirectFieldReference</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitIfThen_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitIfThen*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitIfThen_FlowtideDotNet_Substrait_Expressions_IfThen_IfThenExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitIfThen(FlowtideDotNet.Substrait.Expressions.IfThen.IfThenExpression,`1)">
+  VisitIfThen(IfThenExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L59"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitIfThen(IfThenExpression ifThenExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>ifThenExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.IfThen.IfThenExpression.html">IfThenExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitListNestedExpression_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitListNestedExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitListNestedExpression_FlowtideDotNet_Substrait_Expressions_ListNestedExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitListNestedExpression(FlowtideDotNet.Substrait.Expressions.ListNestedExpression,`1)">
+  VisitListNestedExpression(ListNestedExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L147"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitListNestedExpression(ListNestedExpression listNestedExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>listNestedExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ListNestedExpression.html">ListNestedExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMapNestedExpression_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitMapNestedExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMapNestedExpression_FlowtideDotNet_Substrait_Expressions_MapNestedExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitMapNestedExpression(FlowtideDotNet.Substrait.Expressions.MapNestedExpression,`1)">
+  VisitMapNestedExpression(MapNestedExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L134"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitMapNestedExpression(MapNestedExpression mapNestedExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>mapNestedExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.MapNestedExpression.html">MapNestedExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMultiOrList_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitMultiOrList*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitMultiOrList_FlowtideDotNet_Substrait_Expressions_MultiOrListExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitMultiOrList(FlowtideDotNet.Substrait.Expressions.MultiOrListExpression,`1)">
+  VisitMultiOrList(MultiOrListExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L109"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitMultiOrList(MultiOrListExpression multiOrList, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>multiOrList</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.MultiOrListExpression.html">MultiOrListExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNullLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitNullLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNullLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NullLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitNullLiteral(FlowtideDotNet.Substrait.Expressions.Literals.NullLiteral,`1)">
+  VisitNullLiteral(NullLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitNullLiteral(NullLiteral nullLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>nullLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.NullLiteral.html">NullLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNumericLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitNumericLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitNumericLiteral_FlowtideDotNet_Substrait_Expressions_Literals_NumericLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitNumericLiteral(FlowtideDotNet.Substrait.Expressions.Literals.NumericLiteral,`1)">
+  VisitNumericLiteral(NumericLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitNumericLiteral(NumericLiteral numericLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>numericLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.NumericLiteral.html">NumericLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitScalarFunction_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitScalarFunction*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitScalarFunction_FlowtideDotNet_Substrait_Expressions_ScalarFunction__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitScalarFunction(FlowtideDotNet.Substrait.Expressions.ScalarFunction,`1)">
+  VisitScalarFunction(ScalarFunction, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L81"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitScalarFunction(ScalarFunction scalarFunction, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>scalarFunction</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ScalarFunction.html">ScalarFunction</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSetPredicateExpression_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitSetPredicateExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSetPredicateExpression_FlowtideDotNet_Substrait_Expressions_SetPredicateExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitSetPredicateExpression(FlowtideDotNet.Substrait.Expressions.SetPredicateExpression,`1)">
+  VisitSetPredicateExpression(SetPredicateExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L182"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitSetPredicateExpression(SetPredicateExpression setPredicateExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>setPredicateExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.SetPredicateExpression.html">SetPredicateExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSingularOrList_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitSingularOrList*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitSingularOrList_FlowtideDotNet_Substrait_Expressions_SingularOrListExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitSingularOrList(FlowtideDotNet.Substrait.Expressions.SingularOrListExpression,`1)">
+  VisitSingularOrList(SingularOrListExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitSingularOrList(SingularOrListExpression singularOrList, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>singularOrList</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.SingularOrListExpression.html">SingularOrListExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStringLiteral_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitStringLiteral*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStringLiteral_FlowtideDotNet_Substrait_Expressions_Literals_StringLiteral__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitStringLiteral(FlowtideDotNet.Substrait.Expressions.Literals.StringLiteral,`1)">
+  VisitStringLiteral(StringLiteral, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitStringLiteral(StringLiteral stringLiteral, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stringLiteral</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.Literals.StringLiteral.html">StringLiteral</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStructExpression_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitStructExpression*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Expressions_ExpressionVisitor_2_VisitStructExpression_FlowtideDotNet_Substrait_Expressions_StructExpression__1_" data-uid="FlowtideDotNet.Substrait.Expressions.ExpressionVisitor`2.VisitStructExpression(FlowtideDotNet.Substrait.Expressions.StructExpression,`1)">
+  VisitStructExpression(StructExpression, TState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L165"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual TOutput? VisitStructExpression(StructExpression structExpression, TState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>structExpression</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.StructExpression.html">StructExpression</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <span class="xref">TState</span></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><span class="xref">TOutput</span></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Expressions/ExpressionVisitor.cs/#L19" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

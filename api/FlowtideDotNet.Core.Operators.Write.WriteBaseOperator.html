@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class WriteBaseOperator | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class WriteBaseOperator | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_Operators_Write_WriteBaseOperator.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.Operators.Write.WriteBaseOperator%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.Operators.Write.WriteBaseOperator">
+
+
+
+  <h1 id="FlowtideDotNet_Core_Operators_Write_WriteBaseOperator" data-uid="FlowtideDotNet.Core.Operators.Write.WriteBaseOperator" class="text-break">
+Class WriteBaseOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/WriteBaseOperator.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.html">Operators</a>.<a class="xref" href="FlowtideDotNet.Core.Operators.Write.html">Write</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public abstract class WriteBaseOperator : EgressVertex&lt;StreamEventBatch&gt;, ITargetBlock&lt;IStreamEvent&gt;, IDataflowBlock, IStreamEgressVertex, IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html">EgressVertex</a>&lt;<a class="xref" href="FlowtideDotNet.Core.StreamEventBatch.html">StreamEventBatch</a>&gt;</div>
+      <div><span class="xref">WriteBaseOperator</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.itargetblock-1">ITargetBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.idataflowblock">IDataflowBlock</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamEgressVertex.html">IStreamEgressVertex</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_StreamVersion">EgressVertex&lt;StreamEventBatch&gt;.StreamVersion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Name">EgressVertex&lt;StreamEventBatch&gt;.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_StreamName">EgressVertex&lt;StreamEventBatch&gt;.StreamName</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Metrics">EgressVertex&lt;StreamEventBatch&gt;.Metrics</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_DisplayName">EgressVertex&lt;StreamEventBatch&gt;.DisplayName</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CurrentCheckpointId">EgressVertex&lt;StreamEventBatch&gt;.CurrentCheckpointId</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Logger">EgressVertex&lt;StreamEventBatch&gt;.Logger</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CancellationToken">EgressVertex&lt;StreamEventBatch&gt;.CancellationToken</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_MemoryAllocator">EgressVertex&lt;StreamEventBatch&gt;.MemoryAllocator</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OnWatermark_FlowtideDotNet_Base_Watermark_">EgressVertex&lt;StreamEventBatch&gt;.OnWatermark(Watermark)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OnTrigger_System_String_System_Object_">EgressVertex&lt;StreamEventBatch&gt;.OnTrigger(string, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OnCheckpoint_System_Int64_">EgressVertex&lt;StreamEventBatch&gt;.OnCheckpoint(long)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OnRecieve__0_System_Int64_">EgressVertex&lt;StreamEventBatch&gt;.OnRecieve(StreamEventBatch, long)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Completion">EgressVertex&lt;StreamEventBatch&gt;.Completion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Complete">EgressVertex&lt;StreamEventBatch&gt;.Complete()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Fault_System_Exception_">EgressVertex&lt;StreamEventBatch&gt;.Fault(Exception)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_">EgressVertex&lt;StreamEventBatch&gt;.Initialize(string, long, long, IVertexHandler, StreamVersionInformation)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_SetHealth_System_Boolean_">EgressVertex&lt;StreamEventBatch&gt;.SetHealth(bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_">EgressVertex&lt;StreamEventBatch&gt;.InitializeOrRestore(long, IStateManagerClient)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OfferMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_FlowtideDotNet_Base_IStreamEvent_System_Threading_Tasks_Dataflow_ISourceBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean_">EgressVertex&lt;StreamEventBatch&gt;.OfferMessage(DataflowMessageHeader, IStreamEvent, ISourceBlock&lt;IStreamEvent&gt;, bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Compact">EgressVertex&lt;StreamEventBatch&gt;.Compact()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_">EgressVertex&lt;StreamEventBatch&gt;.QueueTrigger(TriggerEvent)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_DisposeAsync">EgressVertex&lt;StreamEventBatch&gt;.DisposeAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Link">EgressVertex&lt;StreamEventBatch&gt;.Link()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CreateBlock">EgressVertex&lt;StreamEventBatch&gt;.CreateBlock()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_DeleteAsync">EgressVertex&lt;StreamEventBatch&gt;.DeleteAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Setup_System_String_System_String_">EgressVertex&lt;StreamEventBatch&gt;.Setup(string, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_GetLinks">EgressVertex&lt;StreamEventBatch&gt;.GetLinks()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_CheckForPause">EgressVertex&lt;StreamEventBatch&gt;.CheckForPause()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Pause">EgressVertex&lt;StreamEventBatch&gt;.Pause()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_Resume">EgressVertex&lt;StreamEventBatch&gt;.Resume()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_BeforeSaveCheckpoint">EgressVertex&lt;StreamEventBatch&gt;.BeforeSaveCheckpoint()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__">EgressVertex&lt;StreamEventBatch&gt;.FailAndRollback(Exception, long?)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.EgressVertex-1.html#FlowtideDotNet_Base_Vertices_EgressVertex_1_OnFailure_System_Int64_">EgressVertex&lt;StreamEventBatch&gt;.OnFailure(long)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Write_WriteBaseOperator__ctor_" data-uid="FlowtideDotNet.Core.Operators.Write.WriteBaseOperator.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Write_WriteBaseOperator__ctor_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Core.Operators.Write.WriteBaseOperator.#ctor(System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
+  WriteBaseOperator(ExecutionDataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/WriteBaseOperator.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public WriteBaseOperator(ExecutionDataflowBlockOptions executionDataflowBlockOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>executionDataflowBlockOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.executiondataflowblockoptions">ExecutionDataflowBlockOptions</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/WriteBaseOperator.cs/#L18" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

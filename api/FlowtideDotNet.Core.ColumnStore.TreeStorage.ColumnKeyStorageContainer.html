@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class ColumnKeyStorageContainer | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class ColumnKeyStorageContainer | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer">
+
+
+
+  <h1 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer" class="text-break">
+Class ColumnKeyStorageContainer  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L18"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Core.html">Core</a>.<a class="xref" href="FlowtideDotNet.Core.ColumnStore.html">ColumnStore</a>.<a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.html">TreeStorage</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Core.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class ColumnKeyStorageContainer : IKeyContainer&lt;ColumnRowReference&gt;, IDisposable</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">ColumnKeyStorageContainer</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.idisposable">IDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer__ctor_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer__ctor_System_Int32_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.#ctor(System.Int32,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  ColumnKeyStorageContainer(int, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L27"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ColumnKeyStorageContainer(int columnCount, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>columnCount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Count_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Count*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Count" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Count">
+  Count
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The number of keys in the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int Count { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Data_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Data*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Data" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Data">
+  Data
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public EventBatchData Data { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchData.html">EventBatchData</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Add_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Add*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Add_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Add(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
+  Add(ColumnRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a key to the end of the container.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Add(ColumnRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd><p>The key to append.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_AddRangeFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.AddRangeFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_AddRangeFrom_FlowtideDotNet_Storage_Tree_IKeyContainer_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference__System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.AddRangeFrom(FlowtideDotNet.Storage.Tree.IKeyContainer{FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference},System.Int32,System.Int32)">
+  AddRangeFrom(IKeyContainer&lt;ColumnRowReference&gt;, int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L61"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Appends a range of keys copied from another container of the same kind.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void AddRangeFrom(IKeyContainer&lt;ColumnRowReference&gt; container, int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>container</code> <a class="xref" href="FlowtideDotNet.Storage.Tree.IKeyContainer-1.html">IKeyContainer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a>&gt;</dt>
+    <dd><p>The container to copy keys from.</p>
+</dd>
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index in <code class="paramref">container</code> to start copying from.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to copy.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_BinarySearch_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.BinarySearch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_BinarySearch_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_System_Collections_Generic_IComparer_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference__" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.BinarySearch(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference,System.Collections.Generic.IComparer{FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference})">
+  BinarySearch(ColumnRowReference, IComparer&lt;ColumnRowReference&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Binary searches the container for the key.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int BinarySearch(ColumnRowReference key, IComparer&lt;ColumnRowReference&gt; comparer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd><p>The key to locate.</p>
+</dd>
+    <dt><code>comparer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.icomparer-1">IComparer</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a>&gt;</dt>
+    <dd><p>The comparer that defines the key ordering.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key, or the bitwise complement of the index where it would be inserted when not found.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_DeleteBatch_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.DeleteBatch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.DeleteBatch(System.ReadOnlySpan{System.Int32})">
+  DeleteBatch(ReadOnlySpan&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L189"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the keys at the given sorted positions in a single pass.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void DeleteBatch(ReadOnlySpan&lt;int&gt; positions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>positions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The ascending indices of the keys to delete.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Dispose_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Dispose*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Dispose" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Dispose">
+  Dispose()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Performs application-defined tasks associated with freeing, releasing, or resetting unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Dispose()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Finalize_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Finalize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Finalize" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Finalize">
+  ~ColumnKeyStorageContainer()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected ~ColumnKeyStorageContainer()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Get_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Get*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Get_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Get(System.Int32@)">
+  Get(in int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public ColumnRowReference Get(in int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_GetByteSize_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_GetByteSize" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.GetByteSize">
+  GetByteSize()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L149"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of all keys, or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_GetByteSize_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.GetByteSize*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.GetByteSize(System.Int32,System.Int32)">
+  GetByteSize(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L154"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Returns the serialized byte size of the keys between <code class="paramref">start</code> (inclusive) and
+<code class="paramref">end</code> (exclusive), or -1 for containers that do not track byte sizes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int GetByteSize(int start, int end)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key in the range.</p>
+</dd>
+    <dt><code>end</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The exclusive index of the end of the range.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Insert_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Insert*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Insert_System_Int32_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Insert(System.Int32,FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
+  Insert(int, ColumnRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a key at the given index, shifting later keys up. Used for keys stored in a leaf node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert(int index, ColumnRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_InsertFrom_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.InsertFrom*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_InsertFrom_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference___System_ReadOnlySpan_System_Int32__System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.InsertFrom(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference[],System.ReadOnlySpan{System.Int32},System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
+  InsertFrom(ColumnRowReference[], ReadOnlySpan&lt;int&gt;, ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L159"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts selected keys from an array at scattered positions in a single pass, used when merging a batch into the node.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan&lt;int&gt; sortedLookup, ReadOnlySpan&lt;int&gt; targetPositions, Span&lt;int&gt; lookupBuffer)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>keys</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a>[]</dt>
+    <dd><p>The array to insert keys from.</p>
+</dd>
+    <dt><code>sortedLookup</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The indices in <code class="paramref">keys</code> of the keys to insert.</p>
+</dd>
+    <dt><code>targetPositions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>The positions to insert at, in pre-insert coordinate space, in ascending order.</p>
+</dd>
+    <dt><code>lookupBuffer</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>A scratch buffer the implementation may use during the insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Insert_Internal_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Insert_Internal*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Insert_Internal_System_Int32_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Insert_Internal(System.Int32,FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
+  Insert_Internal(int, ColumnRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L112"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Inserts a separator key at the given index for use in an internal node, shifting later keys up.
+Containers that store leaf and internal keys differently can handle this case separately.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Insert_Internal(int index, ColumnRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to insert at.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd><p>The key to insert.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_RemoveAt_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.RemoveAt*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_RemoveAt_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.RemoveAt(System.Int32)">
+  RemoveAt(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L122"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes the key at the given index, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveAt(int index)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the key to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_RemoveRange_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.RemoveRange*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_RemoveRange_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.RemoveRange(System.Int32,System.Int32)">
+  RemoveRange(int, int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L131"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Removes a run of keys, shifting later keys down.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void RemoveRange(int start, int count)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>start</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index of the first key to remove.</p>
+</dd>
+    <dt><code>count</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of keys to remove.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Update_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Update*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnKeyStorageContainer_Update_System_Int32_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnKeyStorageContainer.Update(System.Int32,FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
+  Update(int, ColumnRowReference)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L140"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Replaces the key at the given index.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void Update(int index, ColumnRowReference key)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The index to overwrite.</p>
+</dd>
+    <dt><code>key</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference.html">ColumnRowReference</a></dt>
+    <dd><p>The new key.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/TreeStorage/ColumnKeyStorageContainer.cs/#L18" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

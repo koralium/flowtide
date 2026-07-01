@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class StreamTestMonitor | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class StreamTestMonitor | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_TestFramework_StreamTestMonitor.md&amp;value=---%0Auid%3A%20FlowtideDotNet.TestFramework.StreamTestMonitor%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor">
+
+
+
+  <h1 id="FlowtideDotNet_TestFramework_StreamTestMonitor" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor" class="text-break">
+Class StreamTestMonitor  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/StreamTestMonitor.cs/#L22"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.TestFramework.html">TestFramework</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.TestFramework.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"></div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class StreamTestMonitor : ICheckpointListener, IFailureListener, IStreamTestMonitor</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">StreamTestMonitor</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="FlowtideDotNet.Base.Engine.ICheckpointListener.html">ICheckpointListener</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Engine.IFailureListener.html">IFailureListener</a></div>
+      <div><a class="xref" href="FlowtideDotNet.TestFramework.IStreamTestMonitor.html">IStreamTestMonitor</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnCheckpointComplete_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.OnCheckpointComplete*"></a>
+
+  <h3 id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnCheckpointComplete_FlowtideDotNet_Base_Engine_StreamCheckpointNotification_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.OnCheckpointComplete(FlowtideDotNet.Base.Engine.StreamCheckpointNotification)">
+  OnCheckpointComplete(StreamCheckpointNotification)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/StreamTestMonitor.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when the stream has successfully completed a full checkpoint and durably written
+all operator state to persistent storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void OnCheckpointComplete(StreamCheckpointNotification notification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.StreamCheckpointNotification.html">StreamCheckpointNotification</a></dt>
+    <dd><p>A <a class="xref" href="FlowtideDotNet.Base.Engine.StreamCheckpointNotification.html">StreamCheckpointNotification</a> carrying the name of the stream that
+completed the checkpoint boundary.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnCheckpointComplete_FlowtideDotNet_Base_Engine_StreamCheckpointNotification__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is invoked synchronously within the checkpoint completion task.
+Implementations should avoid long-running or blocking operations; if coordination with
+an external system is required, consider starting a background task rather than
+blocking the checkpoint completion path.
+Access <a class="xref" href="FlowtideDotNet.Base.Engine.StreamCheckpointNotification.html#FlowtideDotNet_Base_Engine_StreamCheckpointNotification_StreamName">StreamName</a> to identify the stream
+that completed the checkpoint.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnFailure_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.OnFailure*"></a>
+
+  <h3 id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnFailure_FlowtideDotNet_Base_Engine_StreamFailureNotification_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.OnFailure(FlowtideDotNet.Base.Engine.StreamFailureNotification)">
+  OnFailure(StreamFailureNotification)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/StreamTestMonitor.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Called when the stream encounters an unhandled exception and is about to enter
+a failure state and initiate its automatic recovery sequence.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public void OnFailure(StreamFailureNotification notification)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>notification</code> <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html">StreamFailureNotification</a></dt>
+    <dd><p>A <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html">StreamFailureNotification</a> carrying the name of the stream that failed
+and the optional exception that caused the failure.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_TestFramework_StreamTestMonitor_OnFailure_FlowtideDotNet_Base_Engine_StreamFailureNotification__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This method is invoked synchronously within the failure transition. Implementations
+should avoid long-running or blocking operations, as this call occurs before the stream
+has stopped its running blocks. Access <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html#FlowtideDotNet_Base_Engine_StreamFailureNotification_StreamName">StreamName</a>
+to identify the affected stream, and <a class="xref" href="FlowtideDotNet.Base.Engine.StreamFailureNotification.html#FlowtideDotNet_Base_Engine_StreamFailureNotification_Exception">Exception</a>
+for the cause of the failure, which may be <a href="https://learn.microsoft.com/dotnet/csharp/language-reference/keywords/null">null</a> in cases where
+no specific exception was captured.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_TestFramework_StreamTestMonitor_WaitForCheckpoint_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.WaitForCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_TestFramework_StreamTestMonitor_WaitForCheckpoint_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.TestFramework.StreamTestMonitor.WaitForCheckpoint(System.Threading.CancellationToken)">
+  WaitForCheckpoint(CancellationToken)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/StreamTestMonitor.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public Task WaitForCheckpoint(CancellationToken cancellationToken = default)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cancellationToken</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.cancellationtoken">CancellationToken</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.TestFramework/StreamTestMonitor.cs/#L22" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

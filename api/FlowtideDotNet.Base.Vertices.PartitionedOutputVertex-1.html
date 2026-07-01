@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class PartitionedOutputVertex&lt;T&gt; | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class PartitionedOutputVertex&lt;T&gt; | Flowtide.NET ">
+      
+      <meta name="description" content="Represents a specialized vertex that gathers data from multiple upstream partitions and merges them back into a single continuous stream.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Base.Vertices.PartitionedOutputVertex%601%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1">
+
+
+
+  <h1 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1" class="text-break">
+Class PartitionedOutputVertex&lt;T&gt;  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Base.html">Base</a>.<a class="xref" href="FlowtideDotNet.Base.Vertices.html">Vertices</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Base.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents a specialized vertex that gathers data from multiple upstream partitions and merges them back into a single continuous stream.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class PartitionedOutputVertex&lt;T&gt; : MultipleInputVertex&lt;T&gt;, ISourceBlock&lt;IStreamEvent&gt;, IDataflowBlock, IStreamVertex, IAsyncDisposable</code></pre>
+  </div>
+
+
+
+  <h4 class="section">Type Parameters</h4>
+  <dl class="parameters">
+    <dt><code>T</code></dt>
+    <dd><p>The type of data elements being merged.</p>
+</dd>
+  </dl>
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html">MultipleInputVertex</a>&lt;T&gt;</div>
+      <div><span class="xref">PartitionedOutputVertex&lt;T&gt;</span></div>
+    </dd>
+  </dl>
+
+  <dl class="typelist implements">
+    <dt>Implements</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.isourceblock-1">ISourceBlock</a>&lt;<a class="xref" href="FlowtideDotNet.Base.IStreamEvent.html">IStreamEvent</a>&gt;</div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.idataflowblock">IDataflowBlock</a></div>
+      <div><a class="xref" href="FlowtideDotNet.Base.Vertices.IStreamVertex.html">IStreamVertex</a></div>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.iasyncdisposable">IAsyncDisposable</a></div>
+    </dd>
+  </dl>
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Name">MultipleInputVertex&lt;T&gt;.Name</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_StreamName">MultipleInputVertex&lt;T&gt;.StreamName</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Metrics">MultipleInputVertex&lt;T&gt;.Metrics</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Logger">MultipleInputVertex&lt;T&gt;.Logger</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_StreamVersion">MultipleInputVertex&lt;T&gt;.StreamVersion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_MemoryAllocator">MultipleInputVertex&lt;T&gt;.MemoryAllocator</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Backpressure">MultipleInputVertex&lt;T&gt;.Backpressure</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnWatermark_FlowtideDotNet_Base_Watermark_">MultipleInputVertex&lt;T&gt;.OnWatermark(Watermark)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnTrigger_System_String_System_Object_">MultipleInputVertex&lt;T&gt;.OnTrigger(string, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Completion">MultipleInputVertex&lt;T&gt;.Completion</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Targets">MultipleInputVertex&lt;T&gt;.Targets</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Complete">MultipleInputVertex&lt;T&gt;.Complete()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_ConsumeMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean__">MultipleInputVertex&lt;T&gt;.ConsumeMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;, out bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Fault_System_Exception_">MultipleInputVertex&lt;T&gt;.Fault(Exception)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_LinkTo_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Threading_Tasks_Dataflow_DataflowLinkOptions_">MultipleInputVertex&lt;T&gt;.LinkTo(ITargetBlock&lt;IStreamEvent&gt;, DataflowLinkOptions)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_ReleaseReservation_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__">MultipleInputVertex&lt;T&gt;.ReleaseReservation(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_ReserveMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__">MultipleInputVertex&lt;T&gt;.ReserveMessage(DataflowMessageHeader, ITargetBlock&lt;IStreamEvent&gt;)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_">MultipleInputVertex&lt;T&gt;.Initialize(string, long, long, IVertexHandler, StreamVersionInformation)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_SetHealth_System_Boolean_">MultipleInputVertex&lt;T&gt;.SetHealth(bool)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_">MultipleInputVertex&lt;T&gt;.QueueTrigger(TriggerEvent)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_DisposeAsync">MultipleInputVertex&lt;T&gt;.DisposeAsync()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Link">MultipleInputVertex&lt;T&gt;.Link()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_CreateBlock">MultipleInputVertex&lt;T&gt;.CreateBlock()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Setup_System_String_System_String_">MultipleInputVertex&lt;T&gt;.Setup(string, string)</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_GetLinks">MultipleInputVertex&lt;T&gt;.GetLinks()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Pause">MultipleInputVertex&lt;T&gt;.Pause()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_Resume">MultipleInputVertex&lt;T&gt;.Resume()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_BeforeSaveCheckpoint">MultipleInputVertex&lt;T&gt;.BeforeSaveCheckpoint()</a>
+    </div>
+    <div>
+      <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputVertex_1_OnFailure_System_Int64_">MultipleInputVertex&lt;T&gt;.OnFailure(long)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This is an implementation of a <a class="xref" href="FlowtideDotNet.Base.Vertices.MultipleInputVertex-1.html">MultipleInputVertex&lt;T&gt;</a> designed specifically to act as a funnel
+for partitioned workflows. It aligns stream barriers (like watermarks and checkpoints) across all incoming
+branches, ensuring downstream operators receive synchronized state markers and a single stream of mixed <code class="typeparamref">T</code> records.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1__ctor_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1__ctor_System_Int32_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.#ctor(System.Int32,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
+  PartitionedOutputVertex(int, ExecutionDataflowBlockOptions)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex-1.html">PartitionedOutputVertex&lt;T&gt;</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public PartitionedOutputVertex(int targetCount, ExecutionDataflowBlockOptions executionDataflowBlockOptions)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targetCount</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of upstream partitions feeding into this vertex.</p>
+</dd>
+    <dt><code>executionDataflowBlockOptions</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.dataflow.executiondataflowblockoptions">ExecutionDataflowBlockOptions</a></dt>
+    <dd><p>Options defining block capacity and execution settings.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_DisplayName_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.DisplayName*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_DisplayName" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.DisplayName">
+  DisplayName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the display name of this operator type, typically used in logging and graphical graph representations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override string DisplayName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_Compact_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.Compact*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_Compact" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.Compact">
+  Compact()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L48"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Represents a request to compact local storage space. As this vertex does not hold persistent records, it runs a completed task.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task Compact()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A completed task.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_DeleteAsync_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.DeleteAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_DeleteAsync" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.DeleteAsync">
+  DeleteAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initiates the deletion process for cleaning up persistent storage data associated with this vertex if one existed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task DeleteAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A completed task.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_InitializeOrRestore_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.InitializeOrRestore*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_InitializeOrRestore_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
+  InitializeOrRestore(IStateManagerClient)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Handles the basic setup and state client initialization logic upon startup or recovery operations.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected override Task InitializeOrRestore(IStateManagerClient stateManagerClient)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>stateManagerClient</code> <a class="xref" href="FlowtideDotNet.Storage.StateManager.IStateManagerClient.html">IStateManagerClient</a></dt>
+    <dd><p>The utility client for loading or saving persistent metrics or internal values.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A completed task.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_OnCheckpoint_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.OnCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_OnCheckpoint" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.OnCheckpoint">
+  OnCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L67"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Hook activated when a checkpoint event is triggered on the vertex.
+No specific action is required here since this node does not keep persistent state.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task OnCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A completed task.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_OnRecieve_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.OnRecieve*"></a>
+
+  <h3 id="FlowtideDotNet_Base_Vertices_PartitionedOutputVertex_1_OnRecieve_System_Int32__0_System_Int64_" data-uid="FlowtideDotNet.Base.Vertices.PartitionedOutputVertex`1.OnRecieve(System.Int32,`0,System.Int64)">
+  OnRecieve(int, T, long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Receives data synchronously from one of the attached upstream partitions and forwards it directly toward the output queue.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override IAsyncEnumerable&lt;T&gt; OnRecieve(int targetId, T msg, long time)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>targetId</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The identifier representing which partition the data is arriving from.</p>
+</dd>
+    <dt><code>msg</code> <span class="xref">T</span></dt>
+    <dd><p>The typed data payload being handled.</p>
+</dd>
+    <dt><code>time</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The stream logical execution time metadata context.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.iasyncenumerable-1">IAsyncEnumerable</a>&lt;T&gt;</dt>
+    <dd><p>An asynchronous stream that yields the forwarded message.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Base/Vertices/PartitionVertices/PartitionedOutputVertex.cs/#L28" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

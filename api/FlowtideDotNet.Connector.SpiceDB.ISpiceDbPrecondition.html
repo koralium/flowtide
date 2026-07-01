@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface ISpiceDbPrecondition | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface ISpiceDbPrecondition | Flowtide.NET ">
+      
+      <meta name="description" content="Represents a precondition that must be satisfied before a SpiceDB write operation is committed.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition">
+
+
+
+  <h1 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition" class="text-break">
+Interface ISpiceDbPrecondition  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbPrecondition.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Connector.html">Connector</a>.<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.html">SpiceDB</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Connector.SpiceDB.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Represents a precondition that must be satisfied before a SpiceDB write operation is committed.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface ISpiceDbPrecondition</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>This interface wraps the Authzed API v1 <code>Precondition</code> message. Preconditions assert
+the existence or absence of relationships that match a given filter; if any precondition is
+not satisfied, the parent write is not committed. Preconditions are supplied via
+<a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbWriteRelationshipRequest.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbWriteRelationshipRequest_OptionalPreconditions">OptionalPreconditions</a>.
+Use the static <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.html#FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Create_System_Nullable_FlowtideDotNet_Connector_SpiceDB_SpiceDbPreconditionOperation__FlowtideDotNet_Connector_SpiceDB_ISpiceDbRelationshipFilter_">Create(SpiceDbPreconditionOperation?, ISpiceDbRelationshipFilter?)</a> factory method to construct a new instance.</p>
+</div>
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Filter_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Filter*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Filter" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Filter">
+  Filter
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbPrecondition.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the relationship filter used to evaluate this precondition.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">ISpiceDbRelationshipFilter Filter { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbRelationshipFilter.html">ISpiceDbRelationshipFilter</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Operation_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Operation*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Operation" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Operation">
+  Operation
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbPrecondition.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the operation that determines how the filter match result affects
+whether the parent request is allowed to proceed.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">SpiceDbPreconditionOperation Operation { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.SpiceDbPreconditionOperation.html">SpiceDbPreconditionOperation</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Create_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Create*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_SpiceDB_ISpiceDbPrecondition_Create_System_Nullable_FlowtideDotNet_Connector_SpiceDB_SpiceDbPreconditionOperation__FlowtideDotNet_Connector_SpiceDB_ISpiceDbRelationshipFilter_" data-uid="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.Create(System.Nullable{FlowtideDotNet.Connector.SpiceDB.SpiceDbPreconditionOperation},FlowtideDotNet.Connector.SpiceDB.ISpiceDbRelationshipFilter)">
+  Create(SpiceDbPreconditionOperation?, ISpiceDbRelationshipFilter?)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbPrecondition.cs/#L118"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Creates a new <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.html">ISpiceDbPrecondition</a> instance with the specified
+operation and relationship filter.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static ISpiceDbPrecondition Create(SpiceDbPreconditionOperation? operation = null, ISpiceDbRelationshipFilter? filter = null)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>operation</code> <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.SpiceDbPreconditionOperation.html">SpiceDbPreconditionOperation</a>?</dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.SpiceDbPreconditionOperation.html">SpiceDbPreconditionOperation</a> that determines how the filter result
+affects the parent request. If <code>null</code>, the operation will not be set.</p>
+</dd>
+    <dt><code>filter</code> <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbRelationshipFilter.html">ISpiceDbRelationshipFilter</a></dt>
+    <dd><p>The <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbRelationshipFilter.html">ISpiceDbRelationshipFilter</a> used to evaluate this precondition.
+If <code>null</code>, the filter will not be set.</p>
+</dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.html">ISpiceDbPrecondition</a></dt>
+    <dd><p>A new <a class="xref" href="FlowtideDotNet.Connector.SpiceDB.ISpiceDbPrecondition.html">ISpiceDbPrecondition</a> with the specified operation and filter.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.SpiceDB/SpiceDbPrecondition.cs/#L90" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Reservoir Storage System | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Reservoir Storage System | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../../images/favicon.ico">
+      <link rel="stylesheet" href="../../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../../public/main.css">
+      <meta name="docfx:navrel" content="../../../toc.html">
+      <meta name="docfx:tocrel" content="../../toc.html">
+      
+      <meta name="docfx:rel" content="../../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/internal/reservoir/index.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../../index.html">
+            <img id="logo" class="svg" src="../../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="reservoir-storage-system">Reservoir Storage System</h1>
+
+<h2 id="design-goals">Design Goals</h2>
+<p>The reservoir storage system was designed with the following goals in mind:</p>
+<h3 id="1-minimize-number-of-writes-to-cloud-storage-to-reduce-cost">1. Minimize number of writes to cloud storage to reduce cost</h3>
+<p>Cloud object stores (S3, Azure Blob Storage) charge per API operation (PUT, GET, DELETE). A streaming system that checkpoints frequently can generate a very large number of small writes, making storage costs dominate operational expenses.</p>
+<p><strong>How the solution addresses this:</strong></p>
+<ul>
+<li><strong>Page packing into large immutable blobs.</strong> Instead of writing each page individually, the system aggregates pages into large files (default 64 MB). If a single session produces enough data to fill a file on its own, it sends the file directly to the write queue, allowing multiple sessions to upload in parallel. Sessions that cannot fill a file by themselves contribute their pages into a shared <code>MergedBlobFileWriter</code>, which combines data from multiple sessions into a single file before writing. This turns potentially thousands of small writes into a handful of large writes.</li>
+<li><strong>Data and Checkpoint Bundle files.</strong> When all changed data for a checkpoint fits within a single file, the system bundles the data pages, checkpoint metadata, and the checkpoint registry into one file (<code>DataCheckpointBundleFile</code>).</li>
+<li><strong>Checkpoint registry bundling on providers with listing support.</strong> On storage providers that support file listing (e.g., local disk), the checkpoint registry is bundled into the checkpoint file itself, eliminating a separate registry write on every checkpoint.</li>
+<li><strong>Compaction merges fragmented files.</strong> Over time pages are overwritten and files become sparse. The compaction process reads active pages from under-utilized files (below <code>CompactionFileSizeRatioThreshold</code>, default 33% of max size) and repacks them into new full-size files. The old files are then deleted, reducing the total file count and future GET operations.</li>
+<li><strong>Snapshot checkpoints reduce recovery reads.</strong> Every <code>SnapshotCheckpointInterval</code> checkpoints (default 20), a snapshot checkpoint is written that contains all active page mappings. On recovery, only files from the latest snapshot onward need to be read, instead of replaying the entire checkpoint history.</li>
+</ul>
+<h3 id="2-ensure-data-integrity-across-unreliable-storage">2. Ensure data integrity across unreliable storage</h3>
+<p>Cloud storage can experience silent bit-rot, incomplete uploads, or corrupted downloads. A storage system for streaming state must detect and reject corrupted data to avoid propagating errors.</p>
+<p><strong>How the solution addresses this:</strong></p>
+<ul>
+<li><strong>CRC32 per page.</strong> Every individual page is checksummed with CRC32 when written. On every read, the checksum is verified before the data is returned to the caller. If the checksum does not match, a <code>FlowtideChecksumMismatchException</code> is thrown.</li>
+<li><strong>CRC64 per file.</strong> Each data file has a CRC64 computed over all its bytes. During compaction and cache population, the file-level CRC64 is verified to detect corruption in the page-id index or any other structural damage that per-page CRC32 alone would not catch.</li>
+<li><strong>CRC64 on checkpoint and registry files.</strong> Checkpoint files and the checkpoint registry each carry their own CRC64 values, forming a chain of trust: the registry CRC64 protects the list of checkpoints, and each checkpoint CRC64 protects its page-to-file mappings.</li>
+<li><strong>Self-healing local cache.</strong> If a local cache read fails CRC verification, the cached file is purged and re-downloaded from cloud storage.</li>
+</ul>
+<h3 id="3-achieve-near-local-disk-read-latency-while-state-lives-in-cloud-storage">3. Achieve near-local-disk read latency while state lives in cloud storage</h3>
+<p>Reading directly from cloud storage on every page miss would add 10–100 ms of latency per request, making it impractical for interactive streaming workloads.</p>
+<p><strong>How the solution addresses this:</strong></p>
+<ul>
+<li><strong>In-Flight Buffer for Read-Your-Own-Writes (RYOW).</strong> Newly committed but not-yet-uploaded data is kept in an in-memory volatile buffer. Operators can read their own recently written pages immediately without waiting for the cloud upload to finish.</li>
+<li><strong>Local Disk Cache with on-demand fetching.</strong> When a page is requested from a file not yet in the cache, the entire file is downloaded and stored on local disk. Subsequent reads for any page in that file are served directly from local disk at SSD speed.</li>
+<li><strong>DIRECT_IO support.</strong> On Linux/Docker, the local cache can bypass the OS page cache using DIRECT_IO, preventing double-buffering and reducing the risk of OOM kills in memory-constrained containers.</li>
+<li><strong>Backpressure via bounded channel.</strong> The in-flight buffer uses a <code>BoundedChannel</code> to limit pending writes. This prevents the engine from exhausting RAM if the storage backend is slow, while still allowing concurrent uploads.</li>
+</ul>
+<h3 id="4-support-fast-recovery-after-failures">4. Support fast recovery after failures</h3>
+<p>A streaming system must be able to restart and recover its state quickly. Reading all historical checkpoint files on every startup would be slow and expensive.</p>
+<p><strong>How the solution addresses this:</strong></p>
+<ul>
+<li><strong>Snapshot checkpoints.</strong> Periodic snapshot checkpoints contain the complete page-to-file mapping, so recovery only needs to read from the latest snapshot forward instead of the full history.</li>
+<li><strong>Checkpoint registry.</strong> The registry file provides a directory of all checkpoint versions and their CRC64 values, eliminating the need for expensive list operations on cloud storage during initialization.</li>
+<li><strong>Immutable local cache survives failures.</strong> Because cached files are immutable, they remain valid across stream restarts. The cache is not cleared on failure, reducing the volume of cloud API calls needed during recovery.</li>
+</ul>
+<h2 id="storage-hierarchy">Storage Hierarchy</h2>
+<p>Flowtide utilizes a 5-tier storage model to balance low latency with elastic cloud scalability:</p>
+<ol>
+<li>RAM Pages (LRU): Hot, mutable state for active operator processing.</li>
+<li>Disk Spillover: Local mutable storage for active checkpoints that exceed RAM capacity.</li>
+<li>In-Flight Buffer: Immutable RAM buffer that holds data during the commit process, ensuring Read-Your-Own-Writes consistency before disk confirmation.</li>
+<li>Local Disk Cache: Immutable, CRC-verified cache of 64MB blobs fetched on-demand from remote storage.</li>
+<li>Persistent Storage: The definitive source of truth, typically hosted on Amazon S3 or Azure Blob Storage.</li>
+</ol>
+<p>This document focuses on enabling tier 3 (In-Flight Buffer), 4 (Local Disk Cache) and 5 (Persistent Storage).</p>
+<h2 id="in-flight-buffer">In-Flight Buffer</h2>
+<p>The <strong>In-Flight Buffer</strong> is a volatile storage layer that bridges the gap between operator data production and persistent storage confirmation. It ensures <strong>Read-Your-Own-Writes (RYOW)</strong> consistency and provides backpressure during heavy write loads.</p>
+<p>When an operator &quot;commits&quot; data, it is transitioned from a mutable state to an immutable state. Before this data is successfully written to the persistent storage, it resides in the <strong>In-Flight Buffer</strong>.</p>
+<p>Key functions:</p>
+<ul>
+<li><strong>Zero-Downtime Reads:</strong> Allows operators to read newly produced data immediately, even if the background upload to S3/Azure is still in progress.</li>
+<li><strong>Data Integrity:</strong> Holds the immutable bytes used for the final <strong>CRC64</strong> calculation.</li>
+<li><strong>Backpressure:</strong> Uses a <code>BoundedChannel</code> (capacity 4) to limit the number of pending file writes, preventing the engine from exhausting RAM if the storage backend is slow.</li>
+<li><strong>Page Aggregation:</strong> Each session writes pages into its own <code>BlobFileWriter</code>. If a session fills a file (reaches <code>MaxFileSize</code>), it is sent directly to the write queue for parallel upload. Otherwise, the remaining pages are merged into a shared <code>MergedBlobFileWriter</code> on commit, combining data from multiple sessions into a single file to avoid writing many small files.</li>
+</ul>
+<h3 id="internal-workflow">Internal workflow</h3>
+<ol>
+<li>When an operator calls <code>Write</code>, the page data is serialized into a <code>BlobFileWriter</code> owned by the session.
+A reference to the written memory is added to a shared temporary lookup dictionary (<code>_temporaryPageLocations</code>) keyed by page id.
+If the session's file reaches <code>MaxFileSize</code> during writes, it is finalized and sent directly to the <code>CheckpointHandler</code> write queue (<code>AddCompleteBlobFile</code>). The session then creates a new <code>BlobFileWriter</code> for subsequent writes. This allows sessions that produce large amounts of data to fill and upload their own files in parallel.</li>
+<li>On <code>Commit</code>, if the session's <code>BlobFileWriter</code> still has pages that did not fill a complete file, it is sent to <code>ReservoirPersistentStorage</code> as a non-completed file (<code>AddNonCompletedBlobFile</code>). These pages are merged into the shared <code>MergedBlobFileWriter</code>, which combines leftovers from multiple sessions. When the shared buffer reaches <code>MaxFileSize</code>, it is finalized and enqueued for upload.</li>
+<li>When a page is read from the in-flight buffer, the data is returned from the temporary lookup.
+If the data spans multiple memory segments, it is copied into a contiguous buffer to ensure safe access.</li>
+<li>A background write loop in <code>CheckpointHandler</code> picks up enqueued files from the bounded channel and writes them to persistent storage.</li>
+<li>After a file has been written to storage, the <code>OnFileWritten</code> callback fires and the corresponding page ids are removed from the temporary lookup dictionary.</li>
+</ol>
+<h3 id="on-stream-failure">On Stream Failure</h3>
+<p>On stream failure, the entire in-flight buffer is cleared. All temporary page locations are discarded and each session is reset.
+Since no checkpoint was completed, none of the in-flight data needs to be persisted.</p>
+<h2 id="local-disk-cache">Local Disk Cache</h2>
+<p>The <strong>Local Disk Cache</strong> is an immutable, on-demand storage layer that enables Flowtide to achieve near-local SSD performance while maintaining the state in cloud storage (S3/Azure).</p>
+<p>The cache acts as a &quot;Warm&quot; tier for large blobs. Instead of reading directly from the cloud for every page miss, Flowtide fetches entire blobs, verifies them, and serves subsequent page requests directly from the local disk.</p>
+<p>Key features:</p>
+<ul>
+<li><strong>On-Demand Fetching:</strong> Blobs are only downloaded when a specific <code>PageId</code> is requested by an operator.</li>
+<li><strong>Self-Healing:</strong> If a local page read fails a CRC check, the cache automatically evicts the local file and re-downloads a fresh copy from the cloud.</li>
+<li><strong>DIRECT_IO Support:</strong> Optimized for Docker/Linux environments to bypass the OS Page Cache, preventing double-buffering and OOM kills.</li>
+<li><strong>LRU Eviction with Weighted Frequency:</strong> The cache maintains a linked-list based LRU index with frequency weights. Files that are accessed more frequently receive a higher weight and are evicted last. A proactive eviction loop runs periodically and starts evicting when the cache reaches 80% capacity.</li>
+<li><strong>Bounded Size:</strong> The cache size is limited by <code>MaxCacheSizeBytes</code> (default 10 GB). When space is needed for a new download, the least recently used files are evicted until enough space is available. If no files can be evicted (all are in active use), the download waits until space becomes available.</li>
+</ul>
+<h3 id="internal-workflow-1">Internal workflow</h3>
+<ul>
+<li><strong>Cache misses</strong>
+<ol>
+<li>When a page is requested on a file that does not exist in the cache, a download job is enqueued to a bounded channel.</li>
+<li>A background worker pool (default 2 workers) picks up the job, ensures there is enough cache space (evicting LRU entries if needed), and downloads the file from persistent storage.</li>
+<li>The downloaded file is written to local disk via the local cache storage provider.</li>
+<li>The file is registered in the LRU index with its file id, size, and CRC64 value.</li>
+</ol>
+</li>
+<li><strong>Fetching a page from the cache</strong>
+<ol>
+<li>When a page is requested from the cache, the LRU entry is looked up and moved to the front of the list.</li>
+<li>The page data is read from the specified offset and length in the local file.</li>
+<li>The page data is verified against the stored CRC32 value to ensure data integrity.</li>
+<li>The page data is returned to the caller.</li>
+</ol>
+</li>
+<li><strong>New data file</strong>
+<ol>
+<li>When a new data file is written to the persistent storage, it is also written to the local cache via <code>RegisterNewFileAsync</code>. This reduces latency for subsequent reads of newly written data.</li>
+</ol>
+</li>
+<li><strong>Compaction reads</strong>
+<ol>
+<li>During compaction, files are read from the cache if they exist, but cache misses do not trigger a download. This avoids polluting the cache with data that will immediately be rewritten into a new file.</li>
+</ol>
+</li>
+</ul>
+<h3 id="on-initialization">On Initialization</h3>
+<p>When the cache initializes, it lists all data file ids already present on local disk and cross-references them against the active file information from the latest checkpoint. Files that are still active are registered in the LRU index. Files that are no longer referenced are deleted to reclaim disk space.</p>
+<h3 id="on-stream-failure-1">On Stream Failure</h3>
+<p>On stream failure, the local disk cache is not cleared. Since all cached files are immutable, they remain valid across stream restarts and can be reused, reducing the number of cloud API calls required during recovery.</p>
+<h2 id="persistent-storage-layer">Persistent Storage Layer</h2>
+<p>The <strong>Persistent Storage Layer</strong> is the final storage tier to ensure persistence. It provides long-term, durable storage for all streaming states, typically hosted in object stores like <a href="https://aws.amazon.com">Amazon S3</a> or <a href="https://azure.microsoft.com">Azure Blob Storage</a>.</p>
+<p>This layer is designed to be cloud-native, treating remote storage as an append-only log of immutable blobs.</p>
+<p>Key features:</p>
+<ul>
+<li><strong>Immutable Blobs:</strong> Pages are packed into large files (default 64 MB) to saturate network bandwidth and minimize cloud API costs (PUT/GET).</li>
+<li><strong>Checkpoint files:</strong> Each checkpoint records which pages changed, which files were added or removed, and the page-to-file mappings (offsets, sizes, CRC32s). This enables fast point-in-time recovery.</li>
+<li><strong>Checkpoint Registry:</strong> A registry file that lists all checkpoint versions and their CRC64 values, eliminating the need for list operations on storage backends that do not support efficient listing.</li>
+<li><strong>CRC64 Verification:</strong> Every data file, checkpoint file, and registry file is hashed using CRC64 to guarantee integrity across different cloud providers.</li>
+<li><strong>Compaction:</strong> Files with a high ratio of invalidated pages (above <code>CompactionFileSizeRatioThreshold</code>) are compacted by reading the still-active pages and repacking them into new files. Files where all pages have been invalidated are deleted directly without compaction.</li>
+<li><strong>Snapshot Checkpoints:</strong> Every <code>SnapshotCheckpointInterval</code> checkpoints, a snapshot is written that contains all active page mappings. This bounds recovery time by allowing the engine to skip all checkpoint files before the latest snapshot.</li>
+<li><strong>Zstd Compression:</strong> Checkpoint data is compressed using Zstd before writing to reduce checkpoint file sizes. Bundle files are not compressed to keep CRC64 recalculation simple.</li>
+<li><strong>Stream Version Management:</strong> Stream versioning is opt-in and requires explicit configuration on the stream builder using <code>AddVersioningFromPlanHash()</code>, <code>AddVersioningFromString()</code>, or <code>AddVersioningFromAssembly()</code>. These can be combined; a new version is created whenever any of the configured sources change. Without versioning, the stream always uses a single <code>&quot;default&quot;</code> version and version cleanup does not apply. When versioning is enabled, each version stores its state in a separate directory, and multiple versions can coexist in storage. The <code>KeepLastStreamVersions</code> setting (default -1, keep all) controls automatic cleanup: after each checkpoint, versions are sorted by their last initialization time and the oldest versions beyond the retention count are deleted. The current version is always preserved; the setting specifies how many <em>previous</em> versions to retain alongside it. For example, a value of 0 deletes all old versions immediately, and a value of 1 keeps one previous version.</li>
+</ul>
+<h2 id="checkpoint-file">Checkpoint File</h2>
+<p>The checkpoint file is the core metadata structure that records all state changes for a single checkpoint version. It can be either an <em>incremental</em> checkpoint (recording only changes since the last checkpoint) or a <em>snapshot</em> checkpoint (recording the complete state).</p>
+<p>The checkpoint file contains the following information:</p>
+<ul>
+<li><strong>Updated Page Count</strong> - How many pages that have updated in the checkpoint</li>
+<li><strong>Deleted Page Count</strong> - How many pages that have been deleted in the checkpoint</li>
+<li><strong>Updated File Count</strong> - How many files that have been updated</li>
+<li><strong>Deleted File Count</strong> - How many files that have been deleted</li>
+<li><strong>Next File Id</strong> - The next data file id that can be used.</li>
+<li>Five columns for updated pages:
+<ul>
+<li><strong>PageId</strong> - the identifier of the page that was updated</li>
+<li><strong>FileId</strong> - the file identifier that the page resides in the checkpoint</li>
+<li><strong>OffsetInFile</strong> - the byte offset where the page can be read from in the file</li>
+<li><strong>Size</strong> - Size of the page in bytes</li>
+<li><strong>Crc32</strong> - The crc32 value of the page, used for validation when reading.</li>
+</ul>
+</li>
+<li><strong>DeletedPageIds</strong> - Array of page ids that have been deleted</li>
+<li>Seven columns for new/updated files (updates are only to invalidate replaced page data):
+<ul>
+<li><strong>FileIds</strong> - the file identifiers of the files that have been updated.</li>
+<li><strong>PageCount</strong> - how many pages that exist in the file.</li>
+<li><strong>NonActiveCount</strong> - how many pages that have been invalidated in the file.</li>
+<li><strong>Size</strong> - Size of the file in bytes.</li>
+<li><strong>Deleted Size</strong> - Size of the invalidated pages in the file, used to check when to compact.</li>
+<li><strong>Added at version</strong> - Which checkpoint version the file was added in.</li>
+<li><strong>Crc64</strong> - Crc64 value of the file, used for validation.</li>
+</ul>
+</li>
+<li>Two columns for deleted files:
+<ul>
+<li><strong>DeletedFileIds</strong> - File ids that are no longer active.</li>
+<li><strong>Deleted at version</strong> - At what checkpoint version the file was marked as deleted.</li>
+</ul>
+</li>
+</ul>
+<p>The page ids are stored in sorted order, this is done to allow quick merging of multiple checkpoints
+when reading in the data.</p>
+<p>The data is stored in the following order:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Header</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Upsert pages PageIds</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Upsert pages FileIds</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Upsert pages Offset In File</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Upsert pages Size</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Upsert pages crc32</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Deleted pageIds</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Upsert file FileIds</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Upsert file Page Count</td>
+</tr>
+<tr>
+<td>10</td>
+<td>Upsert file non active count</td>
+</tr>
+<tr>
+<td>11</td>
+<td>Upsert file size</td>
+</tr>
+<tr>
+<td>12</td>
+<td>Upsert file deleted size</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Upsert file added at version</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Upsert file crc64</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Deleted fileIds</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Deleted file at version</td>
+</tr>
+</tbody>
+</table>
+<h3 id="checkpoint-snapshot-file">Checkpoint snapshot file</h3>
+<p>If a checkpoint file ends with &quot;.snapshot.checkpoint&quot; it means that it is a snapshot checkpoint. A snapshot contains all active page-to-file mappings, all active file information, and all pending deleted file entries.</p>
+<p>During recovery, the engine finds the latest snapshot and only reads incremental checkpoints from that point forward. This bounds recovery time regardless of how many total checkpoints exist. Snapshots are created every <code>SnapshotCheckpointInterval</code> checkpoints (default 20).</p>
+<h3 id="header-layout">Header layout</h3>
+<p>The header of the checkpoint file contains offsets to all different arrays of data.
+The size of the header is 128 bytes.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-31</td>
+<td>Magic number</td>
+</tr>
+<tr>
+<td>32-47</td>
+<td>Version (2 bytes)</td>
+</tr>
+<tr>
+<td>48-63</td>
+<td>Reserved (2 bytes)</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>Updated page count</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>Deleted page count</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>Updated file count</td>
+</tr>
+<tr>
+<td>256-319</td>
+<td>Deleted file count</td>
+</tr>
+<tr>
+<td>320-383</td>
+<td>Updated pageids start offset</td>
+</tr>
+<tr>
+<td>384-447</td>
+<td>Updated page file identifiers start offset</td>
+</tr>
+<tr>
+<td>448-511</td>
+<td>Updated page file offset start offset</td>
+</tr>
+<tr>
+<td>512-575</td>
+<td>Updated page sizes offset</td>
+</tr>
+<tr>
+<td>576-639</td>
+<td>Updated page crc32s offset</td>
+</tr>
+<tr>
+<td>640-703</td>
+<td>Deleted pageids start offset</td>
+</tr>
+<tr>
+<td>704-767</td>
+<td>Updated files fileIds start offset</td>
+</tr>
+<tr>
+<td>768-831</td>
+<td>Updated files page count start offset</td>
+</tr>
+<tr>
+<td>832-895</td>
+<td>Updated files non active count start offset</td>
+</tr>
+<tr>
+<td>896-959</td>
+<td>Updated files sizes offset</td>
+</tr>
+<tr>
+<td>960-1023</td>
+<td>Updated files deleted sizes offset</td>
+</tr>
+<tr>
+<td>1024-1087</td>
+<td>Updated files added at version offset</td>
+</tr>
+<tr>
+<td>1088-1151</td>
+<td>Updated files crc64s offset</td>
+</tr>
+<tr>
+<td>1152-1215</td>
+<td>Deleted files file Ids offset</td>
+</tr>
+<tr>
+<td>1216-1279</td>
+<td>Deleted files added at version offset</td>
+</tr>
+<tr>
+<td>1280-1343</td>
+<td>Next available file id</td>
+</tr>
+</tbody>
+</table>
+<h3 id="changed-pages-layout">Changed pages layout</h3>
+<p>The following layout shows how the three columns for new/updated pages are written to disk and the deleted pages array.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Page Id 1</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>Page Id 2</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>...</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>Page Id N</td>
+</tr>
+<tr>
+<td>256-319</td>
+<td>File identifier 1</td>
+</tr>
+<tr>
+<td>320-383</td>
+<td>File Identifier 2</td>
+</tr>
+<tr>
+<td>384-447</td>
+<td>...</td>
+</tr>
+<tr>
+<td>448-511</td>
+<td>File Identifier N</td>
+</tr>
+<tr>
+<td>512-543</td>
+<td>Page file offset 1</td>
+</tr>
+<tr>
+<td>544-575</td>
+<td>Page file offset 2</td>
+</tr>
+<tr>
+<td>576-607</td>
+<td>...</td>
+</tr>
+<tr>
+<td>608-639</td>
+<td>Page file offset N</td>
+</tr>
+<tr>
+<td>640-671</td>
+<td>Page size 1</td>
+</tr>
+<tr>
+<td>672-703</td>
+<td>Page size 2</td>
+</tr>
+<tr>
+<td>704-735</td>
+<td>...</td>
+</tr>
+<tr>
+<td>736-767</td>
+<td>Page size N</td>
+</tr>
+<tr>
+<td>768-799</td>
+<td>Page crc32 1</td>
+</tr>
+<tr>
+<td>800-831</td>
+<td>Page crc32 2</td>
+</tr>
+<tr>
+<td>832-863</td>
+<td>...</td>
+</tr>
+<tr>
+<td>864-895</td>
+<td>Page crc32 N</td>
+</tr>
+<tr>
+<td>896-959</td>
+<td>Deleted page 1</td>
+</tr>
+<tr>
+<td>960-1023</td>
+<td>Deleted page 2</td>
+</tr>
+<tr>
+<td>1024-1087</td>
+<td>...</td>
+</tr>
+<tr>
+<td>1088-1151</td>
+<td>Deleted page N</td>
+</tr>
+</tbody>
+</table>
+<h3 id="changed-files-layout">Changed files layout</h3>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>File Id 1</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>File Id 2</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>...</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>File Id N</td>
+</tr>
+<tr>
+<td>256-287</td>
+<td>File page count 1</td>
+</tr>
+<tr>
+<td>288-319</td>
+<td>File page count 2</td>
+</tr>
+<tr>
+<td>320-351</td>
+<td>...</td>
+</tr>
+<tr>
+<td>352-383</td>
+<td>File page count N</td>
+</tr>
+<tr>
+<td>384-415</td>
+<td>File non active count 1</td>
+</tr>
+<tr>
+<td>416-447</td>
+<td>File non active count 2</td>
+</tr>
+<tr>
+<td>448-479</td>
+<td>...</td>
+</tr>
+<tr>
+<td>480-511</td>
+<td>File non active count N</td>
+</tr>
+<tr>
+<td>512-543</td>
+<td>Roaring bitmap offset 1</td>
+</tr>
+<tr>
+<td>544-575</td>
+<td>Roaring bitmap offset 2</td>
+</tr>
+<tr>
+<td>576-607</td>
+<td>...</td>
+</tr>
+<tr>
+<td>608-639</td>
+<td>Roaring bitmap offset N</td>
+</tr>
+<tr>
+<td>640-703</td>
+<td>Roaring bitmaps data</td>
+</tr>
+<tr>
+<td>768-831</td>
+<td>Deleted file id 1</td>
+</tr>
+<tr>
+<td>832-895</td>
+<td>Deleted file id 2</td>
+</tr>
+<tr>
+<td>896-959</td>
+<td>...</td>
+</tr>
+<tr>
+<td>960-1023</td>
+<td>Deleted file id N</td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-file">Data File</h2>
+<p>The data files store the actual page data. Each file is a self-contained unit that contains a header, a list of all page ids stored in the file, their byte offsets, and the page data itself.</p>
+<p>The data file is structured for streaming reads. During compaction, data is read sequentially from an old file and copied into a new file without needing to seek. The page ids are placed before the page data so that a reader can determine which pages are still active before reading any page content.</p>
+<p>The file layout is: a fixed 64-byte header, followed by page ids stored as a column, then page offsets/locations, and finally the page data.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Header</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Page Ids</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Page Locations</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Page Data 1</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Page Data 2</td>
+</tr>
+<tr>
+<td>6</td>
+<td>...</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Page Data N</td>
+</tr>
+</tbody>
+</table>
+<h3 id="header-layout-1">Header layout</h3>
+<p>The header of the data file has the following layout:</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-31</td>
+<td>Magic number</td>
+</tr>
+<tr>
+<td>32-47</td>
+<td>Version</td>
+</tr>
+<tr>
+<td>48-63</td>
+<td>Flags</td>
+</tr>
+<tr>
+<td>64-95</td>
+<td>Page Counts</td>
+</tr>
+<tr>
+<td>96-127</td>
+<td>Page Id Start Offset</td>
+</tr>
+<tr>
+<td>128-159</td>
+<td>Page Location Start Offset</td>
+</tr>
+<tr>
+<td>160-191</td>
+<td>Data Start Offset</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>Reserved 40 bytes (64 byte alignment)</td>
+</tr>
+</tbody>
+</table>
+<p>The following flags are currently defined:</p>
+<ol>
+<li><code>ContainsCheckpointBundle</code> (bit index 0): When set, the file is a bundle file that contains page data, checkpoint data, and registry data in a single file. The reserved bytes in the header are repurposed to provide offsets into the bundled sections:</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Checkpoint Offset</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>Registry Offset</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>Registry footer offset</td>
+</tr>
+</tbody>
+</table>
+<h3 id="page-ids-and-offset-layout">Page ids and offset layout</h3>
+<p>After the header comes the page ids and offsets. These are primarily used during compaction: the page ids are read to determine which pages are still active, and the offsets are used to locate the page data for copying into a new file.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Page Id 1</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>Page Id 2</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>...</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>Page Id N</td>
+</tr>
+<tr>
+<td>256-287</td>
+<td>Page 1 Offset</td>
+</tr>
+<tr>
+<td>288-319</td>
+<td>Page 2 Offset</td>
+</tr>
+<tr>
+<td>320-351</td>
+<td>...</td>
+</tr>
+<tr>
+<td>352-383</td>
+<td>Page N Offset</td>
+</tr>
+</tbody>
+</table>
+<h3 id="page-data">Page data</h3>
+<p>Page data can be written in compact mode with no padding, or with padding to disk block size (512/4096 bytes) to enable aligned reads from local disk. Aligned writes are particularly useful for DIRECT_IO on Linux where reads must be block-aligned.</p>
+<p>Since all reads are offset-based (the checkpoint file stores exact byte offsets and sizes for each page), the choice between compact and padded mode is transparent to the reader.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Page 1 Data</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>Page 2 Data</td>
+</tr>
+<tr>
+<td>256-319</td>
+<td>...</td>
+</tr>
+<tr>
+<td>384-447</td>
+<td>Page N Data</td>
+</tr>
+</tbody>
+</table>
+<h2 id="checkpoint-registry-file">Checkpoint Registry File</h2>
+<p>The checkpoint registry file provides a directory of all checkpoint versions that exist in storage. On storage systems that do not support efficient file listing, this file eliminates the need for a list operation during initialization.</p>
+<p>The registry contains:</p>
+<ul>
+<li>The version number of each checkpoint.</li>
+<li>A bitmap indicating which checkpoints are snapshots.</li>
+<li>A bitmap indicating which checkpoints are bundled into data files.</li>
+<li>The CRC64 value of each checkpoint, used to verify integrity before reading checkpoint data.</li>
+</ul>
+<p>The registry also has a footer that contains the computed CRC64 of the entire registry file (excluding the footer itself). This allows the engine to detect corruption in the registry on read.</p>
+<p>On storage providers that support file listing (<code>SupportsFileListing</code>), the registry is bundled into checkpoint files instead of being written as a separate file. In this case, the engine reads the registry from the latest checkpoint or bundle file during recovery.</p>
+<p>File layout:</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Header</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Checkpoint Versions</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Is snaphots</td>
+</tr>
+<tr>
+<td>4</td>
+<td>IsBundle</td>
+</tr>
+<tr>
+<td>5</td>
+<td>CRC64s</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Footer (crc64 of the registry)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="header-layout-2">Header layout</h3>
+<p>The header of the checkpoint registry has the following layout:</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-31</td>
+<td>Magic number</td>
+</tr>
+<tr>
+<td>32-47</td>
+<td>Version</td>
+</tr>
+<tr>
+<td>48-63</td>
+<td>Reserved</td>
+</tr>
+<tr>
+<td>64-95</td>
+<td>Versions count</td>
+</tr>
+<tr>
+<td>96-127</td>
+<td>Checkpoint versions offset</td>
+</tr>
+<tr>
+<td>128-159</td>
+<td>Is Snapshots offset</td>
+</tr>
+<tr>
+<td>160-191</td>
+<td>CRC64s Offset</td>
+</tr>
+<tr>
+<td>192-223</td>
+<td>Footer offset</td>
+</tr>
+<tr>
+<td>224-255</td>
+<td>Reserved</td>
+</tr>
+<tr>
+<td>256-319</td>
+<td>Reserved 32 bytes (64 byte alignment)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="data-layout">Data layout</h3>
+<p>The data contains all the version numbers of the checkpoints in the registry in order.
+It also contains a bitmap that tells if a checkpoint is a snapshot checkpoint or not. This is stored as
+a multiple of four bytes, so if there are 5 checkpoints, it will still use four bytes to store the bitlist.
+68 checkpoints will use 8 bytes.</p>
+<p>Finally it also contains a list of the CRC64 values of the checkpoint files which can be used to check
+data integrity of the actual checkpoint files.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Checkpoint version 1</td>
+</tr>
+<tr>
+<td>64-127</td>
+<td>Checkpoint version 2</td>
+</tr>
+<tr>
+<td>128-191</td>
+<td>...</td>
+</tr>
+<tr>
+<td>192-255</td>
+<td>Checkpoint version N</td>
+</tr>
+<tr>
+<td>256-319</td>
+<td>IsSnapshot Bitmap list</td>
+</tr>
+<tr>
+<td>384-447</td>
+<td>CRC64 checkpoint 1</td>
+</tr>
+<tr>
+<td>448-511</td>
+<td>CRC64 checkpoint 2</td>
+</tr>
+<tr>
+<td>512-575</td>
+<td>...</td>
+</tr>
+<tr>
+<td>576-639</td>
+<td>CRC64 checkpoint N</td>
+</tr>
+</tbody>
+</table>
+<h3 id="footer">Footer</h3>
+<p>The footer contains the CRC64 value of the registry file, which allows checking data integrity when reading
+the registry.</p>
+<table>
+<thead>
+<tr>
+<th>Bits</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0-63</td>
+<td>Registry CRC64 value</td>
+</tr>
+</tbody>
+</table>
+<h2 id="data-and-checkpoint-bundle-file">Data And Checkpoint Bundle File</h2>
+<p>The <em>data and checkpoint bundle file</em> is a special case file where page data, checkpoint metadata, and registry data are bundled into a single file. This is done to reduce cloud costs on <code>PUT</code> operations.</p>
+<p>This file is only created when all updated pages for a checkpoint fit within a single file (i.e., no separate data files were written during the checkpoint). It uses a special file id with bit 63 set, encoding the checkpoint version in the lower bits (<code>1UL &lt;&lt; 63 | checkpointVersion</code>).</p>
+<p>Bundle files are not compressed, since the CRC64 values are recalculated across all three sections during creation and compression would add complexity to the chain of integrity checks.</p>
+<p><strong>Cost comparison:</strong></p>
+<p>Over twenty checkpoints, if all changed data can fit under the max file size (e.g., 64 MB):</p>
+<table>
+<thead>
+<tr>
+<th>Approach</th>
+<th>Writes</th>
+<th>Deletes (compaction)</th>
+<th>Deletes (checkpoint cleanup)</th>
+<th>Total operations</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Separate data + checkpoint files</td>
+<td>40</td>
+<td>20</td>
+<td>20</td>
+<td>80</td>
+</tr>
+<tr>
+<td>Bundle files</td>
+<td>20</td>
+<td>20</td>
+<td>0</td>
+<td>40</td>
+</tr>
+</tbody>
+</table>
+<p>This results in <strong>50% fewer operations</strong> to cloud storage.</p>
+<p>The downside of this approach is that it requires a list operation to discover bundle files during recovery. On storage providers where listing is expensive, this model can become more costly than writing separate files if the stream crashes frequently.</p>
+<h3 id="data-layout-1">Data Layout</h3>
+<p>The three sections are concatenated sequentially. The data file header's <code>ContainsCheckpointBundle</code> flag is set, and the reserved header bytes store the byte offsets to the checkpoint and registry sections.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Field</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>Page Data</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Checkpoint Data</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Registry Data</td>
+</tr>
+</tbody>
+</table>
+<h3 id="crc64-for-bundle-files">CRC64 for bundle files</h3>
+<p>All three parts have their own CRC64 value, and they are recalculated in order when the bundle is created:</p>
+<ol>
+<li>The page data CRC64 is computed over all bytes from byte 0 to the start of the checkpoint data.</li>
+<li>This CRC64 is written into the checkpoint's file information for the bundle. The checkpoint data CRC64 is then recalculated.</li>
+<li>The updated checkpoint CRC64 is written into the registry. The registry CRC64 is then recalculated and written into the registry footer.</li>
+</ol>
+<p>This creates a chain of integrity: verifying the registry CRC64 transitively verifies the checkpoint, which transitively verifies the page data.</p>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/internal/reservoir/index.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

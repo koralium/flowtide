@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Interface IReservoirBuilder | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Interface IReservoirBuilder | Flowtide.NET ">
+      
+      <meta name="description" content="Allows configuring the reservoir storage options, such as cache settings, snapshot intervals, and storage providers. This interface is used during the setup of the reservoir storage to specify how the reservoir should manage its data storage and caching behavior.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder" class="text-break">
+Interface IReservoirBuilder  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.Persistence.html">Persistence</a>.<a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.html">Reservoir</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Allows configuring the reservoir storage options, such as cache settings, snapshot intervals, and storage providers.
+This interface is used during the setup of the reservoir storage to specify how the reservoir should manage its data storage and caching behavior.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public interface IReservoirBuilder</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+  <h2 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>The reservoir storage is designed to efficiently manage the state of streams by utilizing a combination of primary storage and optional caching.
+The options configured through this interface can have a significant impact on the performance and resource utilization of the reservoir storage. For example, enabling caching can improve read and write performance by reducing the number of interactions with the underlying storage provider.</p>
+</div>
+
+
+  <h2 class="section" id="methods">Methods
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_DisableCache_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.DisableCache*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_DisableCache" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.DisableCache">
+  DisableCache()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Disables the use of a cache for the reservoir storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void DisableCache()</code></pre>
+  </div>
+
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_DisableCache_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>When this method is called, all read and write operations will interact directly with the underlying storage provider without utilizing an intermediate caching layer.
+This may result in increased latency for read and write operations, especially if the underlying storage provider has higher access times. Use this option when you want to ensure that all data is read from and written to the
+primary storage without any caching optimizations.</p>
+<p>Some storage providers will not work without the use of the local cache.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_OldStreamVersionsRetention_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.OldStreamVersionsRetention*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_OldStreamVersionsRetention_System_Int32_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.OldStreamVersionsRetention(System.Int32)">
+  OldStreamVersionsRetention(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the number of previous stream versions to retain in storage.
+Stream versioning is opt-in and requires explicit configuration on the stream builder using
+<code>AddVersioningFromPlanHash()</code>, <code>AddVersioningFromString()</code>, or <code>AddVersioningFromAssembly()</code>.
+Without versioning, the stream uses a single default version and this setting has no effect.
+The current version is always preserved; this setting controls how many <em>previous</em> versions are kept alongside it.
+Default is -1 (all versions are kept).</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void OldStreamVersionsRetention(int versionsToKeep)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>versionsToKeep</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The number of previous stream versions to retain. A value of -1 retains all versions without limit.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_OldStreamVersionsRetention_System_Int32__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>A value of -1 retains all versions indefinitely.
+A value of 0 deletes all old versions immediately after a checkpoint, keeping only the current version.
+A value of 1 keeps one previous version in addition to the current version.
+Versions are sorted by their last initialization time; the oldest versions beyond the retention count are deleted first.
+This controls cleanup of old stream versions, not old checkpoints within a version.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetCache_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetCache*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetCache_FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirStorageProvider_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetCache(FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider)">
+  SetCache(IReservoirStorageProvider)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the cache provider for the reservoir storage. The cache is used to store frequently accessed data in memory,
+which can improve performance by reducing the number of read and write operations to the underlying storage provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetCache(IReservoirStorageProvider cache)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cache</code> <a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider.html">IReservoirStorageProvider</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetCacheSize_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetCacheSize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetCacheSize_System_Int64_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetCacheSize(System.Int64)">
+  SetCacheSize(long)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L72"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the maximum size of the cache in bytes. When the cache exceeds this size, the least recently used items will be evicted.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetCacheSize(long cacheSize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>cacheSize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd><p>The maximum size of the cache in bytes. When the cache exceeds this size, the least recently used items will be evicted.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetMaxDataFileSize_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetMaxDataFileSize*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetMaxDataFileSize_System_Int32_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetMaxDataFileSize(System.Int32)">
+  SetMaxDataFileSize(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the maximum allowed file size for the reservoir storage, in bytes. This limits the size of the uploaded files to the underlying storage provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetMaxDataFileSize(int maxFileSize)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>maxFileSize</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The maximum allowed file size, in bytes.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetMemoryPool_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetMemoryPool*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetMemoryPool_System_Buffers_MemoryPool_System_Byte__" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetMemoryPool(System.Buffers.MemoryPool{System.Byte})">
+  SetMemoryPool(MemoryPool&lt;byte&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L86"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the memory pool to be used for buffer management in the reservoir storage.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetMemoryPool(MemoryPool&lt;byte&gt; memoryPool)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>memoryPool</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.buffers.memorypool-1">MemoryPool</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.byte">byte</a>&gt;</dt>
+    <dd><p>The memory pool to be used for buffer management in the reservoir storage.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetSnapshotCheckpointInterval_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetSnapshotCheckpointInterval*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetSnapshotCheckpointInterval_System_Int32_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetSnapshotCheckpointInterval(System.Int32)">
+  SetSnapshotCheckpointInterval(int)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L93"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the interval, in checkpoints, at which a snapshot checkpoint is created. A lower value results in more frequent snapshot checkpoints,
+which can improve recovery time at the cost of increased overhead due to more frequent snapshot creation.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetSnapshotCheckpointInterval(int snapshotInterval)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>snapshotInterval</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd><p>The interval, in checkpoints, at which a snapshot checkpoint is created.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetStorage_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetStorage*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirBuilder_SetStorage_FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirStorageProvider_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirBuilder.SetStorage(FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider)">
+  SetStorage(IReservoirStorageProvider)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L99"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Sets the storage provider for the reservoir storage. The storage provider is responsible for handling the actual read and write operations to the underlying storage system, such as a file system, cloud storage, or database.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void SetStorage(IReservoirStorageProvider reservoirStorageProvider)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>reservoirStorageProvider</code> <a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider.html">IReservoirStorageProvider</a></dt>
+    <dd><p>The storage provider to be used for the reservoir storage.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/IReservoirBuilder.cs/#L25" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class StorageProviderContext | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class StorageProviderContext | Flowtide.NET ">
+      
+      <meta name="description" content="Provides contextual information supplied to an  during initialization.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext">
+
+
+
+  <h1 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext" class="text-break">
+Class StorageProviderContext  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Storage.html">Storage</a>.<a class="xref" href="FlowtideDotNet.Storage.Persistence.html">Persistence</a>.<a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.html">Reservoir</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Storage.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Provides contextual information supplied to an <a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider.html">IReservoirStorageProvider</a> during initialization.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public class StorageProviderContext</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">StorageProviderContext</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>A <a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.html">StorageProviderContext</a> is constructed by the storage system and passed to
+<a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.IReservoirStorageProvider.html#FlowtideDotNet_Storage_Persistence_Reservoir_IReservoirStorageProvider_InitializeAsync_FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_System_Threading_CancellationToken_">InitializeAsync(StorageProviderContext, CancellationToken)</a> before the provider is used.
+Storage providers use the values it exposes to derive stream-specific storage paths and to
+allocate any native or pooled memory buffers they require at runtime.</p>
+</div>
+
+
+  <h2 class="section" id="constructors">Constructors
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext__ctor_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.#ctor*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext__ctor_System_String_System_String_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.#ctor(System.String,System.String,FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
+  StorageProviderContext(string, string, IMemoryAllocator)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Initializes a new instance of the <a class="xref" href="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.html">StorageProviderContext</a> class.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public StorageProviderContext(string streamName, string streamVersion, IMemoryAllocator memoryAllocator)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>streamName</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The logical name of the stream that owns the storage provider.</p>
+</dd>
+    <dt><code>streamVersion</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>The version string used to isolate this stream's data within the storage backend.
+This is typically derived from the stream's plan hash or a semantic version identifier.</p>
+</dd>
+    <dt><code>memoryAllocator</code> <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd><p>The memory allocator the storage provider should use to allocate native or pooled memory buffers.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2 class="section" id="properties">Properties
+</h2>
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_MemoryAllocator_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.MemoryAllocator*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_MemoryAllocator" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.MemoryAllocator">
+  MemoryAllocator
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the memory allocator the storage provider should use for allocating native or pooled memory buffers.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public IMemoryAllocator MemoryAllocator { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_MemoryAllocator_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Providers that perform direct I/O or manage native memory receive this allocator at
+initialization so that all memory operations remain consistent with the broader stream
+memory-management strategy.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamName_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.StreamName*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamName" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.StreamName">
+  StreamName
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L53"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the logical name of the stream that owns the storage provider.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string StreamName { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamName_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Storage providers use this value to create or resolve stream-specific directories and
+file paths within their backing storage system.</p>
+</div>
+
+
+
+
+  <a id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamVersion_" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.StreamVersion*"></a>
+
+  <h3 id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamVersion" data-uid="FlowtideDotNet.Storage.Persistence.Reservoir.StorageProviderContext.StreamVersion">
+  StreamVersion
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets the version string that identifies the specific version of the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string StreamVersion { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+  <h4 class="section" id="FlowtideDotNet_Storage_Persistence_Reservoir_StorageProviderContext_StreamVersion_remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>This value is typically a plan hash or a semantic version string derived from
+<a class="xref" href="FlowtideDotNet.Storage.StreamVersionInformation.html">StreamVersionInformation</a>. Storage providers use it to scope stored data to a
+particular stream version, enabling multiple incompatible plan versions to coexist in the
+same backend without interfering with each other.</p>
+</div>
+
+
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Storage/Persistence/Reservoir/StorageProviderContext.cs/#L26" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
