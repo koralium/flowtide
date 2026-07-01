@@ -19,7 +19,7 @@ using FlowtideDotNet.Storage.Memory;
 namespace FlowtideDotNet.Core.Operators.TableFunction
 {
     /// <summary>
-    /// Accumulator the table function appends the right (generated) side of a join into.
+    /// Accumulator that the table function appends the right (generated) side of a join into.
     /// The columns and weight lists live for the whole incoming batch, so no per-row
     /// batch is allocated. The operator sets the per-input-row context
     /// (<see cref="InputIndex"/>, <see cref="InputWeight"/>, <see cref="InputIteration"/>)
