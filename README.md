@@ -6,7 +6,7 @@
   <p align="center">
     Streaming integration engine
   <br />
-    <a href="https://koralium.github.io/flowtide/docs/intro"><strong>Explore the docs »</strong></a>
+    <a href="https://koralium.github.io/flowtide/"><strong>Explore the docs »</strong></a>
   </p>
 </p>
 
