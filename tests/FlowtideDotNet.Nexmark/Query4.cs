@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Nexmark
             GROUP BY Q.category
             ", planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 4                               
+                Parallelization = 1                              
             });
             await Stream.WaitForUpdate();
         }

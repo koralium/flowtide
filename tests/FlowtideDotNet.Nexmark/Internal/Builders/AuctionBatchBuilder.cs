@@ -38,8 +38,8 @@ internal sealed class AuctionBatchBuilder
         _currentColumns[2].Add(new StringValue(auction.Description));
         _currentColumns[3].Add(new Int64Value(auction.InitialBid));
         _currentColumns[4].Add(new Int64Value(auction.Reserve));
-        _currentColumns[5].Add(new StringValue(auction.DateTime));
-        _currentColumns[6].Add(new StringValue(auction.Expires));
+        _currentColumns[5].Add(new TimestampTzValue(auction.DateTime));
+        _currentColumns[6].Add(new TimestampTzValue(auction.Expires));
         _currentColumns[7].Add(new Int64Value(auction.Seller));
         _currentColumns[8].Add(new Int64Value(auction.Category));
         _currentColumns[9].Add(new StringValue(auction.Extra));

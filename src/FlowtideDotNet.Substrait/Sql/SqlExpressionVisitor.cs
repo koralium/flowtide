@@ -671,17 +671,34 @@ namespace FlowtideDotNet.Substrait.Sql
             var expr = Visit(between.Expression, state);
             var low = Visit(between.Low, state);
             var high = Visit(between.High, state);
-
+            
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
-                    ExtensionName = FunctionsComparison.Between,
+                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expressions.Expression>()
                     {
-                        expr.Expr,
-                        low.Expr,
-                        high.Expr
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                expr.Expr,
+                                low.Expr
+                            }
+                        },
+                        new ScalarFunction()
+                        {
+                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionName = FunctionsComparison.LessThanOrEqual,
+                            Arguments = new List<Expressions.Expression>()
+                            {
+                                expr.Expr,
+                                high.Expr
+                            }
+                        }
                     }
                 }, "$between",
                 new BoolType() { Nullable = true }

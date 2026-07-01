@@ -38,7 +38,7 @@ internal sealed class BidBatchBuilder
         _currentColumns[2].Add(new Int64Value(bid.Price));
         _currentColumns[3].Add(new StringValue(bid.Channel));
         _currentColumns[4].Add(new StringValue(bid.Url));
-        _currentColumns[5].Add(new StringValue(bid.DateTime));
+        _currentColumns[5].Add(new TimestampTzValue(bid.DateTime));
         _currentColumns[6].Add(new StringValue(bid.Extra));
 
         _currentRowCount++;

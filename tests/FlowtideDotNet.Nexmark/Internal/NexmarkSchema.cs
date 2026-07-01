@@ -18,7 +18,7 @@ public static class NexmarkSchema
                 new StringType(), // creditCard
                 new StringType(), // city
                 new StringType(), // state
-                new StringType(), // dateTime
+                new TimestampType(), // dateTime
                 new StringType()  // extra
             }
         }
@@ -36,8 +36,8 @@ public static class NexmarkSchema
                 new StringType(), // description
                 new Int64Type(), // initialBid
                 new Int64Type(), // reserve
-                new StringType(), // dateTime
-                new StringType(), // expires
+                new TimestampType(), // dateTime
+                new TimestampType(), // expires
                 new Int64Type(), // seller
                 new Int64Type(), // category
                 new StringType()  // extra
@@ -57,7 +57,7 @@ public static class NexmarkSchema
                 new Int64Type(), // price
                 new StringType(), // channel
                 new StringType(), // url
-                new StringType(), // dateTime
+                new TimestampType(), // dateTime
                 new StringType()  // extra
             }
         }

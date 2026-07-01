@@ -39,7 +39,7 @@ internal sealed class PersonBatchBuilder
         _currentColumns[3].Add(new StringValue(person.CreditCard));
         _currentColumns[4].Add(new StringValue(person.City));
         _currentColumns[5].Add(new StringValue(person.State));
-        _currentColumns[6].Add(new StringValue(person.DateTime));
+        _currentColumns[6].Add(new TimestampTzValue(person.DateTime));
         _currentColumns[7].Add(new StringValue(person.Extra));
 
         _currentRowCount++;

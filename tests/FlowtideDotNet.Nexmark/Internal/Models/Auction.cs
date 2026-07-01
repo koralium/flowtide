@@ -10,8 +10,8 @@ public struct Auction
     public string Description { get; set; }
     public long InitialBid { get; set; }
     public long Reserve { get; set; }
-    public string DateTime { get; set; }
-    public string Expires { get; set; }
+    public DateTime DateTime { get; set; }
+    public DateTime Expires { get; set; }
     public long Seller { get; set; }
     public long Category { get; set; }
     public string Extra { get; set; }
@@ -24,8 +24,8 @@ public struct Auction
         string description = rng.GenString(100);
         long initialBid = rng.GenPrice();
         long reserve = initialBid + rng.GenPrice();
-        string dateTime = NexmarkUtils.MilliTsToTimestampString(time);
-        string expires = NexmarkUtils.MilliTsToTimestampString(time + NextLength(eventsSoFar, rng, time, nex));
+        DateTime dateTime = DateTimeOffset.FromUnixTimeMilliseconds(time).UtcDateTime;
+        DateTime expires = DateTimeOffset.FromUnixTimeMilliseconds(time + NextLength(eventsSoFar, rng, time, nex)).UtcDateTime;
         
         long seller = rng.Next(0, nex.HotSellerRatio) > 0
             ? (Person.LastId(eventId, nex) / nex.HotSellerRatio2) * nex.HotSellerRatio2
