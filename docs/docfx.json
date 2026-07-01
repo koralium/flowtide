@@ -13,8 +13,7 @@
       "dest": "api",
       "outputFormat": "mref",
       "namespaceLayout": "nested",
-      "memberLayout": "separatePages",
-      "EnumSortOrder": "declaringOrder",
+      "memberLayout": "samePage",
       "filter": "filterConfig.yml",
       "disableGitFeatures": false
     }
@@ -61,7 +60,7 @@
     "globalMetadata": {
       "_appName": "Flowtide",
       "_appTitle": "Flowtide.NET",
-      "_appFooter": "Supported by the <a href=\"https://dotnetfoundation.org\">.NET Foundation</a>. Copyright © .NET Foundation.",
+      "_appFooter": "Supported by the <a href=\"https://dotnetfoundation.org\">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href=\"https://dotnet.github.io/docfx\">docfx</a>",
       "_appLogoPath": "images/flowtidelogo.svg",
       "_appFaviconPath": "images/favicon.ico",
       "_enableSearch": true,
@@ -74,7 +73,6 @@
     "globalMetadataFiles": [],
     "fileMetadataFiles": [],
     "postProcessors": [],
-    "keepFileLink": false,
     "disableGitFeatures": false
   }
 }
