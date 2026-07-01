@@ -4,11 +4,9 @@ sidebar_position: 11
 
 # Files Connector
 
-:::warning
+> [!WARNING]
+> The files connector is experimental and may be subject to change.
 
-The files connector is experimental and may be subject to change.
-
-:::
 
 The files connector allows a stream to read files from local disk or from a cloud solution into the stream. At this point it is only supported as data sources.
 

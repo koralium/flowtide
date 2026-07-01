@@ -184,30 +184,24 @@ when reading in the data.
 
 The data is stored in the following order:
 
-```kroki type=rackdiag alt=fileoverviewrack
-rackdiag {
-  16U;
-  ascending;
-
-  1: Header;
-  2: Upsert pages PageIds
-  3: Upsert pages FileIds
-  4: Upsert pages Offset In File
-  5: Upsert pages Size
-  6: Upsert pages crc32
-  7: Deleted pageIds
-  8: Upsert file FileIds
-  9: Upsert file Page Count
-  10: Upsert file non active count
-  11: Upsert file size
-  12: Upsert file deleted size
-  13: Upsert file added at version
-  14: Upsert file crc64
-  15: Deleted fileIds
-  16: Deleted file at version
-}
-
-```
+| # | Field |
+|---|---|
+| 1 | Header |
+| 2 | Upsert pages PageIds |
+| 3 | Upsert pages FileIds |
+| 4 | Upsert pages Offset In File |
+| 5 | Upsert pages Size |
+| 6 | Upsert pages crc32 |
+| 7 | Deleted pageIds |
+| 8 | Upsert file FileIds |
+| 9 | Upsert file Page Count |
+| 10 | Upsert file non active count |
+| 11 | Upsert file size |
+| 12 | Upsert file deleted size |
+| 13 | Upsert file added at version |
+| 14 | Upsert file crc64 |
+| 15 | Deleted fileIds |
+| 16 | Deleted file at version |
 
 ### Checkpoint snapshot file
 
@@ -220,103 +214,88 @@ During recovery, the engine finds the latest snapshot and only reads incremental
 The header of the checkpoint file contains offsets to all different arrays of data.
 The size of the header is 128 bytes.
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-  0-31: Magic number
-  32-47: Version (2 bytes)
-  48-63: Reserved (2 bytes)
-  64-127: Updated page count
-  128-191: Deleted page count
-  192-255: Updated file count
-  256-319: Deleted file count
-  320-383: Updated pageids start offset
-  384-447: Updated page file identifiers start offset
-  448-511: Updated page file offset start offset
-  512-575: Updated page sizes offset
-  576-639: Updated page crc32s offset
-  640-703: Deleted pageids start offset
-
-  704-767: Updated files fileIds start offset
-  768-831: Updated files page count start offset
-  832-895: Updated files non active count start offset
-  896-959: Updated files sizes offset
-  960-1023: Updated files deleted sizes offset
-  1024-1087: Updated files added at version offset
-  1088-1151: Updated files crc64s offset
-  1152-1215: Deleted files file Ids offset
-  1216-1279: Deleted files added at version offset
-  1280-1343: Next available file id
-}
-```
+| Bits | Field |
+|---|---|
+| 0-31 | Magic number |
+| 32-47 | Version (2 bytes) |
+| 48-63 | Reserved (2 bytes) |
+| 64-127 | Updated page count |
+| 128-191 | Deleted page count |
+| 192-255 | Updated file count |
+| 256-319 | Deleted file count |
+| 320-383 | Updated pageids start offset |
+| 384-447 | Updated page file identifiers start offset |
+| 448-511 | Updated page file offset start offset |
+| 512-575 | Updated page sizes offset |
+| 576-639 | Updated page crc32s offset |
+| 640-703 | Deleted pageids start offset |
+| 704-767 | Updated files fileIds start offset |
+| 768-831 | Updated files page count start offset |
+| 832-895 | Updated files non active count start offset |
+| 896-959 | Updated files sizes offset |
+| 960-1023 | Updated files deleted sizes offset |
+| 1024-1087 | Updated files added at version offset |
+| 1088-1151 | Updated files crc64s offset |
+| 1152-1215 | Deleted files file Ids offset |
+| 1216-1279 | Deleted files added at version offset |
+| 1280-1343 | Next available file id |
 
 ### Changed pages layout
 
 The following layout shows how the three columns for new/updated pages are written to disk and the deleted pages array.
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Page Id 1
-  64-127: Page Id 2
-  128-191: ...
-  192-255: Page Id N
-  256-319: File identifier 1
-  320-383: File Identifier 2
-  384-447: ...
-  448-511: File Identifier N
-  512-543: Page file offset 1
-  544-575: Page file offset 2
-  576-607: ...
-  608-639: Page file offset N
-  640-671: Page size 1
-  672-703: Page size 2
-  704-735: ...
-  736-767: Page size N
-  768-799: Page crc32 1
-  800-831: Page crc32 2
-  832-863: ...
-  864-895: Page crc32 N
-  896-959: Deleted page 1
-  960-1023: Deleted page 2
-  1024-1087: ...
-  1088-1151: Deleted page N
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Page Id 1 |
+| 64-127 | Page Id 2 |
+| 128-191 | ... |
+| 192-255 | Page Id N |
+| 256-319 | File identifier 1 |
+| 320-383 | File Identifier 2 |
+| 384-447 | ... |
+| 448-511 | File Identifier N |
+| 512-543 | Page file offset 1 |
+| 544-575 | Page file offset 2 |
+| 576-607 | ... |
+| 608-639 | Page file offset N |
+| 640-671 | Page size 1 |
+| 672-703 | Page size 2 |
+| 704-735 | ... |
+| 736-767 | Page size N |
+| 768-799 | Page crc32 1 |
+| 800-831 | Page crc32 2 |
+| 832-863 | ... |
+| 864-895 | Page crc32 N |
+| 896-959 | Deleted page 1 |
+| 960-1023 | Deleted page 2 |
+| 1024-1087 | ... |
+| 1088-1151 | Deleted page N |
 
 ### Changed files layout
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: File Id 1
-  64-127: File Id 2
-  128-191: ...
-  192-255: File Id N
-  256-287: File page count 1
-  288-319: File page count 2
-  320-351: ...
-  352-383: File page count N
-  384-415: File non active count 1
-  416-447: File non active count 2
-  448-479: ...
-  480-511: File non active count N
-  512-543: Roaring bitmap offset 1
-  544-575: Roaring bitmap offset 2
-  576-607: ...
-  608-639: Roaring bitmap offset N
-  640-703: Roaring bitmaps data [colheight = 2]
-  768-831: Deleted file id 1
-  832-895: Deleted file id 2
-  896-959: ...
-  960-1023: Deleted file id N
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | File Id 1 |
+| 64-127 | File Id 2 |
+| 128-191 | ... |
+| 192-255 | File Id N |
+| 256-287 | File page count 1 |
+| 288-319 | File page count 2 |
+| 320-351 | ... |
+| 352-383 | File page count N |
+| 384-415 | File non active count 1 |
+| 416-447 | File non active count 2 |
+| 448-479 | ... |
+| 480-511 | File non active count N |
+| 512-543 | Roaring bitmap offset 1 |
+| 544-575 | Roaring bitmap offset 2 |
+| 576-607 | ... |
+| 608-639 | Roaring bitmap offset N |
+| 640-703 | Roaring bitmaps data |
+| 768-831 | Deleted file id 1 |
+| 832-895 | Deleted file id 2 |
+| 896-959 | ... |
+| 960-1023 | Deleted file id N |
 
 ## Data File
 
@@ -327,76 +306,55 @@ The data file is structured for streaming reads. During compaction, data is read
 The file layout is: a fixed 64-byte header, followed by page ids stored as a column, then page offsets/locations, and finally the page data.
 
 
-```kroki type=rackdiag alt=fileoverviewrack
-rackdiag {
-  7U;
-  ascending;
-
-  1: Header;
-  2: Page Ids
-  3: Page Locations
-  4: Page Data 1
-  5: Page Data 2
-  6: ...
-  7: Page Data N
-}
-
-```
+| # | Field |
+|---|---|
+| 1 | Header |
+| 2 | Page Ids |
+| 3 | Page Locations |
+| 4 | Page Data 1 |
+| 5 | Page Data 2 |
+| 6 | ... |
+| 7 | Page Data N |
 
 ### Header layout
 
 The header of the data file has the following layout:
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-31: Magic number
-  32-47: Version
-  48-63: Flags
-  64-95: Page Counts
-  96-127: Page Id Start Offset
-  128-159: Page Location Start Offset
-  160-191: Data Start Offset
-  192-255: Reserved 40 bytes (64 byte alignment)  [colheight = 5]
-}
-```
+| Bits | Field |
+|---|---|
+| 0-31 | Magic number |
+| 32-47 | Version |
+| 48-63 | Flags |
+| 64-95 | Page Counts |
+| 96-127 | Page Id Start Offset |
+| 128-159 | Page Location Start Offset |
+| 160-191 | Data Start Offset |
+| 192-255 | Reserved 40 bytes (64 byte alignment) |
 
 The following flags are currently defined:
 
 1. `ContainsCheckpointBundle` (bit index 0): When set, the file is a bundle file that contains page data, checkpoint data, and registry data in a single file. The reserved bytes in the header are repurposed to provide offsets into the bundled sections:
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Checkpoint Offset
-  64-127: Registry Offset
-  128-191: Registry footer offset
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Checkpoint Offset |
+| 64-127 | Registry Offset |
+| 128-191 | Registry footer offset |
 
 ### Page ids and offset layout
 
 After the header comes the page ids and offsets. These are primarily used during compaction: the page ids are read to determine which pages are still active, and the offsets are used to locate the page data for copying into a new file.
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Page Id 1
-  64-127: Page Id 2
-  128-191: ...
-  192-255: Page Id N
-  256-287: Page 1 Offset
-  288-319: Page 2 Offset
-  320-351: ...
-  352-383: Page N Offset
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Page Id 1 |
+| 64-127 | Page Id 2 |
+| 128-191 | ... |
+| 192-255 | Page Id N |
+| 256-287 | Page 1 Offset |
+| 288-319 | Page 2 Offset |
+| 320-351 | ... |
+| 352-383 | Page N Offset |
 
 ### Page data
 
@@ -405,17 +363,12 @@ Page data can be written in compact mode with no padding, or with padding to dis
 Since all reads are offset-based (the checkpoint file stores exact byte offsets and sizes for each page), the choice between compact and padded mode is transparent to the reader.
 
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Page 1 Data [colheight = 2]
-  128-191: Page 2 Data [colheight = 2]
-  256-319: ... [colheight = 2]
-  384-447: Page N Data [colheight = 2]
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Page 1 Data |
+| 128-191 | Page 2 Data |
+| 256-319 | ... |
+| 384-447 | Page N Data |
 
 ## Checkpoint Registry File
 
@@ -433,41 +386,31 @@ On storage providers that support file listing (`SupportsFileListing`), the regi
 
 File layout:
 
-```kroki type=rackdiag alt=fileoverviewrack
-rackdiag {
-  6U;
-  ascending;
-
-  1: Header;
-  2: Checkpoint Versions
-  3: Is snaphots
-  4: IsBundle
-  5: CRC64s
-  6: Footer (crc64 of the registry)
-}
-```
+| # | Field |
+|---|---|
+| 1 | Header |
+| 2 | Checkpoint Versions |
+| 3 | Is snaphots |
+| 4 | IsBundle |
+| 5 | CRC64s |
+| 6 | Footer (crc64 of the registry) |
 
 ### Header layout
 
 The header of the checkpoint registry has the following layout:
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-31: Magic number
-  32-47: Version
-  48-63: Reserved
-  64-95: Versions count
-  96-127: Checkpoint versions offset
-  128-159: Is Snapshots offset
-  160-191: CRC64s Offset
-  192-223: Footer offset
-  224-255: Reserved
-  256-319: Reserved 32 bytes (64 byte alignment)  [colheight = 5]
-}
-```
+| Bits | Field |
+|---|---|
+| 0-31 | Magic number |
+| 32-47 | Version |
+| 48-63 | Reserved |
+| 64-95 | Versions count |
+| 96-127 | Checkpoint versions offset |
+| 128-159 | Is Snapshots offset |
+| 160-191 | CRC64s Offset |
+| 192-223 | Footer offset |
+| 224-255 | Reserved |
+| 256-319 | Reserved 32 bytes (64 byte alignment) |
 
 ### Data layout
 
@@ -479,36 +422,26 @@ a multiple of four bytes, so if there are 5 checkpoints, it will still use four 
 Finally it also contains a list of the CRC64 values of the checkpoint files which can be used to check
 data integrity of the actual checkpoint files.
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Checkpoint version 1
-  64-127: Checkpoint version 2
-  128-191: ...
-  192-255: Checkpoint version N
-  256-319: IsSnapshot Bitmap list  [colheight = 2]
-  384-447: CRC64 checkpoint 1
-  448-511: CRC64 checkpoint 2
-  512-575: ...
-  576-639: CRC64 checkpoint N
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Checkpoint version 1 |
+| 64-127 | Checkpoint version 2 |
+| 128-191 | ... |
+| 192-255 | Checkpoint version N |
+| 256-319 | IsSnapshot Bitmap list |
+| 384-447 | CRC64 checkpoint 1 |
+| 448-511 | CRC64 checkpoint 2 |
+| 512-575 | ... |
+| 576-639 | CRC64 checkpoint N |
 
 ### Footer
 
 The footer contains the CRC64 value of the registry file, which allows checking data integrity when reading
 the registry.
 
-```kroki type=packetdiag
-{
-  colwidth = 64
-  node_height = 72
-
-  0-63: Registry CRC64 value
-}
-```
+| Bits | Field |
+|---|---|
+| 0-63 | Registry CRC64 value |
 
 ## Data And Checkpoint Bundle File
 
@@ -535,16 +468,11 @@ The downside of this approach is that it requires a list operation to discover b
 
 The three sections are concatenated sequentially. The data file header's `ContainsCheckpointBundle` flag is set, and the reserved header bytes store the byte offsets to the checkpoint and registry sections.
 
-```kroki type=rackdiag alt=fileoverviewrack
-rackdiag {
-  3U;
-  ascending;
-
-  1: Page Data;
-  2: Checkpoint Data;
-  3: Registry Data;
-}
-```
+| # | Field |
+|---|---|
+| 1 | Page Data |
+| 2 | Checkpoint Data |
+| 3 | Registry Data |
 
 ### CRC64 for bundle files
 

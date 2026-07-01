@@ -2,7 +2,6 @@
 sidebar_position: 3
 ---
 
-import DocCardList from '@theme/DocCardList';
 
 # Table Functions
 
@@ -57,5 +56,3 @@ message TableFunctionRelation {
 ```
 
 See below for the different table functions:
-
-<DocCardList />

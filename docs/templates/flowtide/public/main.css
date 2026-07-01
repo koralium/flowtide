@@ -1,0 +1,7 @@
+/* Constrain the navbar logo (source SVG is 1024x1024). */
+.navbar-brand > img {
+  height: 45px;
+  width: auto;
+  /* Add some breathing room between the logo and the "Flowtide" text. */
+  margin-right: 0.6rem;
+}

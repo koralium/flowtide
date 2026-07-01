@@ -1,0 +1,15 @@
+apiRules:
+  # Exclude generated / third-party namespaces (protobuf, gRPC, FlexBuffers, etc.)
+  # that leak into the build. Flowtide's own DI extension methods live under
+  # Microsoft.Extensions.DependencyInjection, so that namespace is intentionally kept.
+  - exclude:
+      uidRegex: ^(Base\.V1|FlexBuffers|Google|Grpc|Validate)(\.|$)
+  # Exclude compiler-generated and internal/private members from the API reference.
+  - exclude:
+      hasAttribute:
+        uid: System.Runtime.CompilerServices.CompilerGeneratedAttribute
+  - exclude:
+      hasAttribute:
+        uid: System.ComponentModel.EditorBrowsableAttribute
+        ctorArguments:
+          - System.ComponentModel.EditorBrowsableState.Never

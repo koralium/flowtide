@@ -29,9 +29,6 @@ The *Aggregate Operator* has the following metrics:
 | backpressure  | Gauge     | Value 0-1 on how much backpressure the operator has.  |
 | health        | Gauge     | Value 0 or 1, if the operator is healthy or not.      |
 
-:::info
-
-At this point, an aggregate operator will never be unhealthy.
-If there is a failure against the state, the stream will instead restart.
-
-:::
+> [!NOTE]
+> At this point, an aggregate operator will never be unhealthy.
+> If there is a failure against the state, the stream will instead restart.

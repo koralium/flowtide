@@ -8,11 +8,9 @@ sidebar_position: 2
 
 *This function does not have a substrait definition.*
 
-:::warning
+> [!WARNING]
+> This function is experimental and may be subject to change.
 
-This function is experimental and may be subject to change.
-
-:::
 
 Generates a unique int64 value for each combination of the "partition by" columns in an window function query.
 This can be used for instance when creating a SCD table where the partition by can be on both the primary key and date.

@@ -11,12 +11,10 @@ There is only a sink operator implemented, and there is no plans yet to support 
 
 The ElasticSearch sink allows insertion into an index.
 
-:::info
+> [!NOTE]
+> All ElasticSearch insertions must contain a column called '_id' this column is the unique identifier in the elasticsearch index.
+> This field will not be added to the source fields.
 
-All ElasticSearch insertions must contain a column called '_id' this column is the unique identifier in the elasticsearch index.
-This field will not be added to the source fields.
-
-:::
 
 To use the *ElasticSearch Sink* add the following line to the *ConnectorManager*:
 

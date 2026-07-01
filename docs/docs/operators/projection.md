@@ -21,8 +21,5 @@ The *Projection Operator* has the following metrics:
 | health        | Gauge     | Value 0 or 1, if the operator is healthy or not.      |
 | events        | Counter   | How many events that pass through the operator.       |
 
-:::info
-
-At this point, a projection operator will never be unhealthy.
-
-:::
+> [!NOTE]
+> At this point, a projection operator will never be unhealthy.

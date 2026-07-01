@@ -7,7 +7,7 @@ sidebar_position: 2
 All Flowtide streams require a persistent storage solution to function.
 It is responsible for persisting the data at checkpoint intervals to ensure the stream can continue to operate in case of a failure.
 
-The recommended storage backend is the **Reservoir** storage system. It is designed for cloud-native deployments and provides a multi-tier architecture with an in-flight buffer, local disk cache, and persistent object storage (such as Azure Blob Storage). For details on the internal architecture, see [Reservoir Storage System](./internal/reservoir).
+The recommended storage backend is the **Reservoir** storage system. It is designed for cloud-native deployments and provides a multi-tier architecture with an in-flight buffer, local disk cache, and persistent object storage (such as Azure Blob Storage). For details on the internal architecture, see [Reservoir Storage System](./internal/reservoir/index.md).
 
 Legacy storage backends (FasterKV, temporary file cache, SQL Server) are still available but are not recommended for new deployments.
 
@@ -134,11 +134,9 @@ builder.Services.AddFlowtideStream("yourstream")
     });
 ```
 
-:::warning
+> [!WARNING]
+> Temporary storage is not suitable for production. All data is deleted when the application exits.
 
-Temporary storage is not suitable for production. All data is deleted when the application exits.
-
-:::
 
 ### Reservoir Builder Options
 
@@ -198,11 +196,9 @@ builder.WithStateOptions(new StateManagerOptions()
 
 ## FasterKV storage (Legacy)
 
-:::warning
+> [!WARNING]
+> FasterKV storage is a legacy option. Consider using [Reservoir Storage](#reservoir-storage) for new deployments.
 
-FasterKV storage is a legacy option. Consider using [Reservoir Storage](#reservoir-storage) for new deployments.
-
-:::
 
 FasterKV is a persistent key value store built by Microsoft.
 FasterKV is highly configurable, and how you configure it will affect the performance of your stream.
@@ -296,11 +292,9 @@ builder.WithStateOptions(() => new StateManagerOptions()
 
 ## Temporary file cache storage (Legacy)
 
-:::warning
+> [!WARNING]
+> This is a legacy option. Consider using [Temporary Development Storage](#temporary-development-storage) for new projects.
 
-This is a legacy option. Consider using [Temporary Development Storage](#temporary-development-storage) for new projects.
-
-:::
 
 This storage solution is useful when developing or running unit tests on a stream.
 All data will be cleared between each run, but it will be persisted to local disk to reduce RAM usage and allow you to run streams with alot of data.
@@ -330,11 +324,9 @@ builder
 
 ## SQL Server storage (Experimental)
 
-:::warning
+> [!WARNING]
+> SQL Server storage support is still experimental.
 
-SQL Server storage support is still experimental.
-
-:::
 
 Store persistent data to sql server. 
 
@@ -371,22 +363,16 @@ builder.Services.AddFlowtideStream("yourstream")
 
 When using **FasterKV** or **file cache** storage, the stream storage is built on a three-tier architecture: the in-memory cache, the local disk modified page cache, and the persistent data.
 
-When using **Reservoir** storage, the architecture expands to five tiers: RAM pages (LRU), disk spillover, an in-flight buffer, a local disk cache, and persistent cloud storage. See [Reservoir Storage System](./internal/reservoir) for details.
+When using **Reservoir** storage, the architecture expands to five tiers: RAM pages (LRU), disk spillover, an in-flight buffer, a local disk cache, and persistent cloud storage. See [Reservoir Storage System](./internal/reservoir/index.md) for details.
 
 A data page is fetched using the following logic:
 
-```kroki type=blockdiag
-  blockdiag {
-    IsInMemory [label = "Page is in memory", shape = diamond, width = 200]
-    FetchFromMemory [label = "Fetch from memory"]
-    IsInModifiedCache [label = "Page in modified cache", shape = diamond, width = 250]
-    FetchFromModifiedCache [label = "Fetch from modified cache", width = 200]
-    FetchFrompersistentStorage [label = "Fetch from persistent storage", width = 200]
-    IsInMemory -> FetchFromMemory [label = "Yes"]
-    IsInMemory -> IsInModifiedCache [label = "No"]
-    IsInModifiedCache -> FetchFromModifiedCache [label = "Yes"]
-    IsInModifiedCache -> FetchFrompersistentStorage [label = "No"]
-  }
+```mermaid
+flowchart TD
+    IsInMemory{"Page is in memory"} -->|Yes| FetchFromMemory["Fetch from memory"]
+    IsInMemory -->|No| IsInModifiedCache{"Page in modified cache"}
+    IsInModifiedCache -->|Yes| FetchFromModifiedCache["Fetch from modified cache"]
+    IsInModifiedCache -->|No| FetchFrompersistentStorage["Fetch from persistent storage"]
 ```
 
 ## Compression

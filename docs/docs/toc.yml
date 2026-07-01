@@ -1,0 +1,173 @@
+- name: Getting started
+  href: ../index.md
+- name: State Persistence
+  href: statepersistence.md
+- name: Parallelism
+  href: parallelism.md
+- name: Connectors
+  items:
+    - name: Catalogs
+      href: connectors/catalogs.md
+    - name: Configuration Data
+      href: connectors/configurationdata.md
+    - name: SQL Server Connector
+      href: connectors/sqlserver.md
+    - name: Delta Lake Connector
+      href: connectors/deltalake.md
+    - name: MongoDB Connector
+      href: connectors/mongodb.md
+    - name: CosmosDB Connector
+      href: connectors/cosmosdb.md
+    - name: Elasticsearch Connector
+      href: connectors/elasticsearch.md
+    - name: Kafka Connector
+      href: connectors/kafka.md
+    - name: Custom Data Source
+      href: connectors/customdata.md
+    - name: Sharepoint Connector
+      href: connectors/sharepoint.md
+    - name: OpenFGA Connector
+      href: connectors/openfga.md
+    - name: AuthZed/SpiceDB Connector
+      href: connectors/spicedb.md
+    - name: Permify Connector
+      href: connectors/permify.md
+    - name: Files Connector
+      href: connectors/files.md
+    - name: Qdrant connector
+      href: connectors/qdrant.md
+    - name: Starrocks Connector
+      href: connectors/starrocks.md
+- name: Deployment
+  items:
+    - name: Pause And Resume
+      href: deployment/pauseresume.md
+- name: Monitoring
+  items:
+    - name: General Metrics
+      href: monitoring/generalmetrics.md
+    - name: Health checks
+      href: monitoring/healthchecks.md
+    - name: Prometheus
+      href: monitoring/prometheus.md
+    - name: Azure Monitor
+      href: monitoring/azuremonitor.md
+    - name: OpenLineage
+      href: monitoring/openlineage.md
+- name: Operators
+  items:
+    - name: Projection Operator
+      href: operators/projection.md
+    - name: Filter Operator
+      href: operators/filter.md
+    - name: Join Operators
+      href: operators/join.md
+    - name: Normalization Operator
+      href: operators/normalization.md
+    - name: Set Operator
+      href: operators/set.md
+    - name: Aggregate Operator
+      href: operators/aggregate.md
+    - name: Iteration Operator
+      href: operators/iteration.md
+    - name: Buffer Operator
+      href: operators/buffer.md
+    - name: Top N Operator
+      href: operators/topn.md
+    - name: Table Function Operator
+      href: operators/tablefunction.md
+    - name: Window Operator
+      href: operators/window.md
+- name: Expressions
+  items:
+    - name: Scalar Functions
+      items:
+        - name: Arithmetic Functions
+          href: expressions/scalarfunctions/arithmetic.md
+        - name: Boolean Functions
+          href: expressions/scalarfunctions/boolean.md
+        - name: Comparison Functions
+          href: expressions/scalarfunctions/comparison.md
+        - name: String Functions
+          href: expressions/scalarfunctions/string.md
+        - name: Rounding Functions
+          href: expressions/scalarfunctions/rounding.md
+        - name: Datetime Functions
+          href: expressions/scalarfunctions/datetime.md
+        - name: Check Functions
+          href: expressions/scalarfunctions/check.md
+        - name: List Functions
+          href: expressions/scalarfunctions/list.md
+        - name: Hash Functions
+          href: expressions/scalarfunctions/hash.md
+        - name: Logarithmic Functions
+          href: expressions/scalarfunctions/logarithmic.md
+    - name: Aggregate Functions
+      items:
+        - name: Generic Functions
+          href: expressions/aggregatefunctions/generic.md
+        - name: Arithmetic Functions
+          href: expressions/aggregatefunctions/arithmetic.md
+        - name: List Functions
+          href: expressions/aggregatefunctions/list.md
+        - name: String functions
+          href: expressions/aggregatefunctions/string.md
+    - name: Table Functions
+      href: expressions/tablefunctions/index.md
+      items:
+        - name: Generic Functions
+          href: expressions/tablefunctions/generic.md
+    - name: Window Functions
+      href: expressions/windowfunctions/index.md
+      items:
+        - name: Arithmetic Functions
+          href: expressions/windowfunctions/arithmetic.md
+        - name: Generic Functions
+          href: expressions/windowfunctions/generic.md
+    - name: Specialized Expressions
+      href: expressions/specializedexpressions.md
+- name: SQL
+  href: sql/index.md
+  items:
+    - name: Table Provider
+      href: sql/tableprovider.md
+    - name: Create Table
+      href: sql/createtable.md
+    - name: Create View
+      href: sql/createview.md
+    - name: Select
+      href: sql/select/index.md
+      items:
+        - name: Union
+          href: sql/select/union.md
+        - name: Top N
+          href: sql/select/topn.md
+        - name: Except
+          href: sql/select/except.md
+        - name: Intersect
+          href: sql/select/intersect.md
+    - name: Insert Into
+      href: sql/insertinto.md
+    - name: Recursion
+      href: sql/recursion.md
+- name: Testing
+  href: testing/index.md
+  items:
+    - name: Integration Testing
+      href: testing/integrationtests.md
+    - name: .NET Aspire Testing
+      href: testing/aspiretesting.md
+- name: Internal
+  items:
+    - name: Project Structure
+      href: internal/projectstructure.md
+    - name: Reservoir Storage System
+      href: internal/reservoir/index.md
+    - name: Storage
+      items:
+        - name: Persistent Storage Rules
+          href: internal/storage/persistentrules.md
+        - name: B+ Tree
+          href: internal/storage/bplustree.md
+        - name: Object State
+          href: internal/storage/objectstate.md

@@ -9,11 +9,11 @@ Currently, only a **sink operator** is implemented.
 
 The **StarRocks sink** enables data insertion into a StarRocks table using the built-in Stream Load or HTTP-based ingestion mechanism.
 
-:::info  
-All StarRocks sinks require that the target table exists **and has a primary key defined**.  
-If the target table does not have a primary key, the connector will throw an error.  
-This is required for supporting both upsert and delete operations in StarRocks.  
-:::
+> [!NOTE]
+> All StarRocks sinks require that the target table exists **and has a primary key defined**.  
+> If the target table does not have a primary key, the connector will throw an error.  
+> This is required for supporting both upsert and delete operations in StarRocks.  
+
 
 To use the *StarRocks Sink*, add the following line to the *ConnectorManager*:
 

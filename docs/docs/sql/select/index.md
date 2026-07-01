@@ -17,7 +17,7 @@ FROM table_source
 (HAVING scalar_or_aggregate_expression)?
 ```
 
-All fields which says expression, can take in expressions found under the [Expressions chapter](/docs/category/expressions).
+All fields which says expression, can take in expressions found under the [Expressions chapter](../../expressions/scalarfunctions/arithmetic.md).
 
 ## Wildcards
 
@@ -76,4 +76,4 @@ WHERE u.userkey NOT IN (
 ```
 
 ### Implementation Details
-Flowtide compiles these subqueries into a logical `LeftMark` join relation. During plan optimization, correlated filters inside the subquery are pulled up and mapped into the join conditions. This decorrelation avoids row duplication and optimizes stream performance by suppressing redundant updates.
+Flowtide compiles these subqueries into a logical `LeftMark` join relation. During plan optimization, correlated filters inside the subquery are pulled up and mapped into the join conditions. This decorrelation avoids row duplication and optimizes stream performance by suppressing redundant updates.

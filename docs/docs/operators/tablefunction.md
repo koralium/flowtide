@@ -13,7 +13,7 @@ When used as an ingress, the data returned is static and wont be changed over ti
 
 Both operators are stateless, so they do not affect disk storage, and are usually low on memory usage.
 
-To read more how to use table functions, see: [Table Functions](/docs/expressions/tablefunctions).
+To read more how to use table functions, see: [Table Functions](../expressions/tablefunctions/index.md).
 
 ## Metrics
 
@@ -27,8 +27,5 @@ The *Table Function Operators* have the following metrics:
 | events            | Counter   | How many events that the operator outputs.            |
 | events_processed  | Counter   | How many events the operator processes.               |
 
-:::info
-
-At this point, a table function operator will never be unhealthy.
-
-:::
+> [!NOTE]
+> At this point, a table function operator will never be unhealthy.
