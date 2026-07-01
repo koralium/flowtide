@@ -3,7 +3,7 @@ apiRules:
   # that leak into the build. Flowtide's own DI extension methods live under
   # Microsoft.Extensions.DependencyInjection, so that namespace is intentionally kept.
   - exclude:
-      uidRegex: ^(Base\.V1|FlexBuffers|Google|Grpc|Validate)(\.|$)
+      uidRegex: ^(Base\.V1|FlexBuffers|Google|Grpc|Substrait\.Protobuf|Validate)(\.|$)
   # Exclude compiler-generated and internal/private members from the API reference.
   - exclude:
       hasAttribute:
