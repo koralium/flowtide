@@ -154,7 +154,7 @@ namespace DifferntialCompute.Benchmarks
                 }
             }
 
-            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData)
+            public GenericWriteOperation Process(long key, bool exists, in long existingData, ref long incomingData, int sortedIndex)
             {
                 return GenericWriteOperation.Upsert;
             }

@@ -12,16 +12,34 @@
 
 namespace FlowtideDotNet.Storage
 {
+    /// <summary>
+    /// Identifies the version of a running stream so that persisted state can be matched to the plan that produced it.
+    /// It is supplied through the stream builder (<c>SetVersionInformation</c>) and flows into storage initialization,
+    /// where providers use it to detect plan changes between restarts and to scope stored data to a particular version.
+    /// </summary>
     public class StreamVersionInformation
     {
+        /// <summary>
+        /// Creates version information for a stream.
+        /// </summary>
+        /// <param name="hash">A content hash of the stream plan, used to detect structural changes.</param>
+        /// <param name="version">A human-readable version label for the stream configuration.</param>
         public StreamVersionInformation(string hash, string version)
         {
             Hash = hash;
             Version = version;
         }
 
+        /// <summary>
+        /// A content hash of the stream plan. On startup it is compared against the hash stored in persisted state;
+        /// a mismatch indicates the stream topology has changed and is used to guard against incompatible state restores.
+        /// </summary>
         public string Hash { get; }
 
+        /// <summary>
+        /// A human-readable version label associated with the stream configuration. Storage providers can use it to
+        /// scope stored data to a particular stream version.
+        /// </summary>
         public string Version { get; }
     }
 }

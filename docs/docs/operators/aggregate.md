@@ -9,8 +9,9 @@ This handles computation of *aggregate functions* and groupings.
 
 At this time not all features on the *aggregate relation* is supported, and some features are limited.
 
-* Measures does not support filters yet, such as SUM(c) FILTER(WHERE...)
 * When doing groupings, such as 'GROUP BY', only one grouping set is supported (you can group multiple columns in a single grouping set).
+
+Measure filters are supported, such as `SUM(c) FILTER(WHERE ...)`.
 
 The operator is stateful and uses one persistent B+ tree to store all the measures state values, and one temporary B+ tree to keep track of
 which keys have been modified.

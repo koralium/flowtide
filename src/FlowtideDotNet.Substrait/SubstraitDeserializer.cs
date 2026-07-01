@@ -411,6 +411,11 @@ namespace FlowtideDotNet.Substrait
                     }
                 }
 #pragma warning restore CS0612 // Type or member is obsolete
+                if (aggregateFunction.OutputType != null)
+                {
+                    var emptySpan = Span<string>.Empty;
+                    result.OutputType = GetType(aggregateFunction.OutputType, ref emptySpan);
+                }
                 return result;
             }
 

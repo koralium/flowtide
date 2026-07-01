@@ -453,8 +453,11 @@ namespace FlowtideDotNet.Storage.Tests
             var allResults = await CollectAllResults(searcher);
             searcher.Dispose();
 
-            // With unique keys across multiple leaves, the last key of each non-last leaf
-            // should have ContinuesToNextLeaf=true and appear in results for 2 leaves.
+            // The last key of each non-last leaf matches at the leaf's end, so it is flagged
+            // ContinuesToNextLeaf=true. Carry-over exists to pick up *additional* matches in the next
+            // leaf when a value spans the boundary (covered by CarryOver_GroupComparer_FindsAllMatchesAcrossLeaves).
+            // For a unique key there is nothing more to find in the next leaf, so it must NOT produce a
+            // second, not-found result there.
             var carryOverKeys = allResults
                 .Where(kvp => kvp.Value.Any(r => r.ContinuesToNextLeaf))
                 .Select(kvp => kvp.Key)
@@ -462,15 +465,11 @@ namespace FlowtideDotNet.Storage.Tests
 
             Assert.NotEmpty(carryOverKeys);
 
-            foreach (var keyIdx in carryOverKeys)
+            foreach (var kvp in allResults)
             {
-                // Key should appear in at least 2 leaves (original leaf + carry-over leaf)
-                Assert.True(allResults[keyIdx].Count >= 2,
-                    $"Key {keys[keyIdx]} has ContinuesToNextLeaf but appears in only {allResults[keyIdx].Count} leaf(s)");
-
-                // First result should be Found (the original leaf)
-                Assert.True(allResults[keyIdx][0].Found,
-                    $"Key {keys[keyIdx]} should be found in the first leaf");
+                Assert.Single(kvp.Value);
+                Assert.True(kvp.Value[0].Found,
+                    $"Key {keys[kvp.Key]} exists and must be found exactly once, with no spurious not-found duplicate");
             }
         }
 

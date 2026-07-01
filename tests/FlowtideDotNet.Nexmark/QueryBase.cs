@@ -60,5 +60,13 @@ namespace FlowtideDotNet.Nexmark
             };
             iterationId++;
         }
+
+        [IterationCleanup]
+        public void IterationCleanup()
+        {
+            _stream.StopStream().GetAwaiter().GetResult();
+            _stream.DisposeAsync().GetAwaiter().GetResult();
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, true, true);
+        }
     }
 }

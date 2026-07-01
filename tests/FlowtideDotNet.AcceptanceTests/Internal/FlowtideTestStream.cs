@@ -84,6 +84,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public int CachePageCount { get; set; } = 100_000;
 
+        public int BPlusTreePageSizeBytes { get; set; } = 32 * 1024;
+
         public Watermark? LastWatermark => _lastWatermark;
 
         public StreamStateValue State => _stream!.State;
@@ -317,7 +319,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     SerializeOptions = stateSerializeOptions,
                     PersistentStorage = _persistentStorage,
                     DefaultBPlusTreePageSize = pageSize,
-                    //DefaultBPlusTreePageSizeBytes = 1,
+                    DefaultBPlusTreePageSizeBytes = BPlusTreePageSizeBytes,
                     TemporaryStorageOptions = new Storage.FileCacheOptions()
                     {
                         DirectoryPath = $"./data/tempFiles/{testName}/tmp"

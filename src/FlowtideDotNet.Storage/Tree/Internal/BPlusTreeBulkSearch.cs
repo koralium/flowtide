@@ -115,7 +115,26 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                 _mappings.Add(new BPlusTree<K, V, TKeyContainer, TValueContainer>.LeafBatchMapping(_tree.m_stateClient.Metadata!.Left, 0, keyLength, -1));
                 return ValueTask.CompletedTask;
             }
-            return _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
+
+            var task = _tree.RouteBatchRootAsync(keys, keyLength, sortedIndices, _comparer, _mappings, _lowerBounds, _upperBounds, _lookupBuffer);
+            if (task.IsCompletedSuccessfully)
+            {
+                if (_comparer.SeekPreviousPageForValue)
+                {
+                    _mappings.Reverse();
+                }
+                return ValueTask.CompletedTask;
+            }
+            return StartSlow(task);
+        }
+
+        private async ValueTask StartSlow(ValueTask task)
+        {
+            await task;
+            if (_comparer.SeekPreviousPageForValue)
+            {
+                _mappings.Reverse();
+            }
         }
 
         /// <summary>
@@ -146,18 +165,19 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             // Carry-over keys exist: check if we need to visit intermediate leaves first.
             if (_carryOverRead.Count > 0 && _currentLeaf != null)
             {
-                if (_currentLeaf.next == 0)
+                var nextOrPrev = _comparer.SeekPreviousPageForValue ? _currentLeaf.previous : _currentLeaf.next;
+                if (nextOrPrev == 0)
                 {
-                    // No next leaf - drop carry-over, proceed to mapping below.
+                    // No next/prev leaf - drop carry-over, proceed to mapping below.
                     _carryOverRead.Clear();
                 }
-                else if (_currentLeaf.next != mapping.LeafId)
+                else if (nextOrPrev != mapping.LeafId)
                 {
                     // Intermediate leaf exists between current position and the mapping's leaf.
                     // Follow the linked list without consuming the mapping.
                     return MoveNextLeaf_FollowLinkedList();
                 }
-                // else: next leaf IS the mapping's leaf - fall through to process both.
+                // else: next/prev leaf IS the mapping's leaf - fall through to process both.
             }
 
             _mappingIndex++;
@@ -201,24 +221,24 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         }
 
         /// <summary>
-        /// Follows the leaf linked list to process carry-over keys in the next adjacent leaf.
-        /// Returns false if there is no next leaf (carry-over keys are dropped).
+        /// Follows the leaf linked list to process carry-over keys in the adjacent leaf.
         /// </summary>
         private ValueTask<bool> MoveNextLeaf_FollowLinkedList()
         {
             Debug.Assert(_currentLeaf != null);
             Debug.Assert(_carryOverRead.Count > 0);
 
-            if (_currentLeaf!.next == 0)
+            var nextOrPrev = _comparer.SeekPreviousPageForValue ? _currentLeaf.previous : _currentLeaf.next;
+            if (nextOrPrev == 0)
             {
-                // No next leaf, carry-over keys have no more matches.
+                // No next/prev leaf, carry-over keys have no more matches.
                 _currentLeaf.Return();
                 _currentLeaf = null;
                 _carryOverRead.Clear();
                 return ValueTask.FromResult(false);
             }
 
-            var getNextTask = _tree.m_stateClient.GetValue(_currentLeaf.next);
+            var getNextTask = _tree.m_stateClient.GetValue(nextOrPrev);
             if (!getNextTask.IsCompletedSuccessfully)
             {
                 return MoveNextLeaf_CarryOverSlow(getNextTask);
@@ -249,18 +269,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     KeyIndex = keyIndex,
                     LowerBound = boundries.lowerBounds,
                     UpperBound = boundries.upperBounds,
-                    ContinuesToNextLeaf = false
+                    ContinuesToNextLeaf = false,
+                    ContinuesToPreviousLeaf = false
                 };
 
-                if (leaf.next != 0 &&
+                if (comparer.SeekNextPageForValue && leaf.next != 0 &&
                     ((boundries.lowerBounds >= 0 && boundries.upperBounds == lastIndex) ||
                      (boundries.lowerBounds < 0 && (~boundries.lowerBounds) > lastIndex)))
                 {
                     result.ContinuesToNextLeaf = true;
                     _carryOverWrite.Add(keyIndex);
                 }
+                else if (comparer.SeekPreviousPageForValue && leaf.previous != 0 &&
+                         ((boundries.lowerBounds == 0 && boundries.upperBounds >= 0) ||
+                          (boundries.lowerBounds < 0 && (~boundries.lowerBounds) == 0)))
+                {
+                    result.ContinuesToPreviousLeaf = true;
+                    _carryOverWrite.Add(keyIndex);
+                }
 
-                _currentResults.Add(result);
+                if (!(boundries.lowerBounds == -1 && boundries.upperBounds == -1))
+                {
+                    _currentResults.Add(result);
+                }
             }
 
             var sortedIndicesSpan = _sortedIndices.AsSpan(mapping.Offset, mapping.Length);
@@ -280,14 +311,22 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     KeyIndex = keyIndex,
                     LowerBound = foundLowerBound,
                     UpperBound = foundUpperBound,
-                    ContinuesToNextLeaf = false
+                    ContinuesToNextLeaf = false,
+                    ContinuesToPreviousLeaf = false
                 };
                 
-                if (leaf.next != 0 &&
+                if (comparer.SeekNextPageForValue && leaf.next != 0 &&
                     ((foundLowerBound >= 0 && foundUpperBound == lastIndex) ||
-                     (foundLowerBound < 0 && (~foundUpperBound) > lastIndex)))
+                     (foundLowerBound < 0 && (~foundLowerBound) > lastIndex)))
                 {
                     result.ContinuesToNextLeaf = true;
+                    _carryOverWrite.Add(keyIndex);
+                }
+                else if (comparer.SeekPreviousPageForValue && leaf.previous != 0 &&
+                         ((foundLowerBound == 0 && foundUpperBound >= 0) ||
+                          (foundLowerBound < 0 && (~foundLowerBound) == 0)))
+                {
+                    result.ContinuesToPreviousLeaf = true;
                     _carryOverWrite.Add(keyIndex);
                 }
 
@@ -318,18 +357,29 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                     KeyIndex = keyIndex,
                     LowerBound = boundries.lowerBounds,
                     UpperBound = boundries.upperBounds,
-                    ContinuesToNextLeaf = false
+                    ContinuesToNextLeaf = false,
+                    ContinuesToPreviousLeaf = false
                 };
 
-                if (leaf.next != 0 &&
+                if (comparer.SeekNextPageForValue && leaf.next != 0 &&
                     ((boundries.lowerBounds >= 0 && boundries.upperBounds == lastIndex) ||
                      (boundries.lowerBounds < 0 && (~boundries.lowerBounds) > lastIndex)))
                 {
                     result.ContinuesToNextLeaf = true;
                     _carryOverWrite.Add(keyIndex);
                 }
+                else if (comparer.SeekPreviousPageForValue && leaf.previous != 0 &&
+                         ((boundries.lowerBounds == 0 && boundries.upperBounds >= 0) ||
+                          (boundries.lowerBounds < 0 && (~boundries.lowerBounds) == 0)))
+                {
+                    result.ContinuesToPreviousLeaf = true;
+                    _carryOverWrite.Add(keyIndex);
+                }
 
-                _currentResults.Add(result);
+                if (!(boundries.lowerBounds == -1 && boundries.upperBounds == -1))
+                {
+                    _currentResults.Add(result);
+                }
             }
 
             var temp = _carryOverRead;

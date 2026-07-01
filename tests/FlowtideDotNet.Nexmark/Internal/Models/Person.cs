@@ -11,7 +11,7 @@ public struct Person
     public string CreditCard { get; set; }
     public string City { get; set; }
     public string State { get; set; }
-    public string DateTime { get; set; }
+    public DateTime DateTime { get; set; }
     public string Extra { get; set; }
 
     public static Person Generate(long eventId, long time, NexmarkConfig nex)
@@ -35,7 +35,7 @@ public struct Person
             CreditCard = creditCard,
             City = city,
             State = state,
-            DateTime = NexmarkUtils.MilliTsToTimestampString(time),
+            DateTime = DateTimeOffset.FromUnixTimeMilliseconds(time).UtcDateTime,
             Extra = extra
         };
     }

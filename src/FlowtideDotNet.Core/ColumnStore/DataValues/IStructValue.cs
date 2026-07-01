@@ -22,6 +22,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
     {
         IDataValue GetAt(in int index);
 
+        void GetAt(int index, DataValueContainer dataValueContainer);
+
         StructHeader Header { get; }
     }
 }

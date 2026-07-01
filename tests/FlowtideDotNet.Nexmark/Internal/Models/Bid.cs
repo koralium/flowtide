@@ -10,7 +10,7 @@ public struct Bid
     public long Price { get; set; }
     public string Channel { get; set; }
     public string Url { get; set; }
-    public string DateTime { get; set; }
+    public DateTime DateTime { get; set; }
     public string Extra { get; set; }
 
     public static Bid Generate(long eventId, long time, NexmarkConfig nex)
@@ -49,7 +49,7 @@ public struct Bid
             AuctionId = auction + nex.FirstAuctionId,
             BidderId = bidder + nex.FirstPersonId,
             Price = price,
-            DateTime = NexmarkUtils.MilliTsToTimestampString(time),
+            DateTime = DateTimeOffset.FromUnixTimeMilliseconds(time).UtcDateTime,
             Channel = channel,
             Url = url,
             Extra = extra

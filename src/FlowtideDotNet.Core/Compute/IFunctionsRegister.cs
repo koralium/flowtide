@@ -14,6 +14,7 @@ using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
@@ -138,5 +139,9 @@ namespace FlowtideDotNet.Core.Compute
         internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
 
         IFunctionServices FunctionServices { get; }
+
+        void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition);
+
+        bool TryGetBulkAggregationFunction(string uri, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition);
     }
 }

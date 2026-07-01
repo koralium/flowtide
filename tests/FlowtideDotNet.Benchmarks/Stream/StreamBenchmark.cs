@@ -40,7 +40,8 @@ namespace FlowtideDotNet.Benchmarks.Stream
         public void IterationSetup()
         {
             _stream = new BenchmarkTestStream(iterationId.ToString());
-            _stream.Generate(1_00_000);
+            _stream.SourceImmutable();
+            _stream.Generate(100_000);
             _stream.CachePageCount = 100_000;
             iterationId++;
         }
