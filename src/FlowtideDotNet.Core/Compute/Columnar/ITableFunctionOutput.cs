@@ -16,7 +16,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 {
     /// <summary>
     /// Sink that a compiled table function appends its generated rows into.
-    /// <para>
+    /// </summary>
     public interface ITableFunctionOutput
     {
         /// <summary>
