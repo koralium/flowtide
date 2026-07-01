@@ -17,20 +17,6 @@ using FlowtideDotNet.Storage.Memory;
 
 namespace FlowtideDotNet.Core.Operators.TableFunction
 {
-    /// <summary>
-    /// A plain reusable buffer of produced rows (columns + weights + iterations) that a
-    /// table function appends into.
-    /// <para>
-    /// Used in two places:
-    /// <list type="bullet">
-    /// <item>as the scratch buffer for the join-condition path, where it is cleared per
-    /// input row and its <see cref="Batch"/> is fed to the join condition before the
-    /// passing rows are copied out; and</item>
-    /// <item>as the output of the table function read (<c>FROM unnest(...)</c>) operator,
-    /// whose buffers are handed off with <see cref="ToBatch"/>.</item>
-    /// </list>
-    /// </para>
-    /// </summary>
     internal sealed class TableFunctionRowBuffer : ITableFunctionOutput
     {
         private readonly Column[] _columns;
@@ -54,7 +40,6 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
 
         public int Count => _weights.Count;
 
-        /// <summary>The produced rows as an <see cref="EventBatchData"/>, for use as the right side of a join condition.</summary>
         public EventBatchData Batch => _batch;
 
         public PrimitiveList<int> Weights => _weights;
@@ -73,7 +58,6 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             _iterations.InsertStaticRange(_iterations.Count, iteration, count);
         }
 
-        /// <summary>Clears the buffer so it can be reused for the next input row.</summary>
         public void Clear()
         {
             for (int i = 0; i < _columns.Length; i++)
@@ -84,10 +68,6 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             _iterations.Clear();
         }
 
-        /// <summary>
-        /// Wraps the current buffers as a batch and hands off ownership. The buffer must not
-        /// be used afterwards.
-        /// </summary>
         public EventBatchWeighted ToBatch()
         {
             return new EventBatchWeighted(_weights, _iterations, _batch);

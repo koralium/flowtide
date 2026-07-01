@@ -17,13 +17,6 @@ namespace FlowtideDotNet.Core.Compute.Columnar
     /// <summary>
     /// Sink that a compiled table function appends its generated rows into.
     /// <para>
-    /// This replaces the previous contract where a table function returned a fresh
-    /// <see cref="EventBatchWeighted"/> for every single input row, which allocated a
-    /// column set, weight/iteration lists and batch wrappers per row. Here the columns
-    /// and lists are owned by the operator and reused for the whole incoming batch, in
-    /// the same spirit as the bulk aggregate operator and the window output builder.
-    /// </para>
-    /// </summary>
     public interface ITableFunctionOutput
     {
         /// <summary>
