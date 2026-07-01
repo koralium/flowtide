@@ -17,7 +17,13 @@ using System.Linq.Expressions;
 
 namespace FlowtideDotNet.Core.Compute.Columnar
 {
-    public record TableFunctionCompileResult(Func<EventBatchData, int, IEnumerable<EventBatchWeighted>> Function);
+    /// <summary>
+    /// A compiled table function. For input row <c>index</c> in <c>batch</c> it appends the
+    /// produced rows directly into <c>output</c> instead of allocating a batch per row.
+    /// </summary>
+    public delegate void TableFunctionEmit(EventBatchData batch, int index, ITableFunctionOutput output);
+
+    public record TableFunctionCompileResult(TableFunctionEmit Emit);
     internal static class ColumnTableFunctionCompiler
     {
         public static TableFunctionCompileResult CompileWithArg(
@@ -31,12 +37,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             }
             var param = System.Linq.Expressions.Expression.Parameter(typeof(EventBatchData));
             var indexParam = System.Linq.Expressions.Expression.Parameter(typeof(int));
+            var outputParam = System.Linq.Expressions.Expression.Parameter(typeof(ITableFunctionOutput));
             var resultContainer = System.Linq.Expressions.Expression.Constant(new DataValueContainer());
             var parameterInfo = new ColumnParameterInfo(new List<ParameterExpression>() { param }, new List<ParameterExpression>() { indexParam }, new List<int> { 0 }, resultContainer);
             var visitor = new ColumnarExpressionVisitor(functionsRegister);
 
-            var tableFunctionResult = tableFunctionFactory.MapFunc(tableFunction, parameterInfo, visitor, memoryAllocator);
-            var lambda = System.Linq.Expressions.Expression.Lambda<Func<EventBatchData, int, IEnumerable<EventBatchWeighted>>>(tableFunctionResult.Expression, param, indexParam);
+            var tableFunctionResult = tableFunctionFactory.MapFunc(tableFunction, parameterInfo, visitor, memoryAllocator, outputParam);
+            var lambda = System.Linq.Expressions.Expression.Lambda<TableFunctionEmit>(tableFunctionResult.Expression, param, indexParam, outputParam);
             return new TableFunctionCompileResult(lambda.Compile());
         }
     }

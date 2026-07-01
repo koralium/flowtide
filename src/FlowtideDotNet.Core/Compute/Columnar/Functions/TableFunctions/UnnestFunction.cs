@@ -11,8 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Storage.DataStructures;
-using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -38,7 +36,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
         public static void AddBuiltInUnnestFunction(FunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterColumnTableFunction(FunctionsTableGeneric.Uri, FunctionsTableGeneric.Unnest,
-                (tableFunc, parameterInfo, visitor, memoryAllocator) =>
+                (tableFunc, parameterInfo, visitor, memoryAllocator, outputParam) =>
                 {
                     if (tableFunc.Arguments.Count != 1)
                     {
@@ -57,25 +55,22 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                     }
 
                     var genericMethod = _unnestMethod.MakeGenericMethod(expr.Type);
-                    return new TableFunctionResult(Expression.Call(genericMethod, expr, Expression.Constant(memoryAllocator)));
+                    return new TableFunctionResult(Expression.Call(genericMethod, expr, outputParam));
                 });
         }
 
-        public static IEnumerable<EventBatchWeighted> DoUnnest<T>(T value, IMemoryAllocator memoryAllocator)
+        public static void DoUnnest<T>(T value, ITableFunctionOutput output)
             where T : IDataValue
         {
-            PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
-            PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryAllocator);
-            IColumn[] outputColumns = [Column.Create(memoryAllocator)];
+            var column = output.Columns[0];
             if (value.Type == ArrowTypeId.List)
             {
                 var list = value.AsList;
 
                 for (int i = 0; i < list.Count; i++)
                 {
-                    weights.Add(1);
-                    iterations.Add(0);
-                    outputColumns[0].Add(list.GetAt(i));
+                    column.Add(list.GetAt(i));
+                    output.CommitRow(1, 0);
                 }
             }
             else if (value.Type == ArrowTypeId.Map)
@@ -86,17 +81,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 
                 for (int i = 0; i < mapLength; i++)
                 {
-                    weights.Add(1);
-                    iterations.Add(0);
-                    outputColumns[0].Add(new MapValue(
+                    column.Add(new MapValue(
                         new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)),
                         new KeyValuePair<IDataValue, IDataValue>(_valueValue, map.GetValueAt(i))
                     ));
+                    output.CommitRow(1, 0);
                 }
             }
-
-            EventBatchWeighted[] result = [new EventBatchWeighted(weights, iterations, new EventBatchData(outputColumns))];
-            return result;
         }
     }
 }
