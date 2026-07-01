@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 {
     /// <summary>
     /// A compiled table function. For input row <c>index</c> in <c>batch</c> it appends the
-    /// produced rows directly into <c>output</c> instead of allocating a batch per row.
+    /// produced rows directly into <c>output</c>.
     /// </summary>
     public delegate void TableFunctionEmit(EventBatchData batch, int index, ITableFunctionOutput output);
 
