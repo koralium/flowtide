@@ -17,7 +17,7 @@ FROM table_source
 (HAVING scalar_or_aggregate_expression)?
 ```
 
-All fields which says expression, can take in expressions found under the [Expressions chapter](../../expressions/scalarfunctions/arithmetic.md).
+All fields which says expression, can take in expressions found under the Expressions section in the sidebar (for example [Arithmetic Functions](../../expressions/scalarfunctions/arithmetic.md)).
 
 ## Wildcards
 
