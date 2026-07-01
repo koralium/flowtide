@@ -45,29 +45,20 @@ The *SQL Server connector* supports reading and writing the following data types
 
 The SQL Server Source allows Flowtide to fetch rows and upates from a SQL Server table.
 
-:::info
+> [!NOTE]
+> It's strongly recommended that change tracking is enabled on the targeted tables. And must be enabled to allow near-realtime streaming.
 
-It's strongly recommended that change tracking is enabled on the targeted tables. And must be enabled to allow near-realtime streaming.
-
-:::
 
 The source uses the following logic to fetch data into the stream:
 
-```kroki type=blockdiag
-  blockdiag {
-    GetLatestChangeVersion [label = "Get latest change version", width = 200]
-    LoadExisting [label = "Load 10 000 existing"]
-    HasMoreExisting [label = "Has more", shape = diamond]
-    FetchChanges [label = "Fetch changes"]
-    StoreChangeVersion [label = "Store change version"]
-
-    GetLatestChangeVersion -> LoadExisting
-    LoadExisting -> HasMoreExisting
-    HasMoreExisting -> LoadExisting [label = "Yes"]
-    HasMoreExisting -> FetchChanges
-    FetchChanges -> StoreChangeVersion
-    StoreChangeVersion -> FetchChanges 
-  }
+```mermaid
+flowchart TD
+    GetLatestChangeVersion["Get latest change version"] --> LoadExisting["Load 10 000 existing"]
+    LoadExisting --> HasMoreExisting{"Has more"}
+    HasMoreExisting -->|Yes| LoadExisting
+    HasMoreExisting --> FetchChanges["Fetch changes"]
+    FetchChanges --> StoreChangeVersion["Store change version"]
+    StoreChangeVersion --> FetchChanges
 ```
 
 ### Reading with change tracking
@@ -86,11 +77,9 @@ By default changes are fetched once per second and can be modified using the `De
 ### Reading without change tracking
 Flowtide can read data from sources that do not have change tracking enabled. For these sources data are all data is fetched on an interval, specified with the `FullReloadInterval` option on the source.
 
-:::warning
+> [!WARNING]
+> Note that changes are not directly caught when change tracking is disabled.
 
-Note that changes are not directly caught when change tracking is disabled.
-
-::: 
 
 #### Reading from views
 To allow  from sql server views the following options must be set:
@@ -121,11 +110,9 @@ connectors.AddSqlServerSource(new SqlServerSourceOptions
 
 This will read all data from the table on an interval specified in `FullReloadInterval`. Delta loading data is not enabled when targeting a table without change tracking.
 
-:::info
+> [!NOTE]
+> If the table supports change tracking, delta loading will still be used even if these options are provided. But a full load will occur on the provided interval.
 
-If the table supports change tracking, delta loading will still be used even if these options are provided. But a full load will occur on the provided interval.
-
-:::
 
 #### Reading from large views or tables without change tracking
 
@@ -150,11 +137,9 @@ Flowtide uses `polly` to handle retries, documentation and examples can be found
 The *SQL Server Sink* implements the *grouped write operator*. This means that all rows are grouped by a primary key, thus all
 sink tables must have a primary key defined.
 
-:::info
+> [!NOTE]
+> All SQL Server Sink tables must have a primary key defined. The primary key must also be in the query that fills the table.
 
-All SQL Server Sink tables must have a primary key defined. The primary key must also be in the query that fills the table.
-
-:::
 
 Its implementation waits fully until the stream has reached a steady state at a time T until it writes data to the database.
 This means that its table output can always be traced back to a state from the source systems.
@@ -173,11 +158,9 @@ The data is inserted into the temporary table using *Bulk Copy*. This allows for
 After data has been inserted into the temporary table, a merge into statement is run that merges data into the destination table.
 After all data has been merged, the temporary table is cleared of all data.
 
-:::warning
+> [!WARNING]
+> If there are multiple rows in the result with the same primary key, only the latest seen row will be inserted into the destination table.
 
-If there are multiple rows in the result with the same primary key, only the latest seen row will be inserted into the destination table.
-
-:::
 
 ### Custom Primary Keys
 

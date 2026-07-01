@@ -1,0 +1,78 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [
+            "**/*.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "outputFormat": "mref",
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "filter": "filterConfig.yml",
+      "disableGitFeatures": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "index.md",
+          "toc.yml"
+        ]
+      },
+      {
+        "files": [
+          "docs/**/*.{md,yml}"
+        ]
+      },
+      {
+        "files": [
+          "releasenotes/**/*.{md,yml}"
+        ]
+      },
+      {
+        "files": [
+          "api/**/*.{md,yml}"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "images/**",
+          "docs/**/*.{png,jpg,jpeg,gif,svg}",
+          "releasenotes/**/*.{png,jpg,jpeg,gif,svg}"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern",
+      "templates/flowtide"
+    ],
+    "globalMetadata": {
+      "_appName": "Flowtide",
+      "_appTitle": "Flowtide.NET",
+      "_appFooter": "Supported by the <a href=\"https://dotnetfoundation.org\">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href=\"https://dotnet.github.io/docfx\">docfx</a>",
+      "_appLogoPath": "images/flowtidelogo.svg",
+      "_appFaviconPath": "images/favicon.ico",
+      "_enableSearch": true,
+      "_gitContribute": {
+        "repo": "https://github.com/koralium/flowtide",
+        "branch": "main"
+      },
+      "pdf": false
+    },
+    "globalMetadataFiles": [],
+    "fileMetadataFiles": [],
+    "postProcessors": [],
+    "disableGitFeatures": false
+  }
+}

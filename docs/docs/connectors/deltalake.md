@@ -148,11 +148,9 @@ Delta Lake Features:
 * Data file skipping
 * Change data files
 
-:::warning
+> [!WARNING]
+> The delta lake sink does not yet support partitioned tables.
 
-The delta lake sink does not yet support partitioned tables.
-
-:::
 
 ### Change data feed
 

@@ -93,11 +93,9 @@ This is done to reduce memory consumption in the system since there is a low car
 
 ## Authorization model permission to query
 
-:::warning
+> [!WARNING]
+> Authorization model permission to query is still experimental.
 
-Authorization model permission to query is still experimental.
-
-:::
 
 It is possible to take in a authorization model and denormalize the permission for a specific type.
 This can be useful if one wants to add permisison data to a non relational database such as a search engine to allow searching based on user permissions.
@@ -172,57 +170,28 @@ type doc
 And one wants to materialize users based on "*doc*: *can_read*" definition, the following query graph is created:
 
 
-```kroki type=blockdiag
-  blockdiag {
-    LoopIngress [label = "Loop ingress"];
-    LoopEnd [label = "Loop Feedback"];
-    FilterMemberRelationGroup [label = "r = 'member' and t = 'group'"];
-    ProjectGroupCanRead [label = "project group can_read"];
-
-    GroupCanReadUnion [label = "Union group can_read"];
-
-    FilterCanReadFromGroup [label = "r = 'can_read' and t = 'group'"];
-    FilterGroupParent [label = "r = 'parent' and t = 'group'"];
-    JoinGroupCanRead [label = "Inner Join on user group and can read"];
-    ProjectParentCanRead [label = "project group can_read"];
-
-    FilterMemberGroup [label = "r = 'can_read' and t = 'group'"];
-    FilterParentGroup [label = "r = 'group' and t = 'doc'"];
-    JoinParentMemberGroup [label = "Inner Join parent with can_read from group"];
-    Distinct [label = "Distinct"];
-    
-    ProjectDocCanRead [label = "Project doc can_read"];
-
-    FinalFilter [label = "filter r = 'can_read' and t = 'project'"];
-    OpenFGA [label = "OpenFGA Source"];
-
-    OpenFGA -> LoopIngress;
-
-    LoopIngress -> Distinct;
-
-    Distinct -> FilterMemberRelationGroup;
-    FilterMemberRelationGroup -> ProjectGroupCanRead;
-    ProjectGroupCanRead -> GroupCanReadUnion;
-
-    Distinct -> FilterCanReadFromGroup;
-    Distinct -> FilterGroupParent;
-    FilterCanReadFromGroup -> JoinGroupCanRead;
-    FilterGroupParent -> JoinGroupCanRead;
-    JoinGroupCanRead -> ProjectParentCanRead;
-    ProjectParentCanRead -> GroupCanReadUnion;
-
-    GroupCanReadUnion -> LoopEnd;
-
-    Distinct -> FilterMemberGroup; 
-    Distinct -> FilterParentGroup;
-    FilterMemberGroup -> JoinParentMemberGroup;
-    FilterParentGroup -> JoinParentMemberGroup;
-    JoinParentMemberGroup -> ProjectDocCanRead;
-    ProjectDocCanRead -> LoopEnd;
-    
-    LoopEnd -> FinalFilter;
-    FinalFilter -> Output;
-  }
+```mermaid
+flowchart TD
+    OpenFGA["OpenFGA Source"] --> LoopIngress["Loop ingress"]
+    LoopIngress --> Distinct["Distinct"]
+    Distinct --> FilterMemberRelationGroup["r = 'member' and t = 'group'"]
+    FilterMemberRelationGroup --> ProjectGroupCanRead["project group can_read"]
+    ProjectGroupCanRead --> GroupCanReadUnion["Union group can_read"]
+    Distinct --> FilterCanReadFromGroup["r = 'can_read' and t = 'group'"]
+    Distinct --> FilterGroupParent["r = 'parent' and t = 'group'"]
+    FilterCanReadFromGroup --> JoinGroupCanRead["Inner Join on user group and can read"]
+    FilterGroupParent --> JoinGroupCanRead
+    JoinGroupCanRead --> ProjectParentCanRead["project group can_read"]
+    ProjectParentCanRead --> GroupCanReadUnion
+    GroupCanReadUnion --> LoopEnd["Loop Feedback"]
+    Distinct --> FilterMemberGroup["r = 'can_read' and t = 'group'"]
+    Distinct --> FilterParentGroup["r = 'group' and t = 'doc'"]
+    FilterMemberGroup --> JoinParentMemberGroup["Inner Join parent with can_read from group"]
+    FilterParentGroup --> JoinParentMemberGroup
+    JoinParentMemberGroup --> ProjectDocCanRead["Project doc can_read"]
+    ProjectDocCanRead --> LoopEnd
+    LoopEnd --> FinalFilter["filter r = 'can_read' and t = 'project'"]
+    FinalFilter --> Output
 ```
 
 Loop feedback will send all events back into the loop ingress. The distinct node directly after the loop ingress is to stop row duplicates to

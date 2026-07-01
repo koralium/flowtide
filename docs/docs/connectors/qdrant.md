@@ -17,16 +17,14 @@ Flowtide will add identifying metadata under the `flowtide` key, this contains m
 
 It will also add some general metadata under the `data` key (unless modified by the `QdrantPayloadDataPropertyName`-option), this contains information like `last_update` and which embedding generator was used. AS well as the vectorized string (if not disabled by the `QdrantIncludeVectorTextInPayload`-option). 
 
-:::info
+> [!NOTE]
+> It's important that the Qdrant collection contains a payload indexes for the keys `flowtide` and `id`.
+>
+> * The `flowtide` index should be a text index.
+> * The `id` index should (most likely) be a keyword index.
+>
+> Without these indexes resources used will be drastically higher and performance will be diminished.
 
-It's important that the Qdrant collection contains a payload indexes for the keys `flowtide` and `id`.
-
-* The `flowtide` index should be a text index.
-* The `id` index should (most likely) be a keyword index.
-
-Without these indexes resources used will be drastically higher and performance will be diminished.
-
-:::
 
 To use it add it to the *ConnectorManager*:
 

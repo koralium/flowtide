@@ -6,10 +6,9 @@ sidebar_position: 6
 
 ## Strftime
 
-:::warning
+> [!WARNING]
+> This function exists for backwards compatibility and compliance with substrait. If possible please use [Timestamp Format](#timestamp-format).
 
-This function exists for backwards compatibility and compliance with substrait. If possible please use [Timestamp Format](#timestamp-format).
-:::
 
 [Substrait definition](https://substrait.io/extensions/functions_datetime/#strftime)
 
@@ -34,18 +33,14 @@ FROM Orders
 
 *This function has no substrait equivalent*
 
-:::warning
+> [!WARNING]
+> Get timestamp is not yet supported inside of join conditions.
 
-Get timestamp is not yet supported inside of join conditions.
 
-:::
+> [!NOTE]
+> If you do comparisons with *gettimestamp* it may be benificial to use buffered views to only send out changed rows to the rest of the stream.
+> Please see [Buffered view](../../sql/createview.md#buffered-view).
 
-:::info
-
-If you do comparisons with *gettimestamp* it may be benificial to use buffered views to only send out changed rows to the rest of the stream.
-Please see [Buffered view](/docs/sql/createview#buffered-view).
-
-:::
 
 Get the current timestamp (current datetime).
 
@@ -54,19 +49,20 @@ joins against a timestamp data source.
 
 Example:
 
-```kroki type=blockdiag
-  blockdiag {
-    Source -> Project -> Write
-  }
+```mermaid
+flowchart TD
+    Source --> Project
+    Project --> Write
 ```
 
 Where if project uses gettimestamp becomes:
 
-```kroki type=blockdiag
-  blockdiag {
-    Source -> CrossJoin -> Project -> Write;
-    TimestampProvider -> CrossJoin;
-  }
+```mermaid
+flowchart TD
+    Source --> CrossJoin
+    CrossJoin --> Project
+    Project --> Write
+    TimestampProvider --> CrossJoin
 ```
 
 This means that all rows that are evaluated will have the same value of *gettimestamp* to ensure consistent results.

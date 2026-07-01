@@ -130,9 +130,9 @@ The function returns rows with the following columns:
 | `resource_type`       | The resource type                         |
 | `resource_id`         | The resource identifier                   |
 
-:::note
-The function can only be used as a standalone `FROM` source; it cannot be placed inside a `JOIN`.
-:::
+> [!NOTE]
+> The function can only be used as a standalone `FROM` source; it cannot be placed inside a `JOIN`.
+
 
 Example — expand the `view` permission on `document`:
 

@@ -28,9 +28,6 @@ The *Normalization Operator* has the following metrics:
 | health        | Gauge     | Value 0 or 1, if the operator is healthy or not.      |
 | events        | Counter   | How many events that pass through the operator.       |
 
-:::info
-
-At this point, a normalization operator will never be unhealthy.
-If there is a failure against the state, the stream will instead restart.
-
-:::
+> [!NOTE]
+> At this point, a normalization operator will never be unhealthy.
+> If there is a failure against the state, the stream will instead restart.
