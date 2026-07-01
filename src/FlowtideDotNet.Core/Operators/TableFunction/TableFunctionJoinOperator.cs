@@ -263,12 +263,27 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             (_, _rightOutputIndices) = GetOutputColumns(_tableFunctionRelation, _tableFunctionRelation.Input.OutputLength, _functionOutputLength);
             if (_tableFunctionRelation.JoinCondition != null)
             {
+                if (_scratch != null)
+                {
+                    _scratch.Dispose();
+                    _scratch = null;
+                }
                 // Create a boolean filter function that takes both the left and right side of the join
                 _joinCondition = ColumnBooleanCompiler.CompileTwoInputs(_tableFunctionRelation.JoinCondition, _functionsRegister, _tableFunctionRelation.Input.OutputLength);
                 // Reusable scratch for the filtered path.
                 _scratch = new TableFunctionRowBuffer(_functionOutputLength, MemoryAllocator);
             }
             return Task.CompletedTask;
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            if (_scratch != null)
+            {
+                _scratch.Dispose();
+            }
+            
+            return base.DisposeAsync();
         }
     }
 }
