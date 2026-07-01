@@ -67,6 +67,12 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             _iterations.Add(iteration);
         }
 
+        public void CommitRows(int count, int weight, uint iteration)
+        {
+            _weights.InsertStaticRange(_weights.Count, weight, count);
+            _iterations.InsertStaticRange(_iterations.Count, iteration, count);
+        }
+
         /// <summary>Clears the buffer so it can be reused for the next input row.</summary>
         public void Clear()
         {

@@ -66,18 +66,36 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
             if (value.Type == ArrowTypeId.List)
             {
                 var list = value.AsList;
-
-                for (int i = 0; i < list.Count; i++)
+                var count = list.Count;
+                if (count == 0)
                 {
-                    column.Add(list.GetAt(i));
-                    output.CommitRow(1, 0);
+                    return;
                 }
+
+                if (list is ReferenceListValue refList)
+                {
+                    // The list is a contiguous slice of a backing column, so copy the whole
+                    // run in one range copy instead of value-by-value.
+                    column.InsertRangeFrom(column.Count, refList.column, refList.start, count);
+                }
+                else
+                {
+                    for (int i = 0; i < count; i++)
+                    {
+                        column.Add(list.GetAt(i));
+                    }
+                }
+                output.CommitRows(count, 1, 0);
             }
             else if (value.Type == ArrowTypeId.Map)
             {
                 var map = value.AsMap;
 
                 var mapLength = map.GetLength();
+                if (mapLength == 0)
+                {
+                    return;
+                }
 
                 for (int i = 0; i < mapLength; i++)
                 {
@@ -85,8 +103,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
                         new KeyValuePair<IDataValue, IDataValue>(_keyValue, map.GetKeyAt(i)),
                         new KeyValuePair<IDataValue, IDataValue>(_valueValue, map.GetValueAt(i))
                     ));
-                    output.CommitRow(1, 0);
                 }
+                output.CommitRows(mapLength, 1, 0);
             }
         }
     }

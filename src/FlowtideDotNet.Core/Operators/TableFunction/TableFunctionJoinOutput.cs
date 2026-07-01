@@ -66,6 +66,15 @@ namespace FlowtideDotNet.Core.Operators.TableFunction
             Iterations.Add(InputIteration);
         }
 
+        public void CommitRows(int count, int weight, uint iteration)
+        {
+            // All rows produced for one input row share its offset/weight/iteration, so fill
+            // the bookkeeping as uniform ranges instead of one Add per row.
+            FoundOffsets.InsertStaticRange(FoundOffsets.Count, InputIndex, count);
+            Weights.InsertStaticRange(Weights.Count, InputWeight * weight, count);
+            Iterations.InsertStaticRange(Iterations.Count, InputIteration, count);
+        }
+
         /// <summary>
         /// Emits the all-null right side used by a LEFT join when an input row produced no
         /// matching rows.

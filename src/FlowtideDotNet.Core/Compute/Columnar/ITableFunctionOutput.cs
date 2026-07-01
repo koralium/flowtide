@@ -43,5 +43,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         /// once, after the row's values have been written to <see cref="Columns"/>.
         /// </summary>
         void CommitRow(int weight, uint iteration);
+
+        /// <summary>
+        /// Commits <paramref name="count"/> produced rows that all share the same weight and
+        /// iteration, after their values have been written to <see cref="Columns"/>. This lets
+        /// a function that emits a run of uniform rows (e.g. unnesting a list) fill the
+        /// bookkeeping in bulk instead of one <see cref="CommitRow"/> call per row.
+        /// </summary>
+        void CommitRows(int count, int weight, uint iteration);
     }
 }
