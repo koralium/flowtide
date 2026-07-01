@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition" class="text-break">
-Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L28"><i class="bi bi-code-slash"></i></a>
+Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -154,16 +154,16 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 
   <a id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition__ctor_" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition__ctor_System_String_System_String_System_Func_FlowtideDotNet_Substrait_Expressions_TableFunction_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_FlowtideDotNet_Core_Compute_Columnar_TableFunctionResult__" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.#ctor(System.String,System.String,System.Func{FlowtideDotNet.Substrait.Expressions.TableFunction,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo,FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor,FlowtideDotNet.Storage.Memory.IMemoryAllocator,FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult})">
-  ColumnTableFunctionDefinition(string, string, Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition__ctor_System_String_System_String_System_Func_FlowtideDotNet_Substrait_Expressions_TableFunction_FlowtideDotNet_Core_Compute_Columnar_ColumnParameterInfo_FlowtideDotNet_Core_Compute_Columnar_ColumnarExpressionVisitor_FlowtideDotNet_Storage_Memory_IMemoryAllocator_System_Linq_Expressions_ParameterExpression_FlowtideDotNet_Core_Compute_Columnar_TableFunctionResult__" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.#ctor(System.String,System.String,System.Func{FlowtideDotNet.Substrait.Expressions.TableFunction,FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo,FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor,FlowtideDotNet.Storage.Memory.IMemoryAllocator,System.Linq.Expressions.ParameterExpression,FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult})">
+  ColumnTableFunctionDefinition(string, string, Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L35"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public ColumnTableFunctionDefinition(string uri, string name, Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult&gt; mapFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">public ColumnTableFunctionDefinition(string uri, string name, Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult&gt; mapFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
@@ -172,7 +172,7 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
-    <dt><code>mapFunc</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Expressions.TableFunction.html">TableFunction</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html">ColumnarExpressionVisitor</a>, <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult.html">TableFunctionResult</a>&gt;</dt>
+    <dt><code>mapFunc</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Expressions.TableFunction.html">TableFunction</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html">ColumnarExpressionVisitor</a>, <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.parameterexpression">ParameterExpression</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult.html">TableFunctionResult</a>&gt;</dt>
     <dd></dd>
   </dl>
 
@@ -195,14 +195,17 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_MapFunc" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.MapFunc">
   MapFunc
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L44"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L54"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Builds the append expression for the function. The last parameter is the
+<a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ITableFunctionOutput.html">ITableFunctionOutput</a> parameter expression that the produced rows
+should be written into.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, TableFunctionResult&gt; MapFunc { get; }</code></pre>
+    <pre><code class="lang-csharp hljs">public Func&lt;TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult&gt; MapFunc { get; }</code></pre>
   </div>
 
 
@@ -211,7 +214,7 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-5">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Expressions.TableFunction.html">TableFunction</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html">ColumnarExpressionVisitor</a>, <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult.html">TableFunctionResult</a>&gt;</dt>
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-6">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Expressions.TableFunction.html">TableFunction</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnParameterInfo.html">ColumnParameterInfo</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html">ColumnarExpressionVisitor</a>, <a class="xref" href="FlowtideDotNet.Storage.Memory.IMemoryAllocator.html">IMemoryAllocator</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.linq.expressions.parameterexpression">ParameterExpression</a>, <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionResult.html">TableFunctionResult</a>&gt;</dt>
     <dd></dd>
   </dl>
 
@@ -226,7 +229,7 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Name" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Name">
   Name
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L42"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -257,7 +260,7 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 
   <h3 id="FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Uri" data-uid="FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri">
   Uri
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L45"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -288,7 +291,7 @@ Class ColumnTableFunctionDefinition  <a class="header-action link-secondary" tit
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L28" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionDefinition.cs/#L33" class="edit-link">Edit this page</a>
         </div>
 
 

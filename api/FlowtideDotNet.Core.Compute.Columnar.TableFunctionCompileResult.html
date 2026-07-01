@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult" class="text-break">
-Class TableFunctionCompileResult  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L20"><i class="bi bi-code-slash"></i></a>
+Class TableFunctionCompileResult  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -160,21 +160,21 @@ Class TableFunctionCompileResult  <a class="header-action link-secondary" title=
 
   <a id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult__ctor_" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.#ctor*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult__ctor_System_Func_FlowtideDotNet_Core_ColumnStore_EventBatchData_System_Int32_System_Collections_Generic_IEnumerable_FlowtideDotNet_Core_ColumnStore_EventBatchWeighted___" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.#ctor(System.Func{FlowtideDotNet.Core.ColumnStore.EventBatchData,System.Int32,System.Collections.Generic.IEnumerable{FlowtideDotNet.Core.ColumnStore.EventBatchWeighted}})">
-  TableFunctionCompileResult(Func&lt;EventBatchData, int, IEnumerable&lt;EventBatchWeighted&gt;&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult__ctor_FlowtideDotNet_Core_Compute_Columnar_TableFunctionEmit_" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.#ctor(FlowtideDotNet.Core.Compute.Columnar.TableFunctionEmit)">
+  TableFunctionCompileResult(TableFunctionEmit)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public TableFunctionCompileResult(Func&lt;EventBatchData, int, IEnumerable&lt;EventBatchWeighted&gt;&gt; Function)</code></pre>
+    <pre><code class="lang-csharp hljs">public TableFunctionCompileResult(TableFunctionEmit Emit)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>Function</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchData.html">EventBatchData</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchWeighted.html">EventBatchWeighted</a>&gt;&gt;</dt>
+    <dt><code>Emit</code> <a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionEmit.html">TableFunctionEmit</a></dt>
     <dd></dd>
   </dl>
 
@@ -193,18 +193,18 @@ Class TableFunctionCompileResult  <a class="header-action link-secondary" title=
 </h2>
 
 
-  <a id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult_Function_" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.Function*"></a>
+  <a id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult_Emit_" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.Emit*"></a>
 
-  <h3 id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult_Function" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.Function">
-  Function
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Core_Compute_Columnar_TableFunctionCompileResult_Emit" data-uid="FlowtideDotNet.Core.Compute.Columnar.TableFunctionCompileResult.Emit">
+  Emit
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public Func&lt;EventBatchData, int, IEnumerable&lt;EventBatchWeighted&gt;&gt; Function { get; init; }</code></pre>
+    <pre><code class="lang-csharp hljs">public TableFunctionEmit Emit { get; init; }</code></pre>
   </div>
 
 
@@ -213,7 +213,7 @@ Class TableFunctionCompileResult  <a class="header-action link-secondary" title=
 
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.func-3">Func</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchData.html">EventBatchData</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>, <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ienumerable-1">IEnumerable</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.EventBatchWeighted.html">EventBatchWeighted</a>&gt;&gt;</dt>
+    <dt><a class="xref" href="FlowtideDotNet.Core.Compute.Columnar.TableFunctionEmit.html">TableFunctionEmit</a></dt>
     <dd></dd>
   </dl>
 
@@ -228,7 +228,7 @@ Class TableFunctionCompileResult  <a class="header-action link-secondary" title=
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L20" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Compute/Columnar/ColumnTableFunctionCompiler.cs/#L26" class="edit-link">Edit this page</a>
         </div>
 
 
