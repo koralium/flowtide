@@ -23,9 +23,7 @@
     <Project Path="src/FlowtideDotNet.Connector.MongoDB/FlowtideDotNet.Connector.MongoDB.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.OpenFGA/FlowtideDotNet.Connector.OpenFGA.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Permify/FlowtideDotNet.Connector.Permify.csproj" />
-    <Project Path="src/FlowtideDotNet.Connector.PostgreSQL/FlowtideDotNet.Connector.PostgreSQL.csproj">
-      <Build Solution="Release|*" Project="false" />
-    </Project>
+    <Project Path="src/FlowtideDotNet.Connector.PostgreSQL/FlowtideDotNet.Connector.PostgreSQL.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Qdrant/FlowtideDotNet.Connector.Qdrant.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.Sharepoint/FlowtideDotNet.Connector.Sharepoint.csproj" />
     <Project Path="src/FlowtideDotNet.Connector.SpiceDB/FlowtideDotNet.Connector.SpiceDB.csproj" />
@@ -55,9 +53,7 @@
     <Project Path="tests/FlowtideDotNet.Connector.MongoDB.Tests/FlowtideDotNet.Connector.MongoDB.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.OpenFGA.Tests/FlowtideDotNet.Connector.OpenFGA.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.Permify.Tests/FlowtideDotNet.Connector.Permify.Tests.csproj" />
-    <Project Path="tests/FlowtideDotNet.Connector.PostgreSQL.Tests/FlowtideDotNet.Connector.PostgreSQL.Tests.csproj">
-      <Build Solution="Release|*" Project="false" />
-    </Project>
+    <Project Path="tests/FlowtideDotNet.Connector.PostgreSQL.Tests/FlowtideDotNet.Connector.PostgreSQL.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.Qdrant.Tests/FlowtideDotNet.Connector.Qdrant.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.SpiceDB.Tests/FlowtideDotNet.Connector.SpiceDB.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Connector.Starrocks.Tests/FlowtideDotNet.Connector.StarRocks.Tests.csproj" />
