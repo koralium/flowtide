@@ -105,7 +105,9 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 await _lockSemaphore.WaitAsync();
                 try
                 {
-                    await _queue.Enqueue(new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time));
+                    var msg = new StreamMessage<StreamEventBatch>(new StreamEventBatch(new EventBatchWeighted(_weights, _iterations, new EventBatchData(_columns))), time);
+                    msg.Data.Rent(1);
+                    await _queue.Enqueue(msg);
                     NewColumns();
                 }
                 finally
@@ -205,6 +207,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 while (_queue.Count > 0 && count < maxCount)
                 {
                     var val = await _queue.Dequeue();
+                    if (val is StreamMessage<StreamEventBatch> streamMessage)
+                    {
+                        if (streamMessage.Data is IRentable rent)
+                        {
+                            rent.Rent(1);
+                        }
+                    }
                     outputList.Add(new SubstreamEventData()
                     {
                         ExchangeTargetId = _exchangeTargetId,

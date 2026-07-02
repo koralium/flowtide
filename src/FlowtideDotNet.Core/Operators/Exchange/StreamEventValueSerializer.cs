@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             var eventBatchData = _eventBatchBPlusTreeSerializer.Deserialize(ref reader, memoryAllocator);
 
             var weights = new PrimitiveList<int>(weightsMemory, eventBatchData.Count, memoryAllocator);
-            var iterations = new PrimitiveList<uint>(weightsMemory, eventBatchData.Count, memoryAllocator);
+            var iterations = new PrimitiveList<uint>(iterationsMemory, eventBatchData.Count, memoryAllocator);
 
             return new StreamMessage<StreamEventBatch>(new StreamEventBatch(new ColumnStore.EventBatchWeighted(weights, iterations, eventBatchData.EventBatch)), time);
         }
@@ -181,6 +181,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private unsafe LockingEventPrepare DeserializeLockingEventPrepare(ref SequenceReader<byte> reader)
         {
+            Console.WriteLine("SERIALIZE LOCK PREPARE");
             if (!reader.TryRead(out byte otherInputsNotInCheckpoint))
             {
                 throw new InvalidOperationException("Failed to read other inputs not in checkpoint");
@@ -196,10 +197,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 throw new InvalidOperationException("Failed to read id");
             }
+            reader.Advance(16);
 
             var id = new Guid(idSpan);
 
-            reader.TryRead(out byte type);
+            if (!reader.TryRead(out byte type))
+            {
+                throw new InvalidOperationException("Failed to read type");
+            }
 
             ILockingEvent? lockingEvent;
             switch (type)
@@ -264,6 +269,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         private void SerializeBatch(in IBufferWriter<byte> writer, in StreamMessage<StreamEventBatch> batch)
         {
+            Console.WriteLine("SERIALIZE BATCH");
             var destinationSpan = writer.GetSpan(13);
             destinationSpan[0] = StreamEventBatchType;
             BinaryPrimitives.WriteInt64LittleEndian(destinationSpan.Slice(1), batch.Time);
@@ -318,7 +324,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             var destinationSpan = writer.GetSpan(19);
             destinationSpan[0] = LockingEventPrepareType;
             destinationSpan[1] = (byte)(lockingEventPrepare.OtherInputsNotInCheckpoint ?  1 : 0);
-            destinationSpan[3] = (byte)(lockingEventPrepare.IsInitEvent ? 1 : 0);
+            destinationSpan[2] = (byte)(lockingEventPrepare.IsInitEvent ? 1 : 0);
             lockingEventPrepare.Id.TryWriteBytes(destinationSpan.Slice(3));
             writer.Advance(19);
             

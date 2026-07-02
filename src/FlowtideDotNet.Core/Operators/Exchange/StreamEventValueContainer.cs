@@ -11,22 +11,16 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base;
-using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Tree;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Operators.Exchange
 {
     internal class StreamEventValueContainer : IValueContainer<IStreamEvent>
     {
         internal List<IStreamEvent> _streamEvents;
-        
+        private int _lastByteSize = 0;
+
         public int Count => _streamEvents.Count;
 
         public StreamEventValueContainer(IMemoryAllocator memoryAllocator)
@@ -48,7 +42,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             foreach(var e in _streamEvents)
             {
-                if (e is IDisposable disposable)
+                if (e is StreamMessage<StreamEventBatch> streamMessage)
+                {
+                    streamMessage.Data.Return();
+                }
+                else if (e is IRentable rentable)
+                {
+                    rentable.Return();
+                }
+                else if (e is IDisposable disposable)
                 {
                     disposable.Dispose();
                 }
@@ -62,20 +64,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public int GetByteSize()
         {
-            int size = 0;
-            foreach (var e in _streamEvents)
-            {
-                if (e is StreamMessage<StreamEventBatch> streamEventBatchMessage)
-                {
-                    size += streamEventBatchMessage.Data.Data.EventBatchData.GetByteSize();
-                    size += streamEventBatchMessage.Data.Data.Count * (sizeof(long) * 2); //Add for weight and iteration count
-                }
-                else
-                {
-                    size += 100; //Static size of 100 bytes for all other types
-                }
-            }
-            return size;
+            return _lastByteSize;
         }
 
         public int GetByteSize(int start, int end)
@@ -106,6 +95,15 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 
         public void Insert(int index, IStreamEvent value)
         {
+            if (value is StreamMessage<StreamEventBatch> streamEventBatchMessage)
+            {
+                _lastByteSize += streamEventBatchMessage.Data.Data.EventBatchData.GetByteSize();
+                _lastByteSize += streamEventBatchMessage.Data.Data.Count * (sizeof(long) * 2); //Add for weight and iteration count
+            }
+            else
+            {
+                _lastByteSize += 100; //Static size of 100 bytes for all other types
+            }
             _streamEvents.Insert(index, value);
         }
 

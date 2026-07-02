@@ -81,12 +81,12 @@ namespace OrleansSample
             {
                 await output.EnterCheckpointLock();
                 var memoryManager = MemoryAllocator;
-                IColumn[] columns = new IColumn[16];
+                IColumn[] columns = new IColumn[1];
                 PrimitiveList<int> weights = new PrimitiveList<int>(memoryManager);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(memoryManager);
 
 
-                for (int b = 0; b < 16; b++)
+                for (int b = 0; b < 1; b++)
                 {
                     columns[b] = Column.Create(memoryManager);
                 }
@@ -95,7 +95,7 @@ namespace OrleansSample
                 {
                     weights.Add(1);
                     iterations.Add(0);
-                    for (int z = 0; z < 16; z++)
+                    for (int z = 0; z < 1; z++)
                     {
                         columns[z].Add(new Int64Value((i * 100) + k));
                     }
